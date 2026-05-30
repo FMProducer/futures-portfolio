@@ -1,0 +1,11 @@
+{
+  "balance": 133.9122,
+  "positions": {
+    "PORTALUSDT_LONG": 9432.6,
+    "PORTALUSDT_SHORT": 14168.4
+  },
+  "last_price": 0.0126799,
+  "base_ticker": "PORTALUSDT",
+  "long_entry_price": 0.01082535,
+  "short_entry_price": 0.01149354
+}

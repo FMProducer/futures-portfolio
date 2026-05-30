@@ -1,0 +1,20 @@
+{
+  "virt_qty": 193.39523326155847,
+  "base_ticker": "STGUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 121.71050631164418,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 9,
+  "last_rebalance_price": 0.2352,
+  "started_at": 1780145451.4662833,
+  "virt_debt": 40.25,
+  "last_tpv": 118.33851912093361,
+  "last_profit": 3.3385191209336114,
+  "total_pnl_pct": 2.9030601051596667,
+  "last_update": 1780160487.3767595
+}

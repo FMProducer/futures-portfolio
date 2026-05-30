@@ -1,0 +1,11 @@
+{
+  "balance": 115.4827,
+  "positions": {
+    "NILUSDT_LONG": 2235.3,
+    "NILUSDT_SHORT": 2666.8
+  },
+  "last_price": 0.06703418,
+  "base_ticker": "NILUSDT",
+  "long_entry_price": 0.06869082,
+  "short_entry_price": 0.06869082
+}

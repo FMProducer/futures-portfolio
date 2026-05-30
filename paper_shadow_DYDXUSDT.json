@@ -1,0 +1,11 @@
+{
+  "balance": 116.9507,
+  "positions": {
+    "DYDXUSDT_LONG": 700.8,
+    "DYDXUSDT_SHORT": 1029.5
+  },
+  "last_price": 0.192,
+  "base_ticker": "DYDXUSDT",
+  "long_entry_price": 0.18083022,
+  "short_entry_price": 0.18094283
+}

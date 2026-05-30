@@ -1,0 +1,20 @@
+{
+  "virt_qty": 0.07781236104935527,
+  "base_ticker": "ZECUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.0,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 1,
+  "last_rebalance_price": 517.27,
+  "started_at": 1780131959.3704686,
+  "virt_debt": 40.25,
+  "last_tpv": 114.85078951534015,
+  "last_profit": -0.14921048465984654,
+  "total_pnl_pct": -0.12974824753030287,
+  "last_update": 1780132913.602699
+}

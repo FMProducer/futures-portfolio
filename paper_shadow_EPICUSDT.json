@@ -1,0 +1,11 @@
+{
+  "balance": 119.7763,
+  "positions": {
+    "EPICUSDT_LONG": 446.6,
+    "EPICUSDT_SHORT": 754.0
+  },
+  "last_price": 0.2329,
+  "base_ticker": "EPICUSDT",
+  "long_entry_price": 0.24098567,
+  "short_entry_price": 0.24161945
+}

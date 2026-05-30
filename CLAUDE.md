@@ -1,0 +1,203 @@
+# CLAUDE.md — Binance Futures Portfolio Rebalancer
+
+## Project Overview
+
+**Type**: Market Neutral Futures Trading System
+**Exchange**: Binance Futures
+**Core**: Dynamic synthetic hedging with Long/Short hedge + Margin Simulation
+
+### Target Allocation (Market Neutral 2.0)
+1. **Long x5 (29%)**: Long futures position
+2. **Short x5 (36%)**: Short futures position
+3. **Margin Simulation (35%)**: Virtual base asset position on free margin
+
+---
+
+## Architecture
+
+```
+futures_portfolio/
+├── main.py              # Entry point, 24h auto-pilot loop
+├── connector.py         # Binance Futures API wrapper
+├── calculator.py        # Position sizing & rebalancing math
+├── executor.py          # Order execution
+├── rank_tickers.py      # Scanner: selects best ticker (Selection Strategy 3.0)
+├── backtest_rebalance.py       # Backtesting engine (with trailing stop & hysteresis)
+├── config.json          # Runtime configuration
+├── state.json           # Live session state
+├── paper_state.json     # Paper trading state
+├── .env.example         # Environment variables template
+├── .gitignore           # Git ignore rules
+└── tests/              # Unit tests
+```
+
+---
+
+## Key Metrics
+
+| Metric | Description |
+|--------|-------------|
+| **Real Equity** | `Available_Balance + Sum(Unrealized_PnL)` |
+| **TPV** | Total Portfolio Value (includes virtual leg) |
+| **TPV_Active** | `TPV - siphoning_reserve` (working capital) |
+| **tpv_ath** | High-Water Mark for Trailing Stop |
+| **Margin Ratio** | `totalMarginBalance / totalMaintMargin` (safety indicator) |
+| **reference_tpv** | Fixed baseline for hysteresis logic (doesn't change on siphon) |
+
+---
+
+## Security & Environment
+
+### API Keys (CRITICAL)
+**NEVER store API keys in config.json!** Use environment variables:
+
+```bash
+# Windows PowerShell
+$env:BINANCE_API_KEY="your_key"
+$env:BINANCE_SECRET_KEY="your_secret"
+
+# Windows CMD
+set BINANCE_API_KEY=your_key
+set BINANCE_SECRET_KEY=your_secret
+
+# Linux/Mac
+export BINANCE_API_KEY=your_key
+export BINANCE_SECRET_KEY=your_secret
+```
+
+Or create `.env` file from template:
+```bash
+copy .env.example .env
+# Edit .env and add your keys
+```
+
+### Files Added (18 Apr 2026)
+- **.env.example** — Template for environment variables
+- **.gitignore** — Excludes .env, state files, logs from git
+
+---
+
+## Safety Mechanisms
+
+### 1. Equity Trailing Stop
+- Drawdown from ATH → automatic position closure
+- Triggers: `equity_trailing_stop_pct: 24.0` in config (Optuna-optimized)
+- Activation: `equity_trailing_stop_activation_pct: 7.5` (must be in profit first)
+- Timeout: `equity_trailing_stop_timeout_sec: 60`
+
+### 2. Margin Ratio Monitoring
+Real-time tracking of liquidation risk via `get_margin_ratio()` in connector.py:
+
+| Level | Threshold | Action |
+|-------|-----------|--------|
+| **Warning** | ≤5x | Log warning about low margin |
+| **Critical** | ≤2x | Emergency close all positions and stop bot |
+
+Config parameters:
+```json
+"margin_ratio_warning": 5.0,
+"margin_ratio_critical": 2.0
+```
+
+### 3. Position-Level Liquidation Guard (NEW — 30 May 2026)
+Monitors distance to per-position liquidation price (works with ISOLATED margin).
+Uses `get_position_risk()` in connector.py.
+
+| Level | Threshold | Action |
+|-------|-----------|--------|
+| **Warning** | ≤15% distance | Log warning |
+| **Critical** | ≤8% distance | Emergency close that position immediately |
+
+Config parameters:
+```json
+"liquidation_distance_warn_pct": 15.0,
+"liquidation_distance_crit_pct": 8.0
+```
+
+Key: closes **one position** before exchange liquidates it. Does NOT stop the bot.
+Prevents the "PORTALUSDT SHORT liquidation" cascade of 30.05.2026.
+
+### 4. SPIKE/NET Traps
+Filters during ticker selection (rank_tickers.py):
+- **SPIKE TRAP**: >10% in 1 hour → disqualify
+- **NET TRAP**: >15% over 48h → disqualify
+
+### 5. Supervisor Auto-Restart Guard (NEW — 30 May 2026)
+`_ensure_real_bots_alive()` in supervisor.py:
+- After each swarm cycle, verifies all `live_swarm` tickers have PM2 processes
+- Missing real bot → auto-relaunch
+- Prevents the "supervisor restart killed real-portal" bug of 30.05.2026
+
+---
+
+## Rebalancing Logic
+
+### Soft Hysteresis
+- Double rebalance threshold on drawdown (reduces fees by 40%)
+- **FIXED (18 Apr 2026)**: Uses `reference_tpv` (fixed) instead of `initial_tpv` (changes on siphon)
+- Location: main.py:271-274, backtest_rebalance.py:205-208
+
+### ATR Removal
+- Dynamic ATR threshold removed — caused instability, conflicted with hysteresis
+
+---
+
+## Selection Strategy 3.0 (rank_tickers.py)
+
+Filters applied to 48h data:
+1. **Realistic Cycles**: Price moves >1.5% (rebalance trigger at x5 leverage), target >15 cycles/48h
+2. **SPIKE TRAP**: Disqualify if >10.0% move in 1 hour (flash-crash protection)
+3. **NET TRAP**: Disqualify if total price drift >15.0% over 48h (hedge breakdown protection)
+4. **Trend Efficiency**: Ideal <3.0%, penalize if >7%
+
+---
+
+## Operational Workflow (Auto-Pilot 24h)
+
+1. **Scanner**: `python rank_tickers.py` → pick ticker with max SCORE from Tier-1/Tier-2
+2. **Live Verification**: `python backtest_rebalance.py --live --ticker ZECUSDT`
+   - Criteria: NET PROFIT >+0.5% over 48h AND Profit Factor >1.2
+3. **Launch**: Run `main.py` for 24h
+4. **Rotation**: Next cycle `initial_tpv` = previous `tpv_ath`
+
+---
+
+## Commands
+
+```bash
+# Scanner
+python rank_tickers.py
+
+# Backtest
+python backtest_rebalance.py --ticker ZECUSDT
+python backtest_rebalance.py --live --ticker ZECUSDT
+
+# Live trading
+python main.py
+
+# With explicit config
+python main.py --config config.json
+```
+
+---
+
+## Verified Results (April 2026, 10% Trailing Stop + Scanner 3.0)
+
+| Ticker | Period | NET Profit | Max Drawdown | Result |
+|--------|--------|------------|--------------|--------|
+| ZECUSDT | 48h Live | +1.08% | 2.04% | GOLD STANDARD |
+| CLUSDT | 48h Live | +1.98% | 2.17% | Profit |
+| BZUSDT | 48h Live | +1.64% | 1.40% | Profit |
+| ENAUSDT | 70 days | +18.55% | 7.41% | Max Alpha |
+| MOVRUSDT | 48h Dump | -8.79% | 9.38% | Stop triggered (protection) |
+
+---
+
+## Change Log
+
+### 18 April 2026 — Security & Safety Update
+1. **API Security**: Keys moved to env vars (BINANCE_API_KEY, BINANCE_SECRET_KEY)
+2. **Margin Safety**: Added margin ratio monitoring with emergency shutdown
+3. **Hysteresis Fix**: `reference_tpv` now fixed baseline, doesn't change on siphon
+4. **Project Hygiene**: Added .env.example and .gitignore
+

@@ -1,0 +1,20 @@
+{
+  "virt_qty": 625.6800870511426,
+  "base_ticker": "NILUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.25519594390316,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 4,
+  "last_rebalance_price": 0.06620155,
+  "started_at": 1780106955.7014065,
+  "virt_debt": 40.25,
+  "last_tpv": 115.23497251111752,
+  "last_profit": 0.23497251111751893,
+  "total_pnl_pct": 0.20432392271088917,
+  "last_update": 1780131951.8168168
+}

@@ -1,0 +1,8 @@
+binance-connector
+pandas
+numpy
+python-dotenv
+aiohttp
+aiofiles
+filelock
+uvloop

@@ -1,0 +1,20 @@
+{
+  "virt_qty": 16.925988225399497,
+  "base_ticker": "ARUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.0,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 1,
+  "last_rebalance_price": 2.378,
+  "started_at": 1780124260.725989,
+  "virt_debt": 40.25,
+  "last_tpv": 114.84982430613962,
+  "last_profit": -0.1501756938603762,
+  "total_pnl_pct": -0.13058755987859397,
+  "last_update": 1780129058.8626742
+}

@@ -1,0 +1,11 @@
+{
+  "balance": 116.4015,
+  "positions": {
+    "JTOUSDT_LONG": 295.0,
+    "JTOUSDT_SHORT": 294.0
+  },
+  "last_price": 0.5496,
+  "base_ticker": "JTOUSDT",
+  "long_entry_price": 0.54248359,
+  "short_entry_price": 0.5464
+}

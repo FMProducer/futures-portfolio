@@ -1,0 +1,11 @@
+{
+  "balance": 115.0837,
+  "positions": {
+    "SEIUSDT_LONG": 2433.0,
+    "SEIUSDT_SHORT": 2788.0
+  },
+  "last_price": 0.06749218,
+  "base_ticker": "SEIUSDT",
+  "long_entry_price": 0.06852,
+  "short_entry_price": 0.06852
+}

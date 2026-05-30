@@ -1,0 +1,11 @@
+{
+  "balance": 115.0828,
+  "positions": {
+    "FETUSDT_LONG": 678.0,
+    "FETUSDT_SHORT": 777.0
+  },
+  "last_price": 0.24211904,
+  "base_ticker": "FETUSDT",
+  "long_entry_price": 0.24584461,
+  "short_entry_price": 0.24584461
+}

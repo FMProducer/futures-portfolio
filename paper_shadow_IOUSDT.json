@@ -1,0 +1,11 @@
+{
+  "balance": 116.6159,
+  "positions": {
+    "IOUSDT_LONG": 731.8,
+    "IOUSDT_SHORT": 1114.5
+  },
+  "last_price": 0.18178268,
+  "base_ticker": "IOUSDT",
+  "long_entry_price": 0.17100131,
+  "short_entry_price": 0.17100131
+}

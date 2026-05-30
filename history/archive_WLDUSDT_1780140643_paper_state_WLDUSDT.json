@@ -1,0 +1,20 @@
+{
+  "virt_qty": 135.88194522583595,
+  "base_ticker": "WLDUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.0,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 1,
+  "last_rebalance_price": 0.29621301,
+  "started_at": 1780135809.9445202,
+  "virt_debt": 40.25,
+  "last_tpv": 114.85041920199745,
+  "last_profit": -0.1495807980025461,
+  "total_pnl_pct": -0.13007025913264664,
+  "last_update": 1780136763.0635393
+}

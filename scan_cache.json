@@ -1,0 +1,349 @@
+{
+  "timestamp": 1780159873.906191,
+  "results": [
+    {
+      "net_change": 2.28013029315961,
+      "max_spurt": 13.327882256745704,
+      "trend": 1.5435501653803787,
+      "cycles": 147.0,
+      "symbol": "PORTALUSDT",
+      "funding": -0.609323
+    },
+    {
+      "net_change": 3.1191806331471117,
+      "max_spurt": 13.043478260869568,
+      "trend": 3.08613542146477,
+      "cycles": 101.0,
+      "symbol": "STGUSDT",
+      "funding": -0.137951
+    },
+    {
+      "net_change": -6.319421070346687,
+      "max_spurt": 15.296066974797256,
+      "trend": 6.485879609638139,
+      "cycles": 97.0,
+      "symbol": "HEIUSDT",
+      "funding": 0.005
+    },
+    {
+      "net_change": -15.153733528550518,
+      "max_spurt": 13.033873343151686,
+      "trend": 19.11357340720224,
+      "cycles": 79.0,
+      "symbol": "NFPUSDT",
+      "funding": -0.084973
+    },
+    {
+      "net_change": 8.59872611464969,
+      "max_spurt": 8.401329706860075,
+      "trend": 12.129380053908365,
+      "cycles": 70.0,
+      "symbol": "WLDUSDT",
+      "funding": -0.0061459999999999996
+    },
+    {
+      "net_change": 0.9708737864077666,
+      "max_spurt": 5.622932745314215,
+      "trend": 1.610904584882271,
+      "cycles": 60.0,
+      "symbol": "FETUSDT",
+      "funding": 0.001234
+    },
+    {
+      "net_change": -1.0557510650120339,
+      "max_spurt": 9.493670886075957,
+      "trend": 1.9328585961342812,
+      "cycles": 54.0,
+      "symbol": "MEMEUSDT",
+      "funding": -0.048859
+    },
+    {
+      "net_change": -4.799216454456423,
+      "max_spurt": 7.2789447972642805,
+      "trend": 10.425531914893652,
+      "cycles": 46.0,
+      "symbol": "IDUSDT",
+      "funding": -0.19838299999999998
+    },
+    {
+      "net_change": -1.2044862175183635,
+      "max_spurt": 5.311603442779718,
+      "trend": 2.721027745561614,
+      "cycles": 44.0,
+      "symbol": "XLMUSDT",
+      "funding": -0.022912000000000002
+    },
+    {
+      "net_change": 0.3264579314438354,
+      "max_spurt": 3.6762569020633427,
+      "trend": 0.8245877061469358,
+      "cycles": 39.0,
+      "symbol": "INJUSDT",
+      "funding": -0.034203
+    },
+    {
+      "net_change": -0.8598452278589908,
+      "max_spurt": 3.3613445378151314,
+      "trend": 2.32342007434946,
+      "cycles": 37.0,
+      "symbol": "VTHOUSDT",
+      "funding": -0.777834
+    },
+    {
+      "net_change": 1.1636927851047307,
+      "max_spurt": 4.980237154150197,
+      "trend": 3.282275711159731,
+      "cycles": 35.0,
+      "symbol": "ALGOUSDT",
+      "funding": 0.004118
+    },
+    {
+      "net_change": 0.6458557588805203,
+      "max_spurt": 4.321988114532689,
+      "trend": 1.8575851393188951,
+      "cycles": 34.0,
+      "symbol": "DYDXUSDT",
+      "funding": 0.01
+    },
+    {
+      "net_change": 0.2557544757033181,
+      "max_spurt": 2.7718550106609716,
+      "trend": 0.7772020725388504,
+      "cycles": 32.0,
+      "symbol": "EPICUSDT",
+      "funding": 0.005
+    },
+    {
+      "net_change": 1.4228799089356814,
+      "max_spurt": 4.917095483133218,
+      "trend": 4.621072088724585,
+      "cycles": 30.0,
+      "symbol": "IOUSDT",
+      "funding": -0.07471599999999999
+    },
+    {
+      "net_change": 2.4666995559940785,
+      "max_spurt": 3.4567901234567824,
+      "trend": 8.561643835616389,
+      "cycles": 28.0,
+      "symbol": "RENDERUSDT",
+      "funding": -0.001641
+    },
+    {
+      "net_change": 0.12348219798312687,
+      "max_spurt": 1.917921220870289,
+      "trend": 0.46511627906975983,
+      "cycles": 26.0,
+      "symbol": "GRASSUSDT",
+      "funding": 0.005
+    },
+    {
+      "net_change": -0.049109883364018,
+      "max_spurt": 2.452959075948578,
+      "trend": 0.1860465116278846,
+      "cycles": 26.0,
+      "symbol": "VVVUSDT",
+      "funding": -0.0045639999999999995
+    },
+    {
+      "net_change": -1.592297722643965,
+      "max_spurt": 3.3618127786032703,
+      "trend": 6.584992343032235,
+      "cycles": 24.0,
+      "symbol": "JTOUSDT",
+      "funding": 0.005
+    },
+    {
+      "net_change": -2.16937838965372,
+      "max_spurt": 3.5029190992493775,
+      "trend": 8.996539792387443,
+      "cycles": 24.0,
+      "symbol": "NEARUSDT",
+      "funding": 0.01
+    },
+    {
+      "net_change": 2.1251271812789296,
+      "max_spurt": 2.8846153846153846,
+      "trend": 9.224231314057247,
+      "cycles": 23.0,
+      "symbol": "ZECUSDT",
+      "funding": -0.0023859999999999997
+    },
+    {
+      "net_change": 3.8952164009111723,
+      "max_spurt": 3.4274761824229083,
+      "trend": 17.211877201811827,
+      "cycles": 22.0,
+      "symbol": "TONUSDT",
+      "funding": 0.002861
+    },
+    {
+      "net_change": 1.6680684048219652,
+      "max_spurt": 2.5375017524183376,
+      "trend": 7.470182046453182,
+      "cycles": 22.0,
+      "symbol": "VIRTUALUSDT",
+      "funding": -0.003238
+    },
+    {
+      "net_change": -3.00692383778437,
+      "max_spurt": 2.9321141039658163,
+      "trend": 14.312617702448257,
+      "cycles": 21.0,
+      "symbol": "HBARUSDT",
+      "funding": 0.006013999999999999
+    },
+    {
+      "net_change": 0.19446522064321403,
+      "max_spurt": 2.0359281437125754,
+      "trend": 0.9187279151942864,
+      "cycles": 21.0,
+      "symbol": "SEIUSDT",
+      "funding": 0.004425
+    },
+    {
+      "net_change": -0.5190952910641533,
+      "max_spurt": 1.9970414201183369,
+      "trend": 2.7027027027027444,
+      "cycles": 19.0,
+      "symbol": "ICPUSDT",
+      "funding": 0.0045000000000000005
+    },
+    {
+      "net_change": -0.3393116820164854,
+      "max_spurt": 1.8067935437244054,
+      "trend": 1.7412935323383367,
+      "cycles": 19.0,
+      "symbol": "TIAUSDT",
+      "funding": 0.000603
+    },
+    {
+      "net_change": -0.9424000844728386,
+      "max_spurt": 2.3726338843406225,
+      "trend": 4.8777155349091235,
+      "cycles": 19.0,
+      "symbol": "XMRUSDT",
+      "funding": 0.01
+    },
+    {
+      "net_change": 0.19102196752625034,
+      "max_spurt": 1.231060606060615,
+      "trend": 1.0526315789473177,
+      "cycles": 18.0,
+      "symbol": "ARBUSDT",
+      "funding": 0.01
+    },
+    {
+      "net_change": -0.30674846625766694,
+      "max_spurt": 2.0429009193054153,
+      "trend": 1.6574585635359116,
+      "cycles": 18.0,
+      "symbol": "FILUSDT",
+      "funding": 0.01
+    },
+    {
+      "net_change": -0.5751848808545734,
+      "max_spurt": 1.480263157894738,
+      "trend": 3.5897435897436445,
+      "cycles": 16.0,
+      "symbol": "AXSUSDT",
+      "funding": 0.001855
+    },
+    {
+      "net_change": -0.43604651162789665,
+      "max_spurt": 1.565671209046089,
+      "trend": 2.664298401420883,
+      "cycles": 16.0,
+      "symbol": "ONDOUSDT",
+      "funding": -0.020913
+    },
+    {
+      "net_change": 0.5862314822149939,
+      "max_spurt": 1.4897652730577657,
+      "trend": 3.5662650602409323,
+      "cycles": 16.0,
+      "symbol": "TAOUSDT",
+      "funding": 0.001664
+    },
+    {
+      "net_change": 0.22321428571427937,
+      "max_spurt": 1.2535854669074717,
+      "trend": 1.520637219406234,
+      "cycles": 14.0,
+      "symbol": "APTUSDT",
+      "funding": 0.002891
+    },
+    {
+      "net_change": 1.0791366906474753,
+      "max_spurt": 1.362117707530201,
+      "trend": 7.6086956521739495,
+      "cycles": 14.0,
+      "symbol": "DASHUSDT",
+      "funding": -0.0071730000000000006
+    },
+    {
+      "net_change": -0.25962298227791836,
+      "max_spurt": 1.5424453951812613,
+      "trend": 1.823949246629737,
+      "cycles": 14.0,
+      "symbol": "ENAUSDT",
+      "funding": 0.005
+    },
+    {
+      "net_change": 0.17499999999999183,
+      "max_spurt": 1.19955016868675,
+      "trend": 1.2433392539964603,
+      "cycles": 14.0,
+      "symbol": "PENGUUSDT",
+      "funding": -0.001745
+    },
+    {
+      "net_change": 5.078015025115956,
+      "max_spurt": 2.9785134997896288,
+      "trend": 36.66417032202834,
+      "cycles": 13.0,
+      "symbol": "BNBUSDT",
+      "funding": 0.012818000000000001
+    },
+    {
+      "net_change": 0.4198152812762368,
+      "max_spurt": 0.838222967309305,
+      "trend": 3.0674846625766254,
+      "cycles": 13.0,
+      "symbol": "DOTUSDT",
+      "funding": -0.001427
+    },
+    {
+      "net_change": 0.7471980074719831,
+      "max_spurt": 1.1801242236024752,
+      "trend": 5.357142857142886,
+      "cycles": 13.0,
+      "symbol": "FARTCOINUSDT",
+      "funding": -0.008435
+    },
+    {
+      "net_change": 1.1993337034980511,
+      "max_spurt": 1.477449455676514,
+      "trend": 9.075630252100893,
+      "cycles": 13.0,
+      "symbol": "SUIUSDT",
+      "funding": -0.003472
+    },
+    {
+      "net_change": 0.29970029970030065,
+      "max_spurt": 1.1934361014420585,
+      "trend": 2.7027027027028594,
+      "cycles": 11.0,
+      "symbol": "TRUMPUSDT",
+      "funding": -0.014627
+    },
+    {
+      "net_change": 1.2218014161040847,
+      "max_spurt": 1.5478346780833159,
+      "trend": 11.979334840167924,
+      "cycles": 10.0,
+      "symbol": "BCHUSDT",
+      "funding": -0.013392
+    }
+  ]
+}

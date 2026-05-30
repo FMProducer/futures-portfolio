@@ -1,0 +1,35 @@
+{
+  "ticker": "VTHOUSDT",
+  "timestamp": 1780148269.0965965,
+  "state": {
+    "virt_qty": 70129.28180646061,
+    "base_ticker": "VTHOUSDT",
+    "siphoning_reserve": 0.0,
+    "balance": 115.0,
+    "initial_tpv": 115.0,
+    "reference_tpv": 115.0,
+    "tpv_ath": 115.0,
+    "rebalance_cycles": 0,
+    "last_rebalance_price": 0.00058273,
+    "started_at": 1780142566.90688,
+    "virt_debt": 80.5,
+    "last_tpv": 74.75,
+    "last_profit": -40.25,
+    "total_pnl_pct": -35.0,
+    "last_update": 1780148269.083141
+  },
+  "paper_state": {
+    "balance": 115.0,
+    "positions": {
+      "VTHOUSDT_LONG": 0.0,
+      "VTHOUSDT_SHORT": 0.0
+    },
+    "last_price": 0.0,
+    "base_ticker": "VTHOUSDT",
+    "long_entry_price": 0.0,
+    "short_entry_price": 0.0
+  },
+  "final_profit": -40.25,
+  "final_total_tpv": 74.75,
+  "final_pnl_pct": -35.0
+}

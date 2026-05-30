@@ -1,0 +1,19 @@
+{
+  "virt_qty": 292.3233350279614,
+  "base_ticker": "HEIUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 116.2731773774967,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "rebalance_cycles": 11,
+  "last_rebalance_price": 0.11029252,
+  "started_at": 1780136768.4808676,
+  "virt_debt": 40.25,
+  "last_tpv": 106.56893049753585,
+  "last_profit": -8.431069502464155,
+  "total_pnl_pct": -7.331364784751439,
+  "last_update": 1780160489.3285353
+}

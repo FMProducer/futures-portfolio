@@ -1,0 +1,144 @@
+{
+  "config": {
+    "tickers_count": 20,
+    "days": 0.125,
+    "timeout_sec_fixed": 60,
+    "equity_trailing_stop_timeout_sec": 60
+  },
+  "trials_total": 101,
+  "trials_completed": 92,
+  "elapsed_sec": 44.3,
+  "avg_profit_pct": 2.3998,
+  "avg_max_dd_pct": 1.5,
+  "worst_max_dd_pct": 4.6,
+  "profit_factor": 1.602,
+  "profitable_tickers": "18/20",
+  "trailing_stop_pct": 0.0,
+  "params": {
+    "max_drawdown_limit": 22,
+    "equity_trailing_stop_pct": 24.0,
+    "equity_trailing_stop_activation_pct": 7.5
+  },
+  "per_ticker": {
+    "ALGOUSDT": {
+      "profit": 2.81021897720819,
+      "max_dd": 1.8202282077004455,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "ARUSDT": {
+      "profit": 0.506598551701587,
+      "max_dd": 0.6358662357086408,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "AXSUSDT": {
+      "profit": 3.550724636780722,
+      "max_dd": 0.6595117155442124,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "BATUSDT": {
+      "profit": -0.2333333342008692,
+      "max_dd": 1.3037539836814593,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "DYDXUSDT": {
+      "profit": 0.2743561021515628,
+      "max_dd": 0.9514827040889949,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "GRASSUSDT": {
+      "profit": 0.03745719091092781,
+      "max_dd": 0.8810196789428207,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "HBARUSDT": {
+      "profit": 1.0800520981091077,
+      "max_dd": 2.586428152868551,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "HEIUSDT": {
+      "profit": 24.257478804813594,
+      "max_dd": 4.515156707889412,
+      "trailing_stop": false,
+      "cycles": 3
+    },
+    "IDUSDT": {
+      "profit": 2.260579063698742,
+      "max_dd": 4.60439233903027,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "INJUSDT": {
+      "profit": 0.8957553049903089,
+      "max_dd": 0.7679499548655838,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "IOTAUSDT": {
+      "profit": 2.996941895128824,
+      "max_dd": 1.0871976924692162,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "IOUSDT": {
+      "profit": -0.26407428989803083,
+      "max_dd": 2.6070392903627315,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "JTOUSDT": {
+      "profit": 0.8021956847937162,
+      "max_dd": 1.3458874091552822,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "NEARUSDT": {
+      "profit": 0.20640269500058483,
+      "max_dd": 0.5876427132252576,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "NILUSDT": {
+      "profit": 1.0338019261471931,
+      "max_dd": 0.6235105676392846,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "SWARMSUSDT": {
+      "profit": 0.9992447121126791,
+      "max_dd": 1.0702251777432346,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "VVVUSDT": {
+      "profit": 0.9015822776036186,
+      "max_dd": 0.6668436587327414,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "WLDUSDT": {
+      "profit": 0.79875518584549,
+      "max_dd": 0.7124866300873233,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "XLMUSDT": {
+      "profit": 3.666858126611472,
+      "max_dd": 1.554895451527923,
+      "trailing_stop": false,
+      "cycles": 0
+    },
+    "XMRUSDT": {
+      "profit": 1.4135416394088107,
+      "max_dd": 0.9847430347209501,
+      "trailing_stop": false,
+      "cycles": 0
+    }
+  }
+}

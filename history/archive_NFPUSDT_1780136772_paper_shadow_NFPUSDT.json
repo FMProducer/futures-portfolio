@@ -1,0 +1,11 @@
+{
+  "balance": 115.1408,
+  "positions": {
+    "NFPUSDT_LONG": 9713.1,
+    "NFPUSDT_SHORT": 11019.3
+  },
+  "last_price": 0.01688107,
+  "base_ticker": "NFPUSDT",
+  "long_entry_price": 0.01716739,
+  "short_entry_price": 0.01716739
+}

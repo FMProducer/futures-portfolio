@@ -1,0 +1,11 @@
+{
+  "balance": 116.5174,
+  "positions": {
+    "IDUSDT_LONG": 2596.0,
+    "IDUSDT_SHORT": 4336.0
+  },
+  "last_price": 0.05066806,
+  "base_ticker": "IDUSDT",
+  "long_entry_price": 0.04773,
+  "short_entry_price": 0.04773
+}

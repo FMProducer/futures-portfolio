@@ -1,0 +1,11 @@
+{
+  "balance": 115.495,
+  "positions": {
+    "WLDUSDT_LONG": 556.0,
+    "WLDUSDT_SHORT": 592.0
+  },
+  "last_price": 0.29047473,
+  "base_ticker": "WLDUSDT",
+  "long_entry_price": 0.29951435,
+  "short_entry_price": 0.29951435
+}

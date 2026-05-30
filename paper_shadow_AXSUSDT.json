@@ -1,0 +1,11 @@
+{
+  "balance": 114.8513,
+  "positions": {
+    "AXSUSDT_LONG": 136.0,
+    "AXSUSDT_SHORT": 169.0
+  },
+  "last_price": 1.219,
+  "base_ticker": "AXSUSDT",
+  "long_entry_price": 1.219,
+  "short_entry_price": 1.219
+}

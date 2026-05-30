@@ -1,0 +1,20 @@
+{
+  "virt_qty": 33.0188679245283,
+  "base_ticker": "AXSUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.0,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 1,
+  "last_rebalance_price": 1.219,
+  "started_at": 1780149240.2304287,
+  "virt_debt": 40.25,
+  "last_tpv": 114.85128113207547,
+  "last_profit": -0.14871886792452926,
+  "total_pnl_pct": -0.12932075471698312,
+  "last_update": 1780151158.2033727
+}

@@ -1,0 +1,11 @@
+{
+  "balance": 115.4877,
+  "positions": {
+    "FILUSDT_LONG": 165.3,
+    "FILUSDT_SHORT": 175.9
+  },
+  "last_price": 0.978,
+  "base_ticker": "FILUSDT",
+  "long_entry_price": 1.00818018,
+  "short_entry_price": 1.00818018
+}

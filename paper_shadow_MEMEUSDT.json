@@ -1,0 +1,13 @@
+{
+  "balance": 114.8505,
+  "positions": {
+    "MEMEUSDT_LONG": 315098.0,
+    "MEMEUSDT_SHORT": 391156.0
+  },
+  "last_price": 0.0005292,
+  "base_ticker": "MEMEUSDT",
+  "long_entry_price": 0.0005292,
+  "short_entry_price": 0.0005292,
+  "long_liquidation_price": 0.00042548,
+  "short_liquidation_price": 0.00063292
+}

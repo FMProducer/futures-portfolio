@@ -1,0 +1,20 @@
+{
+  "virt_qty": 86.41805162955782,
+  "base_ticker": "GRASSUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.0,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 1,
+  "last_rebalance_price": 0.46575917,
+  "started_at": 1780106960.3904436,
+  "virt_debt": 40.25,
+  "last_tpv": 114.85054998171294,
+  "last_profit": -0.1494500182870553,
+  "total_pnl_pct": -0.12995653764091306,
+  "last_update": 1780111758.0056765
+}

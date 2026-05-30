@@ -1,0 +1,11 @@
+{
+  "balance": 116.9911,
+  "positions": {
+    "INJUSDT_LONG": 18.6,
+    "INJUSDT_SHORT": 31.5
+  },
+  "last_price": 6.989,
+  "base_ticker": "INJUSDT",
+  "long_entry_price": 6.53428225,
+  "short_entry_price": 6.54529265
+}

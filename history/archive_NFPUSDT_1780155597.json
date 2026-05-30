@@ -1,0 +1,38 @@
+{
+  "ticker": "NFPUSDT",
+  "timestamp": 1780155597.3502223,
+  "state": {
+    "virt_qty": 2647.92179256082,
+    "base_ticker": "NFPUSDT",
+    "siphoning_reserve": 0.0,
+    "balance": 115.0,
+    "initial_tpv": 115.0,
+    "reference_tpv": 115.0,
+    "tpv_ath": 118.2057675945027,
+    "trailing_stop_violation_start": 0.0,
+    "trailing_stop_paper_timeout_end": 0.0,
+    "trailing_stop_triggered": false,
+    "rebalance_cycles": 9,
+    "last_rebalance_price": 0.01210537,
+    "started_at": 1780136772.345414,
+    "virt_debt": 40.25,
+    "last_tpv": 89.59215867083559,
+    "last_profit": -25.407841329164413,
+    "total_pnl_pct": -22.09377506883862,
+    "last_update": 1780155597.3373632
+  },
+  "paper_state": {
+    "balance": 128.0613,
+    "positions": {
+      "NFPUSDT_LONG": 17093.9,
+      "NFPUSDT_SHORT": 5129.1
+    },
+    "last_price": 0.01210537,
+    "base_ticker": "NFPUSDT",
+    "long_entry_price": 0.01446566,
+    "short_entry_price": 0.01516371
+  },
+  "final_profit": -25.407841329164413,
+  "final_total_tpv": 89.59215867083559,
+  "final_pnl_pct": -22.09377506883862
+}

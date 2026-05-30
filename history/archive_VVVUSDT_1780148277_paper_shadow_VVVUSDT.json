@@ -1,0 +1,11 @@
+{
+  "balance": 115.1044,
+  "positions": {
+    "VVVUSDT_LONG": 10.33,
+    "VVVUSDT_SHORT": 11.8
+  },
+  "last_price": 15.88110092,
+  "base_ticker": "VVVUSDT",
+  "long_entry_price": 16.134,
+  "short_entry_price": 16.134
+}

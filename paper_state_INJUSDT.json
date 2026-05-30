@@ -1,0 +1,20 @@
+{
+  "virt_qty": 6.155368586774229,
+  "base_ticker": "INJUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 117.85787646225093,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 7,
+  "last_rebalance_price": 6.989,
+  "started_at": 1780106957.4159982,
+  "virt_debt": 40.25,
+  "last_tpv": 115.52092372817721,
+  "last_profit": 0.520923728177209,
+  "total_pnl_pct": 0.4529771549366997,
+  "last_update": 1780160486.1972637
+}

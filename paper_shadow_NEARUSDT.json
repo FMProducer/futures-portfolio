@@ -1,0 +1,13 @@
+{
+  "balance": 114.851,
+  "positions": {
+    "NEARUSDT_LONG": 71.0,
+    "NEARUSDT_SHORT": 88.0
+  },
+  "last_price": 2.34305793,
+  "base_ticker": "NEARUSDT",
+  "long_entry_price": 2.34305793,
+  "short_entry_price": 2.34305793,
+  "long_liquidation_price": 1.88381858,
+  "short_liquidation_price": 2.80229728
+}

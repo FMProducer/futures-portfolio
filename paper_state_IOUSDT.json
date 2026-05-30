@@ -1,0 +1,20 @@
+{
+  "virt_qty": 235.37831376847348,
+  "base_ticker": "IOUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.91027069743852,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 6,
+  "last_rebalance_price": 0.18178268,
+  "started_at": 1780106952.9072652,
+  "virt_debt": 40.25,
+  "last_tpv": 115.59622768091711,
+  "last_profit": 0.5962276809171101,
+  "total_pnl_pct": 0.5184588529714036,
+  "last_update": 1780160491.9749002
+}

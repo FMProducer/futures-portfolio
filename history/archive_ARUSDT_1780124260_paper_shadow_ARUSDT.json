@@ -1,0 +1,11 @@
+{
+  "balance": 115.086,
+  "positions": {
+    "ARUSDT_LONG": 69.4,
+    "ARUSDT_SHORT": 79.5
+  },
+  "last_price": 2.36527353,
+  "base_ticker": "ARUSDT",
+  "long_entry_price": 2.4018803,
+  "short_entry_price": 2.4018803
+}

@@ -1,0 +1,11 @@
+{
+  "balance": 122.6478,
+  "positions": {
+    "XLMUSDT_LONG": 468.0,
+    "XLMUSDT_SHORT": 446.0
+  },
+  "last_price": 0.23798,
+  "base_ticker": "XLMUSDT",
+  "long_entry_price": 0.27344646,
+  "short_entry_price": 0.27377401
+}

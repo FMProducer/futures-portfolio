@@ -1,0 +1,20 @@
+{
+  "virt_qty": 2.4947316226602205,
+  "base_ticker": "VVVUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.02037200694186,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 2,
+  "last_rebalance_price": 15.88110092,
+  "started_at": 1780126184.8419106,
+  "virt_debt": 40.25,
+  "last_tpv": 114.99270425313003,
+  "last_profit": -0.0072957468699712535,
+  "total_pnl_pct": -0.0063441277130143366,
+  "last_update": 1780136768.02945
+}

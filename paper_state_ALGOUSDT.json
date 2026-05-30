@@ -1,0 +1,20 @@
+{
+  "virt_qty": 292.38083864558445,
+  "base_ticker": "ALGOUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.32988373781828,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 6,
+  "last_rebalance_price": 0.12696268,
+  "started_at": 1780106953.4675126,
+  "virt_debt": 40.25,
+  "last_tpv": 114.51568794529489,
+  "last_profit": -0.4843120547051143,
+  "total_pnl_pct": -0.421140917134883,
+  "last_update": 1780160488.5666707
+}

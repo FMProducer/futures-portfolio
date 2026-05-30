@@ -1,0 +1,20 @@
+{
+  "virt_qty": 222.5844773069457,
+  "base_ticker": "DYDXUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 116.65195800004099,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 7,
+  "last_rebalance_price": 0.192,
+  "started_at": 1780106954.617746,
+  "virt_debt": 40.25,
+  "last_tpv": 116.44244138972537,
+  "last_profit": 1.4424413897253743,
+  "total_pnl_pct": 1.254296860630755,
+  "last_update": 1780160488.0942872
+}

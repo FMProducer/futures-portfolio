@@ -1,0 +1,11 @@
+{
+  "balance": 115.433,
+  "positions": {
+    "HBARUSDT_LONG": 1445.0,
+    "HBARUSDT_SHORT": 2110.0
+  },
+  "last_price": 0.10125244,
+  "base_ticker": "HBARUSDT",
+  "long_entry_price": 0.09807325,
+  "short_entry_price": 0.09807325
+}

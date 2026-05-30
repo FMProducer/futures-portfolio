@@ -1,0 +1,20 @@
+{
+  "virt_qty": 17.178405827977116,
+  "base_ticker": "NEARUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.0,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 1,
+  "last_rebalance_price": 2.34305793,
+  "started_at": 1780156013.7734776,
+  "virt_debt": 40.25,
+  "last_tpv": 114.85206009991825,
+  "last_profit": -0.14793990008175228,
+  "total_pnl_pct": -0.1286433913754387,
+  "last_update": 1780160489.283297
+}

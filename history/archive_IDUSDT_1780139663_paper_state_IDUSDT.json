@@ -1,0 +1,20 @@
+{
+  "virt_qty": 824.9641319942612,
+  "base_ticker": "IDUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 115.0,
+  "initial_tpv": 115.0,
+  "reference_tpv": 115.0,
+  "tpv_ath": 115.96085840715926,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 9,
+  "last_rebalance_price": 0.040686,
+  "started_at": 1780116569.4971797,
+  "virt_debt": 40.25,
+  "last_tpv": 103.53028728012913,
+  "last_profit": -11.46971271987087,
+  "total_pnl_pct": -9.973663234670324,
+  "last_update": 1780138686.4990928
+}
