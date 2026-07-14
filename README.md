@@ -1,79 +1,94 @@
 # Market-Neutral Futures Portfolio Rebalancer
 
-## Назначение
+Автоматизированная система управления портфелем USD-M фьючерсов на Binance. Извлекает прибыль из волатильности, поддерживая рыночно-нейтральную дельту (≈0) через три ноги портфеля.
 
-Автоматизированная система управления портфелем USD-M фьючерсов на Binance. Извлекает прибыль из волатильности цены, поддерживая рыночно-нейтральную дельту (≈0) через три ноги портфеля.
+## Быстрый старт
+
+```bash
+# 1. Клонировать репозиторий
+git clone <repo-url>
+cd futures_portfolio
+
+# 2. Установить зависимости
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+pip install -e ".[dev]"
+
+# 3. Настроить окружение
+cp .env.example .env
+# Отредактировать .env — добавить API ключи
+
+# 4. Запустить тесты
+pytest
+
+# 5. Запустить бота
+python core/main.py --config config.json --ticker BTCUSDT
+```
+
+## Архитектура
+
+```
+futures_portfolio/
+├── core/                    # Основной код бота
+│   ├── main.py             # Точка входа, 24h auto-pilot loop
+│   ├── connector.py        # Binance Futures API wrapper
+│   ├── calculator.py       # Position sizing & rebalancing math
+│   ├── executor.py         # Order execution
+│   ├── storage.py          # State persistence
+│   └── notifier.py         # Telegram notifications
+├── supervisor/              # Управление роем ботов
+│   ├── swarm_manager.py    # PM2 process management
+│   ├── aggregator.py       # Aggregated monitoring
+│   └── supervisor_service.py
+├── scanner/                 # Ticker selection
+│   └── rank_tickers.py     # Selection Strategy 3.0
+├── backtest/                # Backtesting engine
+│   └── backtest_rebalance.py
+├── optimization/            # Optuna optimization
+├── monitoring/              # Telegram sender
+├── tests/                   # Unit tests
+├── config.json             # Runtime configuration
+└── .env                    # Environment variables (NOT in git)
+```
 
 ## Принципы работы
 
-### 1. Рыночная нейтральность (дельта = 0)
+### Рыночная нейтральность (дельта ≈ 0)
 
 ```
-Long  27% × 5x = +135% дельта
-Short 36% × 5x = -180% дельта
+Long   27% × 5x = +135% дельта
+Short  36% × 5x = -180% дельта
 Virtual 35% × 1x = +35% дельта
+─────────────────────────────────
 Итого: +135 - 180 + 35 ≈ 0
 ```
 
-Virtual — математически точная симуляция владения базовым активом на споте. Не дериватив, не маржинальная позиция. Ребалансируется равноправно с Long и Short.
+Virtual — математически точная симуляция владения базовым активом на споте. Не дериватив, не маржинальная позиция.
 
-### 2. Логика ребалансировки
+### Логика ребалансировки
 
 **Золотое правило: ни цента из свободной маржи на аккаунте!**
 
-Каждый бот управляет **только своим начальным капиталом** и **собственной прибылью**.
+Каждый бот управляет **только своим начальным капиталом** и **собственной прибылью**:
 
-Порядок действий:
-1. **Продажа излишков** — только доли, достигшие порога `surplus`
-2. **Покупка дефицитов** — только доли, достигшие порога `deficit`
-3. **Дефициты покупаются ТОЛЬКО на proceeds от продажи излишков**
+1. Продажа излишков — только доли, достигшие порога `surplus`
+2. Покупка дефицитов — только доли, достигшие порога `deficit`
+3. Дефициты покупаются ТОЛЬКО на proceeds от продажи излишков
 4. Если proceeds не хватает — дефицит покупается частично или пропускается
-5. `diff_usdt < min_notional` (7 USDT) — действие пропускается без уведомления
 
-**Исключение:** первый запуск бота (`ignore_limits=True`, позиции пустые) — позиции набираются из стартового капитала.
+### Безопасность
 
-### 3. TPV (Total Portfolio Value)
-
-```
-TPV = Real Equity + (Virtual Quantity × Spot Price)
-```
-
-Где Real Equity = свободный кэш + маржинальное обеспечение + нереализованный PnL фьючерсных ног.
-
-- **TPV НЕ падает при ребалансировке** — вся прибыль остаётся внутри бота и реинвестируется
-- TPV может падать только из-за движения цены (unrealized PnL) или комиссий
-
-### 4. Стоп-лоссы
-
-Применяются к **TPV всего бота** (все доли вместе), НЕ к отдельным позициям:
-
-- **Trailing Stop** — просадка от ATH TPV ≥ `equity_trailing_stop_pct`
-- **Max Drawdown** — TPV < `initial_tpv × (1 - max_drawdown_limit/100)`
-
-После срабатывания стопа:
-- Все позиции закрываются
-- Бот завершается (`return`)
-- Бот **НЕ перезапускается самопроизвольно** — решение принимает supervisor
-
-**НЕТ:** hard stop от initial_tpv, per-ticker стопов.
-
-### 5. FUSE (Anti-Churn)
-
-Предотвращает частые ребалансировки вблизи порога:
-- Long surplus: цена ≥ `last_reb × (1 + threshold_surplus)`
-- Short surplus: цена ≤ `last_reb × (1 - threshold_surplus)`
-- Long deficit: цена ≤ `last_reb × (1 - threshold_deficit)`
-- Short deficit: цена ≥ `last_reb × (1 + threshold_deficit)`
-
-Bypass: первый запуск (`ignore_limits=True`) или `last_reb == 0`.
-
-### 6. Safety Guards
-
-- **Velocity Guard** — блокировка при быстром движении цены (>1% за 60с)
-- **Trend Guard** — блокировка при однонаправленном тренде (efficiency > 0.85, move > 0.5%)
-- **Spread Guard** — блокировка при широком спреде (>0.15%, только REAL режим)
+| Механизм | Описание |
+|----------|----------|
+| **Trailing Stop** | Просадка от ATH TPV ≥ `equity_trailing_stop_pct` |
+| **Margin Ratio** | Экстренное закрытие при ≤2x |
+| **Liquidation Guard** | Закрытие позиции при ≤8% до ликвидации |
+| **SPIKE/NET Trap** | Фильтр аномальных движений цены |
+| **Safety Guards** | Velocity, Trend, Spread protection |
 
 ## Конфигурация
+
+Основные параметры в `config.json`:
 
 ```json
 {
@@ -84,43 +99,41 @@ Bypass: первый запуск (`ignore_limits=True`) или `last_reb == 0`.
       "VIRTUAL":    {"share": 0.35, "leverage": 1}
     },
     "rebalance_threshold_surplus": 0.015,
-    "rebalance_threshold_deficit": 0.03,
-    "min_notional_usdt": 7.0,
-    "safety_guards": {
-      "max_spread_pct": 0.15,
-      "max_price_velocity_pct": 1.0,
-      "velocity_window_sec": 60
-    }
+    "rebalance_threshold_deficit": 0.03
   }],
   "equity_trailing_stop_pct": 10.0,
-  "equity_trailing_stop_activation_pct": 2.0,
-  "equity_trailing_stop_timeout_sec": 0,
   "max_drawdown_limit": 33.0
 }
 ```
 
-## Архитектура
+## Команды
 
-| Модуль | Функция |
-|--------|---------|
-| `main.py` | Основной цикл: TPV, стоп-условия, вызов calculator/executor |
-| `calculator.py` | Математика портфеля: доли, отклонения, действия ребалансировки |
-| `executor.py` | Исполнение ордеров, polling, reconciliation |
-| `connector.py` | Binance Futures API: цены, позиции, сделки |
-| `rank_tickers.py` | Сканер кандидатов, scoring |
-| `backtest_rebalance.py` | Бэктест и live-verification |
-| `supervisor.py` | Управление роем: PM2, ротация, promotion |
+```bash
+# Сканер тикеров
+python scanner/rank_tickers.py
 
-## Skeleton Key Policy
+# Бэктест
+python backtest/backtest_rebalance.py --ticker ZECUSDT
+python backtest/backtest_rebalance.py --live --ticker ZECUSDT
 
-> Каждый бот работает только со своим изолированным капиталом (shadow balance).
+# Запуск бота
+python core/main.py --config config.json --ticker BTCUSDT
 
-Бот может:
-- Использовать свой `initial_capital` (при первом запуске)
-- Использовать свою прибыль (proceeds от продажи излишков)
+# Supervisor (управление роем)
+python supervisor/supervisor_service.py
 
-Бот **не может**:
-- Тратить свободную маржу сверх своего капитала
-- Тратить прибыль других ботов
+# Тесты
+pytest
+pytest --cov=. --cov-report=html
+```
 
-Биржевой маржинал не учитывается при принятии решений — `calculator.py` работает только с shadow balance бота.
+## Требования
+
+- Python 3.11+
+- Binance Futures API ключи
+- Telegram Bot токен (для уведомлений)
+- PM2 (для управления процессами)
+
+## Лицензия
+
+Proprietary — All rights reserved.

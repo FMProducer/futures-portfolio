@@ -1,793 +1,818 @@
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,798 INFO: SUPERVISOR: │ 13 │ paper-fil             │ default     │ N/A     │ fork    │ 13408    │ 5s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,798 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 4s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,798 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 3s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 3s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 17 │ paper-op              │ default     │ N/A     │ fork    │ 11432    │ 2s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 2s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 1s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 20 │ paper-tia             │ default     │ N/A     │ fork    │ 14128    │ 0s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 0s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 21s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 21s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 21s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: [PM2] Starting C:\Python\Prosperous_Bot\futures_portfolio\main.py in fork_mode (1 instance)
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: [PM2] Done.
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 3  │ paper-1000lunc        │ default     │ N/A     │ fork    │ 1648     │ 11s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 10s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 10s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 9s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 9s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 8s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 8s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 7s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 6s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,799 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 6s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 13 │ paper-fil             │ default     │ N/A     │ fork    │ 13408    │ 5s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 5s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 4s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 4s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 17 │ paper-op              │ default     │ N/A     │ fork    │ 11432    │ 3s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 2s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 2s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 20 │ paper-tia             │ default     │ N/A     │ fork    │ 14128    │ 1s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 0s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 0s     │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 22s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 22s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 22s    │ 0    │ online    │ 0%       │ 3.7mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: [PM2] Saving current process list...
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: [PM2] Successfully saved in C:\Users\svsma\.pm2\dump.pm2
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: SUPERVISOR: 2026-05-22 20:44:52,619 INFO: Cycle Complete. REAL Swarm: []
-0|supervisor-service  | 2026-05-22 20:44:52: 2026-05-22 20:44:52,800 INFO: Sleeping for 0.3 hours...
-21|paper-virtual      | 2026-05-22 20:44:52: 2026-05-22 20:44:52,809 INFO: Telegram Queue ENABLED: C:\Python\Prosperous_Bot\futures_portfolio\signals\telegram_queue
-22|paper-wld          | 2026-05-22 20:44:52: 2026-05-22 20:44:52,980 INFO: --- Launching Bot: WLDUSDT (PAPER Mode) ---
-21|paper-virtual      | 2026-05-22 20:44:53: 2026-05-22 20:44:53,113 INFO: Heartbeat: TPV=260.00 | VIRTUALUSDT=0.762371 | L:0.0% S:0.0% V:35.0%
-21|paper-virtual      | 2026-05-22 20:44:53: 2026-05-22 20:44:53,113 INFO: Cold Start: Allowing all actions to form portfolio baseline at 0.762371
-21|paper-virtual      | 2026-05-22 20:44:53: 2026-05-22 20:44:53,113 INFO: Rebalance needed (2 actions). TPV: 260.00
-21|paper-virtual      | 2026-05-22 20:44:53: 2026-05-22 20:44:53,114 INFO: PAPER ORDER EXECUTED: BUY 460.4 VIRTUALUSDT (LONG) at 0.762371 | PnL: +0.0000$
-21|paper-virtual      | 2026-05-22 20:44:53: 2026-05-22 20:44:53,114 INFO: PAPER ORDER EXECUTED: SELL 579.7 VIRTUALUSDT (SHORT) at 0.762371 | PnL: +0.0000$
-22|paper-wld          | 2026-05-22 20:44:53: 2026-05-22 20:44:53,457 INFO: Telegram Queue ENABLED: C:\Python\Prosperous_Bot\futures_portfolio\signals\telegram_queue
-22|paper-wld          | 2026-05-22 20:44:53: 2026-05-22 20:44:53,772 INFO: Heartbeat: TPV=260.00 | WLDUSDT=0.281 | L:0.0% S:0.0% V:35.0%
-22|paper-wld          | 2026-05-22 20:44:53: 2026-05-22 20:44:53,772 INFO: Cold Start: Allowing all actions to form portfolio baseline at 0.281
-22|paper-wld          | 2026-05-22 20:44:53: 2026-05-22 20:44:53,772 INFO: Rebalance needed (2 actions). TPV: 260.00
-22|paper-wld          | 2026-05-22 20:44:53: 2026-05-22 20:44:53,773 INFO: PAPER ORDER EXECUTED: BUY 1249 WLDUSDT (LONG) at 0.281 | PnL: +0.0000$
-22|paper-wld          | 2026-05-22 20:44:53: 2026-05-22 20:44:53,773 INFO: PAPER ORDER EXECUTED: SELL 1572 WLDUSDT (SHORT) at 0.281 | PnL: +0.0000$
-3|paper-1000lunc      | 2026-05-22 20:46:00: 2026-05-22 20:46:00,159 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.08023 | L:26.9% S:33.87% V:34.87%
-4|paper-aero          | 2026-05-22 20:46:00: 2026-05-22 20:46:00,670 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4493 | L:26.77% S:33.71% V:34.7%
-5|paper-algo          | 2026-05-22 20:46:01: 2026-05-22 20:46:01,309 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.114767 | L:26.87% S:33.83% V:34.83%
-9|paper-dodox         | 2026-05-22 20:46:03: 2026-05-22 20:46:03,361 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.018539 | L:26.83% S:33.79% V:34.79%
-12|paper-fida         | 2026-05-22 20:46:05: 2026-05-22 20:46:05,029 INFO: Heartbeat: TPV=259.68 | FIDAUSDT=0.03739 | L:26.8% S:33.75% V:34.75%
-14|paper-grass        | 2026-05-22 20:46:06: 2026-05-22 20:46:06,221 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.426291 | L:26.92% S:33.91% V:34.9%
-18|paper-pendle       | 2026-05-22 20:46:08: 2026-05-22 20:46:08,648 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.8825 | L:26.68% S:33.64% V:34.64%
-19|paper-plume        | 2026-05-22 20:46:09: 2026-05-22 20:46:09,299 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.01427 | L:26.82% S:33.77% V:34.77%
-22|paper-wld          | 2026-05-22 20:46:11: 2026-05-22 20:46:11,125 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.278622 | L:26.8% S:33.73% V:34.75%
-7|paper-arb           | 2026-05-22 20:46:18: 2026-05-22 20:46:18,208 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.109207 | L:26.64% S:33.55% V:34.54%
-10|paper-ena          | 2026-05-22 20:46:19: 2026-05-22 20:46:19,332 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.102938 | L:26.7% S:33.63% V:34.62%
-11|paper-fet          | 2026-05-22 20:46:20: 2026-05-22 20:46:20,043 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.203742 | L:26.72% S:33.66% V:34.66%
-15|paper-icp          | 2026-05-22 20:46:22: 2026-05-22 20:46:22,243 INFO: Rebalance needed (1 actions). TPV: 259.66
-15|paper-icp          | 2026-05-22 20:46:22: 2026-05-22 20:46:22,244 INFO: PAPER ORDER EXECUTED: SELL 3 ICPUSDT (SHORT) at 2.581 | PnL: +0.0000$
-17|paper-op           | 2026-05-22 20:46:23: 2026-05-22 20:46:23,357 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.1298 | L:26.74% S:33.68% V:34.67%
-21|paper-virtual      | 2026-05-22 20:46:26: 2026-05-22 20:46:26,056 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7549 | L:26.77% S:33.7% V:34.7%
-6|paper-alt           | 2026-05-22 20:46:32: 2026-05-22 20:46:32,680 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008749 | L:26.85% S:33.82% V:34.81%
-8|paper-bio           | 2026-05-22 20:46:33: 2026-05-22 20:46:33,526 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.03504 | L:26.67% S:33.58% V:34.57%
-13|paper-fil          | 2026-05-22 20:46:36: 2026-05-22 20:46:36,586 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.988499 | L:26.8% S:33.75% V:34.74%
-15|paper-icp          | 2026-05-22 20:46:37: 2026-05-22 20:46:37,688 INFO: Heartbeat: TPV=259.65 | ICPUSDT=2.582 | L:26.65% S:34.01% V:34.59%
-16|paper-near         | 2026-05-22 20:46:38: 2026-05-22 20:46:38,271 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.151 | L:26.84% S:33.8% V:34.81%
-20|paper-tia          | 2026-05-22 20:46:56: 2026-05-22 20:46:56,352 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.426173 | L:26.68% S:33.61% V:34.61%
-3|paper-1000lunc      | 2026-05-22 20:47:17: 2026-05-22 20:47:17,509 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0796493 | L:26.7% S:33.63% V:34.62%
-4|paper-aero          | 2026-05-22 20:47:18: 2026-05-22 20:47:18,002 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4483 | L:26.71% S:33.64% V:34.63%
-5|paper-algo          | 2026-05-22 20:47:18: 2026-05-22 20:47:18,669 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1151 | L:26.95% S:33.93% V:34.93%
-9|paper-dodox         | 2026-05-22 20:47:20: 2026-05-22 20:47:20,670 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0185999 | L:26.92% S:33.9% V:34.9%
-12|paper-fida         | 2026-05-22 20:47:22: 2026-05-22 20:47:22,378 INFO: Heartbeat: TPV=259.68 | FIDAUSDT=0.0372 | L:26.66% S:33.58% V:34.57%
-14|paper-grass        | 2026-05-22 20:47:23: 2026-05-22 20:47:23,479 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.4238 | L:26.76% S:33.71% V:34.7%
-18|paper-pendle       | 2026-05-22 20:47:26: 2026-05-22 20:47:26,091 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.883 | L:26.68% S:33.64% V:34.65%
-19|paper-plume        | 2026-05-22 20:47:26: 2026-05-22 20:47:26,607 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.01438 | L:27.03% S:34.03% V:35.03%
-22|paper-wld          | 2026-05-22 20:47:28: 2026-05-22 20:47:28,422 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.279642 | L:26.9% S:33.86% V:34.87%
-7|paper-arb           | 2026-05-22 20:47:35: 2026-05-22 20:47:35,583 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1095 | L:26.72% S:33.64% V:34.63%
-10|paper-ena          | 2026-05-22 20:47:36: 2026-05-22 20:47:36,669 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10304 | L:26.73% S:33.66% V:34.66%
-11|paper-fet          | 2026-05-22 20:47:37: 2026-05-22 20:47:37,391 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.2037 | L:26.72% S:33.65% V:34.65%
-17|paper-op           | 2026-05-22 20:47:40: 2026-05-22 20:47:40,721 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.129808 | L:26.75% S:33.68% V:34.67%
-21|paper-virtual      | 2026-05-22 20:47:43: 2026-05-22 20:47:43,381 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7541 | L:26.74% S:33.67% V:34.66%
-6|paper-alt           | 2026-05-22 20:47:50: 2026-05-22 20:47:50,150 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008762 | L:26.89% S:33.87% V:34.86%
-8|paper-bio           | 2026-05-22 20:47:51: 2026-05-22 20:47:51,029 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0350248 | L:26.66% S:33.57% V:34.56%
-13|paper-fil          | 2026-05-22 20:47:53: 2026-05-22 20:47:53,887 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.986318 | L:26.74% S:33.67% V:34.67%
-15|paper-icp          | 2026-05-22 20:47:55: 2026-05-22 20:47:55,066 INFO: Heartbeat: TPV=259.67 | ICPUSDT=2.57401 | L:26.57% S:33.9% V:34.48%
-16|paper-near         | 2026-05-22 20:47:55: 2026-05-22 20:47:55,611 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.14907 | L:26.81% S:33.77% V:34.77%
-20|paper-tia          | 2026-05-22 20:48:13: 2026-05-22 20:48:13,757 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.4265 | L:26.71% S:33.64% V:34.63%
-3|paper-1000lunc      | 2026-05-22 20:48:34: 2026-05-22 20:48:34,991 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0795343 | L:26.66% S:33.58% V:34.57%
-4|paper-aero          | 2026-05-22 20:48:35: 2026-05-22 20:48:35,313 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4505 | L:26.84% S:33.8% V:34.8%
-5|paper-algo          | 2026-05-22 20:48:35: 2026-05-22 20:48:35,968 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1151 | L:26.95% S:33.93% V:34.93%
-9|paper-dodox         | 2026-05-22 20:48:37: 2026-05-22 20:48:37,966 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0186404 | L:26.98% S:33.98% V:34.98%
-12|paper-fida         | 2026-05-22 20:48:39: 2026-05-22 20:48:39,721 INFO: Heartbeat: TPV=259.68 | FIDAUSDT=0.0373356 | L:26.76% S:33.7% V:34.69%
-14|paper-grass        | 2026-05-22 20:48:40: 2026-05-22 20:48:40,812 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.425527 | L:26.87% S:33.84% V:34.84%
-18|paper-pendle       | 2026-05-22 20:48:43: 2026-05-22 20:48:43,400 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.8857 | L:26.72% S:33.69% V:34.7%
-19|paper-plume        | 2026-05-22 20:48:43: 2026-05-22 20:48:43,962 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.01443 | L:27.12% S:34.15% V:35.16%
-22|paper-wld          | 2026-05-22 20:48:45: 2026-05-22 20:48:45,828 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.280544 | L:26.99% S:33.97% V:34.99%
-7|paper-arb           | 2026-05-22 20:48:52: 2026-05-22 20:48:52,863 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.109992 | L:26.84% S:33.79% V:34.79%
-10|paper-ena          | 2026-05-22 20:48:54: 2026-05-22 20:48:54,051 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103288 | L:26.79% S:33.74% V:34.74%
-11|paper-fet          | 2026-05-22 20:48:54: 2026-05-22 20:48:54,708 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.204306 | L:26.8% S:33.75% V:34.75%
-17|paper-op           | 2026-05-22 20:48:58: 2026-05-22 20:48:58,131 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.130176 | L:26.82% S:33.78% V:34.77%
-21|paper-virtual      | 2026-05-22 20:49:00: 2026-05-22 20:49:00,698 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.756098 | L:26.81% S:33.76% V:34.75%
-6|paper-alt           | 2026-05-22 20:49:07: 2026-05-22 20:49:07,503 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008825 | L:27.09% S:34.11% V:35.11%
-8|paper-bio           | 2026-05-22 20:49:08: 2026-05-22 20:49:08,297 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0350744 | L:26.69% S:33.62% V:34.61%
-13|paper-fil          | 2026-05-22 20:49:11: 2026-05-22 20:49:11,341 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.989 | L:26.81% S:33.77% V:34.76%
-15|paper-icp          | 2026-05-22 20:49:12: 2026-05-22 20:49:12,393 INFO: Heartbeat: TPV=259.66 | ICPUSDT=2.57758 | L:26.6% S:33.95% V:34.53%
-16|paper-near         | 2026-05-22 20:49:13: 2026-05-22 20:49:13,237 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.15405 | L:26.88% S:33.84% V:34.85%
-20|paper-tia          | 2026-05-22 20:49:31: 2026-05-22 20:49:31,174 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.426057 | L:26.68% S:33.6% V:34.6%
-3|paper-1000lunc      | 2026-05-22 20:49:52: 2026-05-22 20:49:52,313 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.07967 | L:26.71% S:33.64% V:34.63%
-4|paper-aero          | 2026-05-22 20:49:52: 2026-05-22 20:49:52,694 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.449594 | L:26.79% S:33.73% V:34.73%
-5|paper-algo          | 2026-05-22 20:49:53: 2026-05-22 20:49:53,312 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.115037 | L:26.93% S:33.91% V:34.91%
-9|paper-dodox         | 2026-05-22 20:49:55: 2026-05-22 20:49:55,278 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0186861 | L:27.05% S:34.06% V:35.06%
-12|paper-fida         | 2026-05-22 20:49:57: 2026-05-22 20:49:57,145 INFO: Heartbeat: TPV=259.68 | FIDAUSDT=0.03718 | L:26.65% S:33.56% V:34.55%
-14|paper-grass        | 2026-05-22 20:49:58: 2026-05-22 20:49:58,160 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.425499 | L:26.87% S:33.84% V:34.84%
-18|paper-pendle       | 2026-05-22 20:50:00: 2026-05-22 20:50:00,781 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.88135 | L:26.66% S:33.62% V:34.62%
-19|paper-plume        | 2026-05-22 20:50:01: 2026-05-22 20:50:01,313 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0144106 | L:27.08% S:34.11% V:35.11%
-22|paper-wld          | 2026-05-22 20:50:03: 2026-05-22 20:50:03,468 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.280318 | L:26.97% S:33.94% V:34.96%
-7|paper-arb           | 2026-05-22 20:50:10: 2026-05-22 20:50:10,127 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1098 | L:26.79% S:33.73% V:34.73%
-10|paper-ena          | 2026-05-22 20:50:11: 2026-05-22 20:50:11,369 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10313 | L:26.75% S:33.69% V:34.69%
-11|paper-fet          | 2026-05-22 20:50:11: 2026-05-22 20:50:11,999 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.2037 | L:26.72% S:33.65% V:34.65%
-17|paper-op           | 2026-05-22 20:50:15: 2026-05-22 20:50:15,665 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.13 | L:26.79% S:33.73% V:34.72%
-21|paper-virtual      | 2026-05-22 20:50:18: 2026-05-22 20:50:18,011 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7543 | L:26.75% S:33.68% V:34.67%
-6|paper-alt           | 2026-05-22 20:50:25: 2026-05-22 20:50:25,084 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008815 | L:27.06% S:34.07% V:35.07%
-8|paper-bio           | 2026-05-22 20:50:25: 2026-05-22 20:50:25,695 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0349904 | L:26.63% S:33.53% V:34.52%
-13|paper-fil          | 2026-05-22 20:50:28: 2026-05-22 20:50:28,686 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.988 | L:26.78% S:33.73% V:34.73%
-15|paper-icp          | 2026-05-22 20:50:29: 2026-05-22 20:50:29,790 INFO: Heartbeat: TPV=259.66 | ICPUSDT=2.577 | L:26.6% S:33.94% V:34.52%
-16|paper-near         | 2026-05-22 20:50:30: 2026-05-22 20:50:30,568 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.163 | L:26.99% S:33.98% V:35.0%
-20|paper-tia          | 2026-05-22 20:50:48: 2026-05-22 20:50:48,417 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.426 | L:26.67% S:33.6% V:34.59%
-3|paper-1000lunc      | 2026-05-22 20:51:09: 2026-05-22 20:51:09,709 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0797657 | L:26.74% S:33.68% V:34.67%
-4|paper-aero          | 2026-05-22 20:51:10: 2026-05-22 20:51:10,005 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.450525 | L:26.84% S:33.8% V:34.8%
-5|paper-algo          | 2026-05-22 20:51:10: 2026-05-22 20:51:10,941 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1149 | L:26.9% S:33.87% V:34.87%
-9|paper-dodox         | 2026-05-22 20:51:12: 2026-05-22 20:51:12,909 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0187689 | L:27.17% S:34.21% V:35.22%
-12|paper-fida         | 2026-05-22 20:51:14: 2026-05-22 20:51:14,415 INFO: Heartbeat: TPV=259.68 | FIDAUSDT=0.0374333 | L:26.83% S:33.79% V:34.79%
-14|paper-grass        | 2026-05-22 20:51:15: 2026-05-22 20:51:15,417 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.425724 | L:26.89% S:33.86% V:34.86%
-18|paper-pendle       | 2026-05-22 20:51:18: 2026-05-22 20:51:18,144 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.8834 | L:26.69% S:33.65% V:34.66%
-19|paper-plume        | 2026-05-22 20:51:18: 2026-05-22 20:51:18,659 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0143862 | L:27.04% S:34.05% V:35.05%
-22|paper-wld          | 2026-05-22 20:51:20: 2026-05-22 20:51:20,741 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.280565 | L:26.99% S:33.97% V:34.99%
-7|paper-arb           | 2026-05-22 20:51:27: 2026-05-22 20:51:27,530 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.110062 | L:26.85% S:33.81% V:34.81%
-10|paper-ena          | 2026-05-22 20:51:28: 2026-05-22 20:51:28,601 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103277 | L:26.79% S:33.74% V:34.74%
-11|paper-fet          | 2026-05-22 20:51:29: 2026-05-22 20:51:29,287 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.20364 | L:26.71% S:33.64% V:34.64%
-17|paper-op           | 2026-05-22 20:51:32: 2026-05-22 20:51:32,966 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.1304 | L:26.87% S:33.83% V:34.83%
-21|paper-virtual      | 2026-05-22 20:51:35: 2026-05-22 20:51:35,425 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7559 | L:26.8% S:33.75% V:34.75%
-6|paper-alt           | 2026-05-22 20:51:42: 2026-05-22 20:51:42,532 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008824 | L:27.08% S:34.11% V:35.11%
-8|paper-bio           | 2026-05-22 20:51:43: 2026-05-22 20:51:43,016 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.03508 | L:26.7% S:33.62% V:34.61%
-13|paper-fil          | 2026-05-22 20:51:46: 2026-05-22 20:51:46,006 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.991 | L:26.87% S:33.83% V:34.83%
-15|paper-icp          | 2026-05-22 20:51:47: 2026-05-22 20:51:47,173 INFO: Heartbeat: TPV=259.66 | ICPUSDT=2.577 | L:26.6% S:33.94% V:34.52%
-16|paper-near         | 2026-05-22 20:51:47: 2026-05-22 20:51:47,975 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.16778 | L:27.05% S:34.06% V:35.08%
-20|paper-tia          | 2026-05-22 20:52:05: 2026-05-22 20:52:05,697 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.427113 | L:26.74% S:33.68% V:34.68%
-3|paper-1000lunc      | 2026-05-22 20:52:27: 2026-05-22 20:52:27,123 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0798246 | L:26.76% S:33.7% V:34.7%
-4|paper-aero          | 2026-05-22 20:52:27: 2026-05-22 20:52:27,279 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.450317 | L:26.83% S:33.79% V:34.78%
-5|paper-algo          | 2026-05-22 20:52:28: 2026-05-22 20:52:28,225 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.115052 | L:26.93% S:33.92% V:34.91%
-9|paper-dodox         | 2026-05-22 20:52:30: 2026-05-22 20:52:30,205 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.018838 | L:27.27% S:34.34% V:35.35%
-12|paper-fida         | 2026-05-22 20:52:31: 2026-05-22 20:52:31,797 INFO: Heartbeat: TPV=259.68 | FIDAUSDT=0.0373612 | L:26.78% S:33.73% V:34.72%
-14|paper-grass        | 2026-05-22 20:52:32: 2026-05-22 20:52:32,815 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.425122 | L:26.85% S:33.81% V:34.81%
-18|paper-pendle       | 2026-05-22 20:52:35: 2026-05-22 20:52:35,519 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.8852 | L:26.71% S:33.68% V:34.69%
-19|paper-plume        | 2026-05-22 20:52:35: 2026-05-22 20:52:35,992 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.01435 | L:26.97% S:33.96% V:34.96%
-22|paper-wld          | 2026-05-22 20:52:38: 2026-05-22 20:52:38,081 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.281121 | L:27.04% S:34.04% V:35.06%
-7|paper-arb           | 2026-05-22 20:52:44: 2026-05-22 20:52:44,749 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1103 | L:26.91% S:33.89% V:34.88%
-10|paper-ena          | 2026-05-22 20:52:45: 2026-05-22 20:52:45,888 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10353 | L:26.85% S:33.82% V:34.82%
-11|paper-fet          | 2026-05-22 20:52:46: 2026-05-22 20:52:46,963 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.2039 | L:26.74% S:33.68% V:34.69%
-17|paper-op           | 2026-05-22 20:52:50: 2026-05-22 20:52:50,289 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.130585 | L:26.91% S:33.88% V:34.88%
-21|paper-virtual      | 2026-05-22 20:52:52: 2026-05-22 20:52:52,933 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.757155 | L:26.85% S:33.8% V:34.8%
-6|paper-alt           | 2026-05-22 20:52:59: 2026-05-22 20:52:59,777 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00883252 | L:27.11% S:34.14% V:35.14%
-8|paper-bio           | 2026-05-22 20:53:00: 2026-05-22 20:53:00,373 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.03518 | L:26.77% S:33.72% V:34.71%
-13|paper-fil          | 2026-05-22 20:53:03: 2026-05-22 20:53:03,338 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.991 | L:26.87% S:33.83% V:34.83%
-15|paper-icp          | 2026-05-22 20:53:04: 2026-05-22 20:53:04,488 INFO: Heartbeat: TPV=259.65 | ICPUSDT=2.58294 | L:26.66% S:34.02% V:34.6%
-16|paper-near         | 2026-05-22 20:53:05: 2026-05-22 20:53:05,278 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.16756 | L:27.04% S:34.06% V:35.07%
-20|paper-tia          | 2026-05-22 20:53:22: 2026-05-22 20:53:22,955 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.428 | L:26.8% S:33.75% V:34.75%
-3|paper-1000lunc      | 2026-05-22 20:53:44: 2026-05-22 20:53:44,414 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0801 | L:26.85% S:33.82% V:34.82%
-4|paper-aero          | 2026-05-22 20:53:44: 2026-05-22 20:53:44,711 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4504 | L:26.83% S:33.79% V:34.79%
-5|paper-algo          | 2026-05-22 20:53:45: 2026-05-22 20:53:45,511 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1153 | L:26.99% S:33.99% V:34.99%
-9|paper-dodox         | 2026-05-22 20:53:47: 2026-05-22 20:53:47,525 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0188765 | L:27.32% S:34.41% V:35.42%
-14|paper-grass        | 2026-05-22 20:53:50: 2026-05-22 20:53:50,498 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.4253 | L:26.86% S:33.83% V:34.82%
-18|paper-pendle       | 2026-05-22 20:53:52: 2026-05-22 20:53:52,778 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.883 | L:26.68% S:33.64% V:34.65%
-19|paper-plume        | 2026-05-22 20:53:53: 2026-05-22 20:53:53,516 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0143501 | L:26.97% S:33.96% V:34.96%
-22|paper-wld          | 2026-05-22 20:53:55: 2026-05-22 20:53:55,434 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.281204 | L:27.05% S:34.05% V:35.07%
-7|paper-arb           | 2026-05-22 20:54:02: 2026-05-22 20:54:02,003 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.110347 | L:26.92% S:33.9% V:34.9%
-10|paper-ena          | 2026-05-22 20:54:03: 2026-05-22 20:54:03,254 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103564 | L:26.86% S:33.83% V:34.83%
-11|paper-fet          | 2026-05-22 20:54:04: 2026-05-22 20:54:04,319 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.204112 | L:26.77% S:33.72% V:34.72%
-17|paper-op           | 2026-05-22 20:54:07: 2026-05-22 20:54:07,622 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.130577 | L:26.9% S:33.88% V:34.88%
-21|paper-virtual      | 2026-05-22 20:54:10: 2026-05-22 20:54:10,340 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7573 | L:26.85% S:33.81% V:34.81%
-6|paper-alt           | 2026-05-22 20:54:17: 2026-05-22 20:54:17,143 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008849 | L:27.16% S:34.2% V:35.21%
-8|paper-bio           | 2026-05-22 20:54:17: 2026-05-22 20:54:17,711 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0352136 | L:26.8% S:33.75% V:34.74%
-12|paper-fida         | 2026-05-22 20:54:20: 2026-05-22 20:54:20,087 INFO: Rebalance needed (2 actions). TPV: 259.68
-12|paper-fida         | 2026-05-22 20:54:20: 2026-05-22 20:54:20,088 INFO: PAPER ORDER EXECUTED: BUY 232 FIDAUSDT (LONG) at 0.03675 | PnL: +0.0000$
-12|paper-fida         | 2026-05-22 20:54:20: 2026-05-22 20:54:20,088 INFO: PAPER ORDER EXECUTED: SELL 291 FIDAUSDT (SHORT) at 0.03675 | PnL: +0.0000$
-13|paper-fil          | 2026-05-22 20:54:20: 2026-05-22 20:54:20,591 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.992 | L:26.89% S:33.87% V:34.87%
-15|paper-icp          | 2026-05-22 20:54:21: 2026-05-22 20:54:21,937 INFO: Heartbeat: TPV=259.63 | ICPUSDT=2.591 | L:26.75% S:34.13% V:34.71%
-16|paper-near         | 2026-05-22 20:54:22: 2026-05-22 20:54:22,550 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.16492 | L:27.01% S:34.01% V:35.03%
-12|paper-fida         | 2026-05-22 20:54:35: 2026-05-22 20:54:35,528 INFO: Heartbeat: TPV=259.67 | FIDAUSDT=0.0368544 | L:27.08% S:34.1% V:34.25%
-20|paper-tia          | 2026-05-22 20:54:40: 2026-05-22 20:54:40,344 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.428785 | L:26.85% S:33.82% V:34.82%
-3|paper-1000lunc      | 2026-05-22 20:55:01: 2026-05-22 20:55:01,829 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0801038 | L:26.86% S:33.82% V:34.82%
-4|paper-aero          | 2026-05-22 20:55:02: 2026-05-22 20:55:02,013 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.450882 | L:26.86% S:33.83% V:34.83%
-5|paper-algo          | 2026-05-22 20:55:02: 2026-05-22 20:55:02,802 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.115263 | L:26.98% S:33.98% V:34.98%
-9|paper-dodox         | 2026-05-22 20:55:04: 2026-05-22 20:55:04,835 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.018818 | L:27.24% S:34.3% V:35.31%
-14|paper-grass        | 2026-05-22 20:55:07: 2026-05-22 20:55:07,736 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.423308 | L:26.73% S:33.67% V:34.66%
-18|paper-pendle       | 2026-05-22 20:55:10: 2026-05-22 20:55:10,051 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.88547 | L:26.72% S:33.69% V:34.7%
-19|paper-plume        | 2026-05-22 20:55:10: 2026-05-22 20:55:10,952 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0143801 | L:27.03% S:34.03% V:35.04%
-22|paper-wld          | 2026-05-22 20:55:12: 2026-05-22 20:55:12,891 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.2805 | L:26.98% S:33.96% V:34.98%
-7|paper-arb           | 2026-05-22 20:55:19: 2026-05-22 20:55:19,307 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.110291 | L:26.91% S:33.88% V:34.88%
-10|paper-ena          | 2026-05-22 20:55:20: 2026-05-22 20:55:20,529 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103585 | L:26.87% S:33.84% V:34.84%
-11|paper-fet          | 2026-05-22 20:55:21: 2026-05-22 20:55:21,699 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.204368 | L:26.8% S:33.76% V:34.76%
-17|paper-op           | 2026-05-22 20:55:24: 2026-05-22 20:55:24,944 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.1306 | L:26.91% S:33.89% V:34.88%
-21|paper-virtual      | 2026-05-22 20:55:27: 2026-05-22 20:55:27,704 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7563 | L:26.82% S:33.77% V:34.76%
-6|paper-alt           | 2026-05-22 20:55:34: 2026-05-22 20:55:34,434 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008859 | L:27.19% S:34.24% V:35.25%
-8|paper-bio           | 2026-05-22 20:55:34: 2026-05-22 20:55:34,976 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0352 | L:26.79% S:33.74% V:34.73%
-13|paper-fil          | 2026-05-22 20:55:37: 2026-05-22 20:55:37,982 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.991 | L:26.87% S:33.83% V:34.83%
-15|paper-icp          | 2026-05-22 20:55:39: 2026-05-22 20:55:39,213 INFO: Heartbeat: TPV=259.64 | ICPUSDT=2.58804 | L:26.71% S:34.09% V:34.67%
-16|paper-near         | 2026-05-22 20:55:39: 2026-05-22 20:55:39,874 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.16415 | L:27.0% S:34.0% V:35.02%
-12|paper-fida         | 2026-05-22 20:55:52: 2026-05-22 20:55:52,926 INFO: Heartbeat: TPV=259.66 | FIDAUSDT=0.0369706 | L:27.16% S:34.21% V:34.36%
-20|paper-tia          | 2026-05-22 20:55:57: 2026-05-22 20:55:57,661 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.4293 | L:26.88% S:33.86% V:34.86%
-3|paper-1000lunc      | 2026-05-22 20:56:19: 2026-05-22 20:56:19,164 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.08018 | L:26.88% S:33.85% V:34.85%
-4|paper-aero          | 2026-05-22 20:56:19: 2026-05-22 20:56:19,354 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.451139 | L:26.88% S:33.85% V:34.84%
-5|paper-algo          | 2026-05-22 20:56:20: 2026-05-22 20:56:20,141 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.11537 | L:27.01% S:34.01% V:35.01%
-9|paper-dodox         | 2026-05-22 20:56:22: 2026-05-22 20:56:22,137 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.018821 | L:27.24% S:34.3% V:35.31%
-14|paper-grass        | 2026-05-22 20:56:25: 2026-05-22 20:56:25,220 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.4234 | L:26.74% S:33.68% V:34.67%
-18|paper-pendle       | 2026-05-22 20:56:27: 2026-05-22 20:56:27,383 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.8903 | L:26.79% S:33.78% V:34.78%
-19|paper-plume        | 2026-05-22 20:56:28: 2026-05-22 20:56:28,248 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0144107 | L:27.08% S:34.11% V:35.11%
-22|paper-wld          | 2026-05-22 20:56:30: 2026-05-22 20:56:30,287 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.2809 | L:27.02% S:34.01% V:35.03%
-7|paper-arb           | 2026-05-22 20:56:36: 2026-05-22 20:56:36,703 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.110529 | L:26.97% S:33.96% V:34.96%
-10|paper-ena          | 2026-05-22 20:56:37: 2026-05-22 20:56:37,886 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10388 | L:26.95% S:33.94% V:34.94%
-11|paper-fet          | 2026-05-22 20:56:39: 2026-05-22 20:56:39,030 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.204965 | L:26.88% S:33.86% V:34.87%
-17|paper-op           | 2026-05-22 20:56:42: 2026-05-22 20:56:42,417 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.1308 | L:26.95% S:33.94% V:34.94%
-21|paper-virtual      | 2026-05-22 20:56:45: 2026-05-22 20:56:45,076 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.758896 | L:26.91% S:33.88% V:34.88%
-6|paper-alt           | 2026-05-22 20:56:51: 2026-05-22 20:56:51,718 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00886224 | L:27.2% S:34.25% V:35.26%
-8|paper-bio           | 2026-05-22 20:56:52: 2026-05-22 20:56:52,307 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.035236 | L:26.82% S:33.77% V:34.77%
-13|paper-fil          | 2026-05-22 20:56:55: 2026-05-22 20:56:55,267 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.992478 | L:26.91% S:33.88% V:34.88%
-15|paper-icp          | 2026-05-22 20:56:56: 2026-05-22 20:56:56,464 INFO: Heartbeat: TPV=259.63 | ICPUSDT=2.593 | L:26.77% S:34.16% V:34.74%
-16|paper-near         | 2026-05-22 20:56:57: 2026-05-22 20:56:57,227 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.17066 | L:27.08% S:34.1% V:35.12%
-12|paper-fida         | 2026-05-22 20:57:10: 2026-05-22 20:57:10,238 INFO: Heartbeat: TPV=259.65 | FIDAUSDT=0.03719 | L:27.33% S:34.41% V:34.56%
-20|paper-tia          | 2026-05-22 20:57:15: 2026-05-22 20:57:15,021 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.4291 | L:26.87% S:33.84% V:34.84%
-3|paper-1000lunc      | 2026-05-22 20:57:36: 2026-05-22 20:57:36,655 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0800545 | L:26.84% S:33.8% V:34.8%
-4|paper-aero          | 2026-05-22 20:57:36: 2026-05-22 20:57:36,706 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.450656 | L:26.85% S:33.81% V:34.81%
-5|paper-algo          | 2026-05-22 20:57:37: 2026-05-22 20:57:37,569 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.115366 | L:27.01% S:34.01% V:35.01%
-9|paper-dodox         | 2026-05-22 20:57:39: 2026-05-22 20:57:39,469 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0188208 | L:27.24% S:34.3% V:35.31%
-14|paper-grass        | 2026-05-22 20:57:42: 2026-05-22 20:57:42,561 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.4236 | L:26.75% S:33.69% V:34.68%
-18|paper-pendle       | 2026-05-22 20:57:44: 2026-05-22 20:57:44,666 INFO: Heartbeat: TPV=259.69 | PENDLEUSDT=1.88839 | L:26.76% S:33.74% V:34.75%
-19|paper-plume        | 2026-05-22 20:57:45: 2026-05-22 20:57:45,615 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0143911 | L:27.05% S:34.06% V:35.06%
-22|paper-wld          | 2026-05-22 20:57:47: 2026-05-22 20:57:47,703 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.281 | L:27.03% S:34.02% V:35.04%
-7|paper-arb           | 2026-05-22 20:57:54: 2026-05-22 20:57:54,139 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.110452 | L:26.95% S:33.93% V:34.93%
-10|paper-ena          | 2026-05-22 20:57:55: 2026-05-22 20:57:55,273 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103674 | L:26.89% S:33.87% V:34.87%
-11|paper-fet          | 2026-05-22 20:57:56: 2026-05-22 20:57:56,460 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.204665 | L:26.84% S:33.81% V:34.82%
-17|paper-op           | 2026-05-22 20:57:59: 2026-05-22 20:57:59,711 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.1307 | L:26.93% S:33.91% V:34.91%
-21|paper-virtual      | 2026-05-22 20:58:02: 2026-05-22 20:58:02,510 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.758 | L:26.88% S:33.84% V:34.84%
-6|paper-alt           | 2026-05-22 20:58:09: 2026-05-22 20:58:09,148 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008822 | L:27.08% S:34.1% V:35.1%
-8|paper-bio           | 2026-05-22 20:58:09: 2026-05-22 20:58:09,634 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0351477 | L:26.75% S:33.69% V:34.68%
-12|paper-fida         | 2026-05-22 20:58:12: 2026-05-22 20:58:12,033 INFO: Rebalance needed (1 actions). TPV: 259.64
-12|paper-fida         | 2026-05-22 20:58:12: 2026-05-22 20:58:12,033 INFO: PAPER ORDER EXECUTED: BUY 202 FIDAUSDT (SHORT) at 0.0373768 | PnL: +0.0626$
-13|paper-fil          | 2026-05-22 20:58:12: 2026-05-22 20:58:12,594 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.992 | L:26.89% S:33.87% V:34.87%
-15|paper-icp          | 2026-05-22 20:58:13: 2026-05-22 20:58:13,784 INFO: Heartbeat: TPV=259.63 | ICPUSDT=2.58957 | L:26.73% S:34.11% V:34.7%
-16|paper-near         | 2026-05-22 20:58:14: 2026-05-22 20:58:14,582 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.168 | L:27.05% S:34.06% V:35.08%
-12|paper-fida         | 2026-05-22 20:58:27: 2026-05-22 20:58:27,493 INFO: Heartbeat: TPV=259.63 | FIDAUSDT=0.0373269 | L:27.43% S:33.96% V:34.69%
-20|paper-tia          | 2026-05-22 20:58:32: 2026-05-22 20:58:32,316 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.428358 | L:26.82% S:33.78% V:34.78%
-3|paper-1000lunc      | 2026-05-22 20:58:53: 2026-05-22 20:58:53,933 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0797342 | L:26.73% S:33.66% V:34.66%
-4|paper-aero          | 2026-05-22 20:58:54: 2026-05-22 20:58:54,015 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4498 | L:26.8% S:33.75% V:34.74%
-5|paper-algo          | 2026-05-22 20:58:54: 2026-05-22 20:58:54,996 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.11535 | L:27.0% S:34.0% V:35.0%
-9|paper-dodox         | 2026-05-22 20:58:56: 2026-05-22 20:58:56,894 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0188611 | L:27.3% S:34.38% V:35.39%
-14|paper-grass        | 2026-05-22 20:58:59: 2026-05-22 20:58:59,963 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.42294 | L:26.71% S:33.64% V:34.63%
-18|paper-pendle       | 2026-05-22 20:59:02: 2026-05-22 20:59:02,023 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.89581 | L:26.87% S:33.87% V:34.89%
-19|paper-plume        | 2026-05-22 20:59:02: 2026-05-22 20:59:02,865 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0143451 | L:26.96% S:33.95% V:34.95%
-22|paper-wld          | 2026-05-22 20:59:05: 2026-05-22 20:59:05,140 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.2807 | L:27.0% S:33.98% V:35.01%
-7|paper-arb           | 2026-05-22 20:59:11: 2026-05-22 20:59:11,463 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.110257 | L:26.9% S:33.87% V:34.87%
-10|paper-ena          | 2026-05-22 20:59:12: 2026-05-22 20:59:12,535 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10345 | L:26.83% S:33.8% V:34.79%
-11|paper-fet          | 2026-05-22 20:59:13: 2026-05-22 20:59:13,824 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.2045 | L:26.82% S:33.78% V:34.79%
-17|paper-op           | 2026-05-22 20:59:17: 2026-05-22 20:59:17,078 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.1306 | L:26.91% S:33.89% V:34.88%
-21|paper-virtual      | 2026-05-22 20:59:19: 2026-05-22 20:59:19,842 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.757174 | L:26.85% S:33.81% V:34.8%
-6|paper-alt           | 2026-05-22 20:59:26: 2026-05-22 20:59:26,575 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008849 | L:27.16% S:34.2% V:35.21%
-8|paper-bio           | 2026-05-22 20:59:26: 2026-05-22 20:59:26,929 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.03509 | L:26.71% S:33.63% V:34.62%
-13|paper-fil          | 2026-05-22 20:59:29: 2026-05-22 20:59:29,884 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.991 | L:26.87% S:33.83% V:34.83%
-14|paper-grass        | 2026-05-22 20:59:30: 2026-05-22 20:59:30,864 INFO: Rebalance needed (1 actions). TPV: 259.68
-14|paper-grass        | 2026-05-22 20:59:30: 2026-05-22 20:59:30,865 INFO: PAPER ORDER EXECUTED: SELL 17.8 GRASSUSDT (SHORT) at 0.4202 | PnL: +0.0000$
-15|paper-icp          | 2026-05-22 20:59:31: 2026-05-22 20:59:31,146 INFO: Heartbeat: TPV=259.63 | ICPUSDT=2.59 | L:26.73% S:34.12% V:34.7%
-16|paper-near         | 2026-05-22 20:59:32: 2026-05-22 20:59:32,035 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.16522 | L:27.01% S:34.02% V:35.04%
-12|paper-fida         | 2026-05-22 20:59:44: 2026-05-22 20:59:44,899 INFO: Heartbeat: TPV=259.61 | FIDAUSDT=0.0371888 | L:27.33% S:33.84% V:34.57%
-20|paper-tia          | 2026-05-22 20:59:49: 2026-05-22 20:59:49,630 INFO: Heartbeat: TPV=259.68 | TIAUSDT=0.427759 | L:26.78% S:33.74% V:34.74%
-4|paper-aero          | 2026-05-22 21:00:11: 2026-05-22 21:00:11,369 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.448772 | L:26.74% S:33.67% V:34.66%
-3|paper-1000lunc      | 2026-05-22 21:00:11: 2026-05-22 21:00:11,391 INFO: Heartbeat: TPV=259.68 | 1000LUNCUSDT=0.0798703 | L:26.78% S:33.72% V:34.72%
-5|paper-algo          | 2026-05-22 21:00:12: 2026-05-22 21:00:12,266 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.115307 | L:26.99% S:33.99% V:34.99%
-9|paper-dodox         | 2026-05-22 21:00:14: 2026-05-22 21:00:14,229 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0188461 | L:27.28% S:34.35% V:35.36%
-14|paper-grass        | 2026-05-22 21:00:17: 2026-05-22 21:00:17,448 INFO: Heartbeat: TPV=259.68 | GRASSUSDT=0.420058 | L:26.53% S:33.99% V:34.39%
-18|paper-pendle       | 2026-05-22 21:00:19: 2026-05-22 21:00:19,335 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.89803 | L:26.9% S:33.91% V:34.93%
-19|paper-plume        | 2026-05-22 21:00:20: 2026-05-22 21:00:20,181 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.014337 | L:26.95% S:33.93% V:34.93%
-22|paper-wld          | 2026-05-22 21:00:22: 2026-05-22 21:00:22,398 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.280804 | L:27.01% S:34.0% V:35.02%
-7|paper-arb           | 2026-05-22 21:00:28: 2026-05-22 21:00:28,873 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1101 | L:26.86% S:33.83% V:34.82%
-10|paper-ena          | 2026-05-22 21:00:29: 2026-05-22 21:00:29,859 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103424 | L:26.83% S:33.79% V:34.79%
-11|paper-fet          | 2026-05-22 21:00:31: 2026-05-22 21:00:31,503 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.2042 | L:26.78% S:33.73% V:34.74%
-14|paper-grass        | 2026-05-22 21:00:32: 2026-05-22 21:00:32,895 INFO: Rebalance needed (1 actions). TPV: 259.72
-14|paper-grass        | 2026-05-22 21:00:32: 2026-05-22 21:00:32,895 INFO: PAPER ORDER EXECUTED: BUY 18.3 GRASSUSDT (LONG) at 0.418237 | PnL: +0.0000$
-17|paper-op           | 2026-05-22 21:00:34: 2026-05-22 21:00:34,397 INFO: Heartbeat: TPV=259.68 | OPUSDT=0.130301 | L:26.85% S:33.81% V:34.8%
-21|paper-virtual      | 2026-05-22 21:00:37: 2026-05-22 21:00:37,172 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.755364 | L:26.78% S:33.72% V:34.72%
-0|supervisor-service  | 2026-05-22 21:00:42: 2026-05-22 21:00:42,817 INFO: --- Running Supervisor Cycle at Fri May 22 21:00:42 2026 ---
-6|paper-alt           | 2026-05-22 21:00:44: 2026-05-22 21:00:44,070 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008846 | L:27.15% S:34.19% V:35.2%
-8|paper-bio           | 2026-05-22 21:00:44: 2026-05-22 21:00:44,273 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.035004 | L:26.64% S:33.55% V:34.54%
-13|paper-fil          | 2026-05-22 21:00:47: 2026-05-22 21:00:47,306 INFO: Heartbeat: TPV=259.68 | FILUSDT=0.987218 | L:26.76% S:33.71% V:34.7%
-15|paper-icp          | 2026-05-22 21:00:48: 2026-05-22 21:00:48,553 INFO: Heartbeat: TPV=259.65 | ICPUSDT=2.583 | L:26.66% S:34.02% V:34.61%
-16|paper-near         | 2026-05-22 21:00:49: 2026-05-22 21:00:49,664 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.1643 | L:27.0% S:34.0% V:35.02%
-PM2                   | Stopping app:paper-1000lunc id:3
-PM2                   | App [paper-1000lunc:3] exited with code [1] via signal [SIGINT]
-PM2                   | pid=1648 msg=process killed
-PM2                   | Stopping app:paper-fil id:13
-PM2                   | App [paper-fil:13] exited with code [1] via signal [SIGINT]
-PM2                   | pid=13408 msg=process killed
-PM2                   | Stopping app:paper-op id:17
-PM2                   | App [paper-op:17] exited with code [1] via signal [SIGINT]
-PM2                   | pid=11432 msg=process killed
-PM2                   | Stopping app:paper-tia id:20
-PM2                   | App [paper-tia:20] exited with code [1] via signal [SIGINT]
-PM2                   | pid=14128 msg=process killed
-PM2                   | App [paper-inj:23] starting in -fork mode-
-PM2                   | App [paper-inj:23] online
-PM2                   | App [paper-sui:24] starting in -fork mode-
-PM2                   | App [paper-sui:24] online
-23|paper-inj          | 2026-05-22 21:00:59: 2026-05-22 21:00:59,487 INFO: --- Launching Bot: INJUSDT (PAPER Mode) ---
-PM2                   | App [paper-uni:25] starting in -fork mode-
-PM2                   | App [paper-uni:25] online
-23|paper-inj          | 2026-05-22 21:00:59: 2026-05-22 21:00:59,969 INFO: Telegram Queue ENABLED: C:\Python\Prosperous_Bot\futures_portfolio\signals\telegram_queue
-24|paper-sui          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,061 INFO: --- Launching Bot: SUIUSDT (PAPER Mode) ---
-PM2                   | App [paper-lpt:26] starting in -fork mode-
-PM2                   | App [paper-lpt:26] online
-23|paper-inj          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,283 INFO: Heartbeat: TPV=260.00 | INJUSDT=5.31827 | L:0.0% S:0.0% V:35.0%
-23|paper-inj          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,283 INFO: Cold Start: Allowing all actions to form portfolio baseline at 5.31827
-23|paper-inj          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,283 INFO: Rebalance needed (2 actions). TPV: 260.00
-23|paper-inj          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,283 INFO: PAPER ORDER EXECUTED: BUY 65.9 INJUSDT (LONG) at 5.31827 | PnL: +0.0000$
-23|paper-inj          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,283 INFO: PAPER ORDER EXECUTED: SELL 83.1 INJUSDT (SHORT) at 5.31827 | PnL: +0.0000$
-24|paper-sui          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,550 INFO: Telegram Queue ENABLED: C:\Python\Prosperous_Bot\futures_portfolio\signals\telegram_queue
-25|paper-uni          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,654 INFO: --- Launching Bot: UNIUSDT (PAPER Mode) ---
-24|paper-sui          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,873 INFO: Heartbeat: TPV=260.00 | SUIUSDT=1.07498 | L:0.0% S:0.0% V:35.0%
-24|paper-sui          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,873 INFO: Cold Start: Allowing all actions to form portfolio baseline at 1.07498
-24|paper-sui          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,873 INFO: Rebalance needed (2 actions). TPV: 260.00
-24|paper-sui          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,873 INFO: PAPER ORDER EXECUTED: BUY 326.5 SUIUSDT (LONG) at 1.07498 | PnL: +0.0000$
-24|paper-sui          | 2026-05-22 21:01:00: 2026-05-22 21:01:00,873 INFO: PAPER ORDER EXECUTED: SELL 411.1 SUIUSDT (SHORT) at 1.07498 | PnL: +0.0000$
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: Cycle completed successfully.
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:44,038 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:48,847 INFO: --- Launching Bot: 1000LUNCUSDT (PAPER Mode) ---
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:48,848 INFO: EMERGENCY STOP TRIGGERED
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:49,789 INFO: --- Launching Bot: FILUSDT (PAPER Mode) ---
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:49,790 INFO: EMERGENCY STOP TRIGGERED
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:50,718 INFO: --- Launching Bot: OPUSDT (PAPER Mode) ---
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:50,719 INFO: EMERGENCY STOP TRIGGERED
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:51,643 INFO: --- Launching Bot: TIAUSDT (PAPER Mode) ---
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: 2026-05-22 21:00:51,644 INFO: EMERGENCY STOP TRIGGERED
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,035 INFO: SUPERVISOR: [PM2] Applying action deleteProcessId on app [paper-1000lunc](ids: [ 3 ])
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: [PM2] [paper-1000lunc](3) ✓
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 13 │ paper-fil             │ default     │ N/A     │ fork    │ 13408    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,036 INFO: SUPERVISOR: │ 17 │ paper-op              │ default     │ N/A     │ fork    │ 11432    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 20 │ paper-tia             │ default     │ N/A     │ fork    │ 14128    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: [PM2] Applying action deleteProcessId on app [paper-fil](ids: [ 13 ])
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: [PM2] [paper-fil](13) ✓
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,037 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 17 │ paper-op              │ default     │ N/A     │ fork    │ 11432    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 20 │ paper-tia             │ default     │ N/A     │ fork    │ 14128    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,038 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: [PM2] Applying action deleteProcessId on app [paper-op](ids: [ 17 ])
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: [PM2] [paper-op](17) ✓
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,039 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 20 │ paper-tia             │ default     │ N/A     │ fork    │ 14128    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: [PM2] Applying action deleteProcessId on app [paper-tia](ids: [ 20 ])
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: [PM2] [paper-tia](20) ✓
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,040 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: [PM2] Starting C:\Python\Prosperous_Bot\futures_portfolio\main.py in fork_mode (1 instance)
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: [PM2] Done.
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,041 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 23 │ paper-inj             │ default     │ N/A     │ fork    │ 4084     │ 0s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,042 INFO: SUPERVISOR: [PM2] Starting C:\Python\Prosperous_Bot\futures_portfolio\main.py in fork_mode (1 instance)
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: [PM2] Done.
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 23 │ paper-inj             │ default     │ N/A     │ fork    │ 4084     │ 0s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,043 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 24 │ paper-sui             │ default     │ N/A     │ fork    │ 8824     │ 0s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: [PM2] Starting C:\Python\Prosperous_Bot\futures_portfolio\main.py in fork_mode (1 instance)
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: [PM2] Done.
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,044 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 23 │ paper-inj             │ default     │ N/A     │ fork    │ 4084     │ 1s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 24 │ paper-sui             │ default     │ N/A     │ fork    │ 8824     │ 0s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 25 │ paper-uni             │ default     │ N/A     │ fork    │ 2072     │ 0s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,045 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: [PM2] Starting C:\Python\Prosperous_Bot\futures_portfolio\main.py in fork_mode (1 instance)
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: [PM2] Done.
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: ┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: ├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 4  │ paper-aero            │ default     │ N/A     │ fork    │ 12932    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 5  │ paper-algo            │ default     │ N/A     │ fork    │ 1432     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 6  │ paper-alt             │ default     │ N/A     │ fork    │ 17312    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 7  │ paper-arb             │ default     │ N/A     │ fork    │ 13760    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 8  │ paper-bio             │ default     │ N/A     │ fork    │ 10464    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 9  │ paper-dodox           │ default     │ N/A     │ fork    │ 5788     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 10 │ paper-ena             │ default     │ N/A     │ fork    │ 12360    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 11 │ paper-fet             │ default     │ N/A     │ fork    │ 2228     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 12 │ paper-fida            │ default     │ N/A     │ fork    │ 14532    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 14 │ paper-grass           │ default     │ N/A     │ fork    │ 3000     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 15 │ paper-icp             │ default     │ N/A     │ fork    │ 13304    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 23 │ paper-inj             │ default     │ N/A     │ fork    │ 4084     │ 1s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 26 │ paper-lpt             │ default     │ N/A     │ fork    │ 6284     │ 0s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,046 INFO: SUPERVISOR: │ 16 │ paper-near            │ default     │ N/A     │ fork    │ 16480    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 18 │ paper-pendle          │ default     │ N/A     │ fork    │ 16456    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 19 │ paper-plume           │ default     │ N/A     │ fork    │ 1744     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 24 │ paper-sui             │ default     │ N/A     │ fork    │ 8824     │ 1s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 25 │ paper-uni             │ default     │ N/A     │ fork    │ 2072     │ 0s     │ 0    │ online    │ 0%       │ 3.9mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 21 │ paper-virtual         │ default     │ N/A     │ fork    │ 14116    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 22 │ paper-wld             │ default     │ N/A     │ fork    │ 4536     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 0  │ supervisor-service    │ default     │ N/A     │ fork    │ 2664     │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 1  │ swarm-aggregator      │ default     │ N/A     │ fork    │ 14612    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: │ 2  │ telegram-sender       │ default     │ N/A     │ fork    │ 16768    │ 16m    │ 0    │ online    │ 0%       │ 3.8mb    │ svsma    │ disabled │
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: └────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: [PM2] Saving current process list...
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: [PM2] Successfully saved in C:\Users\svsma\.pm2\dump.pm2
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: SUPERVISOR: 2026-05-22 21:01:00,887 INFO: Cycle Complete. REAL Swarm: []
-0|supervisor-service  | 2026-05-22 21:01:01: 2026-05-22 21:01:01,047 INFO: Sleeping for 0.3 hours...
-25|paper-uni          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,135 INFO: Telegram Queue ENABLED: C:\Python\Prosperous_Bot\futures_portfolio\signals\telegram_queue
-26|paper-lpt          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,225 INFO: --- Launching Bot: LPTUSDT (PAPER Mode) ---
-25|paper-uni          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,439 INFO: Heartbeat: TPV=260.00 | UNIUSDT=3.53 | L:0.0% S:0.0% V:35.0%
-25|paper-uni          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,439 INFO: Cold Start: Allowing all actions to form portfolio baseline at 3.53
-25|paper-uni          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,439 INFO: Rebalance needed (2 actions). TPV: 260.00
-25|paper-uni          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,439 INFO: PAPER ORDER EXECUTED: BUY 99 UNIUSDT (LONG) at 3.53 | PnL: +0.0000$
-25|paper-uni          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,439 INFO: PAPER ORDER EXECUTED: SELL 125 UNIUSDT (SHORT) at 3.53 | PnL: +0.0000$
-26|paper-lpt          | 2026-05-22 21:01:01: 2026-05-22 21:01:01,766 INFO: Telegram Queue ENABLED: C:\Python\Prosperous_Bot\futures_portfolio\signals\telegram_queue
-26|paper-lpt          | 2026-05-22 21:01:02: 2026-05-22 21:01:02,084 INFO: Heartbeat: TPV=260.00 | LPTUSDT=2.159 | L:0.0% S:0.0% V:35.0%
-26|paper-lpt          | 2026-05-22 21:01:02: 2026-05-22 21:01:02,085 INFO: Cold Start: Allowing all actions to form portfolio baseline at 2.159
-26|paper-lpt          | 2026-05-22 21:01:02: 2026-05-22 21:01:02,085 INFO: Rebalance needed (2 actions). TPV: 260.00
-26|paper-lpt          | 2026-05-22 21:01:02: 2026-05-22 21:01:02,085 INFO: PAPER ORDER EXECUTED: BUY 162.5 LPTUSDT (LONG) at 2.159 | PnL: +0.0000$
-26|paper-lpt          | 2026-05-22 21:01:02: 2026-05-22 21:01:02,085 INFO: PAPER ORDER EXECUTED: SELL 204.7 LPTUSDT (SHORT) at 2.159 | PnL: +0.0000$
-12|paper-fida         | 2026-05-22 21:01:02: 2026-05-22 21:01:02,316 INFO: Heartbeat: TPV=259.61 | FIDAUSDT=0.0371906 | L:27.33% S:33.84% V:34.57%
-4|paper-aero          | 2026-05-22 21:01:28: 2026-05-22 21:01:28,775 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4503 | L:26.83% S:33.79% V:34.78%
-5|paper-algo          | 2026-05-22 21:01:29: 2026-05-22 21:01:29,687 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1152 | L:26.97% S:33.96% V:34.96%
-9|paper-dodox         | 2026-05-22 21:01:31: 2026-05-22 21:01:31,533 INFO: Heartbeat: TPV=259.68 | DODOXUSDT=0.0189189 | L:27.38% S:34.48% V:35.5%
-14|paper-grass        | 2026-05-22 21:01:34: 2026-05-22 21:01:34,827 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.41844 | L:27.01% S:33.85% V:34.26%
-18|paper-pendle       | 2026-05-22 21:01:36: 2026-05-22 21:01:36,729 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.91164 | L:27.09% S:34.16% V:35.18%
-19|paper-plume        | 2026-05-22 21:01:37: 2026-05-22 21:01:37,491 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0143506 | L:26.97% S:33.96% V:34.96%
-22|paper-wld          | 2026-05-22 21:01:39: 2026-05-22 21:01:39,805 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.281921 | L:27.12% S:34.13% V:35.16%
-7|paper-arb           | 2026-05-22 21:01:46: 2026-05-22 21:01:46,153 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.110542 | L:26.97% S:33.96% V:34.96%
-9|paper-dodox         | 2026-05-22 21:01:47: 2026-05-22 21:01:47,012 INFO: Rebalance needed (1 actions). TPV: 259.68
-9|paper-dodox         | 2026-05-22 21:01:47: 2026-05-22 21:01:47,013 INFO: PAPER ORDER EXECUTED: BUY 373 DODOXUSDT (SHORT) at 0.0189528 | PnL: -0.1033$
-10|paper-ena          | 2026-05-22 21:01:47: 2026-05-22 21:01:47,115 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103722 | L:26.9% S:33.89% V:34.89%
-11|paper-fet          | 2026-05-22 21:01:48: 2026-05-22 21:01:48,884 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.204529 | L:26.83% S:33.79% V:34.79%
-21|paper-virtual      | 2026-05-22 21:01:54: 2026-05-22 21:01:54,558 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7583 | L:26.89% S:33.86% V:34.86%
-6|paper-alt           | 2026-05-22 21:02:01: 2026-05-22 21:02:01,506 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008898 | L:27.31% S:34.39% V:35.4%
-8|paper-bio           | 2026-05-22 21:02:01: 2026-05-22 21:02:01,559 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0349929 | L:26.63% S:33.54% V:34.53%
-15|paper-icp          | 2026-05-22 21:02:06: 2026-05-22 21:02:06,336 INFO: Heartbeat: TPV=259.63 | ICPUSDT=2.593 | L:26.77% S:34.16% V:34.74%
-16|paper-near         | 2026-05-22 21:02:07: 2026-05-22 21:02:07,000 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.16667 | L:27.03% S:34.04% V:35.06%
-23|paper-inj          | 2026-05-22 21:02:17: 2026-05-22 21:02:17,585 INFO: Heartbeat: TPV=259.68 | INJUSDT=5.34025 | L:27.1% S:34.18% V:35.19%
-24|paper-sui          | 2026-05-22 21:02:18: 2026-05-22 21:02:18,137 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.07628 | L:27.06% S:34.08% V:35.09%
-25|paper-uni          | 2026-05-22 21:02:19: 2026-05-22 21:02:19,078 INFO: Heartbeat: TPV=259.68 | UNIUSDT=3.53486 | L:26.95% S:34.03% V:35.09%
-26|paper-lpt          | 2026-05-22 21:02:19: 2026-05-22 21:02:19,480 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.16388 | L:27.08% S:34.11% V:35.12%
-12|paper-fida         | 2026-05-22 21:02:19: 2026-05-22 21:02:19,718 INFO: Heartbeat: TPV=259.62 | FIDAUSDT=0.0372979 | L:27.41% S:33.93% V:34.67%
-4|paper-aero          | 2026-05-22 21:02:46: 2026-05-22 21:02:46,067 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4503 | L:26.83% S:33.79% V:34.78%
-5|paper-algo          | 2026-05-22 21:02:47: 2026-05-22 21:02:47,034 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1151 | L:26.95% S:33.93% V:34.93%
-9|paper-dodox         | 2026-05-22 21:02:48: 2026-05-22 21:02:48,928 INFO: Heartbeat: TPV=259.67 | DODOXUSDT=0.0189262 | L:27.4% S:33.95% V:35.51%
-14|paper-grass        | 2026-05-22 21:02:52: 2026-05-22 21:02:52,119 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.4209 | L:27.17% S:34.05% V:34.46%
-18|paper-pendle       | 2026-05-22 21:02:54: 2026-05-22 21:02:54,090 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.91015 | L:27.07% S:34.13% V:35.15%
-19|paper-plume        | 2026-05-22 21:02:54: 2026-05-22 21:02:54,907 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0142791 | L:26.84% S:33.79% V:34.79%
-22|paper-wld          | 2026-05-22 21:02:57: 2026-05-22 21:02:57,137 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.280898 | L:27.02% S:34.01% V:35.03%
-7|paper-arb           | 2026-05-22 21:03:03: 2026-05-22 21:03:03,468 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.109995 | L:26.84% S:33.79% V:34.79%
-10|paper-ena          | 2026-05-22 21:03:04: 2026-05-22 21:03:04,474 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.103129 | L:26.75% S:33.69% V:34.69%
-11|paper-fet          | 2026-05-22 21:03:06: 2026-05-22 21:03:06,261 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.202917 | L:26.61% S:33.52% V:34.52%
-21|paper-virtual      | 2026-05-22 21:03:12: 2026-05-22 21:03:12,203 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7532 | L:26.71% S:33.63% V:34.62%
-6|paper-alt           | 2026-05-22 21:03:18: 2026-05-22 21:03:18,792 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00883664 | L:27.12% S:34.16% V:35.16%
-8|paper-bio           | 2026-05-22 21:03:18: 2026-05-22 21:03:18,946 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0348316 | L:26.51% S:33.38% V:34.37%
-8|paper-bio           | 2026-05-22 21:03:18: 2026-05-22 21:03:18,946 INFO: Rebalance needed (1 actions). TPV: 259.68
-8|paper-bio           | 2026-05-22 21:03:18: 2026-05-22 21:03:18,946 INFO: PAPER ORDER EXECUTED: SELL 230 BIOUSDT (SHORT) at 0.0348316 | PnL: +0.0000$
-15|paper-icp          | 2026-05-22 21:03:23: 2026-05-22 21:03:23,757 INFO: Heartbeat: TPV=259.67 | ICPUSDT=2.575 | L:26.58% S:33.91% V:34.5%
-16|paper-near         | 2026-05-22 21:03:24: 2026-05-22 21:03:24,304 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.159 | L:26.94% S:33.92% V:34.93%
-23|paper-inj          | 2026-05-22 21:03:35: 2026-05-22 21:03:35,155 INFO: Heartbeat: TPV=259.68 | INJUSDT=5.30474 | L:26.92% S:33.95% V:34.95%
-24|paper-sui          | 2026-05-22 21:03:35: 2026-05-22 21:03:35,396 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.07075 | L:26.93% S:33.9% V:34.91%
-25|paper-uni          | 2026-05-22 21:03:36: 2026-05-22 21:03:36,512 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.51661 | L:26.81% S:33.85% V:34.91%
-26|paper-lpt          | 2026-05-22 21:03:36: 2026-05-22 21:03:36,957 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.1506 | L:26.92% S:33.9% V:34.91%
-12|paper-fida         | 2026-05-22 21:03:37: 2026-05-22 21:03:37,072 INFO: Heartbeat: TPV=259.58 | FIDAUSDT=0.0369853 | L:27.18% S:33.65% V:34.38%
-4|paper-aero          | 2026-05-22 21:04:03: 2026-05-22 21:04:03,349 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.44724 | L:26.65% S:33.56% V:34.54%
-5|paper-algo          | 2026-05-22 21:04:04: 2026-05-22 21:04:04,370 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.114507 | L:26.81% S:33.76% V:34.75%
-9|paper-dodox         | 2026-05-22 21:04:06: 2026-05-22 21:04:06,228 INFO: Heartbeat: TPV=259.64 | DODOXUSDT=0.0188481 | L:27.29% S:33.82% V:35.37%
-14|paper-grass        | 2026-05-22 21:04:09: 2026-05-22 21:04:09,420 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.4213 | L:27.2% S:34.08% V:34.49%
-18|paper-pendle       | 2026-05-22 21:04:11: 2026-05-22 21:04:11,491 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.9104 | L:27.07% S:34.14% V:35.15%
-19|paper-plume        | 2026-05-22 21:04:12: 2026-05-22 21:04:12,335 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0142 | L:26.69% S:33.61% V:34.6%
-22|paper-wld          | 2026-05-22 21:04:14: 2026-05-22 21:04:14,412 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.280505 | L:26.98% S:33.96% V:34.98%
-7|paper-arb           | 2026-05-22 21:04:20: 2026-05-22 21:04:20,832 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1099 | L:26.81% S:33.76% V:34.76%
-10|paper-ena          | 2026-05-22 21:04:21: 2026-05-22 21:04:21,775 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10296 | L:26.71% S:33.64% V:34.63%
-11|paper-fet          | 2026-05-22 21:04:23: 2026-05-22 21:04:23,589 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.2032 | L:26.65% S:33.57% V:34.57%
-21|paper-virtual      | 2026-05-22 21:04:29: 2026-05-22 21:04:29,472 INFO: Heartbeat: TPV=259.68 | VIRTUALUSDT=0.7505 | L:26.61% S:33.51% V:34.5%
-6|paper-alt           | 2026-05-22 21:04:36: 2026-05-22 21:04:36,138 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00886031 | L:27.2% S:34.25% V:35.25%
-8|paper-bio           | 2026-05-22 21:04:36: 2026-05-22 21:04:36,238 INFO: Heartbeat: TPV=259.66 | BIOUSDT=0.03491 | L:26.57% S:34.08% V:34.45%
-15|paper-icp          | 2026-05-22 21:04:41: 2026-05-22 21:04:41,169 INFO: Heartbeat: TPV=259.66 | ICPUSDT=2.57641 | L:26.59% S:33.93% V:34.52%
-16|paper-near         | 2026-05-22 21:04:41: 2026-05-22 21:04:41,779 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.16479 | L:27.01% S:34.01% V:35.03%
-23|paper-inj          | 2026-05-22 21:04:52: 2026-05-22 21:04:52,387 INFO: Heartbeat: TPV=259.68 | INJUSDT=5.30268 | L:26.91% S:33.94% V:34.94%
-24|paper-sui          | 2026-05-22 21:04:52: 2026-05-22 21:04:52,700 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.06999 | L:26.91% S:33.88% V:34.88%
-25|paper-uni          | 2026-05-22 21:04:53: 2026-05-22 21:04:53,793 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.51544 | L:26.8% S:33.84% V:34.9%
-26|paper-lpt          | 2026-05-22 21:04:54: 2026-05-22 21:04:54,241 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.15261 | L:26.94% S:33.94% V:34.94%
-12|paper-fida         | 2026-05-22 21:04:54: 2026-05-22 21:04:54,446 INFO: Heartbeat: TPV=259.60 | FIDAUSDT=0.0371589 | L:27.31% S:33.81% V:34.54%
-21|paper-virtual      | 2026-05-22 21:05:15: 2026-05-22 21:05:15,814 INFO: Rebalance needed (1 actions). TPV: 259.68
-21|paper-virtual      | 2026-05-22 21:05:15: 2026-05-22 21:05:15,814 INFO: PAPER ORDER EXECUTED: SELL 10 VIRTUALUSDT (SHORT) at 0.7485 | PnL: +0.0000$
-4|paper-aero          | 2026-05-22 21:05:20: 2026-05-22 21:05:20,820 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4471 | L:26.64% S:33.55% V:34.53%
-5|paper-algo          | 2026-05-22 21:05:21: 2026-05-22 21:05:21,751 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1145 | L:26.8% S:33.75% V:34.75%
-9|paper-dodox         | 2026-05-22 21:05:23: 2026-05-22 21:05:23,641 INFO: Heartbeat: TPV=259.63 | DODOXUSDT=0.0188257 | L:27.25% S:33.78% V:35.33%
-14|paper-grass        | 2026-05-22 21:05:26: 2026-05-22 21:05:26,745 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.42077 | L:27.16% S:34.04% V:34.45%
-18|paper-pendle       | 2026-05-22 21:05:29: 2026-05-22 21:05:29,002 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.9111 | L:27.08% S:34.15% V:35.17%
-19|paper-plume        | 2026-05-22 21:05:29: 2026-05-22 21:05:29,556 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.01418 | L:26.65% S:33.56% V:34.55%
-22|paper-wld          | 2026-05-22 21:05:31: 2026-05-22 21:05:31,740 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.2804 | L:26.97% S:33.95% V:34.97%
-7|paper-arb           | 2026-05-22 21:05:38: 2026-05-22 21:05:38,134 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1099 | L:26.81% S:33.76% V:34.76%
-10|paper-ena          | 2026-05-22 21:05:39: 2026-05-22 21:05:39,181 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10294 | L:26.7% S:33.63% V:34.62%
-11|paper-fet          | 2026-05-22 21:05:40: 2026-05-22 21:05:40,952 INFO: Heartbeat: TPV=259.68 | FETUSDT=0.202825 | L:26.6% S:33.51% V:34.5%
-21|paper-virtual      | 2026-05-22 21:05:46: 2026-05-22 21:05:46,688 INFO: Heartbeat: TPV=259.67 | VIRTUALUSDT=0.7492 | L:26.57% S:34.03% V:34.44%
-8|paper-bio           | 2026-05-22 21:05:53: 2026-05-22 21:05:53,390 INFO: Heartbeat: TPV=259.67 | BIOUSDT=0.03487 | L:26.54% S:34.04% V:34.41%
-6|paper-alt           | 2026-05-22 21:05:53: 2026-05-22 21:05:53,450 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.008852 | L:27.17% S:34.22% V:35.22%
-15|paper-icp          | 2026-05-22 21:05:58: 2026-05-22 21:05:58,303 INFO: Heartbeat: TPV=259.67 | ICPUSDT=2.572 | L:26.54% S:33.87% V:34.45%
-16|paper-near         | 2026-05-22 21:05:58: 2026-05-22 21:05:58,961 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.15514 | L:26.89% S:33.86% V:34.87%
-23|paper-inj          | 2026-05-22 21:06:09: 2026-05-22 21:06:09,586 INFO: Heartbeat: TPV=259.68 | INJUSDT=5.30491 | L:26.92% S:33.95% V:34.95%
-24|paper-sui          | 2026-05-22 21:06:10: 2026-05-22 21:06:10,292 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.06966 | L:26.9% S:33.87% V:34.87%
-25|paper-uni          | 2026-05-22 21:06:10: 2026-05-22 21:06:10,906 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.51439 | L:26.8% S:33.83% V:34.89%
-26|paper-lpt          | 2026-05-22 21:06:11: 2026-05-22 21:06:11,363 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.15175 | L:26.93% S:33.92% V:34.93%
-12|paper-fida         | 2026-05-22 21:06:11: 2026-05-22 21:06:11,899 INFO: Heartbeat: TPV=259.59 | FIDAUSDT=0.0370462 | L:27.23% S:33.71% V:34.44%
-15|paper-icp          | 2026-05-22 21:06:13: 2026-05-22 21:06:13,726 INFO: Rebalance needed (1 actions). TPV: 259.70
-11|paper-fet          | 2026-05-22 21:06:27: 2026-05-22 21:06:27,145 INFO: Rebalance needed (1 actions). TPV: 259.68
-11|paper-fet          | 2026-05-22 21:06:27: 2026-05-22 21:06:27,145 INFO: PAPER ORDER EXECUTED: SELL 36 FETUSDT (SHORT) at 0.2024 | PnL: +0.0000$
-15|paper-icp          | 2026-05-22 21:06:29: 2026-05-22 21:06:29,141 INFO: Rebalance needed (1 actions). TPV: 259.69
-4|paper-aero          | 2026-05-22 21:06:37: 2026-05-22 21:06:37,871 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4474 | L:26.66% S:33.57% V:34.56%
-5|paper-algo          | 2026-05-22 21:06:38: 2026-05-22 21:06:38,876 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.114344 | L:26.77% S:33.71% V:34.7%
-9|paper-dodox         | 2026-05-22 21:06:40: 2026-05-22 21:06:40,966 INFO: Heartbeat: TPV=259.62 | DODOXUSDT=0.018797 | L:27.21% S:33.73% V:35.28%
-14|paper-grass        | 2026-05-22 21:06:43: 2026-05-22 21:06:43,887 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.420393 | L:27.14% S:34.01% V:34.42%
-15|paper-icp          | 2026-05-22 21:06:44: 2026-05-22 21:06:44,603 INFO: Rebalance needed (1 actions). TPV: 259.69
-18|paper-pendle       | 2026-05-22 21:06:46: 2026-05-22 21:06:46,112 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.9082 | L:27.04% S:34.1% V:35.11%
-19|paper-plume        | 2026-05-22 21:06:46: 2026-05-22 21:06:46,992 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0141594 | L:26.61% S:33.51% V:34.5%
-22|paper-wld          | 2026-05-22 21:06:48: 2026-05-22 21:06:48,866 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.279406 | L:26.88% S:33.83% V:34.84%
-7|paper-arb           | 2026-05-22 21:06:55: 2026-05-22 21:06:55,249 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1098 | L:26.79% S:33.73% V:34.73%
-10|paper-ena          | 2026-05-22 21:06:56: 2026-05-22 21:06:56,637 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10291 | L:26.69% S:33.62% V:34.61%
-11|paper-fet          | 2026-05-22 21:06:58: 2026-05-22 21:06:58,013 INFO: Heartbeat: TPV=259.69 | FETUSDT=0.202043 | L:26.5% S:33.94% V:34.37%
-15|paper-icp          | 2026-05-22 21:07:00: 2026-05-22 21:07:00,048 INFO: Rebalance needed (1 actions). TPV: 259.70
-15|paper-icp          | 2026-05-22 21:07:00: 2026-05-22 21:07:00,048 INFO: PAPER ORDER EXECUTED: BUY 3 ICPUSDT (LONG) at 2.5591 | PnL: +0.0000$
-21|paper-virtual      | 2026-05-22 21:07:03: 2026-05-22 21:07:03,905 INFO: Heartbeat: TPV=259.67 | VIRTUALUSDT=0.748946 | L:26.56% S:34.02% V:34.43%
-6|paper-alt           | 2026-05-22 21:07:10: 2026-05-22 21:07:10,580 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00885139 | L:27.17% S:34.21% V:35.22%
-8|paper-bio           | 2026-05-22 21:07:10: 2026-05-22 21:07:10,623 INFO: Heartbeat: TPV=259.68 | BIOUSDT=0.0348338 | L:26.51% S:34.0% V:34.37%
-15|paper-icp          | 2026-05-22 21:07:15: 2026-05-22 21:07:15,482 INFO: Heartbeat: TPV=259.69 | ICPUSDT=2.554 | L:26.95% S:33.63% V:34.21%
-16|paper-near         | 2026-05-22 21:07:16: 2026-05-22 21:07:16,112 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.14282 | L:26.74% S:33.67% V:34.67%
-23|paper-inj          | 2026-05-22 21:07:26: 2026-05-22 21:07:26,738 INFO: Heartbeat: TPV=259.68 | INJUSDT=5.31167 | L:26.96% S:34.0% V:35.0%
-24|paper-sui          | 2026-05-22 21:07:27: 2026-05-22 21:07:27,511 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.07019 | L:26.91% S:33.88% V:34.89%
-25|paper-uni          | 2026-05-22 21:07:28: 2026-05-22 21:07:28,185 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.517 | L:26.82% S:33.86% V:34.91%
-26|paper-lpt          | 2026-05-22 21:07:28: 2026-05-22 21:07:28,740 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.15 | L:26.91% S:33.9% V:34.9%
-12|paper-fida         | 2026-05-22 21:07:29: 2026-05-22 21:07:29,123 INFO: Heartbeat: TPV=259.59 | FIDAUSDT=0.03707 | L:27.24% S:33.73% V:34.46%
-19|paper-plume        | 2026-05-22 21:07:48: 2026-05-22 21:07:48,740 INFO: Rebalance needed (1 actions). TPV: 259.68
-19|paper-plume        | 2026-05-22 21:07:48: 2026-05-22 21:07:48,740 INFO: PAPER ORDER EXECUTED: SELL 568 PLUMEUSDT (SHORT) at 0.014105 | PnL: +0.0000$
-4|paper-aero          | 2026-05-22 21:07:55: 2026-05-22 21:07:55,387 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.447668 | L:26.67% S:33.59% V:34.58%
-5|paper-algo          | 2026-05-22 21:07:56: 2026-05-22 21:07:56,199 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.11432 | L:26.76% S:33.7% V:34.69%
-9|paper-dodox         | 2026-05-22 21:07:58: 2026-05-22 21:07:58,435 INFO: Heartbeat: TPV=259.61 | DODOXUSDT=0.018757 | L:27.16% S:33.66% V:35.2%
-14|paper-grass        | 2026-05-22 21:08:01: 2026-05-22 21:08:01,132 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.4195 | L:27.08% S:33.94% V:34.34%
-18|paper-pendle       | 2026-05-22 21:08:03: 2026-05-22 21:08:03,367 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.91 | L:27.07% S:34.13% V:35.15%
-19|paper-plume        | 2026-05-22 21:08:04: 2026-05-22 21:08:04,186 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0141 | L:26.5% S:33.99% V:34.35%
-22|paper-wld          | 2026-05-22 21:08:06: 2026-05-22 21:08:06,157 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.279 | L:26.84% S:33.78% V:34.79%
-7|paper-arb           | 2026-05-22 21:08:12: 2026-05-22 21:08:12,507 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.109679 | L:26.76% S:33.7% V:34.69%
-10|paper-ena          | 2026-05-22 21:08:13: 2026-05-22 21:08:13,993 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.102898 | L:26.69% S:33.62% V:34.61%
-11|paper-fet          | 2026-05-22 21:08:15: 2026-05-22 21:08:15,205 INFO: Heartbeat: TPV=259.70 | FETUSDT=0.2019 | L:26.48% S:33.91% V:34.34%
-21|paper-virtual      | 2026-05-22 21:08:21: 2026-05-22 21:08:21,164 INFO: Heartbeat: TPV=259.70 | VIRTUALUSDT=0.7465 | L:26.47% S:33.9% V:34.31%
-6|paper-alt           | 2026-05-22 21:08:27: 2026-05-22 21:08:27,818 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00885687 | L:27.19% S:34.23% V:35.24%
-8|paper-bio           | 2026-05-22 21:08:27: 2026-05-22 21:08:27,968 INFO: Heartbeat: TPV=259.69 | BIOUSDT=0.0348027 | L:26.49% S:33.97% V:34.34%
-15|paper-icp          | 2026-05-22 21:08:32: 2026-05-22 21:08:32,789 INFO: Heartbeat: TPV=259.69 | ICPUSDT=2.54702 | L:26.87% S:33.54% V:34.12%
-16|paper-near         | 2026-05-22 21:08:33: 2026-05-22 21:08:33,668 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.13124 | L:26.59% S:33.49% V:34.49%
-8|paper-bio           | 2026-05-22 21:08:43: 2026-05-22 21:08:43,397 INFO: Rebalance needed (1 actions). TPV: 259.70
-8|paper-bio           | 2026-05-22 21:08:43: 2026-05-22 21:08:43,397 INFO: PAPER ORDER EXECUTED: BUY 209 BIOUSDT (LONG) at 0.03474 | PnL: +0.0000$
-23|paper-inj          | 2026-05-22 21:08:44: 2026-05-22 21:08:44,032 INFO: Heartbeat: TPV=259.69 | INJUSDT=5.28289 | L:26.81% S:33.81% V:34.81%
-24|paper-sui          | 2026-05-22 21:08:44: 2026-05-22 21:08:44,839 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.06616 | L:26.81% S:33.76% V:34.76%
-25|paper-uni          | 2026-05-22 21:08:45: 2026-05-22 21:08:45,612 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.504 | L:26.72% S:33.73% V:34.78%
-26|paper-lpt          | 2026-05-22 21:08:45: 2026-05-22 21:08:45,933 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.144 | L:26.83% S:33.8% V:34.8%
-12|paper-fida         | 2026-05-22 21:08:46: 2026-05-22 21:08:46,333 INFO: Heartbeat: TPV=259.56 | FIDAUSDT=0.0368492 | L:27.08% S:33.53% V:34.26%
-21|paper-virtual      | 2026-05-22 21:09:07: 2026-05-22 21:09:07,579 INFO: Rebalance needed (1 actions). TPV: 259.72
-21|paper-virtual      | 2026-05-22 21:09:07: 2026-05-22 21:09:07,579 INFO: PAPER ORDER EXECUTED: BUY 10.9 VIRTUALUSDT (LONG) at 0.743891 | PnL: +0.0000$
-4|paper-aero          | 2026-05-22 21:09:12: 2026-05-22 21:09:12,687 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.4469 | L:26.63% S:33.53% V:34.52%
-5|paper-algo          | 2026-05-22 21:09:13: 2026-05-22 21:09:13,571 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1137 | L:26.62% S:33.52% V:34.5%
-9|paper-dodox         | 2026-05-22 21:09:15: 2026-05-22 21:09:15,720 INFO: Heartbeat: TPV=259.57 | DODOXUSDT=0.018665 | L:27.03% S:33.5% V:35.04%
-11|paper-fet          | 2026-05-22 21:09:16: 2026-05-22 21:09:16,957 INFO: Rebalance needed (1 actions). TPV: 259.71
-11|paper-fet          | 2026-05-22 21:09:16: 2026-05-22 21:09:16,957 INFO: PAPER ORDER EXECUTED: BUY 35 FETUSDT (LONG) at 0.201677 | PnL: +0.0000$
-12|paper-fida         | 2026-05-22 21:09:17: 2026-05-22 21:09:17,214 INFO: Rebalance needed (1 actions). TPV: 259.55
-12|paper-fida         | 2026-05-22 21:09:17: 2026-05-22 21:09:17,214 INFO: PAPER ORDER EXECUTED: SELL 196 FIDAUSDT (SHORT) at 0.03675 | PnL: +0.0000$
-14|paper-grass        | 2026-05-22 21:09:18: 2026-05-22 21:09:18,350 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.4182 | L:27.0% S:33.83% V:34.24%
-18|paper-pendle       | 2026-05-22 21:09:20: 2026-05-22 21:09:20,773 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.9096 | L:27.06% S:34.12% V:35.14%
-19|paper-plume        | 2026-05-22 21:09:21: 2026-05-22 21:09:21,476 INFO: Heartbeat: TPV=259.69 | PLUMEUSDT=0.01409 | L:26.48% S:33.96% V:34.33%
-22|paper-wld          | 2026-05-22 21:09:23: 2026-05-22 21:09:23,375 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.2779 | L:26.73% S:33.65% V:34.66%
-7|paper-arb           | 2026-05-22 21:09:29: 2026-05-22 21:09:29,670 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.1096 | L:26.74% S:33.67% V:34.66%
-10|paper-ena          | 2026-05-22 21:09:31: 2026-05-22 21:09:31,186 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.102703 | L:26.64% S:33.55% V:34.54%
-11|paper-fet          | 2026-05-22 21:09:32: 2026-05-22 21:09:32,341 INFO: Heartbeat: TPV=259.70 | FETUSDT=0.201585 | L:26.98% S:33.86% V:34.29%
-21|paper-virtual      | 2026-05-22 21:09:38: 2026-05-22 21:09:38,491 INFO: Heartbeat: TPV=259.72 | VIRTUALUSDT=0.7426 | L:26.95% S:33.72% V:34.13%
-6|paper-alt           | 2026-05-22 21:09:45: 2026-05-22 21:09:45,070 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00884166 | L:27.14% S:34.18% V:35.18%
-8|paper-bio           | 2026-05-22 21:09:45: 2026-05-22 21:09:45,084 INFO: Heartbeat: TPV=259.70 | BIOUSDT=0.03472 | L:26.98% S:33.89% V:34.25%
-15|paper-icp          | 2026-05-22 21:09:50: 2026-05-22 21:09:50,020 INFO: Heartbeat: TPV=259.69 | ICPUSDT=2.548 | L:26.88% S:33.56% V:34.13%
-16|paper-near         | 2026-05-22 21:09:50: 2026-05-22 21:09:50,967 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.13164 | L:26.6% S:33.49% V:34.49%
-23|paper-inj          | 2026-05-22 21:10:01: 2026-05-22 21:10:01,230 INFO: Heartbeat: TPV=259.69 | INJUSDT=5.23465 | L:26.57% S:33.5% V:34.49%
-24|paper-sui          | 2026-05-22 21:10:02: 2026-05-22 21:10:02,001 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.06548 | L:26.79% S:33.74% V:34.73%
-25|paper-uni          | 2026-05-22 21:10:02: 2026-05-22 21:10:02,939 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.50238 | L:26.7% S:33.72% V:34.77%
-26|paper-lpt          | 2026-05-22 21:10:03: 2026-05-22 21:10:03,021 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.14354 | L:26.83% S:33.79% V:34.79%
-12|paper-fida         | 2026-05-22 21:10:03: 2026-05-22 21:10:03,642 INFO: Heartbeat: TPV=259.54 | FIDAUSDT=0.0368648 | L:27.1% S:34.11% V:34.28%
-4|paper-aero          | 2026-05-22 21:10:29: 2026-05-22 21:10:29,833 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.44732 | L:26.65% S:33.56% V:34.55%
-5|paper-algo          | 2026-05-22 21:10:30: 2026-05-22 21:10:30,615 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.1138 | L:26.64% S:33.55% V:34.53%
-9|paper-dodox         | 2026-05-22 21:10:32: 2026-05-22 21:10:32,726 INFO: Heartbeat: TPV=259.60 | DODOXUSDT=0.0187474 | L:27.14% S:33.64% V:35.19%
-14|paper-grass        | 2026-05-22 21:10:35: 2026-05-22 21:10:35,615 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.4183 | L:27.0% S:33.84% V:34.24%
-18|paper-pendle       | 2026-05-22 21:10:37: 2026-05-22 21:10:37,838 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.90441 | L:26.99% S:34.03% V:35.04%
-19|paper-plume        | 2026-05-22 21:10:38: 2026-05-22 21:10:38,482 INFO: Heartbeat: TPV=259.68 | PLUMEUSDT=0.0141114 | L:26.52% S:34.02% V:34.38%
-22|paper-wld          | 2026-05-22 21:10:40: 2026-05-22 21:10:40,402 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.278407 | L:26.78% S:33.71% V:34.72%
-7|paper-arb           | 2026-05-22 21:10:46: 2026-05-22 21:10:46,630 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.10984 | L:26.8% S:33.75% V:34.74%
-10|paper-ena          | 2026-05-22 21:10:48: 2026-05-22 21:10:48,186 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10285 | L:26.68% S:33.6% V:34.59%
-11|paper-fet          | 2026-05-22 21:10:49: 2026-05-22 21:10:49,417 INFO: Heartbeat: TPV=259.70 | FETUSDT=0.2018 | L:27.01% S:33.89% V:34.33%
-21|paper-virtual      | 2026-05-22 21:10:55: 2026-05-22 21:10:55,489 INFO: Heartbeat: TPV=259.72 | VIRTUALUSDT=0.7432 | L:26.97% S:33.75% V:34.16%
-6|paper-alt           | 2026-05-22 21:11:02: 2026-05-22 21:11:02,224 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00885 | L:27.16% S:34.21% V:35.21%
-8|paper-bio           | 2026-05-22 21:11:02: 2026-05-22 21:11:02,284 INFO: Heartbeat: TPV=259.69 | BIOUSDT=0.03488 | L:27.11% S:34.05% V:34.41%
-15|paper-icp          | 2026-05-22 21:11:07: 2026-05-22 21:11:07,090 INFO: Heartbeat: TPV=259.69 | ICPUSDT=2.55362 | L:26.94% S:33.63% V:34.21%
-16|paper-near         | 2026-05-22 21:11:08: 2026-05-22 21:11:08,040 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.13889 | L:26.69% S:33.61% V:34.61%
-23|paper-inj          | 2026-05-22 21:11:18: 2026-05-22 21:11:18,194 INFO: Heartbeat: TPV=259.69 | INJUSDT=5.262 | L:26.71% S:33.68% V:34.67%
-24|paper-sui          | 2026-05-22 21:11:19: 2026-05-22 21:11:19,098 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.0693 | L:26.89% S:33.86% V:34.86%
-26|paper-lpt          | 2026-05-22 21:11:20: 2026-05-22 21:11:20,034 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.148 | L:26.88% S:33.86% V:34.86%
-12|paper-fida         | 2026-05-22 21:11:20: 2026-05-22 21:11:20,712 INFO: Heartbeat: TPV=259.53 | FIDAUSDT=0.0369481 | L:27.16% S:34.18% V:34.35%
-25|paper-uni          | 2026-05-22 21:11:20: 2026-05-22 21:11:20,790 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.51269 | L:26.78% S:33.82% V:34.87%
-4|paper-aero          | 2026-05-22 21:11:47: 2026-05-22 21:11:47,228 INFO: Heartbeat: TPV=259.68 | AEROUSDT=0.447685 | L:26.67% S:33.59% V:34.58%
-5|paper-algo          | 2026-05-22 21:11:47: 2026-05-22 21:11:47,760 INFO: Heartbeat: TPV=259.68 | ALGOUSDT=0.114 | L:26.69% S:33.61% V:34.6%
-9|paper-dodox         | 2026-05-22 21:11:49: 2026-05-22 21:11:49,876 INFO: Heartbeat: TPV=259.60 | DODOXUSDT=0.0187413 | L:27.14% S:33.63% V:35.18%
-14|paper-grass        | 2026-05-22 21:11:52: 2026-05-22 21:11:52,858 INFO: Heartbeat: TPV=259.71 | GRASSUSDT=0.417454 | L:26.95% S:33.77% V:34.18%
-18|paper-pendle       | 2026-05-22 21:11:54: 2026-05-22 21:11:54,994 INFO: Heartbeat: TPV=259.68 | PENDLEUSDT=1.9103 | L:27.07% S:34.13% V:35.15%
-19|paper-plume        | 2026-05-22 21:11:55: 2026-05-22 21:11:55,677 INFO: Heartbeat: TPV=259.67 | PLUMEUSDT=0.0141281 | L:26.55% S:34.06% V:34.42%
-22|paper-wld          | 2026-05-22 21:11:57: 2026-05-22 21:11:57,714 INFO: Heartbeat: TPV=259.68 | WLDUSDT=0.2782 | L:26.76% S:33.68% V:34.69%
-7|paper-arb           | 2026-05-22 21:12:03: 2026-05-22 21:12:03,937 INFO: Heartbeat: TPV=259.68 | ARBUSDT=0.109993 | L:26.84% S:33.79% V:34.79%
-10|paper-ena          | 2026-05-22 21:12:05: 2026-05-22 21:12:05,339 INFO: Heartbeat: TPV=259.68 | ENAUSDT=0.10295 | L:26.7% S:33.63% V:34.63%
-11|paper-fet          | 2026-05-22 21:12:06: 2026-05-22 21:12:06,798 INFO: Heartbeat: TPV=259.70 | FETUSDT=0.2024 | L:27.09% S:34.0% V:34.43%
-21|paper-virtual      | 2026-05-22 21:12:12: 2026-05-22 21:12:12,803 INFO: Heartbeat: TPV=259.72 | VIRTUALUSDT=0.744653 | L:27.03% S:33.81% V:34.22%
-6|paper-alt           | 2026-05-22 21:12:19: 2026-05-22 21:12:19,420 INFO: Heartbeat: TPV=259.68 | ALTUSDT=0.00887 | L:27.23% S:34.28% V:35.29%
-8|paper-bio           | 2026-05-22 21:12:19: 2026-05-22 21:12:19,501 INFO: Heartbeat: TPV=259.69 | BIOUSDT=0.03496 | L:27.17% S:34.12% V:34.49%
-15|paper-icp          | 2026-05-22 21:12:24: 2026-05-22 21:12:24,288 INFO: Heartbeat: TPV=259.70 | ICPUSDT=2.55886 | L:27.0% S:33.7% V:34.28%
-16|paper-near         | 2026-05-22 21:12:25: 2026-05-22 21:12:25,375 INFO: Heartbeat: TPV=259.68 | NEARUSDT=2.13819 | L:26.68% S:33.59% V:34.6%
-23|paper-inj          | 2026-05-22 21:12:35: 2026-05-22 21:12:35,456 INFO: Heartbeat: TPV=259.69 | INJUSDT=5.27704 | L:26.78% S:33.77% V:34.77%
-9|paper-dodox         | 2026-05-22 21:12:36: 2026-05-22 21:12:36,360 INFO: Rebalance needed (1 actions). TPV: 259.56
-9|paper-dodox         | 2026-05-22 21:12:36: 2026-05-22 21:12:36,360 INFO: PAPER ORDER EXECUTED: SELL 391 DODOXUSDT (SHORT) at 0.0186303 | PnL: +0.0000$
-24|paper-sui          | 2026-05-22 21:12:36: 2026-05-22 21:12:36,377 INFO: Heartbeat: TPV=259.68 | SUIUSDT=1.07037 | L:26.92% S:33.89% V:34.89%
-26|paper-lpt          | 2026-05-22 21:12:37: 2026-05-22 21:12:37,372 INFO: Heartbeat: TPV=259.68 | LPTUSDT=2.147 | L:26.87% S:33.85% V:34.85%
-12|paper-fida         | 2026-05-22 21:12:37: 2026-05-22 21:12:37,967 INFO: Heartbeat: TPV=259.52 | FIDAUSDT=0.03713 | L:27.29% S:34.35% V:34.53%
-25|paper-uni          | 2026-05-22 21:12:38: 2026-05-22 21:12:38,070 INFO: Heartbeat: TPV=259.69 | UNIUSDT=3.51436 | L:26.8% S:33.83% V:34.89%
+(base) PS C:\Python\Prosperous_Bot> (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& C:\Python\Prosperous_Bot\.venv\Scripts\Activate.ps1)
+(.venv) (base) PS C:\Python\Prosperous_Bot> cd C:\Python\Prosperous_Bot\futures_portfolio
+(.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> pytest tests/
+================================================================================================================== test session starts ==================================================================================================================
+platform win32 -- Python 3.13.2, pytest-8.4.2, pluggy-1.6.0 -- C:\Python\Prosperous_Bot\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: C:\Python\Prosperous_Bot\futures_portfolio
+configfile: pyproject.toml
+plugins: anyio-4.13.0, hypothesis-6.140.2, asyncio-1.2.0, cov-7.0.0, mock-3.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 327 items                                                                                                                                                                                                                                      
+
+tests/test_aggregator.py::test_load_config_valid PASSED                                                                                                                                                                                            [  0%]
+tests/test_aggregator.py::test_load_config_missing PASSED                                                                                                                                                                                          [  0%]
+tests/test_aggregator.py::test_process_telegram_queue PASSED                                                                                                                                                                                       [  0%]
+tests/test_aggregator.py::test_generate_swarm_section PASSED                                                                                                                                                                                       [  1%]
+tests/test_aggregator.py::test_collect_and_send PASSED                                                                                                                                                                                             [  1%]
+tests/test_aggregator.py::test_aggregator_run PASSED                                                                                                                                                                                               [  1%]
+tests/test_aggregator.py::test_process_telegram_queue_photo PASSED                                                                                                                                                                                 [  2%]
+tests/test_backtest_rebalance.py::test_slippage_simulator PASSED                                                                                                                                                                                   [  2%]
+tests/test_backtest_rebalance.py::test_helper_functions PASSED                                                                                                                                                                                     [  2%]
+tests/test_backtest_rebalance.py::test_backtest_state PASSED                                                                                                                                                                                       [  3%]
+tests/test_backtest_rebalance.py::test_run_backtest_normal_and_guards PASSED                                                                                                                                                                       [  3%]
+tests/test_backtest_rebalance.py::test_run_backtest_liquidation_and_trailing_stop PASSED                                                                                                                                                           [  3%]
+tests/test_backtest_rebalance.py::test_run_backtest_low_dormant_capital PASSED                                                                                                                                                                     [  3%]
+tests/test_backtest_rebalance.py::test_download_live_data PASSED                                                                                                                                                                                   [  4%]
+tests/test_backtest_rebalance.py::test_download_live_data_api_error PASSED                                                                                                                                                                         [  4%]
+tests/test_backtest_rebalance.py::test_download_live_data_empty PASSED                                                                                                                                                                             [  4%]
+tests/test_backtest_rebalance.py::test_cli_execution PASSED                                                                                                                                                                                        [  5%]
+tests/test_calculator.py::test_calculator_initialization PASSED                                                                                                                                                                                    [  5%]
+tests/test_calculator.py::test_calculate_deviations PASSED                                                                                                                                                                                         [  5%]
+tests/test_calculator.py::test_siphoning_reserve_impact PASSED                                                                                                                                                                                     [  6%]
+tests/test_calculator.py::test_price_change_impact PASSED                                                                                                                                                                                          [  6%]
+tests/test_calculator.py::test_negative_tpv_protection PASSED                                                                                                                                                                                      [  6%]
+tests/test_calculator.py::test_ignore_limits_deviation PASSED                                                                                                                                                                                      [  7%]
+tests/test_calculator.py::test_limits_deviation PASSED                                                                                                                                                                                             [  7%]
+tests/test_calculator.py::test_anti_churn_fuse PASSED                                                                                                                                                                                              [  7%]
+tests/test_calculator.py::test_pnl_protection_mode PASSED                                                                                                                                                                                          [  7%]
+tests/test_calculator.py::test_force_block_net_move_guard PASSED                                                                                                                                                                                   [  8%]
+tests/test_calculator.py::test_edge_cases PASSED                                                                                                                                                                                                   [  8%]
+tests/test_calculator.py::test_virt_pnl_paths PASSED                                                                                                                                                                                               [  8%]
+tests/test_connector.py::test_get_positions PASSED                                                                                                                                                                                                 [  9%]
+tests/test_connector.py::test_get_futures_prices PASSED                                                                                                                                                                                            [  9%]
+tests/test_connector.py::test_get_futures_prices_dict_response PASSED                                                                                                                                                                              [  9%]
+tests/test_connector.py::test_get_futures_prices_none_tickers PASSED                                                                                                                                                                               [ 10%]
+tests/test_connector.py::test_retry_decorator PASSED                                                                                                                                                                                               [ 10%]
+tests/test_connector.py::test_retry_decorator_exhausted PASSED                                                                                                                                                                                     [ 10%]
+tests/test_connector.py::test_get_margin_ratio PASSED                                                                                                                                                                                              [ 11%]
+tests/test_connector.py::test_get_hedge_mode PASSED                                                                                                                                                                                                [ 11%]
+tests/test_connector.py::test_get_free_balance PASSED                                                                                                                                                                                              [ 11%]
+tests/test_connector.py::test_place_limit_order PASSED                                                                                                                                                                                             [ 11%]
+tests/test_connector.py::test_get_spot_prices PASSED                                                                                                                                                                                               [ 12%]
+tests/test_connector.py::test_get_futures_klines PASSED                                                                                                                                                                                            [ 12%]
+tests/test_connector.py::test_cancel_order PASSED                                                                                                                                                                                                  [ 12%]
+tests/test_connector.py::test_place_limit_maker_order PASSED                                                                                                                                                                                       [ 13%]
+tests/test_connector.py::test_connector_init_real_mode PASSED                                                                                                                                                                                      [ 13%]
+tests/test_connector.py::test_verify_connection_testnet_true PASSED                                                                                                                                                                                [ 13%]
+tests/test_connector.py::test_verify_connection_testnet_false PASSED                                                                                                                                                                               [ 14%]
+tests/test_connector.py::test_verify_connection_already_initialized PASSED                                                                                                                                                                         [ 14%]
+tests/test_connector.py::test_verify_connection_init_binance_api_exception PASSED                                                                                                                                                                  [ 14%]
+tests/test_connector.py::test_verify_connection_init_request_exception PASSED                                                                                                                                                                      [ 14%]
+tests/test_connector.py::test_verify_connection_ping_binance_api_exception PASSED                                                                                                                                                                  [ 15%]
+tests/test_connector.py::test_verify_connection_ping_request_exception PASSED                                                                                                                                                                      [ 15%]
+tests/test_connector.py::test_get_position_risk_empty_or_zero PASSED                                                                                                                                                                               [ 15%]
+tests/test_connector.py::test_get_position_risk_happy_path PASSED                                                                                                                                                                                  [ 16%]
+tests/test_connector.py::test_get_position_risk_edge_cases PASSED                                                                                                                                                                                  [ 16%]
+tests/test_connector.py::test_get_order_book PASSED                                                                                                                                                                                                [ 16%]
+tests/test_connector.py::test_get_order_status PASSED                                                                                                                                                                                              [ 17%]
+tests/test_connector.py::test_get_order_trades PASSED                                                                                                                                                                                              [ 17%]
+tests/test_connector.py::test_set_leverage PASSED                                                                                                                                                                                                  [ 17%]
+tests/test_connector.py::test_set_margin_type_success PASSED                                                                                                                                                                                       [ 18%]
+tests/test_connector.py::test_set_margin_type_already_set PASSED                                                                                                                                                                                   [ 18%]
+tests/test_connector.py::test_set_margin_type_other_exception PASSED                                                                                                                                                                               [ 18%]
+tests/test_connector.py::test_get_bnb_balance PASSED                                                                                                                                                                                               [ 18%]
+tests/test_connector.py::test_get_free_balance_edge_cases PASSED                                                                                                                                                                                   [ 19%]
+tests/test_connector.py::test_get_exchange_info PASSED                                                                                                                                                                                             [ 19%]
+tests/test_connector.py::test_get_mark_prices_extra PASSED                                                                                                                                                                                         [ 19%]
+tests/test_connector.py::test_get_spot_prices_extra PASSED                                                                                                                                                                                         [ 20%]
+tests/test_connector.py::test_retry_on_network_error_requests_exceptions PASSED                                                                                                                                                                    [ 20%]
+tests/test_connector.py::test_retry_on_network_error_binance_server_error PASSED                                                                                                                                                                   [ 20%]
+tests/test_connector.py::test_retry_on_network_error_client_errors PASSED                                                                                                                                                                          [ 21%]
+tests/test_connector.py::test_retry_on_network_error_exhausted_server_error PASSED                                                                                                                                                                 [ 21%]
+tests/test_connector.py::test_retry_on_network_error_binance_none_status_code PASSED                                                                                                                                                               [ 21%]
+tests/test_connector.py::test_retry_on_network_error_aiohttp_client_error PASSED                                                                                                                                                                   [ 22%]
+tests/test_connector.py::test_binance_connector_mock PASSED                                                                                                                                                                                        [ 22%]
+tests/test_executor.py::test_calculate_order_size PASSED                                                                                                                                                                                           [ 22%]
+tests/test_executor.py::test_round_quantity PASSED                                                                                                                                                                                                 [ 22%]
+tests/test_executor.py::test_execute_market_order_success PASSED                                                                                                                                                                                   [ 23%]
+tests/test_executor.py::test_execute_market_order_rounding_zero PASSED                                                                                                                                                                             [ 23%]
+tests/test_executor.py::test_execute_market_order_too_small PASSED                                                                                                                                                                                 [ 23%]
+tests/test_executor.py::test_execute_market_order_price_fetch_error PASSED                                                                                                                                                                         [ 24%]
+tests/test_executor.py::test_execute_market_order_api_error PASSED                                                                                                                                                                                 [ 24%]
+tests/test_executor.py::test_execute_limit_with_fallback_success PASSED                                                                                                                                                                            [ 24%]
+tests/test_executor.py::test_execute_limit_with_fallback_too_small PASSED                                                                                                                                                                          [ 25%]
+tests/test_executor.py::test_execute_limit_with_fallback_error_then_market PASSED                                                                                                                                                                  [ 25%]
+tests/test_executor.py::test_execute_limit_with_fallback_timeout PASSED                                                                                                                                                                            [ 25%]
+tests/test_executor.py::test_get_limit_order_params PASSED                                                                                                                                                                                         [ 25%]
+tests/test_executor.py::test_execute_actions_surplus_first PASSED                                                                                                                                                                                  [ 26%]
+tests/test_executor.py::test_execute_single_action_paper_mode PASSED                                                                                                                                                                               [ 26%]
+tests/test_executor.py::test_execute_single_action_real_mode PASSED                                                                                                                                                                                [ 26%]
+tests/test_executor.py::test_execute_market_order_polling PASSED                                                                                                                                                                                   [ 27%]
+tests/test_executor.py::test_error_returns_contain_pnl_comm PASSED                                                                                                                                                                                 [ 27%]
+tests/test_executor.py::test_execute_rebalance PASSED                                                                                                                                                                                              [ 27%]
+tests/test_executor.py::test_execute_single_action_virtual PASSED                                                                                                                                                                                  [ 28%]
+tests/test_executor.py::test_execute_limit_immediate_fill PASSED                                                                                                                                                                                   [ 28%]
+tests/test_executor.py::test_execute_single_action_skipped_dust PASSED                                                                                                                                                                             [ 28%]
+tests/test_executor.py::test_execute_single_action_real_limit PASSED                                                                                                                                                                               [ 29%]
+tests/test_get_bot_efficiency.py::test_get_bot_efficiency_no_state PASSED                                                                                                                                                                          [ 29%]
+tests/test_get_bot_efficiency.py::test_get_bot_efficiency_with_state PASSED                                                                                                                                                                        [ 29%]
+tests/test_get_bot_efficiency.py::test_get_bot_efficiency_min_cycles PASSED                                                                                                                                                                        [ 29%]
+tests/test_health_check.py::test_check_pm2_success PASSED                                                                                                                                                                                          [ 30%]
+tests/test_health_check.py::test_check_pm2_nonzero_return PASSED                                                                                                                                                                                   [ 30%]
+tests/test_health_check.py::test_check_pm2_not_found PASSED                                                                                                                                                                                        [ 30%]
+tests/test_health_check.py::test_check_pm2_exception PASSED                                                                                                                                                                                        [ 31%]
+tests/test_health_check.py::test_check_state_files BTCUSDT content on disk BEFORE calling: {"last_tpv": 10500.0, "last_profit": 500.0, "rebalance_cycles": 42, "trailing_stop_triggered": false, "tpv_ath": 11000.0, "balance": 10000.0}
+Returned state files: {'BTCUSDT': {'tpv': 10500.0, 'profit': 500.0, 'cycles': 42, 'trailing_stop': False, 'tpv_ath': 11000.0, 'balance': 10000.0}, 'ETHUSDT': {'error': 'Expecting value: line 1 column 1 (char 0)'}}
+PASSED                                                                                                                                                                                          [ 31%]
+tests/test_health_check.py::test_check_blacklist PASSED                                                                                                                                                                                            [ 31%]
+tests/test_health_check.py::test_check_blacklist_missing PASSED                                                                                                                                                                                    [ 32%]
+tests/test_health_check.py::test_check_recent_errors PASSED                                                                                                                                                                                        [ 32%]
+tests/test_health_check.py::test_main PASSED                                                                                                                                                                                                       [ 32%]
+tests/test_main.py::test_rebalance_loop_siphoning PASSED                                                                                                                                                                                           [ 33%]
+tests/test_main.py::test_rebalance_loop_trailing_stop PASSED                                                                                                                                                                                       [ 33%]
+tests/test_main.py::test_rebalance_loop_margin_warning PASSED                                                                                                                                                                                      [ 33%]
+tests/test_main.py::test_rebalance_loop_margin_critical PASSED                                                                                                                                                                                     [ 33%]
+tests/test_main.py::test_clean_slate_protocol_activation PASSED                                                                                                                                                                                    [ 34%]
+tests/test_main.py::test_emit_signal_file_naming PASSED                                                                                                                                                                                            [ 34%]
+tests/test_main.py::TestMinNotionalExtraction::test_min_notionals_extracted_from_exchange_info PASSED                                                                                                                                              [ 34%]
+tests/test_main.py::TestEffectiveMinNotional::test_effective_min_takes_max_with_buffer PASSED                                                                                                                                                      [ 35%]
+tests/test_main.py::TestEffectiveMinNotional::test_grassusdt_rebalances_at_3_7pct PASSED                                                                                                                                                           [ 35%]
+tests/test_main.py::TestEffectiveMinNotional::test_yfiusdt_blocked_below_5_1pct PASSED                                                                                                                                                             [ 35%]
+tests/test_main.py::TestEffectiveMinNotional::test_fallback_to_config_when_exchange_info_missing PASSED                                                                                                                                            [ 36%]
+tests/test_main.py::TestEffectiveMinNotional::test_missing_min_notional_in_config_raises PASSED                                                                                                                                                    [ 36%]
+tests/test_main.py::test_handle_liquidation_recovery_no_config_write PASSED                                                                                                                                                                        [ 36%]
+tests/test_main.py::test_handle_liquidation_guard_no_config_write PASSED                                                                                                                                                                           [ 37%]
+tests/test_main_coverage.py::test_coverage_trailing_stop_timeout_closes_positions PASSED                                                                                                                                                           [ 37%]
+tests/test_main_coverage.py::test_coverage_trailing_stop_violation_start PASSED                                                                                                                                                                    [ 37%]
+tests/test_main_coverage.py::test_coverage_emergency_stop_blacklist PASSED                                                                                                                                                                         [ 37%]
+tests/test_main_coverage.py::test_coverage_emergency_stop_probation PASSED                                                                                                                                                                         [ 38%]
+tests/test_main_coverage.py::test_coverage_liquidation_guard_detects_missing_long PASSED                                                                                                                                                           [ 38%]
+tests/test_main_coverage.py::test_coverage_virtual_order_processing PASSED                                                                                                                                                                         [ 38%]
+tests/test_main_coverage.py::test_coverage_paper_stop_closes_positions PASSED                                                                                                                                                                      [ 39%]
+tests/test_main_coverage.py::test_coverage_real_stop_closes_positions PASSED                                                                                                                                                                       [ 39%]
+tests/test_main_coverage.py::test_coverage_margin_warning_real PASSED                                                                                                                                                                              [ 39%]
+tests/test_main_coverage.py::test_coverage_liquidity_guard PASSED                                                                                                                                                                                  [ 40%]
+tests/test_main_coverage.py::test_coverage_ticker_thresholds_dict PASSED                                                                                                                                                                           [ 40%]
+tests/test_main_coverage.py::test_coverage_ticker_thresholds_float PASSED                                                                                                                                                                          [ 40%]
+tests/test_main_coverage.py::test_coverage_siphoning_logic PASSED                                                                                                                                                                                  [ 40%]
+tests/test_main_coverage.py::test_coverage_config_reload_detection PASSED                                                                                                                                                                          [ 41%]
+tests/test_main_coverage.py::test_coverage_liquidation_guard_missing_long PASSED                                                                                                                                                                   [ 41%]
+tests/test_main_coverage.py::test_coverage_blacklist_rebase_loss PASSED                                                                                                                                                                            [ 41%]
+tests/test_main_coverage.py::test_coverage_paper_cross_margin_check PASSED                                                                                                                                                                         [ 42%]
+tests/test_main_coverage.py::test_coverage_trailing_stop_closure_paper_positions PASSED                                                                                                                                                            [ 42%]
+tests/test_main_coverage.py::test_coverage_emergency_stop_full PASSED                                                                                                                                                                              [ 42%]
+tests/test_main_coverage.py::test_coverage_emergency_stop_close_only PASSED                                                                                                                                                                        [ 43%]
+tests/test_main_coverage.py::test_coverage_handle_liquidation_recovery_closes_positions PASSED                                                                                                                                                     [ 43%]
+tests/test_main_new.py::test_rebalance_loop_siphoning PASSED                                                                                                                                                                                       [ 43%]
+tests/test_main_new.py::test_rebalance_loop_trailing_stop PASSED                                                                                                                                                                                   [ 44%]
+tests/test_main_new.py::test_rebalance_loop_margin_warning PASSED                                                                                                                                                                                  [ 44%]
+tests/test_main_new.py::test_rebalance_loop_margin_critical PASSED                                                                                                                                                                                 [ 44%]
+tests/test_main_new.py::test_clean_slate_protocol_activation PASSED                                                                                                                                                                                [ 44%]
+tests/test_main_new.py::test_emit_signal_file_naming PASSED                                                                                                                                                                                        [ 45%]
+tests/test_main_new.py::test_self_kill_pm2_flow PASSED                                                                                                                                                                                             [ 45%]
+tests/test_main_new.py::test_update_final_metrics_for_exit_flow PASSED                                                                                                                                                                             [ 45%]
+tests/test_main_new.py::test_handle_liquidation_recovery_flow PASSED                                                                                                                                                                               [ 46%]
+tests/test_main_new.py::test_rebalance_loop_zombie_on_startup PASSED                                                                                                                                                                               [ 46%]
+tests/test_main_new.py::test_handle_liquidation_guard_paper_critical PASSED                                                                                                                                                                        [ 46%]
+tests/test_main_new.py::test_handle_liquidation_guard_real_critical PASSED                                                                                                                                                                         [ 47%]
+tests/test_main_new.py::test_handle_liquidation_guard_warning PASSED                                                                                                                                                                               [ 47%]
+tests/test_notifier.py::test_notifier_init PASSED                                                                                                                                                                                                  [ 47%]
+tests/test_notifier.py::test_notifier_disabled PASSED                                                                                                                                                                                              [ 48%]
+tests/test_notifier.py::test_load_config_exception PASSED                                                                                                                                                                                          [ 48%]
+tests/test_notifier.py::test_session_creation PASSED                                                                                                                                                                                               [ 48%]
+tests/test_notifier.py::test_queue_message_text PASSED                                                                                                                                                                                             [ 48%]
+tests/test_notifier.py::test_queue_message_exception PASSED                                                                                                                                                                                        [ 49%]
+tests/test_notifier.py::test_send_message_direct_success PASSED                                                                                                                                                                                    [ 49%]
+tests/test_notifier.py::test_send_message_direct_429_short_retry PASSED                                                                                                                                                                            [ 49%]
+tests/test_notifier.py::test_send_message_direct_429_long_retry_skip PASSED                                                                                                                                                                        [ 50%]
+tests/test_notifier.py::test_send_message_direct_api_error PASSED                                                                                                                                                                                  [ 50%]
+tests/test_notifier.py::test_send_message_connection_error PASSED                                                                                                                                                                                  [ 50%]
+tests/test_notifier.py::test_send_photo_missing_path PASSED                                                                                                                                                                                        [ 51%]
+tests/test_notifier.py::test_send_photo_queue PASSED                                                                                                                                                                                               [ 51%]
+tests/test_notifier.py::test_send_photo_direct_success PASSED                                                                                                                                                                                      [ 51%]
+tests/test_notifier.py::test_send_photo_direct_429 PASSED                                                                                                                                                                                          [ 51%]
+tests/test_notifier.py::test_send_photo_direct_429_long PASSED                                                                                                                                                                                     [ 52%]
+tests/test_notifier.py::test_send_photo_direct_api_error PASSED                                                                                                                                                                                    [ 52%]
+tests/test_notifier.py::test_send_photo_exception PASSED                                                                                                                                                                                           [ 52%]
+tests/test_notifier.py::test_send_alert PASSED                                                                                                                                                                                                     [ 53%]
+tests/test_notifier.py::test_send_status PASSED                                                                                                                                                                                                    [ 53%]
+tests/test_rank_tickers.py::test_fetch_success PASSED                                                                                                                                                                                              [ 53%]
+tests/test_rank_tickers.py::test_fetch_klines PASSED                                                                                                                                                                                               [ 54%]
+tests/test_rank_tickers.py::test_fetch_rate_limit PASSED                                                                                                                                                                                           [ 54%]
+tests/test_rank_tickers.py::test_fetch_non_200 PASSED                                                                                                                                                                                              [ 54%]
+tests/test_rank_tickers.py::test_fetch_exception PASSED                                                                                                                                                                                            [ 55%]
+tests/test_rank_tickers.py::test_fetch_klines_too_few PASSED                                                                                                                                                                                       [ 55%]
+tests/test_rank_tickers.py::test_fetch_klines_empty PASSED                                                                                                                                                                                         [ 55%]
+tests/test_rank_tickers.py::test_get_top_tickers PASSED                                                                                                                                                                                            [ 55%]
+tests/test_rank_tickers.py::test_get_top_tickers_fetch_fail PASSED                                                                                                                                                                                 [ 56%]
+tests/test_rank_tickers.py::test_get_top_tickers_empty_dfs PASSED                                                                                                                                                                                  [ 56%]
+tests/test_rank_tickers.py::test_get_top_tickers_blacklist_filter PASSED                                                                                                                                                                           [ 56%]
+tests/test_rank_tickers.py::test_get_top_tickers_whitelist_filter PASSED                                                                                                                                                                           [ 57%]
+tests/test_rank_tickers.py::test_get_top_tickers_low_volume_filter PASSED                                                                                                                                                                          [ 57%]
+tests/test_rank_tickers.py::test_get_top_tickers_non_ascii PASSED                                                                                                                                                                                  [ 57%]
+tests/test_rank_tickers.py::test_ranker_init PASSED                                                                                                                                                                                                [ 58%]
+tests/test_rank_tickers.py::test_ranker_calculate_metrics PASSED                                                                                                                                                                                   [ 58%]
+tests/test_rank_tickers.py::test_ranker_rank_by_momentum PASSED                                                                                                                                                                                    [ 58%]
+tests/test_rank_tickers.py::test_run_ranker_task PASSED                                                                                                                                                                                            [ 59%]
+tests/test_rank_tickers.py::test_retry_on_network_error_exhausted PASSED                                                                                                                                                                           [ 59%]
+tests/test_rank_tickers.py::test_retry_on_network_error_success PASSED                                                                                                                                                                             [ 59%]
+tests/test_rank_tickers.py::test_main_with_config PASSED                                                                                                                                                                                           [ 59%]
+tests/test_rank_tickers.py::test_main_quiet PASSED                                                                                                                                                                                                 [ 60%]
+tests/test_rank_tickers.py::test_main_not_quiet 
+=============================================================================================================================
+SYMBOL          | CYCLES   | NET MOVE%    | MAX SPURT%   | TREND EFF%   | FUNDING%
+-----------------------------------------------------------------------------------------------------------------------------
+BTCUSDT         | 20       | 5.00         | 10.00        | 2.00         | 0.0100
+=============================================================================================================================
+PASSED                                                                                                                                                                                             [ 60%]
+tests/test_rank_tickers.py::test_main_empty PASSED                                                                                                                                                                                                 [ 60%]
+tests/test_rebalance_logic_v378.py::test_rebalance_logic_v378 
+--- CASE 1: Perfect Balance ---
+DEBUG: L:29.0% S:36.0% V:35.0% C:0.0%
+--- CASE 2: LONG Surplus (Sell to Cash) ---
+DEBUG Case 2: L:58.0% S:0.0% V:42.0% C:0.0%
+DEBUG Actions Case 2: [{'key': 'BASE_LONG', 'type': 'ORDER', 'symbol': 'BTCUSDT_LONG', 'base_symbol': 'BTCUSDT', 'position_side': 'LONG', 'diff_usdt': -145.0, 'diff_equity': -29.0, 'leverage': 5.0, 'is_reduction': True, 'priority': 0}, {'key': 'VIRTUAL', 'type': 'VIRTUAL_ORDER', 'symbol': 'VIRTUAL', 'base_symbol': 'VIRTUAL', 'position_side': 'BOTH', 'diff_usdt': -7.0, 'diff_equity': -7.0, 'leverage': 1.0, 'is_reduction': True, 'priority': 0}, {'key': 'BASE_SHORT', 'type': 'ORDER', 'symbol': 'BTCUSDT_SHORT', 'base_symbol': 'BTCUSDT', 'position_side': 'SHORT', 'diff_usdt': 180.0, 'diff_equity': 36.0, 'leverage': 5.0, 'is_reduction': False, 'priority': 2}]
+--- CASE 3: Cash Guard (Insufficient funds for Short) ---
+--- CASE 4: Priority BUY (Virtual gets cash first) ---
+DEBUG Case 4 Shares: L:41.43% S:28.57% V:28.57% C:1.43%
+DEBUG Case 4 Actions: [{'key': 'VIRTUAL', 'type': 'VIRTUAL_ORDER', 'symbol': 'VIRTUAL', 'base_symbol': 'VIRTUAL', 'position_side': 'BOTH', 'diff_usdt': 7.0, 'diff_equity': 15.0, 'leverage': 1.0, 'is_reduction': False, 'priority': 2}]
+--- CASE 5: Heartbeat Summation ---
+
+✅ ALL TESTS PASSED!
+PASSED                                                                                                                                                                               [ 61%]
+tests/test_rebalance_v37.py::test_portfolio_convergence_and_churn 
+--- Ребалансировочный Тест v3.7.0 ---
+[Price: 26.5] Rebalancing BASE_LONG | Action: -46.545 USDT
+[Price: 26.5] Rebalancing BASE_SHORT | Action: 46.545 USDT
+[Price: 24.0] Rebalancing BASE_SHORT | Action: -33.48 USDT
+[Price: 24.0] Rebalancing BASE_LONG | Action: 31.03 USDT
+[Price: 28.0] Rebalancing BASE_LONG | Action: -93.09 USDT
+[Price: 28.0] Rebalancing BASE_SHORT | Action: 93.09 USDT
+[Price: 22.0] Rebalancing BASE_SHORT | Action: -100.44 USDT
+[Price: 22.0] Rebalancing BASE_LONG | Action: 93.09 USDT
+
+Итоговая статистика ребалансировок: {'BASE_LONG': 4, 'BASE_SHORT': 4, 'VIRTUAL': 0}
+PASSED                                                                                                                                                                           [ 61%]
+tests/test_send_monitor_report.py::test_monitor_no_state_files {
+  "ok": true
+}
+PASSED                                                                                                                                                                              [ 61%]
+tests/test_send_monitor_report.py::test_monitor_with_paper_and_real {
+  "ok": true
+}
+PASSED                                                                                                                                                                         [ 62%]
+tests/test_send_monitor_report.py::test_monitor_guard_active {
+  "ok": true
+}
+PASSED                                                                                                                                                                                [ 62%]
+tests/test_send_monitor_report.py::test_monitor_old_heartbeat {
+  "ok": true
+}
+PASSED                                                                                                                                                                               [ 62%]
+tests/test_send_monitor_report.py::test_monitor_sends_request {
+  "ok": true
+}
+PASSED                                                                                                                                                                               [ 62%]
+tests/test_send_monitor_report.py::test_monitor_no_alerts {
+  "ok": true
+}
+PASSED                                                                                                                                                                                   [ 63%]
+tests/test_storage.py::test_safe_load_json_sync_file_exists PASSED                                                                                                                                                                                 [ 63%]
+tests/test_storage.py::test_safe_load_json_sync_file_missing PASSED                                                                                                                                                                                [ 63%]
+tests/test_storage.py::test_safe_load_json_sync_empty_file PASSED                                                                                                                                                                                  [ 64%]
+tests/test_storage.py::test_safe_load_json_sync_corrupted_json PASSED                                                                                                                                                                              [ 64%]
+tests/test_storage.py::test_safe_load_json_async PASSED                                                                                                                                                                                            [ 64%]
+tests/test_storage.py::test_safe_save_json_sync_atomic PASSED                                                                                                                                                                                      [ 65%]
+tests/test_storage.py::test_safe_save_json_sync_permission_error PASSED                                                                                                                                                                            [ 65%]
+tests/test_storage.py::test_safe_save_json_async PASSED                                                                                                                                                                                            [ 65%]
+tests/test_storage.py::test_safe_load_json_retries_and_timeout PASSED                                                                                                                                                                              [ 66%]
+tests/test_storage.py::test_safe_save_json_sync_remove_error PASSED                                                                                                                                                                                [ 66%]
+tests/test_supervisor.py::test_calculate_bot_score 2026-07-14 16:48:36,590 INFO: 🛡️ Scored BTCUSDT: REAL bot in drawdown. LOCKED IN COMBAT (Score: INF).
+2026-07-14 16:48:36,590 INFO: ❌ Scored BTCUSDT: Rejected (Cycles 5 < 10). (Score: -INF)
+2026-07-14 16:48:36,590 INFO: ❌ Scored BTCUSDT: Unprofitable. (Score: -INF)
+2026-07-14 16:48:36,590 INFO: ❌ Scored BTCUSDT: Unprofitable. (Score: -INF)
+2026-07-14 16:48:36,590 INFO: ⚖️ Scored BTCUSDT: Net:100.00, Cyc:20, Score:15.2226
+2026-07-14 16:48:36,591 INFO: ⚖️ Scored BTCUSDT: Net:100.00, Cyc:20, Score:18.2671
+PASSED                                                                                                                                                                                          [ 66%]
+tests/test_supervisor.py::test_calc_rotation_score PASSED                                                                                                                                                                                          [ 66%]
+tests/test_supervisor.py::test_selective_merge_incubator 2026-07-14 16:48:36,593 INFO: 🚀 First-start: launching 4 bots from scanner: ['A', 'B', 'C', 'D']
+2026-07-14 16:48:36,594 INFO: 🔄 Rotation: keep=2, add=2, remove=2
+2026-07-14 16:48:36,594 INFO: 🔄   removing (worst by score): ['C', 'D']
+2026-07-14 16:48:36,594 INFO: 🔄   adding (best from scanner): ['E', 'F']
+2026-07-14 16:48:36,594 INFO: 📋 Final incubator (4 bots): ['A', 'B', 'E', 'F']
+PASSED                                                                                                                                                                                    [ 67%]
+tests/test_supervisor.py::test_get_bot_efficiency PASSED                                                                                                                                                                                           [ 67%]
+tests/test_supervisor.py::test_reset_bot_state_files_real 2026-07-14 16:48:36,599 INFO: 💾 Archived state for BTCUSDT: real_state_BTCUSDT.json -> archive_BTCUSDT_1784040516_real_state_BTCUSDT.json
+2026-07-14 16:48:36,600 INFO: 🗑️ Deleted stale state file: real_state_BTCUSDT.json
+2026-07-14 16:48:36,600 INFO: 💾 Archived state for BTCUSDT: shadow_state_BTCUSDT.json -> archive_BTCUSDT_1784040516_shadow_state_BTCUSDT.json
+2026-07-14 16:48:36,600 INFO: 🗑️ Deleted stale state file: shadow_state_BTCUSDT.json
+2026-07-14 16:48:36,601 INFO: ✨ Reset real state files for BTCUSDT to clean initial values (capital: 200.0).
+PASSED                                                                                                                                                                                   [ 67%]
+tests/test_supervisor.py::test_reset_bot_state_files_paper 2026-07-14 16:48:36,604 INFO: 💾 Archived paper state for BTCUSDT: paper_state_BTCUSDT.json -> archive_BTCUSDT_1784040516_paper_state_BTCUSDT.json
+2026-07-14 16:48:36,604 INFO: 🗑️ Deleted stale state file: paper_state_BTCUSDT.json
+2026-07-14 16:48:36,604 INFO: 💾 Archived paper state for BTCUSDT: paper_shadow_BTCUSDT.json -> archive_BTCUSDT_1784040516_paper_shadow_BTCUSDT.json
+2026-07-14 16:48:36,604 INFO: 🗑️ Deleted stale state file: paper_shadow_BTCUSDT.json
+2026-07-14 16:48:36,605 INFO: ✨ Reset paper state files for BTCUSDT to clean initial values (capital: 150.0).
+PASSED                                                                                                                                                                                  [ 68%]
+tests/test_supervisor.py::test_enforce_swarm_consistency 2026-07-14 16:48:36,608 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+2026-07-14 16:48:36,608 WARNING: ⚠️ Unauthorized position found for ETHUSDT (not in live_swarm or real_whitelist). Scheduled for liquidation.
+2026-07-14 16:48:36,608 INFO: 🧹 Closing all positions for unauthorized ticker: ETHUSDT
+2026-07-14 16:48:36,609 INFO: ✅ Positions for ETHUSDT closed successfully.
+PASSED                                                                                                                                                                                    [ 68%]
+tests/test_supervisor.py::test_ensure_real_bots_alive 2026-07-14 16:48:36,611 WARNING: 🔄 Real bot ETHUSDT is in live_swarm but not running in PM2. Restarting...
+2026-07-14 16:48:36,612 INFO: ✅ Restarted real bot ETHUSDT
+PASSED                                                                                                                                                                                       [ 68%]
+tests/test_supervisor.py::test_manage_swarm_toxic_flow 2026-07-14 16:48:36,616 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:36,616 CRITICAL: 🚫 STOP signal: TRXUSDT (paper) → toxic_blacklist_paper + black_list (expires Tue Jul 14 17:17:24 2026)
+2026-07-14 16:48:36,617 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:36,617 INFO: ⏳ TRXUSDT is in Toxic Quarantine. Skipping.
+2026-07-14 16:48:36,617 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['BTCUSDT']
+2026-07-14 16:48:36,617 INFO: 🔄 Rotation: keep=1, add=0, remove=0
+2026-07-14 16:48:36,618 INFO: 📋 Final incubator (1 bots): ['BTCUSDT']
+2026-07-14 16:48:36,618 INFO: 📋 Incubator ready: ['BTCUSDT']
+2026-07-14 16:48:36,618 INFO: 🚫 Skipping BTCUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:36,618 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:36,618 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:48:36,619 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:48:38,121 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:48:38,122 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                                      [ 69%]
+tests/test_supervisor.py::test_isolated_blacklists_signal_processing 2026-07-14 16:48:38,126 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:38,127 CRITICAL: 🚫 STOP signal: BTCUSDT (paper) → toxic_blacklist_paper + black_list (expires Tue Jul 14 17:17:26 2026)
+2026-07-14 16:48:38,128 INFO: ✅ EXIT signal: ETHUSDT (real) → probation_real (expires Tue Jul 14 17:47:40 2026)
+2026-07-14 16:48:38,128 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:38,128 INFO: ⏳ BTCUSDT is in Toxic Quarantine. Skipping.
+2026-07-14 16:48:38,128 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['ETHUSDT']
+2026-07-14 16:48:38,128 INFO: 🔄 Rotation: keep=1, add=0, remove=0
+2026-07-14 16:48:38,128 INFO: 📋 Final incubator (1 bots): ['ETHUSDT']
+2026-07-14 16:48:38,129 INFO: 📋 Incubator ready: ['ETHUSDT']
+2026-07-14 16:48:38,129 INFO: 🚫 Skipping ETHUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:38,129 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:40,117 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): ETHUSDT
+2026-07-14 16:48:40,364 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                        [ 69%]
+tests/test_supervisor.py::test_get_running_bots_info PASSED                                                                                                                                                                                        [ 69%]
+tests/test_supervisor.py::test_stop_bot PASSED                                                                                                                                                                                                     [ 70%]
+tests/test_supervisor.py::test_start_bot PASSED                                                                                                                                                                                                    [ 70%]
+tests/test_supervisor.py::test_rotation_guard_immature_unprofitable_protected 2026-07-14 16:48:40,376 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['B']
+2026-07-14 16:48:40,376 INFO: 🔄 Rotation: keep=2, add=2, remove=2
+2026-07-14 16:48:40,376 INFO: 🔄   removing (worst by score): ['C', 'D']
+2026-07-14 16:48:40,376 INFO: 🔄   adding (best from scanner): ['E', 'F']
+2026-07-14 16:48:40,376 INFO: 📋 Final incubator (4 bots): ['A', 'B', 'E', 'F']
+PASSED                                                                                                                                                               [ 70%]
+tests/test_supervisor.py::test_rotation_guard_immature_profitable_protected 2026-07-14 16:48:40,379 INFO: 🔄 Rotation: keep=1, add=2, remove=2
+2026-07-14 16:48:40,379 INFO: 🔄   removing (worst by score): ['B', 'C']
+2026-07-14 16:48:40,379 INFO: 🔄   adding (best from scanner): ['D', 'E']
+2026-07-14 16:48:40,379 INFO: 📋 Final incubator (3 bots): ['A', 'D', 'E']
+PASSED                                                                                                                                                                 [ 70%]
+tests/test_supervisor.py::test_rotation_guard_mature_unprofitable_replaced 2026-07-14 16:48:40,381 INFO: 🔄 Rotation: keep=1, add=2, remove=2
+2026-07-14 16:48:40,381 INFO: 🔄   removing (worst by score): ['B', 'C']
+2026-07-14 16:48:40,381 INFO: 🔄   adding (best from scanner): ['D', 'E']
+2026-07-14 16:48:40,381 INFO: 📋 Final incubator (3 bots): ['A', 'D', 'E']
+PASSED                                                                                                                                                                  [ 71%]
+tests/test_supervisor.py::test_rotation_guard_default_min_cycles_for_rotation 2026-07-14 16:48:40,383 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['A']
+2026-07-14 16:48:40,384 INFO: 🔄 Rotation: keep=1, add=2, remove=2
+2026-07-14 16:48:40,384 INFO: 🔄   removing (worst by score): ['B', 'C']
+2026-07-14 16:48:40,384 INFO: 🔄   adding (best from scanner): ['D', 'E']
+2026-07-14 16:48:40,384 INFO: 📋 Final incubator (3 bots): ['A', 'D', 'E']
+PASSED                                                                                                                                                               [ 71%]
+tests/test_supervisor.py::test_b1_stop_bot_called_before_ts_flag_reset 2026-07-14 16:48:40,387 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+2026-07-14 16:48:40,387 WARNING: ⚠️ HEAL REJECTED: GRASSUSDT was stopped by Trailing Stop. Scheduling position liquidation.
+2026-07-14 16:48:40,387 INFO: 🔄 TS flags reset in state file for GRASSUSDT
+2026-07-14 16:48:40,388 INFO: 🧹 Closing all positions for unauthorized ticker: GRASSUSDT
+2026-07-14 16:48:40,388 INFO: ✅ Positions for GRASSUSDT closed successfully.
+PASSED                                                                                                                                                                      [ 71%]
+tests/test_supervisor.py::test_b1_ts_flag_reset_after_stop_bot 2026-07-14 16:48:40,391 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+2026-07-14 16:48:40,391 WARNING: ⚠️ HEAL REJECTED: VVVUSDT was stopped by Trailing Stop. Scheduling position liquidation.
+2026-07-14 16:48:40,392 INFO: 🔄 TS flags reset in state file for VVVUSDT
+2026-07-14 16:48:40,392 INFO: 🧹 Closing all positions for unauthorized ticker: VVVUSDT
+2026-07-14 16:48:40,392 INFO: ✅ Positions for VVVUSDT closed successfully.
+PASSED                                                                                                                                                                              [ 72%]
+tests/test_supervisor.py::test_signal_stop_adds_toxic_and_blacklist PASSED                                                                                                                                                                         [ 72%]
+tests/test_supervisor.py::test_signal_exit_adds_probation_not_blacklist PASSED                                                                                                                                                                     [ 72%]
+tests/test_supervisor.py::test_signal_removes_from_live_swarm PASSED                                                                                                                                                                               [ 73%]
+tests/test_supervisor.py::test_signal_unknown_type_no_config_change PASSED                                                                                                                                                                         [ 73%]
+tests/test_supervisor.py::test_blacklist_set_o1_lookup PASSED                                                                                                                                                                                      [ 73%]
+tests/test_supervisor.py::test_probation_blocks_candidate PASSED                                                                                                                                                                                   [ 74%]
+tests/test_supervisor.py::test_probation_expired_not_blocks PASSED                                                                                                                                                                                 [ 74%]
+tests/test_supervisor.py::test_flag_unlink_is_async PASSED                                                                                                                                                                                         [ 74%]
+tests/test_supervisor.py::test_integration_signal_stop_toxic_blacklist 2026-07-14 16:48:40,430 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:40,433 INFO: 🗑️ BTCUSDT removed from live_swarm (signal: stop)
+2026-07-14 16:48:40,433 CRITICAL: 🚫 STOP signal: BTCUSDT (real) → toxic_blacklist_real + black_list (expires Tue Jul 14 17:17:28 2026)
+2026-07-14 16:48:40,434 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:40,434 INFO: 📋 Incubator ready: ['X']
+2026-07-14 16:48:40,435 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:40,435 INFO: 🚫 Skipping X: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:40,435 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:41,940 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): X
+2026-07-14 16:48:41,941 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:41,942 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                      [ 74%]
+tests/test_supervisor.py::test_integration_signal_exit_probation 2026-07-14 16:48:41,950 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:41,952 INFO: 🗑️ ZECUSDT removed from live_swarm (signal: exit)
+2026-07-14 16:48:41,953 INFO: ✅ EXIT signal: ZECUSDT (paper) → probation_paper (expires Tue Jul 14 17:47:44 2026)
+2026-07-14 16:48:41,953 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:41,953 INFO: 📋 Incubator ready: ['X']
+2026-07-14 16:48:41,953 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:41,954 INFO: 🚫 Skipping X: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:41,954 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:43,460 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): X
+2026-07-14 16:48:43,461 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:43,462 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                            [ 75%]
+tests/test_supervisor.py::test_integration_amnesty_clears_ts 2026-07-14 16:48:43,469 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:43,480 INFO: ✨ Amnesty granted for PAPER ALICEUSDT. TS flags cleared.
+2026-07-14 16:48:43,481 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:43,481 INFO: 📋 Incubator ready: ['X']
+2026-07-14 16:48:43,481 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:43,481 INFO: 🚫 Skipping X: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:43,482 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:44,990 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): X
+2026-07-14 16:48:44,991 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:44,991 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                                [ 75%]
+tests/test_supervisor.py::test_integration_reaper_zombie 2026-07-14 16:48:45,003 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:45,007 INFO: 🧹 Reaper Guard: Deleting zombie PM2 process for PAPER ALICEUSDT (TS Triggered)
+2026-07-14 16:48:45,008 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:45,008 INFO: 📋 Incubator ready: ['X']
+2026-07-14 16:48:45,008 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:45,008 INFO: 🚫 Skipping X: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:45,008 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:46,524 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): X
+2026-07-14 16:48:46,525 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:46,525 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                                    [ 75%]
+tests/test_supervisor.py::test_integration_ready_pool_scoring 2026-07-14 16:48:46,532 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:46,535 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:46,535 INFO: 📋 Incubator ready: ['GOODUSDT']
+2026-07-14 16:48:46,535 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:46,535 INFO: ⚖️ Scored GOODUSDT: Net:50.00, Cyc:20, Score:7.6113
+2026-07-14 16:48:46,536 INFO: ✅ Filling empty REAL slot with GOODUSDT
+2026-07-14 16:48:46,536 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:48,045 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): GOODUSDT
+2026-07-14 16:48:48,046 INFO: 🔥 [A] LAUNCHING PARALLEL COMBAT (REAL): GOODUSDT
+2026-07-14 16:48:48,047 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:48,047 INFO: Cycle Complete. REAL Swarm: ['GOODUSDT']
+PASSED                                                                                                                                                                               [ 76%]
+tests/test_supervisor.py::test_integration_real_rotation_fills_slots 2026-07-14 16:48:48,055 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:48,057 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:48,058 INFO: 📋 Incubator ready: ['GOODUSDT']
+2026-07-14 16:48:48,058 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:48,058 INFO: ⚖️ Scored GOODUSDT: Net:80.00, Cyc:20, Score:12.1781
+2026-07-14 16:48:48,058 INFO: ✅ Filling empty REAL slot with GOODUSDT
+2026-07-14 16:48:48,058 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:49,560 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): GOODUSDT
+2026-07-14 16:48:49,561 INFO: 🔥 [A] LAUNCHING PARALLEL COMBAT (REAL): GOODUSDT
+2026-07-14 16:48:49,562 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:49,562 INFO: Cycle Complete. REAL Swarm: ['GOODUSDT']
+PASSED                                                                                                                                                                        [ 76%]
+tests/test_supervisor.py::test_integration_replaces_unprofitable 2026-07-14 16:48:49,570 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:49,580 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:49,580 INFO: 📋 Incubator ready: ['GOODUSDT']
+2026-07-14 16:48:49,580 INFO: 📊 Fetching missing performance data for 2 candidates...
+2026-07-14 16:48:49,581 INFO: ❌ Scored BADUSDT: Unprofitable. (Score: -INF)
+2026-07-14 16:48:49,581 INFO: ⚖️ Scored GOODUSDT: Net:80.00, Cyc:20, Score:12.1781
+2026-07-14 16:48:49,581 INFO: 🧐 Evaluating REAL BADUSDT [Score: -inf, Profit: $0.00, Age: 168.00h] vs Candidate GOODUSDT [Score: 12.1781]
+2026-07-14 16:48:49,581 INFO: ♻️ Substitution Triggered: Replacing BADUSDT with GOODUSDT (Score delta inf > Cushion 0.25)
+2026-07-14 16:48:49,582 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:49,582 INFO: 🛑 Stopping Combat REAL process: BADUSDT (Rolling back to pure paper tracking)
+2026-07-14 16:48:51,098 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): GOODUSDT
+2026-07-14 16:48:51,099 INFO: 🔥 [A] LAUNCHING PARALLEL COMBAT (REAL): GOODUSDT
+2026-07-14 16:48:51,105 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:51,105 INFO: Cycle Complete. REAL Swarm: ['GOODUSDT']
+PASSED                                                                                                                                                                            [ 76%]
+tests/test_supervisor.py::test_integration_stops_out_of_incubator 2026-07-14 16:48:51,113 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:51,116 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:51,116 INFO: 📋 Incubator ready: ['BTCUSDT']
+2026-07-14 16:48:51,116 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:51,117 INFO: 🚫 Skipping BTCUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:51,117 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:51,117 INFO: 🛑 Stopping Incubator (Out of Scanner): OLDUSDT
+2026-07-14 16:48:52,621 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:48:52,622 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:52,622 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                           [ 77%]
+tests/test_supervisor.py::test_integration_probation_blocks 2026-07-14 16:48:52,631 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:52,643 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:52,643 INFO: 📋 Incubator ready: ['BLOCKEDUSDT']
+2026-07-14 16:48:52,643 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:52,643 INFO: ⏳ Skipping BLOCKEDUSDT: In probation_paper until Tue Jul 14 17:48:52 2026.
+2026-07-14 16:48:52,644 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:54,146 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BLOCKEDUSDT
+2026-07-14 16:48:54,146 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:54,147 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                                 [ 77%]
+tests/test_supervisor.py::test_integration_drawdown_protection 2026-07-14 16:48:54,156 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:54,159 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:54,159 INFO: 📋 Incubator ready: ['DRAWDOWNUSDT']
+2026-07-14 16:48:54,160 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:54,160 INFO: 🛡️ Scored DRAWDOWNUSDT: REAL bot in drawdown. LOCKED IN COMBAT (Score: INF).
+2026-07-14 16:48:54,160 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:55,666 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): DRAWDOWNUSDT
+2026-07-14 16:48:55,667 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:55,668 INFO: Cycle Complete. REAL Swarm: ['DRAWDOWNUSDT']
+PASSED                                                                                                                                                                              [ 77%]
+tests/test_supervisor.py::test_integration_toxic_scanner_mark 2026-07-14 16:48:55,675 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:55,677 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:55,677 INFO: 🚫 TOXICUSDT marked toxic by scanner. Blacklisted (PAPER) until Tue Jul 14 17:17:43 2026
+2026-07-14 16:48:55,677 INFO: ⏳ TOXICUSDT is in Toxic Quarantine. Skipping.
+2026-07-14 16:48:55,678 INFO: 📋 Incubator ready: ['TOXICUSDT']
+2026-07-14 16:48:55,678 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:55,678 INFO: 🚫 Skipping TOXICUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:55,678 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:57,192 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): TOXICUSDT
+2026-07-14 16:48:57,194 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:57,194 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                               [ 77%]
+tests/test_supervisor.py::test_integration_scanner_empty_aborts 2026-07-14 16:48:57,202 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:57,205 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:57,205 ERROR: ❌ Scanner returned nothing. Aborting cycle to prevent config wipe.
+PASSED                                                                                                                                                                             [ 78%]
+tests/test_supervisor.py::test_integration_expired_probation_pruned 2026-07-14 16:48:57,214 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:57,223 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:57,223 INFO: 📋 Incubator ready: ['X']
+2026-07-14 16:48:57,223 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:48:57,224 INFO: 🚫 Skipping X: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:57,224 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:48:58,736 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): X
+2026-07-14 16:48:58,737 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:48:58,737 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                         [ 78%]
+tests/test_supervisor.py::test_integration_ticks_fallback 2026-07-14 16:48:58,745 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:48:58,748 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:48:58,748 INFO: 📋 Incubator ready: ['BTCUSDT', 'ETHUSDT']
+2026-07-14 16:48:58,748 INFO: 📊 Fetching missing performance data for 2 candidates...
+2026-07-14 16:48:58,748 INFO: 🚫 Skipping BTCUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:58,748 INFO: 🚫 Skipping ETHUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:48:58,749 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:00,258 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:49:00,259 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): ETHUSDT
+2026-07-14 16:49:00,259 WARNING: ⚠️ tickers was empty — restored 2 tickers from scanner
+2026-07-14 16:49:00,259 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                                   [ 78%]
+tests/test_supervisor.py::test_integration_real_stop_drops_bot 2026-07-14 16:49:00,268 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:00,278 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:00,278 INFO: 📋 Incubator ready: ['BTCUSDT']
+2026-07-14 16:49:00,278 INFO: 📊 Fetching missing performance data for 2 candidates...
+2026-07-14 16:49:00,279 INFO: ❌ Scored DROPPEDUSDT: Unprofitable. (Score: -INF)
+2026-07-14 16:49:00,279 INFO: ⚖️ Scored BTCUSDT: Net:50.00, Cyc:20, Score:7.6113
+2026-07-14 16:49:00,279 INFO: 🧐 Evaluating REAL DROPPEDUSDT [Score: -inf, Profit: $0.00, Age: 24.00h] vs Candidate BTCUSDT [Score: 7.6113]
+2026-07-14 16:49:00,280 INFO: ♻️ Substitution Triggered: Replacing DROPPEDUSDT with BTCUSDT (Score delta inf > Cushion 0.25)
+2026-07-14 16:49:00,280 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:00,280 INFO: 🛑 Stopping Combat REAL process: DROPPEDUSDT (Rolling back to pure paper tracking)
+2026-07-14 16:49:01,789 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:49:01,790 INFO: 🔥 [A] LAUNCHING PARALLEL COMBAT (REAL): BTCUSDT
+2026-07-14 16:49:01,790 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:49:01,790 INFO: Cycle Complete. REAL Swarm: ['BTCUSDT']
+PASSED                                                                                                                                                                              [ 79%]
+tests/test_supervisor.py::test_integration_authoritative_cleanup_stray 2026-07-14 16:49:01,801 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:01,803 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:01,804 INFO: 📋 Incubator ready: ['X']
+2026-07-14 16:49:01,804 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:49:01,804 INFO: 🚫 Skipping X: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:49:01,804 WARNING: 🧹 Authoritative Cleanup: Found stray position for STRAYCOINUSDT (not in live_swarm or whitelist). Closing it!
+2026-07-14 16:49:01,805 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:03,306 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): X
+2026-07-14 16:49:03,307 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:49:03,308 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                      [ 79%]
+tests/test_supervisor.py::test_integration_safety_trim 2026-07-14 16:49:03,316 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:03,318 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:03,319 INFO: 📋 Incubator ready: ['BOTA', 'BOTB']
+2026-07-14 16:49:03,319 INFO: 📊 Fetching missing performance data for 2 candidates...
+2026-07-14 16:49:03,319 INFO: ❌ Scored BOTA: Unprofitable. (Score: -INF)
+2026-07-14 16:49:03,319 INFO: ❌ Scored BOTB: Unprofitable. (Score: -INF)
+2026-07-14 16:49:03,319 INFO: ✂️ Reduced REAL swarm to 1 slots by removing least efficient bots.
+2026-07-14 16:49:03,320 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:03,320 INFO: 🛑 Stopping Combat REAL process: BOTB (Rolling back to pure paper tracking)
+2026-07-14 16:49:04,824 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BOTA
+2026-07-14 16:49:04,825 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BOTB
+2026-07-14 16:49:04,825 WARNING: ⚠️ tickers was empty — restored 2 tickers from scanner
+2026-07-14 16:49:04,826 INFO: Cycle Complete. REAL Swarm: ['BOTA']
+PASSED                                                                                                                                                                                      [ 79%]
+tests/test_supervisor.py::test_integration_healed_tickers 2026-07-14 16:49:04,834 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:04,837 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:04,837 ERROR: ❌ Scanner returned nothing. Aborting cycle to prevent config wipe.
+PASSED                                                                                                                                                                                   [ 80%]
+tests/test_supervisor.py::test_integration_blacklisted_real_skipped 2026-07-14 16:49:04,846 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:04,855 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:04,855 INFO: 📋 Incubator ready: ['QUARANTINEDUSDT']
+2026-07-14 16:49:04,856 INFO: 📊 Fetching missing performance data for 1 candidates...
+2026-07-14 16:49:04,856 INFO: 🚫 Skipping QUARANTINEDUSDT: In REAL toxic blacklist. Quarantined.
+2026-07-14 16:49:04,856 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:06,358 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): QUARANTINEDUSDT
+2026-07-14 16:49:06,359 WARNING: ⚠️ tickers was empty — restored 1 tickers from scanner
+2026-07-14 16:49:06,359 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                         [ 80%]
+tests/test_supervisor_coverage.py::test_get_pm2_processes_empty_stdout PASSED                                                                                                                                                                      [ 80%]
+tests/test_supervisor_coverage.py::test_get_pm2_processes_valid_json PASSED                                                                                                                                                                        [ 81%]
+tests/test_supervisor_coverage.py::test_get_pm2_processes_exception 2026-07-14 16:49:06,368 ERROR: Критическая ошибка чтения стейта PM2: pm2 not found
+PASSED                                                                                                                                                                         [ 81%]
+tests/test_supervisor_coverage.py::test_get_pm2_processes_json_decode_error 2026-07-14 16:49:06,371 ERROR: Критическая ошибка чтения стейта PM2: Expecting value: line 1 column 1 (char 0)
+PASSED                                                                                                                                                                 [ 81%]
+tests/test_supervisor_coverage.py::test_reconcile_swarm_state_no_orphans 2026-07-14 16:49:06,374 WARNING: 🚨 [REAPER GUARD] Обнаружен рассинхрон. Orphaned процессы в режиме paper: {'paper-aliceusdt'}
+2026-07-14 16:49:06,374 INFO: 💀 [HEAL] Процесс paper-aliceusdt успешно уничтожен.
+PASSED                                                                                                                                                                    [ 81%]
+tests/test_supervisor_coverage.py::test_reconcile_swarm_state_kills_orphans 2026-07-14 16:49:06,377 WARNING: 🚨 [REAPER GUARD] Обнаружен рассинхрон. Orphaned процессы в режиме paper: {'paper-aliceusdt', 'paper-orphonusdt'}
+2026-07-14 16:49:06,377 INFO: 💀 [HEAL] Процесс paper-aliceusdt успешно уничтожен.
+2026-07-14 16:49:06,378 INFO: 💀 [HEAL] Процесс paper-orphonusdt успешно уничтожен.
+PASSED                                                                                                                                                                 [ 82%]
+tests/test_supervisor_coverage.py::test_reconcile_swarm_state_empty_pm2 PASSED                                                                                                                                                                     [ 82%]
+tests/test_supervisor_coverage.py::test_stop_bot_filenotfound 2026-07-14 16:49:06,383 ERROR: PM2 binary not found — cannot delete real-btc
+PASSED                                                                                                                                                                               [ 82%]
+tests/test_supervisor_coverage.py::test_stop_bot_oserror 2026-07-14 16:49:06,386 ERROR: OS error deleting paper-eth: permission denied
+PASSED                                                                                                                                                                                    [ 83%]
+tests/test_supervisor_coverage.py::test_stop_bot_general_exception 2026-07-14 16:49:06,389 ERROR: Failed to delete real-sol: unexpected
+PASSED                                                                                                                                                                          [ 83%]
+tests/test_supervisor_coverage.py::test_enforce_invariant_gate_adds_exposed_ticker 2026-07-14 16:49:06,391 WARNING: 🛡️ Invariant Protection Gate: Forced retention of NEWCOINUSDT in live_swarm due to active exposure ($100.00 USDT).
+PASSED                                                                                                                                                          [ 83%]
+tests/test_supervisor_coverage.py::test_enforce_invariant_gate_dust_filtered PASSED                                                                                                                                                                [ 84%]
+tests/test_supervisor_coverage.py::test_enforce_invariant_gate_empty_positions PASSED                                                                                                                                                              [ 84%]
+tests/test_supervisor_coverage.py::test_enforce_invariant_gate_zero_qty_filtered PASSED                                                                                                                                                            [ 84%]
+tests/test_supervisor_coverage.py::test_enforce_invariant_gate_exception 2026-07-14 16:49:06,400 ERROR: Failed to verify exchange exposure tracking in Invariant Gate: exchange down
+PASSED                                                                                                                                                                    [ 85%]
+tests/test_supervisor_coverage.py::test_reset_bot_state_files_rebases_on_trailing_stop 2026-07-14 16:49:06,407 WARNING: 📉 Обнаружен Trailing Stop для BTCUSDT. Капитал ребазирован: 115.0 -> 200.0
+2026-07-14 16:49:06,408 INFO: 💾 Archived paper state for BTCUSDT: paper_state_BTCUSDT.json -> archive_BTCUSDT_1784040546_paper_state_BTCUSDT.json
+2026-07-14 16:49:06,409 INFO: 🗑️ Deleted stale state file: paper_state_BTCUSDT.json
+2026-07-14 16:49:06,412 INFO: ✨ Reset paper state files for BTCUSDT to clean initial values (capital: 200.0).
+PASSED                                                                                                                                                      [ 85%]
+tests/test_supervisor_coverage.py::test_reset_bot_state_files_no_state_uses_config 2026-07-14 16:49:06,428 INFO: ✨ Reset paper state files for ETHUSDT to clean initial values (capital: 150.0).
+PASSED                                                                                                                                                          [ 85%]
+tests/test_supervisor_coverage.py::test_start_bot_real_no_state_file PASSED                                                                                                                                                                        [ 85%]
+tests/test_supervisor_coverage.py::test_start_bot_real_with_existing_state PASSED                                                                                                                                                                  [ 86%]
+tests/test_supervisor_coverage.py::test_start_bot_paper_always_resets PASSED                                                                                                                                                                       [ 86%]
+tests/test_supervisor_coverage.py::test_ensure_real_bots_alive_missing_bot_restarts 2026-07-14 16:49:06,457 WARNING: 🔄 Real bot BTCUSDT is in live_swarm but not running in PM2. Restarting...
+2026-07-14 16:49:06,457 INFO: ✅ Restarted real bot BTCUSDT
+PASSED                                                                                                                                                         [ 86%]
+tests/test_supervisor_coverage.py::test_ensure_real_bots_alive_all_running PASSED                                                                                                                                                                  [ 87%]
+tests/test_supervisor_coverage.py::test_ensure_real_bots_alive_empty_swarm PASSED                                                                                                                                                                  [ 87%]
+tests/test_supervisor_coverage.py::test_ensure_real_bots_alive_start_exception 2026-07-14 16:49:06,463 WARNING: 🔄 Real bot BTCUSDT is in live_swarm but not running in PM2. Restarting...
+2026-07-14 16:49:06,464 ERROR: ❌ Failed to restart real bot BTCUSDT: pm2 crash
+PASSED                                                                                                                                                              [ 87%]
+tests/test_supervisor_coverage.py::test_enforce_swarm_consistency_no_positions 2026-07-14 16:49:06,466 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+PASSED                                                                                                                                                              [ 88%]
+tests/test_supervisor_coverage.py::test_enforce_swarm_consistency_heal_failure 2026-07-14 16:49:06,472 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+2026-07-14 16:49:06,472 WARNING: ⚠️ Unauthorized stray position for ZECUSDT (allowed pools are empty). Scheduled for liquidation.
+2026-07-14 16:49:06,473 INFO: 🧹 Closing all positions for unauthorized ticker: ZECUSDT
+2026-07-14 16:49:06,553 INFO: ✅ Positions for ZECUSDT closed successfully.
+PASSED                                                                                                                                                              [ 88%]
+tests/test_supervisor_new.py::test_calculate_bot_score 2026-07-14 16:49:06,555 INFO: 🛡️ Scored BTCUSDT: REAL bot in drawdown. LOCKED IN COMBAT (Score: INF).
+2026-07-14 16:49:06,555 INFO: ❌ Scored BTCUSDT: Rejected (Cycles 5 < 10). (Score: -INF)
+2026-07-14 16:49:06,555 INFO: ❌ Scored BTCUSDT: Unprofitable. (Score: -INF)
+2026-07-14 16:49:06,555 INFO: ❌ Scored BTCUSDT: Unprofitable. (Score: -INF)
+2026-07-14 16:49:06,556 INFO: ⚖️ Scored BTCUSDT: Net:100.00, Cyc:20, Score:15.2226
+2026-07-14 16:49:06,556 INFO: ⚖️ Scored BTCUSDT: Net:100.00, Cyc:20, Score:18.2671
+PASSED                                                                                                                                                                                      [ 88%]
+tests/test_supervisor_new.py::test_calc_rotation_score PASSED                                                                                                                                                                                      [ 88%]
+tests/test_supervisor_new.py::test_selective_merge_incubator 2026-07-14 16:49:06,558 INFO: 🚀 First-start: launching 4 bots from scanner: ['A', 'B', 'C', 'D']
+2026-07-14 16:49:06,559 INFO: 🔄 Rotation: keep=2, add=2, remove=2
+2026-07-14 16:49:06,559 INFO: 🔄   removing (worst by score): ['C', 'D']
+2026-07-14 16:49:06,559 INFO: 🔄   adding (best from scanner): ['E', 'F']
+2026-07-14 16:49:06,559 INFO: 📋 Final incubator (4 bots): ['A', 'B', 'E', 'F']
+PASSED                                                                                                                                                                                [ 89%]
+tests/test_supervisor_new.py::test_get_bot_efficiency PASSED                                                                                                                                                                                       [ 89%]
+tests/test_supervisor_new.py::test_reset_bot_state_files_real 2026-07-14 16:49:06,564 INFO: 💾 Archived state for BTCUSDT: real_state_BTCUSDT.json -> archive_BTCUSDT_1784040546_real_state_BTCUSDT.json
+2026-07-14 16:49:06,564 INFO: 🗑️ Deleted stale state file: real_state_BTCUSDT.json
+2026-07-14 16:49:06,565 INFO: 💾 Archived state for BTCUSDT: shadow_state_BTCUSDT.json -> archive_BTCUSDT_1784040546_shadow_state_BTCUSDT.json
+2026-07-14 16:49:06,565 INFO: 🗑️ Deleted stale state file: shadow_state_BTCUSDT.json
+2026-07-14 16:49:06,566 INFO: ✨ Reset real state files for BTCUSDT to clean initial values (capital: 200.0).
+PASSED                                                                                                                                                                               [ 89%]
+tests/test_supervisor_new.py::test_reset_bot_state_files_paper 2026-07-14 16:49:06,570 INFO: 💾 Archived paper state for BTCUSDT: paper_state_BTCUSDT.json -> archive_BTCUSDT_1784040546_paper_state_BTCUSDT.json
+2026-07-14 16:49:06,570 INFO: 🗑️ Deleted stale state file: paper_state_BTCUSDT.json
+2026-07-14 16:49:06,570 INFO: 💾 Archived paper state for BTCUSDT: paper_shadow_BTCUSDT.json -> archive_BTCUSDT_1784040546_paper_shadow_BTCUSDT.json
+2026-07-14 16:49:06,571 INFO: 🗑️ Deleted stale state file: paper_shadow_BTCUSDT.json
+2026-07-14 16:49:06,571 INFO: ✨ Reset paper state files for BTCUSDT to clean initial values (capital: 150.0).
+PASSED                                                                                                                                                                              [ 90%]
+tests/test_supervisor_new.py::test_enforce_swarm_consistency 2026-07-14 16:49:06,574 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+2026-07-14 16:49:06,574 WARNING: ⚠️ Unauthorized position found for ETHUSDT (not in live_swarm or real_whitelist). Scheduled for liquidation.
+2026-07-14 16:49:06,574 INFO: 🧹 Closing all positions for unauthorized ticker: ETHUSDT
+2026-07-14 16:49:06,575 INFO: ✅ Positions for ETHUSDT closed successfully.
+PASSED                                                                                                                                                                                [ 90%]
+tests/test_supervisor_new.py::test_ensure_real_bots_alive 2026-07-14 16:49:06,577 WARNING: 🔄 Real bot ETHUSDT is in live_swarm but not running in PM2. Restarting...
+2026-07-14 16:49:06,578 INFO: ✅ Restarted real bot ETHUSDT
+PASSED                                                                                                                                                                                   [ 90%]
+tests/test_supervisor_new.py::test_manage_swarm_toxic_flow 2026-07-14 16:49:06,585 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:06,586 CRITICAL: 🚫 STOP signal: TRXUSDT (paper) → toxic_blacklist_paper + black_list (expires Tue Jul 14 17:17:54 2026)
+2026-07-14 16:49:06,587 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:06,588 INFO: ⏳ TRXUSDT is in Toxic Quarantine. Skipping.
+2026-07-14 16:49:06,588 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['BTCUSDT']
+2026-07-14 16:49:06,588 INFO: 🔄 Rotation: keep=1, add=0, remove=0
+2026-07-14 16:49:06,588 INFO: 📋 Final incubator (1 bots): ['BTCUSDT']
+2026-07-14 16:49:06,588 INFO: 📋 Incubator ready: ['BTCUSDT']
+2026-07-14 16:49:06,588 INFO: 🚫 Skipping BTCUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:49:06,589 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:06,589 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:49:06,589 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:49:08,095 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:49:08,096 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                                  [ 91%]
+tests/test_supervisor_new.py::test_isolated_blacklists_signal_processing 2026-07-14 16:49:08,102 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:08,102 CRITICAL: 🚫 STOP signal: BTCUSDT (paper) → toxic_blacklist_paper + black_list (expires Tue Jul 14 17:17:56 2026)
+2026-07-14 16:49:08,103 INFO: ✅ EXIT signal: ETHUSDT (real) → probation_real (expires Tue Jul 14 17:48:10 2026)
+2026-07-14 16:49:08,104 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:08,104 INFO: ⏳ BTCUSDT is in Toxic Quarantine. Skipping.
+2026-07-14 16:49:08,104 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['ETHUSDT']
+2026-07-14 16:49:08,104 INFO: 🔄 Rotation: keep=1, add=0, remove=0
+2026-07-14 16:49:08,104 INFO: 📋 Final incubator (1 bots): ['ETHUSDT']
+2026-07-14 16:49:08,104 INFO: 📋 Incubator ready: ['ETHUSDT']
+2026-07-14 16:49:08,105 INFO: 🚫 Skipping ETHUSDT: Not in real_whitelist and not a currently running real bot.
+2026-07-14 16:49:08,105 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:10,094 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): ETHUSDT
+2026-07-14 16:49:10,343 INFO: Cycle Complete. REAL Swarm: []
+PASSED                                                                                                                                                                    [ 91%]
+tests/test_supervisor_new.py::test_get_running_bots_info PASSED                                                                                                                                                                                    [ 91%]
+tests/test_supervisor_new.py::test_stop_bot PASSED                                                                                                                                                                                                 [ 92%]
+tests/test_supervisor_new.py::test_start_bot PASSED                                                                                                                                                                                                [ 92%]
+tests/test_supervisor_new.py::test_rotation_guard_immature_unprofitable_protected 2026-07-14 16:49:10,353 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['B']
+2026-07-14 16:49:10,353 INFO: 🔄 Rotation: keep=2, add=2, remove=2
+2026-07-14 16:49:10,354 INFO: 🔄   removing (worst by score): ['C', 'D']
+2026-07-14 16:49:10,354 INFO: 🔄   adding (best from scanner): ['E', 'F']
+2026-07-14 16:49:10,354 INFO: 📋 Final incubator (4 bots): ['A', 'B', 'E', 'F']
+PASSED                                                                                                                                                           [ 92%]
+tests/test_supervisor_new.py::test_rotation_guard_immature_profitable_protected 2026-07-14 16:49:10,356 INFO: 🔄 Rotation: keep=1, add=2, remove=2
+2026-07-14 16:49:10,356 INFO: 🔄   removing (worst by score): ['B', 'C']
+2026-07-14 16:49:10,357 INFO: 🔄   adding (best from scanner): ['D', 'E']
+2026-07-14 16:49:10,357 INFO: 📋 Final incubator (3 bots): ['A', 'D', 'E']
+PASSED                                                                                                                                                             [ 92%]
+tests/test_supervisor_new.py::test_rotation_guard_mature_unprofitable_replaced 2026-07-14 16:49:10,359 INFO: 🔄 Rotation: keep=1, add=2, remove=2
+2026-07-14 16:49:10,359 INFO: 🔄   removing (worst by score): ['B', 'C']
+2026-07-14 16:49:10,359 INFO: 🔄   adding (best from scanner): ['D', 'E']
+2026-07-14 16:49:10,360 INFO: 📋 Final incubator (3 bots): ['A', 'D', 'E']
+PASSED                                                                                                                                                              [ 93%]
+tests/test_supervisor_new.py::test_rotation_guard_default_min_cycles_for_rotation 2026-07-14 16:49:10,362 INFO: 🛡️ Rotation Guard: Protecting immature bots (cycles < 6): ['A']
+2026-07-14 16:49:10,362 INFO: 🔄 Rotation: keep=1, add=2, remove=2
+2026-07-14 16:49:10,362 INFO: 🔄   removing (worst by score): ['B', 'C']
+2026-07-14 16:49:10,362 INFO: 🔄   adding (best from scanner): ['D', 'E']
+2026-07-14 16:49:10,363 INFO: 📋 Final incubator (3 bots): ['A', 'D', 'E']
+PASSED                                                                                                                                                           [ 93%]
+tests/test_supervisor_new.py::test_reset_bot_state_files_exceptions 2026-07-14 16:49:10,366 ERROR: Failed to archive C:\Python\Prosperous_Bot\futures_portfolio\real_state_BTCUSDT.json: Copy failed
+2026-07-14 16:49:10,366 ERROR: Failed to archive C:\Python\Prosperous_Bot\futures_portfolio\shadow_state_BTCUSDT.json: Copy failed
+2026-07-14 16:49:10,366 INFO: ✨ Reset real state files for BTCUSDT to clean initial values (capital: 200.0).
+PASSED                                                                                                                                                                         [ 93%]
+tests/test_supervisor_new.py::test_manage_swarm_rotation_hysteresis_and_cushion 2026-07-14 16:49:10,370 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:10,371 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:10,371 INFO: 🔄 Rotation: keep=1, add=0, remove=1
+2026-07-14 16:49:10,371 INFO: 🔄   removing (worst by score): ['ETHUSDT']
+2026-07-14 16:49:10,371 INFO: 📋 Final incubator (1 bots): ['BTCUSDT']
+2026-07-14 16:49:10,371 INFO: 📋 Incubator ready: ['BTCUSDT']
+2026-07-14 16:49:10,372 INFO: ⚖️ Scored BTCUSDT: Net:100.00, Cyc:10, Score:23.9790
+2026-07-14 16:49:10,372 INFO: ❌ Scored ETHUSDT: Unprofitable. (Score: -INF)
+2026-07-14 16:49:10,372 INFO: 🧐 Evaluating REAL ETHUSDT [Score: -inf, Profit: $0.00, Age: 0.00h] vs Candidate BTCUSDT [Score: 23.9790]
+2026-07-14 16:49:10,372 INFO: ♻️ Substitution Triggered: Replacing ETHUSDT with BTCUSDT (Score delta inf > Cushion 0.2)
+2026-07-14 16:49:10,372 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:10,856 INFO: 🛑 Stopping Combat REAL process: ETHUSDT (Rolling back to pure paper tracking)
+2026-07-14 16:49:16,370 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:49:16,371 INFO: 🔥 [A] LAUNCHING PARALLEL COMBAT (REAL): BTCUSDT
+2026-07-14 16:49:16,616 INFO: Cycle Complete. REAL Swarm: ['BTCUSDT']
+2026-07-14 16:49:16,616 WARNING: 🔄 Real bot BTCUSDT is in live_swarm but not running in PM2. Restarting...
+2026-07-14 16:49:16,616 INFO: ✅ Restarted real bot BTCUSDT
+PASSED                                                                                                                                                             [ 94%]
+tests/test_supervisor_rotation_whitelist.py::test_manage_swarm_respects_whitelist_during_rotation 2026-07-14 16:49:16,620 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:16,620 INFO: 🗑️ BTCUSDT removed from live_swarm (signal: exit)
+2026-07-14 16:49:16,620 INFO: ✅ EXIT signal: BTCUSDT (paper) → probation_paper (expires Tue Jul 14 17:48:19 2026)
+2026-07-14 16:49:16,621 CRITICAL: 🚫 STOP signal: BTCUSDT (paper) → toxic_blacklist_paper + black_list (expires Tue Jul 14 17:18:04 2026)
+2026-07-14 16:49:16,622 CRITICAL: 🚫 STOP signal: BTCUSDT (real) → toxic_blacklist_real + black_list (expires Tue Jul 14 17:18:04 2026)
+2026-07-14 16:49:16,623 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:16,623 INFO: 🔄 Rotation: keep=2, add=0, remove=0
+2026-07-14 16:49:16,624 INFO: 📋 Final incubator (2 bots): ['BTCUSDT', 'ETHUSDT']
+2026-07-14 16:49:16,624 INFO: 📋 Incubator ready: ['BTCUSDT', 'ETHUSDT']
+2026-07-14 16:49:16,624 INFO: ⚖️ Scored BTCUSDT: Net:10.00, Cyc:20, Score:1.8267
+2026-07-14 16:49:16,624 INFO: ⚖️ Scored ETHUSDT: Net:10.00, Cyc:20, Score:1.8267
+2026-07-14 16:49:16,624 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:16,625 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:49:16,625 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:49:18,134 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:49:18,135 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): ETHUSDT
+2026-07-14 16:49:18,135 INFO: Cycle Complete. REAL Swarm: ['BTCUSDT', 'ETHUSDT']
+2026-07-14 16:49:18,136 INFO: --- Starting Pure Live Supervisor (Strict Scanner Sync) ---
+2026-07-14 16:49:18,136 INFO: 🔍 Running ticker scanner (Min Vol: 20M)...
+2026-07-14 16:49:18,137 INFO: 🔄 Rotation: keep=2, add=0, remove=0
+2026-07-14 16:49:18,137 INFO: 📋 Final incubator (2 bots): ['BTCUSDT', 'ETHUSDT']
+2026-07-14 16:49:18,137 INFO: 📋 Incubator ready: ['BTCUSDT', 'ETHUSDT']
+2026-07-14 16:49:18,137 INFO: ⚖️ Scored BTCUSDT: Net:10.00, Cyc:20, Score:1.8267
+2026-07-14 16:49:18,137 INFO: ⚖️ Scored ETHUSDT: Net:10.00, Cyc:20, Score:1.8267
+2026-07-14 16:49:18,137 INFO: ⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
+2026-07-14 16:49:18,138 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:49:18,138 ERROR: Критическая ошибка чтения стейта PM2: not enough values to unpack (expected 2, got 0)
+2026-07-14 16:49:19,645 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): BTCUSDT
+2026-07-14 16:49:19,646 INFO: 🚀 [A] Launching Continuous Incubator (PAPER): ETHUSDT
+2026-07-14 16:49:19,646 INFO: Cycle Complete. REAL Swarm: ['BTCUSDT', 'ETHUSDT']
+PASSED                                                                                                                                           [ 94%]
+tests/test_supervisor_service.py::test_get_sleep_interval_valid PASSED                                                                                                                                                                             [ 94%]
+tests/test_supervisor_service.py::test_get_sleep_interval_missing_file PASSED                                                                                                                                                                      [ 95%]
+tests/test_supervisor_service.py::test_get_sleep_interval_floor PASSED                                                                                                                                                                             [ 95%]
+tests/test_supervisor_service.py::test_supervisor_service_main PASSED                                                                                                                                                                              [ 95%]
+tests/test_supervisor_whitelist.py::test_enforce_swarm_consistency_respects_whitelist 2026-07-14 16:49:19,661 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+2026-07-14 16:49:19,661 WARNING: ⚠️ Unauthorized position found for SOLUSDT (not in live_swarm or real_whitelist). Scheduled for liquidation.
+2026-07-14 16:49:19,661 INFO: 🧹 Closing all positions for unauthorized ticker: SOLUSDT
+2026-07-14 16:49:19,662 INFO: ✅ Positions for SOLUSDT closed successfully.
+PASSED                                                                                                                                                       [ 96%]
+tests/test_supervisor_whitelist.py::test_enforce_swarm_consistency_all_allowed 2026-07-14 16:49:19,664 INFO: 🛡️ Enforcing Swarm Consistency: Checking for unauthorized positions.
+PASSED                                                                                                                                                              [ 96%]
+tests/test_swarm_analyzer.py::test_analyze_swarm PASSED                                                                                                                                                                                            [ 96%]
+tests/test_swarm_analyzer.py::test_analyze_swarm_missing_config PASSED                                                                                                                                                                             [ 96%]
+tests/test_telegram_sender.py::test_send_to_telegram_success PASSED                                                                                                                                                                                [ 97%]
+tests/test_telegram_sender.py::test_send_to_telegram_rate_limit PASSED                                                                                                                                                                             [ 97%]
+tests/test_telegram_sender.py::test_send_to_telegram_rate_limit_invalid_json PASSED                                                                                                                                                                [ 97%]
+tests/test_telegram_sender.py::test_send_to_telegram_timeout PASSED                                                                                                                                                                                [ 98%]
+tests/test_telegram_sender.py::test_send_to_telegram_connection_error PASSED                                                                                                                                                                       [ 98%]
+tests/test_telegram_sender.py::test_worker_missing_credentials PASSED                                                                                                                                                                              [ 98%]
+tests/test_telegram_sender.py::test_worker_empty_queue PASSED                                                                                                                                                                                      [ 99%]
+tests/test_telegram_sender.py::test_worker_send_failure PASSED                                                                                                                                                                                     [ 99%]
+tests/test_telegram_sender.py::test_send_to_telegram_api_error PASSED                                                                                                                                                                              [ 99%]
+tests/test_telegram_sender.py::test_worker_success PASSED                                                                                                                                                                                          [100%]
+
+================================================================================================================= 327 passed in 52.59s ==================================================================================================================
+(.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> 

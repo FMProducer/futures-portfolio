@@ -1,27 +1,76 @@
-# Environment files with sensitive data
+# ═══════════════════════════════════════════════════════════════
+#  .gitignore — futures_portfolio
+# ═══════════════════════════════════════════════════════════════
+
+# ── Secrets ──────────────────────────────────────────────────
 .env
 .env.local
+.env.*.local
 
-# State files
+# ── State files (runtime data, never commit) ─────────────────
+core/*.json
+!core/config.json
 state.json
 paper_state.json
+*_state_*.json
+*_shadow_*.json
+archive_*.json
+*.fired
+*.lock
 
-# Logs
+# ── Signals (runtime flags) ─────────────────────────────────
+signals/
+*.flag
+
+# ── Logs ─────────────────────────────────────────────────────
 logs/
 *.log
 
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-.pytest_cache/
+# ── History (archived states) ────────────────────────────────
+history/
 
-# IDE
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# ── Testing ──────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.nox/
+.tox/
+.hypothesis/
+
+# ── Virtual environments ─────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── IDE / Editor ─────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# OS
+# ── OS ───────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# ── MyPy ─────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ── Temporary files ──────────────────────────────────────────
+*.tmp
+*.bak
+*.orig
+nul
