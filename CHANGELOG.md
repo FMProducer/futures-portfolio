@@ -1,5 +1,77 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[14 Jul 2026 — 23:00] — System Portability & Deployment Guide
+Описание: Система самодостаточна, имеет удалённый репозиторий, пригодна для переноса на другой ПК.
+
+Удалённый репозиторий:
+- URL: https://github.com/FMProducer/futures-portfolio.git (private)
+- Branch: master
+- 125 файлов отслеживается
+
+Что в git (самодостаточность):
+1. core/ —.connector, executor, calculator, main, notifier, storage (+ __init__.py)
+2. supervisor/ — aggregator, service, rotation, whitelist, swarm
+3. monitoring/ — send_monitor_report
+4. rank_tickers.py — сканер тикеров
+5. backtest_rebalance.py — бэктест движок
+6. tests/ — 327 unit-тестов
+7. requirements.txt — 14 пакетов с == версиями
+8. pyproject.toml — метаданные + зависимости
+9. ecosystem.config.js — PM2 конфиг (paper/real боты + supervisor + aggregator + telegram)
+10. .env.example — шаблон переменных окружения
+11. config.json — конфигурация (порты, тикеры, параметры стратегии)
+12. CLAUDE.md, CHANGELOG.md — документация
+13. docs/log.md — история инцидентов
+
+Что НЕ в git (.gitignore):
+- .env — секреты API ключей
+- core/*.json — runtime state (paper_state, real_state, shadow)
+- logs/ — лог-файлы
+- signals/ — runtime флаги
+- .venv/ — виртуальное окружение
+- history/ — архив состояний
+
+Инструкция переноса на другой ПК:
+Шаг 1 — Клонирование:
+  git clone https://github.com/FMProducer/futures-portfolio.git
+  cd futures_portfolio
+
+Шаг 2 — Python окружение:
+  python -m venv .venv
+  .venv\Scripts\activate          (Windows)
+  source .venv/bin/activate       (Linux/Mac)
+  pip install -r requirements.txt
+
+Шаг 3 — Конфигурация:
+  copy .env.example .env
+  # Заполнить: BINANCE_API_KEY, BINANCE_SECRET_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+  # При необходимости: TELEGRAM_API_BASE (для прокси к Telegram)
+
+Шаг 4 — PM2 (Windows/Linux):
+  npm install -g pm2
+  pm2 start ecosystem.config.js
+  pm2 save
+
+Шаг 5 — Проверка:
+  python -m pytest tests/ --ignore-safety   (327/327)
+  pm2 list                                  (все сервисы online)
+
+Зависимости (не требуют ручной установки):
+- Python 3.11+ (проверено на 3.11.9)
+- Node.js (для PM2)
+- Binance Futures API (прямое подключение, без VPN/прокси)
+- Telegram Bot API (при необходимости через TELEGRAM_API_BASE прокси)
+
+Известные ограничения при переносе:
+- config.json содержит абсолютные пути (C:\Python\Prosperous_Bot\...) — нужно поправить под новый ПК
+- ecosystem.config.js указывает на .venv в текущей директории — работает если venv создан локально
+- Clock drift на новом ПК может отличаться — NTP sync в connector.py компенсирует автоматически
+- PM2 на Linux/macOS: команда pm2 запускается без .cmd суффикса
+
+Изменённые файлы: CHANGELOG.md, Docs/changelog.md (Obsidian)
+
+---
+
 [14 Jul 2026 — 22:23] — Clock Sync & recvWindow Hardening (Binance -1021 fix)
 Problem: swarm-aggregator получал APIError(code=-1021): Timestamp for this request is outside of the recvWindow. REQUEST_RECVWINDOW=15000 не покрывал clock drift (-7s стабильный, но мог скакнуть за пределы окна). Дополнительно: Client(ping=True) тратил 15s на таймаут spot ping (api1.binance.com заблокирован в РФ).
 

@@ -78,13 +78,8 @@
     "VANRYUSDT",
     "ZECUSDT"
   ],
-  "use_real_whitelist": true,
-  "real_whitelist": [
-    "AIOTUSDT",
-    "TLMUSDT",
-    "VANRYUSDT",
-    "ZECUSDT"
-  ],
+  "use_real_whitelist": false,
+  "real_whitelist": [],
   "black_list": [],
   "toxic_cooldown_days": 0.01,
   "toxic_blacklist": {},
