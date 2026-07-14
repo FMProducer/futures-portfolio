@@ -74,3 +74,4 @@ dmypy.json
 *.bak
 *.orig
 nul
+scan_cache.json
