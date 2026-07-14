@@ -156,6 +156,7 @@ async def test_verify_connection_testnet_true():
         assert conn.futures_client == mock_client.return_value
         conn.futures_client.ping.assert_called_once()
 
+
 @pytest.mark.asyncio
 async def test_verify_connection_testnet_false():
     with patch("futures_portfolio.core.connector.Client") as mock_client:

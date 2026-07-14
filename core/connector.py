@@ -87,6 +87,9 @@ class BinanceConnector:
                     client.API_URL = 'https://api1.binance.com/api'
                     client.FUTURES_URL = 'https://fapi.binance.com/fapi'
 
+                # Увеличиваем recvWindow для补偿ки clock drift через прокси (default 10000)
+                client.REQUEST_RECVWINDOW = 15000
+
                 # Отключаем использование системных переменных в сессии requests
                 client.session.trust_env = False
                 return client
