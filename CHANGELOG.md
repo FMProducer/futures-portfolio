@@ -1,5 +1,20 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[14 Jul 2026 — 19:32] — Package Import Path Fix (futures_portfolio автономность)
+Problem: pytest с CWD=futures_portfolio/ падал с ModuleNotFoundError: No module named 'futures_portfolio'. 22 из 327 тестов не собирались. Директория запуска влияла на результат — из родителя OK, изнутри пакета FAIL.
+
+Root cause (две проблемы):
+1. pyproject.toml: pythonpath = ["."] добавлял futures_portfolio/ в sys.path — Python видел core/, supervisor/ напрямую, но не futures_portfolio.core.*
+2. __init__.py (6 файлов): _project_root = dirname(dirname(__file__)) указывал на futures_portfolio/ (сам пакет) вместо его родителя. Legacy-артефакт от плоской структуры до Этапа 3.
+
+Fix:
+- pyproject.toml: pythonpath = ["."] → pythonpath = [".."] — добавляет родительскую директорию в sys.path
+- core/__init__.py, supervisor/__init__.py, backtest/__init__.py, scanner/__init__.py, monitoring/__init__.py, optimization/__init__.py: добавлен третий dirname() — _project_root теперь указывает на C:\Python\Prosperous_Bot
+
+Result: 327/327 collected из обеих директорий. futures_portfolio автономен — можно запускать pytest из корня пакета.
+
+Changed files: pyproject.toml, core/__init__.py, supervisor/__init__.py, backtest/__init__.py, scanner/__init__.py, monitoring/__init__.py, optimization/__init__.py
+
 [14 Jul 2026 — 17:05] — State File Path Deduplication (SSOT for core/)
 Problem: State-файлы (paper_state_*, paper_shadow_*, real_state_*, shadow_state_*) дублировались в корне futures_portfolio/ и в core/. Swarm_manager.py использовал BASE_PATH (корень) для чтения/записи, а main.py — os.path.dirname(__file__) (core/). Итого: 41 stale-файл в корне при 17 live-ботах.
 
