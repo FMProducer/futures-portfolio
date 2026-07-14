@@ -33,7 +33,7 @@ dev = [
 # ══════════════════════════════════════════════════════════════
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".."]
 asyncio_mode = "auto"
 addopts = "-ra -v --tb=short"
 markers = [
