@@ -195,6 +195,17 @@ python main.py --config config.json
 
 ## Change Log
 
+### 14 July 2026 — Environment Stabilization & Dependency Pinning
+1. **Dependencies Pinned**: `requirements.txt` and `pyproject.toml` — all 14 packages with exact `==` versions
+2. **pyarrow**: Installed `pyarrow==23.0.1` (<24 — no feather deprecation warnings)
+3. **Test Fix**: `test_send_monitor_report.py` — added `patch("dotenv.load_dotenv")` to prevent module-level TypeError
+4. **ecosystem.config.js**: Fixed venv path from `../.venv` to `./.venv`
+
+### 14 July 2026 — Binance API recvWindow Fix
+1. **Clock Drift**: Local clock drift -7.6s exceeded default `recvWindow=10000ms`, causing `-1021` errors
+2. **Fix**: `connector.py` — `client.REQUEST_RECVWINDOW = 15000` (compensates drift up to 15s)
+3. **Note**: `recvWindow` is a Binance API parameter, NOT a `requests.Session` kwarg
+
 ### 18 April 2026 — Security & Safety Update
 1. **API Security**: Keys moved to env vars (BINANCE_API_KEY, BINANCE_SECRET_KEY)
 2. **Margin Safety**: Added margin ratio monitoring with emergency shutdown

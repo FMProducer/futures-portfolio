@@ -1,6 +1,43 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
-[14 Jul 2026 — 19:32] — Package Import Path Fix (futures_portfolio автономность)
+[14 Jul 2026 — 21:50] — Environment Stabilization & Dependency Pinning
+Problem: После пересоздания .venv (Python 3.11.9) — 10 из 327 тестов падали, PM2 не находил интерпретатор, ecosystem.config.js указывал на несуществующий venv.
+
+Root cause (4 проблемы):
+1. 5 тестов test_backtest_rebalance.py — ImportError: No module named 'pyarrow' (pyarrow не установлен)
+2. 5 тестов test_send_monitor_report.py — TypeError: an integer is required (load_dotenv() на уровне модуля конфликтует с os.stat mock в тестах)
+3. ecosystem.config.js — путь к venv указывал на '../.venv' (Prosperous_Bot/.venv), а venv пересоздан в futures_portfolio/.venv
+4. requirements.txt — не зафиксированы версии, pin-to-past не работал
+
+Fix:
+1. Установлен pyarrow==23.0.1 (<24 — без feather deprecation warnings)
+2. Добавлен patch("dotenv.load_dotenv") в 4 теста test_send_monitor_report.py — предотвращает вызов load_dotenv при повторном импорте модуля
+3. ecosystem.config.js: path.join(__dirname, '..', '.venv') → path.join(__dirname, '.venv')
+4. requirements.txt — все 14 пакетов зафиксированы с == версиями
+5. pyproject.toml — dependencies и dev-dependencies зафиксированы с == версиями, pyarrow добавлен
+
+Result: 327/327 passed, 0 warnings. PM2 запускает все 3 сервиса.
+
+Changed files: requirements.txt, pyproject.toml, ecosystem.config.js, tests/test_send_monitor_report.py
+
+---
+
+[14 Jul 2026 — 21:30] — Binance API recvWindow Fix (clock drift compensation)
+Problem: Aggregator получал APIError(code=-1021): Timestamp for this request is outside of the recvWindow. Clock drift -7.6s превышал default recvWindow=10000ms. connector.py передавал recvWindow через requests_params → TypeError: Session.request() got an unexpected keyword argument 'recvWindow'.
+
+Root cause: recvWindow — параметр Binance API, а не requests.Session.request(). python-binance Client принимает recvWindow через атрибут REQUEST_RECVWINDOW, не через requests_params.
+
+Fix:
+- connector.py: добавлен client.REQUEST_RECVWINDOW = 15000 после создания Client (компенсирует clock drift до 15s)
+- tests/test_connector.py: reverted requests_params assertions обратно к оригиналу
+
+Result: -1021 ошибки ушли после рестарта PM2. 327/327 tests passed.
+
+Changed files: core/connector.py, tests/test_connector.py
+
+---
+
+[14 Jul 2026] — Этап 3: Модульная структура (Multi-Repo Split)
 Problem: pytest с CWD=futures_portfolio/ падал с ModuleNotFoundError: No module named 'futures_portfolio'. 22 из 327 тестов не собирались. Директория запуска влияла на результат — из родителя OK, изнутри пакета FAIL.
 
 Root cause (две проблемы):
