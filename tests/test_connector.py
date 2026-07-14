@@ -150,11 +150,13 @@ async def test_verify_connection_testnet_true():
 
         mock_client.assert_called_once_with(
             "test_key", "test_secret", testnet=True,
-            requests_params={'proxies': {'http': None, 'https': None}, 'timeout': 15}
+            requests_params={'proxies': {'http': None, 'https': None}, 'timeout': 15},
+            ping=False
         )
         assert conn.client == mock_client.return_value
         assert conn.futures_client == mock_client.return_value
-        conn.futures_client.ping.assert_called_once()
+        assert mock_client.return_value.REQUEST_RECVWINDOW == 30000
+        conn.futures_client.futures_ping.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -165,13 +167,15 @@ async def test_verify_connection_testnet_false():
 
         mock_client.assert_called_once_with(
             "test_key", "test_secret", testnet=False,
-            requests_params={'proxies': {'http': None, 'https': None}, 'timeout': 15}
+            requests_params={'proxies': {'http': None, 'https': None}, 'timeout': 15},
+            ping=False
         )
         client_instance = mock_client.return_value
         assert client_instance.API_URL == 'https://api1.binance.com/api'
         assert client_instance.FUTURES_URL == 'https://fapi.binance.com/fapi'
+        assert client_instance.REQUEST_RECVWINDOW == 30000
         assert client_instance.session.trust_env is False
-        client_instance.ping.assert_called_once()
+        client_instance.futures_ping.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_verify_connection_already_initialized():
@@ -183,7 +187,7 @@ async def test_verify_connection_already_initialized():
 
         await conn.verify_connection()
         mock_client.assert_not_called()
-        mock_client_inst.ping.assert_called_once()
+        mock_client_inst.futures_ping.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_verify_connection_init_binance_api_exception():
@@ -205,7 +209,7 @@ async def test_verify_connection_init_request_exception():
 async def test_verify_connection_ping_binance_api_exception():
     with patch("futures_portfolio.core.connector.Client") as mock_client:
         mock_client_inst = mock_client.return_value
-        mock_client_inst.ping.side_effect = make_binance_exception(502, -1001, "Bad Gateway")
+        mock_client_inst.futures_ping.side_effect = make_binance_exception(502, -1001, "Bad Gateway")
         conn = BinanceConnector(api_key="test_key", secret_key="test_secret", testnet=True)
         with pytest.raises(BinanceAPIException):
             await conn.verify_connection()
@@ -214,7 +218,7 @@ async def test_verify_connection_ping_binance_api_exception():
 async def test_verify_connection_ping_request_exception():
     with patch("futures_portfolio.core.connector.Client") as mock_client:
         mock_client_inst = mock_client.return_value
-        mock_client_inst.ping.side_effect = requests.exceptions.RequestException("Ping failed")
+        mock_client_inst.futures_ping.side_effect = requests.exceptions.RequestException("Ping failed")
         conn = BinanceConnector(api_key="test_key", secret_key="test_secret", testnet=True)
         with pytest.raises(requests.exceptions.RequestException):
             await conn.verify_connection()

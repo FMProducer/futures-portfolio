@@ -80,25 +80,40 @@ class BinanceConnector:
                 }
 
                 if self.testnet:
-                    client = Client(self.api_key, self.secret_key, testnet=True, requests_params=requests_params)
+                    client = Client(self.api_key, self.secret_key, testnet=True, requests_params=requests_params, ping=False)
                 else:
-                    client = Client(self.api_key, self.secret_key, testnet=False, requests_params=requests_params)
+                    client = Client(self.api_key, self.secret_key, testnet=False, requests_params=requests_params, ping=False)
                     # Дополнительная проверка, что URL подменились
                     client.API_URL = 'https://api1.binance.com/api'
                     client.FUTURES_URL = 'https://fapi.binance.com/fapi'
 
-                # Увеличиваем recvWindow для补偿ки clock drift через прокси (default 10000)
-                client.REQUEST_RECVWINDOW = 15000
+                # Увеличиваем recvWindow для补偿ки clock drift (default 10000)
+                # 30s покрывает drift до ±30s — достаточно для Windows NTP jitter
+                client.REQUEST_RECVWINDOW = 30000
+
+                # Синхронизация timestamp с сервером Binance (eliminates clock drift)
+                try:
+                    import requests as _req
+                    server_time = _req.get('https://fapi.binance.com/fapi/v1/time', timeout=5).json()['serverTime']
+                    local_time = int(__import__('time').time() * 1000)
+                    client.timestamp_offset = server_time - local_time
+                    import logging
+                    logging.getLogger(__name__).info(
+                        f"Clock sync: offset={client.timestamp_offset}ms"
+                    )
+                except Exception:
+                    pass  # fallback to REQUEST_RECVWINDOW only
 
                 # Отключаем использование системных переменных в сессии requests
                 client.session.trust_env = False
                 return client
 
-            # Делегируем блокирующий вызов (синхронный ping внутри конструктора Client) в отдельный поток
+            # Делегируем блокирующий вызов в отдельный поток (ping=False — без spot timeout)
             self.client = await asyncio.to_thread(_init_client)
             self.futures_client = self.client
 
-        await asyncio.to_thread(self.futures_client.ping)
+        # Проверка через futures endpoint (не spot!)
+        await asyncio.to_thread(self.futures_client.futures_ping)
 
     @retry_on_network_error(retries=5, delay=3.0)
     async def get_positions(self) -> Dict[str, Dict]:

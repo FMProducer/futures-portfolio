@@ -201,7 +201,14 @@ python main.py --config config.json
 3. **Test Fix**: `test_send_monitor_report.py` — added `patch("dotenv.load_dotenv")` to prevent module-level TypeError
 4. **ecosystem.config.js**: Fixed venv path from `../.venv` to `./.venv`
 
-### 14 July 2026 — Binance API recvWindow Fix
+### 14 July 2026 — Clock Sync & recvWindow Hardening
+1. **Clock Drift**: Local clock drift ~-7s (stable), but could spike beyond `REQUEST_RECVWINDOW=15000`
+2. **NTP Sync**: `timestamp_offset = server_time - local_time` eliminates drift entirely
+3. **recvWindow**: Increased 15000 → 30000 as safety margin
+4. **Spot Ping Eliminated**: `Client(ping=False)` + `futures_ping()` in verify_connection — avoids 15s timeout on blocked `api1.binance.com`
+5. **Tests**: 5 assertions updated in `test_connector.py`
+
+### 14 July 2026 — Binance API recvWindow Fix (initial)
 1. **Clock Drift**: Local clock drift -7.6s exceeded default `recvWindow=10000ms`, causing `-1021` errors
 2. **Fix**: `connector.py` — `client.REQUEST_RECVWINDOW = 15000` (compensates drift up to 15s)
 3. **Note**: `recvWindow` is a Binance API parameter, NOT a `requests.Session` kwarg

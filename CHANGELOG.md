@@ -1,5 +1,25 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[14 Jul 2026 — 22:23] — Clock Sync & recvWindow Hardening (Binance -1021 fix)
+Problem: swarm-aggregator получал APIError(code=-1021): Timestamp for this request is outside of the recvWindow. REQUEST_RECVWINDOW=15000 не покрывал clock drift (-7s стабильный, но мог скакнуть за пределы окна). Дополнительно: Client(ping=True) тратил 15s на таймаут spot ping (api1.binance.com заблокирован в РФ).
+
+Root cause (3 проблемы):
+1. REQUEST_RECVWINDOW=15000 insufficient — clock drift мог превысить 15s
+2. Client(ping=True) — spot ping к api1.binance.com таймаутился 15s перед каждым созданием клиента
+3. verify_connection() вызывал self.futures_client.ping() — spot endpoint, а не futures
+
+Fix:
+1. REQUEST_RECVWINDOW increased: 15000 → 30000 (covers drift up to ±30s)
+2. NTP clock sync: timestamp_offset = server_time - local_time (eliminates drift entirely)
+3. Client(ping=False) — bypass spot ping timeout
+4. verify_connection() → futures_ping() instead of ping() (correct endpoint)
+5. Tests: updated 5 assertions in test_connector.py for ping=False, futures_ping, REQUEST_RECVWINDOW=30000
+
+Result: 327/327 tests passed. -1021 errors eliminated. Clock sync stable at ~6960ms offset.
+Changed files: core/connector.py, tests/test_connector.py
+
+---
+
 [14 Jul 2026 — 21:50] — Environment Stabilization & Dependency Pinning
 Problem: После пересоздания .venv (Python 3.11.9) — 10 из 327 тестов падали, PM2 не находил интерпретатор, ecosystem.config.js указывал на несуществующий venv.
 
