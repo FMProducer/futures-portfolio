@@ -1,5 +1,24 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[16 Jul 2026 — 12:45] — CRITICAL FIX: Revert timestamp_offset (-1021)
+Проблема: реальные боты (real-tlm, real-ldo) получали APIError(code=-1021) — Timestamp ahead. Сделки прекратились.
+Причина: timestamp_offset вычислялся через сырой requests.get() с системным прокси в РФ — невалидный offset.
+Решение:
+- Удалён timestamp_offset из connector.py
+- Оставлен recvWindow=30000 (протестирован months)
+- -1021 добавлен в retryable ошибки (транзиентная)
+- Tests: 328/328 pass (+1 retry test)
+
+### 16 July 2026 — Skills Stack: 6 Custom Skills Created
+1. **binance-api-ref** — Binance Futures API: эндпоинты, ошибки, rate limits, clock sync
+2. **pm2-workflow** — PM2: restart, logs, ecosystem, safety, диагностика
+3. **sqlite-telemetry** — SQL-запросы к trading_stats.db: PnL, win rate, drawdown
+4. **futures-trading-debugging** — отладка live-проблем: смерть бота, дрифт позиций
+5. **optuna-optimization** — Optuna: objective function, Sortino, multi-ticker
+6. **connector-patterns** — python-binance: async wrappers, retry, hedge mode, gotchas
+- Все заточены под стек проекта, содержат pitfall'ы из реального опыта
+- Skills.txt обновлён: 90 → 96 скиллов
+
 [14 Jul 2026 — 23:00] — System Portability & Deployment Guide
 Описание: Система самодостаточна, имеет удалённый репозиторий, пригодна для переноса на другой ПК.
 

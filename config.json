@@ -73,9 +73,9 @@
     }
   ],
   "live_swarm": [
-    "AIOTUSDT",
+    "DODOXUSDT",
+    "LDOUSDT",
     "TLMUSDT",
-    "VANRYUSDT",
     "ZECUSDT"
   ],
   "use_real_whitelist": false,

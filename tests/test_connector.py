@@ -539,6 +539,21 @@ async def test_retry_on_network_error_binance_server_error():
     mock_sleep.assert_called_once_with(2.0)
 
 @pytest.mark.asyncio
+async def test_retry_on_network_error_timestamp_retryable():
+    """-1021 Timestamp error should be retried, not treated as fatal."""
+    mock_func = AsyncMock()
+    mock_func.__name__ = "test_func_ts"
+    exc_1021 = make_binance_exception(400, -1021, "Timestamp for this request was 1000ms ahead")
+    mock_func.side_effect = [exc_1021, "Success"]
+
+    decorated = retry_on_network_error(retries=3, delay=1.0)(mock_func)
+    with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
+        res = await decorated()
+    assert res == "Success"
+    assert mock_func.call_count == 2
+    mock_sleep.assert_called_once_with(1.0)
+
+@pytest.mark.asyncio
 async def test_retry_on_network_error_client_errors():
     for code in [-2019, -4003, -4164]:
         mock_func = AsyncMock()

@@ -208,6 +208,21 @@ python main.py --config config.json
 4. **Spot Ping Eliminated**: `Client(ping=False)` + `futures_ping()` in verify_connection — avoids 15s timeout on blocked `api1.binance.com`
 5. **Tests**: 5 assertions updated in `test_connector.py`
 
+### 16 July 2026 — Revert timestamp_offset (CRITICAL FIX)
+1. **Root Cause**: `timestamp_offset` вычислялся через сырой `requests.get()` с системным прокси в РФ — давал невалидный offset, ломая реальных ботов (`-1021 Timestamp ahead`)
+2. **Fix**: Удалён блок `timestamp_offset` из `connector.py`. Оставлен `recvWindow=30000` (работает months без проблем)
+3. **Retry**: `-1021` добавлен в retryable ошибки (`retry_on_network_error`) — транзиентная ошибка, не фатальная
+4. **Tests**: Новый тест `test_retry_on_network_error_timestamp_retryable`, 328/328 pass
+
+### 16 July 2026 — Skills Stack: 6 Custom Skills
+1. **binance-api-ref** — Binance Futures API: эндпоинты, ошибки, rate limits, clock sync
+2. **pm2-workflow** — PM2: restart, logs, ecosystem, safety, диагностика
+3. **sqlite-telemetry** — SQL-запросы к trading_stats.db: PnL, win rate, drawdown
+4. **futures-trading-debugging** — отладка live-проблем: смерть бота, дрифт позиций
+5. **optuna-optimization** — Optuna: objective function, Sortino, multi-ticker
+6. **connector-patterns** — python-binance: async wrappers, retry, hedge mode, gotchas
+- Skills.txt: 90 → 96 скиллов
+
 ### 14 July 2026 — Binance API recvWindow Fix (initial)
 1. **Clock Drift**: Local clock drift -7.6s exceeded default `recvWindow=10000ms`, causing `-1021` errors
 2. **Fix**: `connector.py` — `client.REQUEST_RECVWINDOW = 15000` (compensates drift up to 15s)

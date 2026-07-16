@@ -46,8 +46,8 @@ def retry_on_network_error(retries: int = 3, delay: float = 2.0):
                         logger.error(f"Max retries reached for {func.__name__}. Last error: {e}")
                 except BinanceAPIException as e:
                     last_err = e
-                    # Do not retry on client-side errors (except 429 Rate Limit)
-                    if e.status_code and 400 <= e.status_code < 500 and e.status_code != 429:
+                    # Do not retry on client-side errors (except 429 Rate Limit and -1021 Timestamp)
+                    if e.status_code and 400 <= e.status_code < 500 and e.status_code != 429 and e.code != -1021:
                         logger.error(f"Fatal Binance API Error in {func.__name__}: {e}. Aborting retry.")
                         raise e
 
@@ -87,22 +87,10 @@ class BinanceConnector:
                     client.API_URL = 'https://api1.binance.com/api'
                     client.FUTURES_URL = 'https://fapi.binance.com/fapi'
 
-                # Увеличиваем recvWindow для补偿ки clock drift (default 10000)
-                # 30s покрывает drift до ±30s — достаточно для Windows NTP jitter
+                # recvWindow=30000 покрывает clock drift до ±30s
+                # Отказались от timestamp_offset (14 Jul 2026) — сырой requests.get()
+                # через прокси давал невалидный offset, ломая реальных ботов (-1021)
                 client.REQUEST_RECVWINDOW = 30000
-
-                # Синхронизация timestamp с сервером Binance (eliminates clock drift)
-                try:
-                    import requests as _req
-                    server_time = _req.get('https://fapi.binance.com/fapi/v1/time', timeout=5).json()['serverTime']
-                    local_time = int(__import__('time').time() * 1000)
-                    client.timestamp_offset = server_time - local_time
-                    import logging
-                    logging.getLogger(__name__).info(
-                        f"Clock sync: offset={client.timestamp_offset}ms"
-                    )
-                except Exception:
-                    pass  # fallback to REQUEST_RECVWINDOW only
 
                 # Отключаем использование системных переменных в сессии requests
                 client.session.trust_env = False
