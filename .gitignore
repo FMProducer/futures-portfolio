@@ -29,6 +29,12 @@ logs/
 # ── History (archived states) ────────────────────────────────
 history/
 
+# ── SQLite telemetry ─────────────────────────────────────────
+trading_stats.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # ── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]

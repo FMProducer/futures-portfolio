@@ -223,6 +223,23 @@ python main.py --config config.json
 6. **connector-patterns** — python-binance: async wrappers, retry, hedge mode, gotchas
 - Skills.txt: 90 → 96 скиллов
 
+### 16 July 2026 — SQLite Telemetry: External Analytics Pipeline
+1. **Расследование**: Skill sqlite-telemetry ссылался на мёртвую систему (parse_logs_to_sqlite.py, cron на паузе)
+2. **Источник**: 5509 trades были от parse_logs_to_sqlite.py (парсинг PM2 логов), stale 42 дня
+3. **Решение**: archive_to_sqlite.py — внешний скрипт, читает history/*.json, заполняет trading_stats.db
+4. **Данные**: 29 real сессий (+139.75 USDT, PF 79.95, WR 89.7%), 167 paper сессий
+5. **Анализ**: EPICUSDT (+85.13) основной драйвер, DODOXUSDT стабильный (7/7 wins)
+6. **Выводы**: Trailing stop теряет ~80% прибыли, paper предсказывает направление (10/15)
+7. **Перенос**: scripts/archive_to_sqlite.py, trading_stats.db в корень проекта
+
+### 16 July 2026 — PM2 Log Parser: Intermediate State Telemetry
+1. **Расследование**: PM2 логи (6726 файлов) содержат heartbeats, trades, rebalances — но не парсились
+2. **Решение**: pm2_log_parser.py — внешний скрипт, парсит PM2 логи, заполняет 4 таблицы в trading_stats.db
+3. **Баг fix**: TRADE_PATTERN группы 5-7 (ticker, pos_type, price) использовались неверно → 86K trades молча пропускались
+4. **Данные**: heartbeats (1.27M), rebalances (55K), pm2_trades (84K), guards (100K)
+5. **Cron**: b0ff3538f9df, ежедневно 23:00 — archive_to_sqlite.py + pm2_log_parser.py
+6. **Структура БД**: bot_sessions (196), daily_stats (79), trades (5509, stale), heartbeats (1.27M), rebalances (55K), pm2_trades (84K), guards (100K)
+
 ### 14 July 2026 — Binance API recvWindow Fix (initial)
 1. **Clock Drift**: Local clock drift -7.6s exceeded default `recvWindow=10000ms`, causing `-1021` errors
 2. **Fix**: `connector.py` — `client.REQUEST_RECVWINDOW = 15000` (compensates drift up to 15s)

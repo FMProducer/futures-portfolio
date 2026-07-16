@@ -1,5 +1,152 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+CHANGELOG — Prosperous BOT Futures Portfolio
+
+[16 Jul 2026 — 16:30] — PM2 Log Parser: Intermediate State Telemetry
+Реанимация парсинга PM2 логов для промежуточных данных (heartbeats, trades, rebalances).
+
+### Проблема
+archive_to_sqlite.py заполнял только bot_sessions и daily_stats (из history/*.json).
+Отсутствовали промежуточные данные: TPV/PnL каждые 1-2 мин, сделки с ценами, номера циклов rebalance.
+Для анализа drawdown, trailing stop, velocity guard необходимы промежуточные точки.
+
+### Расследование
+PM2 логи (C:\Users\svsma\.pm2\logs\) содержат:
+- real-{ticker}-out-{pid}.log —活ные боты (ZECUSDT и др.)
+- paper-{ticker}-out-{pid}.log — paper боты
+
+Формат heartbeat: `Heartbeat: TPV=16.77 | PnL=-3.23 | ZECUSDT=547.98 | L:47.9% [-2.1%] {+8.03$} | S:48.8% [-1.2%] {+8.19$}`
+Формат trade: `📝 REAL: SELL 0.016 ZECUSDT_SHORT @ 557.124`
+Формат rebalance: `Rebalance #31 complete. TPV: 18.98`
+
+### Решение: pm2_log_parser.py
+Новый скрипт (внешний, не инвазивный):
+- Парсит 6726 PM2 лог-файлов (real + paper)
+- Извлекает: heartbeats, rebalances, trades, guards
+- Заполняет 4 новые таблицы в trading_stats.db
+- CLI: --scan-all, --dry-run, --ticker, --mode
+- Путь: C:\Python\Prosperous_Bot\futures_portfolio\scripts\pm2_log_parser.py
+
+### Баг fix: group index mismatch
+Проблема: TRADE_PATTERN группы 5-7 (ticker, pos_type, price) использовались неверно.
+- group(5) = ticker, но код использовал как pos_type
+- group(6) = pos_type, но код использовал как price → float('LONG') → ValueError
+- Все 86K trades молча пропускались (try/except continue)
+
+Fix: group(6) → pos_type, group(7) → price
+
+### Результаты заполнения
+- heartbeats: 1,270,841 rows (2026-05-18 → 2026-07-16)
+- rebalances: 55,192 rows
+- pm2_trades: 84,138 rows (paper: 77,085, real: 7,053 across 184 tickers)
+- guards: 100,526 rows
+
+### Cron: ежедневный pipeline
+Job ID: b0ff3538f9df
+Расписание: 23:00 ежедневно
+Что делает:
+1. archive_to_sqlite.py --scan-all (сессии из archive JSON)
+2. pm2_log_parser.py --scan-all (heartbeats, trades, rebalances из PM2 логов)
+3. Сводка по таблицам
+
+### Структура БД (итого)
+| Таблица | Rows | Источник |
+|---------|------|----------|
+| daily_stats | 79 | archive_to_sqlite.py |
+| bot_sessions | 196 | archive_to_sqlite.py |
+| trades | 5,509 | parse_logs_to_sqlite.py (старый, мёртвый) |
+| heartbeats | 1,270,841 | pm2_log_parser.py |
+| rebalances | 55,192 | pm2_log_parser.py |
+| pm2_trades | 84,138 | pm2_log_parser.py |
+| guards | 100,526 | pm2_log_parser.py |
+
+### Файлы
+- scripts/pm2_log_parser.py — новый скрипт (11.8 KB)
+- scripts/archive_to_sqlite.py — ранее создан (10.5 KB)
+- trading_stats.db — SQLite база (обновлена)
+
+### Запуск
+```bash
+cd C:\Python\Prosperous_Bot\futures_portfolio
+python scripts/pm2_log_parser.py --scan-all
+python scripts/pm2_log_parser.py --scan-all --dry-run --ticker ZECUSDT --mode real
+```
+
+### Статус
+- Система не затронута, боты работают
+- Скрипт работает автономно, без зависимости от ботов
+- Старая таблица trades (5509 rows) сохранена (stale данные из мёртвого парсера)
+
+---
+
+
+[16 Jul 2026 — 15:30] — SQLite Telemetry: External Analytics Pipeline
+Расследование и восстановление системы телеметрии для анализа торговой истории.
+
+### Проблема
+Skill sqlite-telemetry ссылался на trading_stats.db (5509 trades, 79 daily_stats), но:
+- Скрипт parse_logs_to_sqlite.py (D:\Hermes-USB-Portable-main\data\scripts\) был мёртв
+- Cron job "Nightly Stats" на паузе с 11 июня 2026
+- Формат логов изменился (real_*.log → aggregator.log/supervisor.log)
+- Парсер依赖 от regex для BUY/SELL строк, которых больше нет в новых логах
+- Данные в БД: только 2 дня (3-4 июня), stale 42 дня
+
+### Расследование: откуда 5509 записей
+- Источник: parse_logs_to_sqlite.py парсил PM2 логи (real_*.log, paper_*.log)
+- Cron: nightly_stats.py → parse_logs_to_sqlite.py → generate_daily_report.py
+- Расписание: 0 22 * * * (22:00 ежедневно)
+- Последний запуск: 10 июня 2026
+- Причина мёртвости: формат логов изменился, парсер依赖 от старого формата
+
+### Решение: archive_to_sqlite.py
+Новый скрипт (внешний, не инвазивный):
+- Читает history/*.json (129 archive файлов: 21 real + 54 paper_state)
+- Заполняет bot_sessions и daily_stats в trading_stats.db
+- Idempotent (INSERT OR REPLACE, проверка дубликатов)
+- CLI: --scan-all, --dry-run, --db, --history
+- Путь: C:\Python\Prosperous_Bot\futures_portfolio\scripts\archive_to_sqlite.py
+
+### Результаты заполнения
+- Real: 29 сессий, total PnL: +139.75 USDT
+- Paper: 167 сессий, total PnL: +86.27 USDT
+- Profit Factor: 79.95
+- Win Rate: 89.7% (26/29 real sessions)
+
+### Аналитический вывод (5 запросов)
+
+1. **Тикеры по PnL**: EPICUSDT (+85.13) — основной драйвер, DODOXUSDT (+12.93) — стабильный (7/7 wins)
+2. **Trailing Stop vs Completed**: completed даёт x6 больше PnL (avg +11.66 vs +1.93)
+3. **Оптимальная длительность**: 2-3 часа (100% win), после 10ч — loss
+4. **Paper vs Real correlation**: 10/15 тикеров совпадают по знаку (paper предсказывает направление)
+5. **Win Rate**: 89.7%, Profit Factor 79.95, Net PnL +139.75 USDT
+
+### Перенос в проект
+- archive_to_sqlite.py → C:\Python\Prosperous_Bot\futures_portfolio\scripts\
+- trading_stats.db → C:\Python\Prosperous_Bot\futures_portfolio\trading_stats.db
+- .gitignore обновлён: trading_stats.db, *.db-journal, *.db-wal, *.db-shm
+- Старый скрипт в D:\Hermes-USB-Portable-main\data\scripts\ оставлен (не удалён)
+
+### Файлы
+- scripts/archive_to_sqlite.py — новый скрипт (10.5 KB)
+- trading_stats.db — SQLite база (479 KB)
+- .gitignore — обновлён
+
+### Запуск
+```bash
+cd C:\Python\Prosperous_Bot\futures_portfolio
+python scripts/archive_to_sqlite.py --scan-all
+python scripts/archive_to_sqlite.py --scan-all --dry-run
+```
+
+### Статус
+- Система не затронута, боты работают
+- Cron jobs (nightly_stats) — на паузе, не возобновлялись
+- Скрипт работает автономно, без зависимости от ботов
+
+---
+
+CHANGELOG — Prosperous BOT Futures Portfolio
+
 [16 Jul 2026 — 12:45] — CRITICAL FIX: Revert timestamp_offset (-1021)
 Проблема: реальные боты (real-tlm, real-ldo) получали APIError(code=-1021) — Timestamp ahead. Сделки прекратились.
 Причина: timestamp_offset вычислялся через сырой requests.get() с системным прокси в РФ — невалидный offset.
