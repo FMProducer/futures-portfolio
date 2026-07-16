@@ -240,6 +240,13 @@ python main.py --config config.json
 5. **Cron**: b0ff3538f9df, ежедневно 23:00 — archive_to_sqlite.py + pm2_log_parser.py
 6. **Структура БД**: bot_sessions (196), daily_stats (79), trades (5509, stale), heartbeats (1.27M), rebalances (55K), pm2_trades (84K), guards (100K)
 
+### 16 July 2026 — Telemetry Pipeline: Bug Fixes & Cleanup (Session 2)
+1. **cursor.rowcount**: `conn.total_changes` cumulative → inaccurate "Inserted: N" counts. Fix: `cur.rowcount` returns 0 for IGNOREd duplicates
+2. **Ticker normalization**: PM2 filenames use short tickers (`aave`), user passes full (`AAVEUSDT`). Fix: `ticker.upper().replace("USDT", "")` before comparison
+3. **Cleanup**: Removed `archive_to_sqlite.py` (duplicate) and `parse_logs_to_sqlite.py` (obsolete) from `D:\Hermes-USB-Portable-main\data\scripts\`
+4. **Verification**: pm2_log_parser.py --scan-all: 6726 files, 1.27M heartbeats, 86K trades. --ticker filter works with full names
+5. **Skill**: sqlite-telemetry updated (new pitfalls, accurate row counts, Session 2 status)
+
 ### 14 July 2026 — Binance API recvWindow Fix (initial)
 1. **Clock Drift**: Local clock drift -7.6s exceeded default `recvWindow=10000ms`, causing `-1021` errors
 2. **Fix**: `connector.py` — `client.REQUEST_RECVWINDOW = 15000` (compensates drift up to 15s)

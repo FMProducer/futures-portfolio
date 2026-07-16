@@ -187,45 +187,41 @@ def save_to_db(conn: sqlite3.Connection, data: Dict[str, List]) -> Dict[str, int
     
     for hb in data['heartbeats']:
         try:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT OR IGNORE INTO heartbeats (timestamp, ticker, mode, tpv, pnl) VALUES (?, ?, ?, ?, ?)",
                 (hb['timestamp'], hb['ticker'], hb['mode'], hb['tpv'], hb['pnl'])
             )
-            if conn.total_changes:
-                inserted['heartbeats'] += 1
+            inserted['heartbeats'] += cur.rowcount
         except:
             pass
     
     for rb in data['rebalances']:
         try:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT OR IGNORE INTO rebalances (timestamp, ticker, mode, cycle, tpv) VALUES (?, ?, ?, ?, ?)",
                 (rb['timestamp'], rb['ticker'], rb['mode'], rb['cycle'], rb['tpv'])
             )
-            if conn.total_changes:
-                inserted['rebalances'] += 1
+            inserted['rebalances'] += cur.rowcount
         except:
             pass
     
     for tr in data['trades']:
         try:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT OR IGNORE INTO pm2_trades (timestamp, ticker, mode, side, qty, pos_type, price) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (tr['timestamp'], tr['ticker'], tr['mode'], tr['side'], tr['qty'], tr['pos_type'], tr['price'])
             )
-            if conn.total_changes:
-                inserted['trades'] += 1
+            inserted['trades'] += cur.rowcount
         except:
             pass
     
     for gd in data['guards']:
         try:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT OR IGNORE INTO guards (timestamp, ticker, mode, level, message) VALUES (?, ?, ?, ?, ?)",
                 (gd['timestamp'], gd['ticker'], gd['mode'], gd['level'], gd['message'])
             )
-            if conn.total_changes:
-                inserted['guards'] += 1
+            inserted['guards'] += cur.rowcount
         except:
             pass
     
@@ -260,8 +256,12 @@ def scan_pm2_logs(pm2_dir: str, ticker: Optional[str] = None, mode: Optional[str
         file_ticker = match.group(2)
         
         # Фильтр по ticker/mode
-        if ticker and file_ticker.upper() != ticker.upper():
-            continue
+        # PM2 filenames use short tickers (e.g. "aave"), user may pass "AAVEUSDT"
+        if ticker:
+            # Normalize: strip USDT suffix for comparison
+            user_ticker = ticker.upper().replace("USDT", "")
+            if file_ticker.upper() != user_ticker:
+                continue
         if mode and file_mode != mode:
             continue
         

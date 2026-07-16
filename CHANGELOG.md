@@ -2,6 +2,44 @@ CHANGELOG — Prosperous BOT Futures Portfolio
 
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[16 Jul 2026 — 20:30] — Telemetry Pipeline: Bug Fixes & Cleanup (Session 2)
+Продолжение отладки pm2_log_parser.py и очистка дубликатов.
+
+### Исправления
+
+1. **cursor.rowcount вместо conn.total_changes** (save_to_db)
+   - `conn.total_changes` cumulative — после первого INSERT всегда >0, считал все строки
+   - `cursor.rowcount` возвращает 1 для реального INSERT, 0 для IGNOREd дубликата
+   - Теперь "Inserted: N" показывает точное количество
+
+2. **Нормализация тикера при фильтрации** (scan_pm2_logs)
+   - PM2 файлы используют короткие имена: `aave`, `1000bonk`, `zec`
+   - Пользователь передаёт полные имена: `AAVEUSDT`, `1000BONKUSDT`
+   - Фикс: `ticker.upper().replace("USDT", "")` перед сравнением
+   - Пример: `--ticker AAVEUSDT` теперь находит `real-aave-out-18.log`
+
+### Очистка
+
+- Удалены дубликаты из `D:\Hermes-USB-Portable-main\data\scripts\`:
+  - `archive_to_sqlite.py` (копия из futures_portfolio/scripts/)
+  - `parse_logs_to_sqlite.py` (obsolete, заменён на pm2_log_parser.py)
+- Остальные 5 скриптов (gateway_watchdog, morning_check, nightly_stats, weekly_summary, generate_daily_report) оставлены — cron на паузе
+
+### Verifikation
+
+- pm2_log_parser.py --scan-all: 6726 файлов → 1.27M heartbeats, 86K trades, 55K rebalances, 100K guards
+- pm2_log_parser.py --scan-all --ticker 1000BONKUSDT --mode paper: 44 файла
+- pm2_log_parser.py --scan-all --ticker AAVEUSDT --mode real: 3 файла
+- save_to_db: cursor.rowcount корректно считает INSERT vs IGNORE
+
+### sqlite-telemetry skill обновлён
+
+- Добавлены оба баг-фикса в раздел Pitfalls
+- Обновлён статус: "Pipeline fully operational"
+- Cron: b0ff3538f9df daily 23:00 — подтверждён
+
+---
+
 [16 Jul 2026 — 16:30] — PM2 Log Parser: Intermediate State Telemetry
 Реанимация парсинга PM2 логов для промежуточных данных (heartbeats, trades, rebalances).
 
