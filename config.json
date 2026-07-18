@@ -6,10 +6,10 @@
   "min_notional_usdt": 5.1,
   "paper_mode": false,
   "max_orders_per_second": 10,
-  "min_cycles_for_rank": 6,
+  "min_cycles_for_rank": 15,
   "min_cycles_for_rotation": 6,
   "max_bots": 20,
-  "paper_mode_bots": 16,
+  "paper_mode_bots": 15,
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
@@ -73,6 +73,7 @@
     }
   ],
   "live_swarm": [
+    "DEXEUSDT",
     "DODOXUSDT",
     "LDOUSDT",
     "TLMUSDT",
