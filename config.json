@@ -9,7 +9,7 @@
   "min_cycles_for_rank": 15,
   "min_cycles_for_rotation": 6,
   "max_bots": 20,
-  "paper_mode_bots": 15,
+  "paper_mode_bots": 16,
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
@@ -28,9 +28,9 @@
   "portfolios": [
     {
       "name": "SyntheticMarketNeutral",
-      "initial_capital": 20.0,
-      "paper_initial_capital": 20.0,
-      "paper_account_free_margin": 90.0,
+      "initial_capital": 25.0,
+      "paper_initial_capital": 25.0,
+      "paper_account_free_margin": 100.0,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
@@ -76,11 +76,15 @@
     "DEXEUSDT",
     "DODOXUSDT",
     "LDOUSDT",
-    "TLMUSDT",
     "ZECUSDT"
   ],
-  "use_real_whitelist": false,
-  "real_whitelist": [],
+  "use_real_whitelist": true,
+  "real_whitelist": [
+    "DEXEUSDT",
+    "DODOXUSDT",
+    "LDOUSDT",
+    "ZECUSDT"
+  ],
   "black_list": [],
   "toxic_cooldown_days": 0.01,
   "toxic_blacklist": {},
