@@ -44,7 +44,7 @@ results["anonymous_overview_status"] = client.get("/api/overview").status_code
 with client.session_transaction() as s:
     s.update(authenticated=True, username="audit", csrf_token="audit-csrf")
 results["page_status"] = {path: client.get(path).status_code for path in
-    ("/", "/history", "/settings", "/ticker/real/BTCUSDT", "/logs/real/BTCUSDT", "/api/overview", "/api/history")}
+    ("/", "/history", "/settings", "/ticker/real/BTCUSDT", "/logs/real/BTCUSDT", "/api/overview", "/api/history", "/api/ticker/real/BTCUSDT")}
 html = client.get("/ticker/real/BTCUSDT").text
 results["ticker_has_invalid_csrf_script"] = "const CSRF_TOKEN=***" in html
 results["ticker_onclick_handlers"] = re.findall('onclick="([^"]+)"', html)

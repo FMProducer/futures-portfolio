@@ -10,6 +10,7 @@ ROOT = OUT / "_sandbox" / "futures_portfolio"
 fixture = OUT / "_sandbox" / "monitoring_fixture"
 fixture.mkdir(exist_ok=True)
 os.environ["MPLCONFIGDIR"] = str(fixture / "mplconfig")
+os.environ["MPLBACKEND"] = "Agg"
 sys.path.insert(0, str(ROOT))
 os.chdir(fixture)
 (fixture / "config.json").write_bytes((ROOT / "config.json").read_bytes())

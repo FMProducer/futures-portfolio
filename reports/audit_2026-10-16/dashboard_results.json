@@ -26,7 +26,8 @@
     "/ticker/real/BTCUSDT": 200,
     "/logs/real/BTCUSDT": 200,
     "/api/overview": 200,
-    "/api/history": 200
+    "/api/history": 200,
+    "/api/ticker/real/BTCUSDT": 500
   },
   "ticker_has_invalid_csrf_script": true,
   "ticker_onclick_handlers": [

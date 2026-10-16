@@ -9,11 +9,12 @@ from pypdf import PdfReader
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).parent
 TARGET = OUT / "_sandbox" / "futures_portfolio"
-files = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", "-z", "HEAD"], cwd=ROOT).decode().split("\0")
+BASE = "44db0bb9d1b1675868ef351de24422ed6c7ab817"
+files = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", "-z", BASE], cwd=ROOT).decode().split("\0")
 inventory = []
 review = []
 for name in filter(None, files):
-    body = subprocess.check_output(["git", "show", "HEAD:" + name], cwd=ROOT)
+    body = subprocess.check_output(["git", "show", BASE + ":" + name], cwd=ROOT)
     dest = TARGET / name
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(body)
