@@ -132,7 +132,7 @@ class Observer:
                 db.rollback()
                 raise
 
-    def ingest(self,proof,expected_through):
+    def ingest(self,proof,expected_through,*,commit_guard=None):
         flat(proof['observation'])
         incoming = facts(proof)
         with self.connect() as db:
@@ -169,11 +169,20 @@ class Observer:
                 normalized = analyze(trades,incomes)
                 if normalized['blocking_reasons']:
                     raise ValueError('history bundle blocked')
+                inventory = {}
+                for trade in normalized['trades']:
+                    key = (trade['symbol'],trade['position_side'])
+                    opening = (trade['side'] == 'BUY') == (trade['position_side'] == 'LONG')
+                    inventory[key] = inventory.get(key,D(0)) + decimal(trade['qty'])*(1 if opening else -1)
+                if any(inventory.values()):
+                    raise ValueError('trade inventory conflicts with flat checkpoint')
                 delta = sum((decimal(t['realized'])-decimal(t['fee']) for t in normalized['trades']),D(0))
                 delta += sum((decimal(c['amount']) for c in normalized['cash']),D(0))
                 expected = decimal(binding['wallet'])+delta
                 if expected != decimal(proof['observation']['wallet_usdt']):
                     raise ValueError('wallet bridge mismatch; cursor not advanced')
+                if commit_guard is not None:
+                    commit_guard(db)
                 db.executemany('INSERT INTO observer_facts VALUES(?,?,?,?)',[(k,*v) for k,v in new.items()])
                 db.execute('INSERT INTO observer_checks(through,body) VALUES(?,?)',(proof['end'],encode(proof)))
                 db.execute('UPDATE observer_cursor SET through=? WHERE id=1',(proof['end'],))

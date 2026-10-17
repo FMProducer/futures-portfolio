@@ -159,3 +159,11 @@ def test_uid_endpoint_is_signed_get_on_exact_spot_host():
     reader = Reader('fixture-key','fixture-secret')
     reader._opener = Opener()
     assert len(identity(reader,'BTCUSDT')['account']) == 64
+
+
+def test_wallet_match_alone_cannot_hide_unclosed_position(observer):
+    trade = dict(symbol='BTCUSDT',id=1,orderId=1,positionSide='LONG',side='BUY',qty='.4',
+                 price='100',commission='0',commissionAsset='USDT',realizedPnl='0',time=1000100)
+    with pytest.raises(ValueError,match='inventory'):
+        observer.ingest(proof(end=1001000,trades=[trade]),1000000)
+    assert observer.state()[1] == 1000000
