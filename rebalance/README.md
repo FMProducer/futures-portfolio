@@ -75,3 +75,13 @@ wallet из config. Ключи, Binance observer DB и старый dashboard н
 результат, а не только последнюю порцию. Runtime БД не следует добавлять в Git.
 
 Отчёт: docs/coordination/IMPLEMENTATION_PAPER_ORCHESTRATOR.md.
+# Public REST paper: isolated balance
+
+`python -m rebalance.public_paper --symbol BTCUSDT --config rebalance/historical_example.json --database reports/public_paper_manual/runtime/paper.sqlite --output reports/public_paper_manual/probe_01 --samples 2`
+
+This bounded command reads only public Binance endpoints, without keys. Use a NEW database for a new experiment and a NEW output folder on every invocation. The database is bound to code, configuration, symbol and exchange filters. It cannot import an observer, CSV-paper or real account database.
+
+The first observation initializes simulated positions from the configured virtual capital. Subsequent observations permit at most one decision per UTC minute, using the observed mark and best bid/ask with adverse configured slippage. The observed top quantity and exchange quantity/notional filters gate simulated full fills. Configured spread_bps is retained in the binding for provenance but is NOT added to the actual observed spread. These fills are theoretical and do not prove available exchange execution or account Equity. Fee/leverage settings remain research assumptions.
+
+Capture span and quote age must be <=10 seconds; a gap >120 seconds freezes processing. Crossing a previously recorded funding timestamp with an open simulated position freezes with funding UNKNOWN, without assuming zero or submitting anything. No reconciliation/reset shortcut is supplied. Repeating an identical observation is idempotent; conflicts and old observations are blocked. Restart within these bounds continues the SAME simulation. This is a bounded REST paper experiment, not a continuous WebSocket service or real-trading admission. See docs/coordination/IMPLEMENTATION_PUBLIC_PAPER.md.
+
