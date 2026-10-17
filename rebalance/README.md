@@ -51,3 +51,27 @@ RECONCILIATION_REQUIRED резерв сохраняется и событие х
 нормализации биржевых маржинальных требований и согласованного account snapshot.
 
 Полный отчёт этапа: docs/coordination/IMPLEMENTATION_DURABLE_TRADING_STATE.md.
+
+## Paper CSV с продолжением после остановки
+
+Новый модуль работает только с локальными CSV и отдельным симуляционным
+wallet из config. Ключи, Binance observer DB и старый dashboard не используются.
+Пример первого запуска на 500 новых свечах (выберите новую БД и папку отчёта):
+
+```powershell
+& '.\reports\audit_2026-10-16\venv\Scripts\python.exe' -m rebalance.paper --candles reports/audit_2026-10-16/market_data/BTCUSDT.csv --config rebalance/historical_example.json --funding-zero --database reports/my_paper.sqlite --max-bars 500 --output reports/my_paper_first
+```
+
+Продолжение теми же входами на **той же БД**, с новой папкой отчёта:
+
+```powershell
+& '.\reports\audit_2026-10-16\venv\Scripts\python.exe' -m rebalance.paper --candles reports/audit_2026-10-16/market_data/BTCUSDT.csv --config rebalance/historical_example.json --funding-zero --database reports/my_paper.sqlite --output reports/my_paper_complete
+```
+
+Не удаляйте БД для продолжения и не меняйте входы/config/source code между
+запусками: immutable binding блокирует такое смешивание. --max-bars означает
+число новых наблюдений в данном вызове. COMPLETE означает, что CSV обработан;
+это не допуск стратегии к реальной торговле. Файлы отчёта содержат накопленный
+результат, а не только последнюю порцию. Runtime БД не следует добавлять в Git.
+
+Отчёт: docs/coordination/IMPLEMENTATION_PAPER_ORCHESTRATOR.md.
