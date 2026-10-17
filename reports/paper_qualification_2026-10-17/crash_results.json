@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "case": "inbox",
+      "exit_code": 71,
+      "status": "PASS",
+      "revision": 2,
+      "funding": "0.0005500",
+      "pending": 0
+    },
+    {
+      "case": "commit",
+      "exit_code": 72,
+      "status": "PASS",
+      "revision": 2,
+      "funding": "0.0005500",
+      "pending": 0
+    },
+    {
+      "case": "transaction",
+      "exit_code": 73,
+      "status": "PASS",
+      "revision": 2,
+      "funding": "0.0005500",
+      "pending": 0
+    }
+  ],
+  "protocol_sha": "91abeae4b6fabd34fc0485d8e9be20c070e9427e6d6163ee50b9b3f678deadb2"
+}
