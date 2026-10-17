@@ -43,6 +43,8 @@ class Reader:
         '/fapi/v1/order': (True, {'symbol', 'origClientOrderId'}),
         '/fapi/v1/userTrades': (True, {'symbol', 'startTime', 'endTime', 'limit'}),
         '/fapi/v1/income': (True, {'startTime', 'endTime', 'limit'}),
+        '/api/v3/account': (True, set()),
+        '/fapi/v1/openAlgoOrders': (True, set()),
     }
 
     def __init__(self, key, secret):
@@ -73,7 +75,8 @@ class Reader:
         if signed:
             signature = hmac.new(self._secret.encode(), query.encode(), hashlib.sha256).hexdigest()
             query += '&signature='+signature
-        request = urllib.request.Request('https://fapi.binance.com'+path+('?' + query if query else ''),
+        host = 'https://api.binance.com' if path == '/api/v3/account' else 'https://fapi.binance.com'
+        request = urllib.request.Request(host+path+('?' + query if query else ''),
                                          headers=headers, method='GET')
         try:
             with self._opener.open(request, timeout=15) as response:
