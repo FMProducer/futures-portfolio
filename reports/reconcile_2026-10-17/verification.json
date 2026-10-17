@@ -1,0 +1,22 @@
+{
+  "base_head": "8950cd45964c39f916b709ad2da995a6201b382c",
+  "tests_passed": 111,
+  "regression_identical": {
+    "result": true,
+    "trades": true,
+    "equity": true
+  },
+  "live_readonly": {
+    "status": "READ_ONLY_HISTORY_COLLECTED",
+    "trades": 0,
+    "incomes": 0,
+    "blocking_reasons": [],
+    "trading_authorized": false
+  },
+  "sha256": {
+    "rebalance/reconcile.py": "72922a4d296ac2044b35144e31e9ff11fd0cdf658633018ca812d9306eefe7b3",
+    "rebalance/binance_readonly.py": "b8da5315ee7ab86b3c6704c9ed86b2bd0591883e96b3fdebc807dcd2bdd067ba",
+    "rebalance/scenarios/test_reconcile.py": "7712ee9d64cadd845d8e39080bc4b0ac8a44e3170a8e6274a818128ab14269ea",
+    "rebalance/kernel.py": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb"
+  }
+}

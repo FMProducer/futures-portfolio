@@ -41,6 +41,8 @@ class Reader:
         '/fapi/v1/multiAssetsMargin': (True, set()),
         '/fapi/v1/openOrders': (True, set()),
         '/fapi/v1/order': (True, {'symbol', 'origClientOrderId'}),
+        '/fapi/v1/userTrades': (True, {'symbol', 'startTime', 'endTime', 'limit'}),
+        '/fapi/v1/income': (True, {'startTime', 'endTime', 'limit'}),
     }
 
     def __init__(self, key, secret):
