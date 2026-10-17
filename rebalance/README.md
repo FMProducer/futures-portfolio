@@ -77,6 +77,14 @@ wallet из config. Ключи, Binance observer DB и старый dashboard н
 Отчёт: docs/coordination/IMPLEMENTATION_PAPER_ORCHESTRATOR.md.
 # Public REST paper: isolated balance
 
+For a supervised foreground session, use:
+
+`python -m rebalance.public_session --config rebalance/historical_example.json --database reports/public_session_manual/runtime/paper.sqlite --output reports/public_session_manual/run_01 --duration 3600`
+
+Duration is bounded to 1–86400 seconds (default 60), polling every 5 seconds; Ctrl+C stops and keeps state. The session holds an OS lock, journals captured inputs before applying them, and recovers unacknowledged inputs idempotently after restart. Use a NEW report folder each time; resume with the SAME database and code/config within the 120-second observation bound. This version changes the code binding, so previous public-paper databases require a separate experiment, not silent migration. A gap >120 seconds, invalid data or exhausted read retries durably FROZEN the session; there is no automatic reset. Network failure does not liquidate or clear simulated positions.
+
+BTCUSDT regular funding can be reconciled using the exact scheduled timestamp from public funding history. The cash amount uses the simulator's pre-event quantities and the published funding mark/rate, not private account receipts. Quotes are collected again after the funding fetch. Funding, fills and time/horizon advance commit together. Missing/ambiguous/Special funding cannot advance state. See docs/coordination/IMPLEMENTATION_PUBLIC_SESSION.md for checks and remaining limitations.
+
 `python -m rebalance.public_paper --symbol BTCUSDT --config rebalance/historical_example.json --database reports/public_paper_manual/runtime/paper.sqlite --output reports/public_paper_manual/probe_01 --samples 2`
 
 This bounded command reads only public Binance endpoints, without keys. Use a NEW database for a new experiment and a NEW output folder on every invocation. The database is bound to code, configuration, symbol and exchange filters. It cannot import an observer, CSV-paper or real account database.

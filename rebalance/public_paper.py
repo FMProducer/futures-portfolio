@@ -4,6 +4,7 @@ One decision per observed UTC minute; missed minutes are NOT fabricated.
 This is not an atomic account snapshot, exchange execution or a funding model.
 """
 import argparse
+from contextlib import closing
 from dataclasses import asdict
 import hashlib
 import json
@@ -99,7 +100,7 @@ class Paper:
                   for name in ('public_paper.py','kernel.py','durable.py')}))
         path = Path(path)
         if path.exists():
-            with sqlite3.connect(path) as db:
+            with closing(sqlite3.connect(path)) as db:
                 if not db.execute("SELECT 1 FROM sqlite_master WHERE name='public_paper'").fetchone():
                     raise ValueError('foreign database; use a dedicated public-paper path')
         path.parent.mkdir(parents=True,exist_ok=True)
@@ -120,9 +121,10 @@ class Paper:
                 db.rollback()
                 raise
 
-    def step(self, sample):
+    def step(self, sample, *, funding=None):
         # Detach caller-owned mutable input before validation and transaction.
         sample = json.loads(encode(sample))
+        funding = None if funding is None else json.loads(encode(funding))
         mark,bid,ask = validate(sample,self.symbol)
         stamp = sample['after']
         identity = 'public:'+str(stamp)
@@ -134,15 +136,34 @@ class Paper:
                 raise ValueError('foreign order state')
             if last is not None and stamp <= last:
                 raise ValueError('out-of-order observation')
-            if due is not None and stamp >= due and any(l.units for l in p.legs.values()):
-                raise ValueError('funding UNKNOWN; freeze until explicit reconciliation')
             if last is not None and stamp-last > 120000:
                 raise ValueError('observation gap; freeze until explicit restart decision')
+            funding_amount = decimal(0)
+            if funding is not None:
+                # One exact scheduled BTC funding event. No guessed interval/rate.
+                if (self.symbol != 'BTCUSDT' or due is None or last is None or not last < due <= stamp
+                        or not isinstance(funding,list) or len(funding) != 1):
+                    raise ValueError('unexpected or incomplete funding evidence')
+                row = funding[0]
+                if (row['symbol'] != self.symbol or type(row['fundingTime']) is not int
+                        or row['fundingTime'] != due or row.get('rateType','Regular') != 'Regular'):
+                    raise ValueError('funding identity or type mismatch')
+                rate, funding_mark = decimal(row['fundingRate']),decimal(row['markPrice'])
+                if funding_mark <= 0:
+                    raise ValueError('invalid funding mark')
+                funding_amount = (p.legs['SHORT'].units-p.legs['LONG'].units)*p.config.step*funding_mark*rate
+                p.cash_event('public-funding:'+str(due),funding_amount,'FUNDING')
+                due = sample['mark']['nextFundingTime']
+            if due is not None and stamp >= due and any(l.units for l in p.legs.values()):
+                raise ValueError('funding UNKNOWN; freeze until explicit reconciliation')
             if last is not None and stamp//60000 == last//60000:
-                db.execute('UPDATE public_paper SET last_time=? WHERE id=1',(stamp,))
-                return dict(status='SAME_MINUTE',time=stamp,mode='PAPER',fills=[],trading_authorized=False)
+                db.execute('UPDATE public_paper SET last_time=?,funding_due=? WHERE id=1',(stamp,due))
+                result = dict(status='SAME_MINUTE',time=stamp,mode='PAPER',fills=[],trading_authorized=False)
+                if funding is not None:
+                    result.update(funding_delta=str(funding_amount),equity=str(p.snapshot(mark)['equity']))
+                return result
             bid_cost,ask_cost = bid*(1-self.slippage),ask*(1+self.slippage)
-            entry = not p.receipts
+            entry = not any(l.initial_units for l in p.legs.values())
             actions = (p.plan_entry(mark,bid_cost,ask_cost) if entry
                        else [p.next_action(mark,bid_cost,ask_cost)])
             fills = []
@@ -172,11 +193,15 @@ class Paper:
                 raise ValueError('simulation requires liquidation model')
             db.execute('UPDATE public_paper SET last_time=?,funding_due=? WHERE id=1',
                        (stamp,sample['mark']['nextFundingTime']))
-            return dict(status='APPLIED',mode='PAPER',time=stamp,gap_ms=None if last is None else stamp-last,
+            result = dict(status='APPLIED',mode='PAPER',time=stamp,gap_ms=None if last is None else stamp-last,
                         fills=fills,equity=str(snap['equity']),fees=str(p.fees),
                         quantities={s:str(l.units*p.config.step) for s,l in p.legs.items()},
                         trading_authorized=False)
-        return self.store._apply(identity,sample,change)
+            if funding is not None:
+                result['funding_delta'] = str(funding_amount)
+            return result
+        request = sample if funding is None else dict(sample=sample,funding=funding)
+        return self.store._apply(identity,request,change)
 
 
 def main():

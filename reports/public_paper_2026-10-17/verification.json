@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "tests": 176,
+  "public_observations": 2,
+  "simulated_entry_fills": 2,
+  "duplicate_additional_fills": 0,
+  "real_orders": 0,
+  "regression": "result/trades/equity exact match",
+  "current_code_matches_capture": true,
+  "trading_authorized": false
+}

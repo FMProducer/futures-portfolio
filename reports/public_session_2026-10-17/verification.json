@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "tests": 193,
+  "observations": 11,
+  "span_ms": 67627,
+  "applied_minutes": 2,
+  "simulated_fills": 2,
+  "network_retries": 0,
+  "actual_funding_crossings": 0,
+  "offline_replay": "identical portfolio/results/revision; no duplicate fills",
+  "regression": "result/trades/equity exact match",
+  "real_orders": 0,
+  "trading_authorized": false
+}

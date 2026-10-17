@@ -79,7 +79,7 @@ def test_gap_funding_and_conflicting_duplicate(tmp_path,inputs):
     p.step(s)
     before=p.store.load()
     with pytest.raises(ValueError,match='funding UNKNOWN'):
-        p.step(sample(900000))
+        p.step(sample(680000))
     assert p.store.load() == before
 
 
