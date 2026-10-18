@@ -63,3 +63,9 @@ rebalance.comparison сопоставляет принятый historical.replay
 ## Предложение терминальной оценки
 
 Evidence verifier принят User. Методика TERMINAL_VALUATION_PROPOSAL.md утверждена User2026-10-18 только для offline research. Реализован opt-in --terminal-closeout в registered runner: отдельные synthetic exits обеих ног на копии Portfolio, OPEN_MTM baseline сохранён, funding внутри окна начисляется до выхода. Новый fixed registered replay и 51targeted tests PASS; отчёт IMPLEMENTATION_SYNTHETIC_CLOSEOUT.md. PF/cycle, реальное исполнение и live profile остаются открытыми. Старый verifier проверяет новые terminal evidence по SHA; смысловые проверки terminal выполняет отдельный verify.py данного этапа.
+
+Реализация closeout принята User. Следующий независимый этап добавил terminal semantic checks в существующий research_verify: mode/цены/полные exit fills/fees/equity bridge/flat state/funding/drawdown/delta. 39targeted tests PASS, сохранённый fixed closeout experience проверен без replay; подробности IMPLEMENTATION_TERMINAL_EVIDENCE_CHECKS.md. Это проверка согласованности артефактов, не независимая аутентификация или новый торговый допуск.
+
+Terminal evidence checks приняты User. Подготовлен CYCLE_PF_DECISION_PROPOSAL.md: сравнение единиц PF/цикла и конкретные предлагаемые правила полного портфельного эпизода. Read-only анализ сохранённого candidate:71fills,33REDUCE,ни одного natural flat доsynthetic terminal. Поэтому69rebalance не объявляются69циклами. Правила PF/цикла не утверждены и не реализованы; требуется решение User, ограничения существующих gates сохранены.
+
+Решение User2026-10-18: утверждён «цикл от flat до flat всего портфеля, с учётом всех комиссий и funding». Определение зафиксировано в CYCLE_PF_DECISION_PROPOSAL.md; код ещё не менялся. Остальные детали PF и включения synthetic episodes не объявлены принятыми этим узким решением; допуск и договорные пороги не менялись.

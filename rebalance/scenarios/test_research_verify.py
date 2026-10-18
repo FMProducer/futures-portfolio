@@ -9,13 +9,15 @@ from rebalance.research_verify import verify
 from rebalance.scenarios.test_research_runner import study
 
 
-def test_completed_study_is_read_only(study):
-    run_study(**study)
+@pytest.mark.parametrize('terminal', [False, True])
+def test_completed_study_is_read_only(study,terminal):
+    run_study(**study,terminal_closeout=terminal)
     before = {p: p.read_bytes() for p in study['output'].rglob('*') if p.is_file()}
     db_before = study['database'].read_bytes()
     result = verify(study['database'], study['output'])
     assert result['status'] == 'PASS' and result['replay_performed'] is False
     assert result['admission_ready'] is False
+    assert result['terminal_closeout_validation'] == ('SEMANTIC_CONSISTENCY' if terminal else 'NOT_REQUESTED')
     assert before == {p: p.read_bytes() for p in study['output'].rglob('*') if p.is_file()}
     assert db_before == study['database'].read_bytes()
 
@@ -78,3 +80,39 @@ def test_semantic_inconsistency_even_with_updated_hashes(study, mutation):
     report_path.write_text(json.dumps(report))
     with pytest.raises(ValueError, match={'delta': 'delta', 'curve': 'bounds', 'fees': 'fees'}[mutation]):
         verify(study['database'], study['output'])
+
+
+@pytest.mark.parametrize('mutation', ['missing','price','quantity','duplicate','fee','equity',
+                                    'funding','drawdown','delta','claim','unexpected'])
+def test_terminal_semantics_reject_rehashed_corruption(study,mutation):
+    run_study(**study,terminal_closeout=mutation!='unexpected')
+    path=study['output']/'comparison.json'
+    summary=json.loads(path.read_text())
+    if mutation=='missing':
+        del summary['terminal_closeout']
+    elif mutation=='unexpected':
+        summary['terminal_closeout']={}
+    else:
+        exit=summary['terminal_closeout']['candidate']
+        if mutation=='price': exit['sell_price']='1'
+        if mutation=='quantity': exit['quantities']['LONG']='1'
+        if mutation=='duplicate': exit['fills'].append(exit['fills'][0])
+        if mutation=='fee': exit['fills'][0]['fee']='0'
+        if mutation=='equity': exit['equity_flat']='10001'
+        if mutation=='funding': exit['funding']='1'
+        if mutation=='drawdown': exit['max_close_plus_exit_drawdown_pct']='99'
+        if mutation=='delta': summary['terminal_closeout']['delta_net_flat']='99'
+        if mutation=='claim': exit['trading_authorized']=True
+    path.write_text(json.dumps(summary))
+    with sqlite3.connect(study['database']) as db:
+        body=json.loads(db.execute('SELECT body FROM outcomes').fetchone()[0])
+        body['evidence']['comparison'].update(bytes=path.stat().st_size,
+                                             sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+        db.execute('DROP TRIGGER outcomes_no_update')
+        db.execute('UPDATE outcomes SET body=?',(json.dumps(body),))
+    report_path=study['output']/'registry_report.json'
+    report=json.loads(report_path.read_text())
+    report['trials'][0]['outcome']=body
+    report_path.write_text(json.dumps(report))
+    with pytest.raises(ValueError,match='terminal'):
+        verify(study['database'],study['output'])

@@ -1,0 +1,7 @@
+{
+  "source_head": "69d528d",
+  "sha256": {
+    "rebalance/research_verify.py": "c1ba682834d4440156bee7bbc942100799d1a4c7abdac8d55a2ccfeaa811be1c",
+    "rebalance/scenarios/test_research_verify.py": "66e433bb79d1a6223e611f64be9a4651c14786202da0ab3c3676d8545eb2c048"
+  }
+}
