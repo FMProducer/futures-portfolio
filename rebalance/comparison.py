@@ -148,13 +148,14 @@ def hold(rows,config,capital,spread_bps,slippage_bps,funding,*,state_sink=None):
     return result,fills,curve
 
 
-def compare(rows,config,capital,spread_bps,slippage_bps,funding,*,terminal_closeout=False):
+def compare(rows,config,capital,spread_bps,slippage_bps,funding,*,terminal_closeout=False,cycle_policy=None):
     # Hold validation precedes candidate execution; both receive detached inputs.
     states={}
     control=hold(rows,config,capital,spread_bps,slippage_bps,funding,
                  state_sink=(lambda p: states.update(hold=p)) if terminal_closeout else None)
     candidate=replay(deepcopy(rows),config,capital,spread_bps,slippage_bps,deepcopy(funding),
-                     state_sink=(lambda p: states.update(candidate=p)) if terminal_closeout else None)
+                     state_sink=(lambda p: states.update(candidate=p)) if terminal_closeout else None,
+                     cycle_policy=cycle_policy)
     if candidate[1][:2]!=control[1]: raise ValueError('initial fills differ')
     if [r['time'] for r in candidate[2]]!=[r['time'] for r in control[2]]:
         raise ValueError('valuation timeline differs')

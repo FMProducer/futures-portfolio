@@ -1,0 +1,24 @@
+{
+  "source_study": "B00",
+  "source_sha256": {
+    "candidate_equity.json": "4e56742127c6e48d81f1df0af316567b0b0ca5f3c0a7f6ce4f6e4ac6b5f76859",
+    "candidate_result.json": "e83734a539f92e854f38df8c325117a8269be6cca5355cae0486017860da2d61",
+    "candidate_trades.json": "a28d1169a1daddaaf992f0d9f81b89de48abd54f3b5f2650d23040ef49231817",
+    "comparison.json": "e9b3abfcec06187346b17f9953974775746d0acfce08299d347e83295b7d2499",
+    "execution_manifest.json": "9c017021ed7043a530c61f37abb94aeb698ce14f4d2cdbc5bea316da00c0df1f",
+    "hold_equity.json": "ec8a9692d476625c6624b3dd13bd0ff02179fff2df307dba26f0af27b39230bf",
+    "hold_result.json": "af5e97a68cca8667bccd793445bb976d6771b6fc123cc174815766e6eeff773e",
+    "hold_trades.json": "e693e74ad5565e1f60b3e514943f3f717b9c2a4e034f9492202d26b3b911e40a",
+    "registration.json": "4cda319f9b2eca677f79246b7db91585c0100e74d68a2c686816bb6000c02396",
+    "registry_report.json": "f66fa0a6201f8ef3d5030df95f52ffb54c50bcf1fe2a2298f982c77eb0e56910"
+  },
+  "minute_rows": 525600,
+  "rendered_curve_points": 5541,
+  "net_closeout": "-58.252922920920178743000031",
+  "bridge_residual": "2.9E-23",
+  "max_drawdown_full_curve_pct": "3.0630198324017477",
+  "positions_end_flat": true,
+  "plotly_url": "https://cdn.plot.ly/plotly-4.1.1.min.js",
+  "plotly_sha256": "3b6e15d45dbb7fca5bd2094291e961ddc5472cd887009e6009a56dab668d721f",
+  "backtest_rerun": false
+}

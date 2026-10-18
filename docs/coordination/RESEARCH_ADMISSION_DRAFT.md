@@ -20,11 +20,11 @@
 | Предмет | Что требуется | Текущее состояние |
 |---|---|---|
 | Dataset windows |Точные24/6месячные границы и доказуемо неиспользованный OOS|Не выбраны;закрытые данные не открыты этим этапом|
-| Цикл и PF |Недвусмысленная экономическая группировка ребалансировок,fees/funding и открытого inventory|Не утверждено;отдельный fill не считать циклом по умолчанию|
-| Terminal equity |Расходы закрытия обеих ног,сверка mark vs executable closeout|Текущий OPEN_MTM не заменяет final closeout|
+| Цикл и PF |Портфельныйflat-to-flat сfees/funding,четыреутверждённыхPFправила|Реализованоoffline;single-entrylifecycleдаётмаксимум1эпизодзаодинreplay,PF-gateнеподтверждён|
+| Terminal equity |Расходы закрытия обеих ног,сверка mark vs executable closeout|Syntheticcandlecloseoutутверждён/реализован;реальнаяисполнимостьнеподтверждена|
 | Execution model |Depth/latency/partial/cancel/UNKNOWN,market filters и risk brackets|Неполная;paper full fills недостаточны|
 | Реальный risk/capital profile |User-approved числовые лимиты и действия остановки для общей futures margin|Не утверждён;research leverage7/virtual10000 не считаются live-параметрами|
-| Hold control |Те же initial positions/срок/fees/funding/terminal exit,без ребалансировок|Требуется реализация и воспроизводимое сравнение|
+| Hold control |Те же initial positions/срок/fees/funding/terminal exit,без ребалансировок|MatchedOPEN_MTMиsyntheticexitреализованыипроверенынаиспользованныхданных|
 
 Спорные определения выше — проект работы,не принятые решения. До их согласования можно разрабатывать изолированные инструменты и fixtures,но нельзя выдавать новые экономические метрики за согласованный admission gate. Суточный technical PASS,если будет получен,не решит эти вопросы автоматически.
 
@@ -73,3 +73,7 @@ Terminal evidence checks приняты User. Подготовлен CYCLE_PF_DE
 Следующим явным решением User утвердил четыре правилаPF из чата. Реализован cycles в comparison с восстановлением ledger через существующий Portfolio, natural simulated/synthetic/zero/open counters, PF/status без автоматического допуска; verifier сверяет cycle report с исполнениям/funding. Fixed registered BTCUSDT сохранил Net/всеfills/curves/closeout; candidate1synthetic winner PF=null/NO_LOSS, hold1synthetic loss PF=0/NO_PROFIT, real_quarantine_cycles0. 67targeted tests PASS. Отчёт IMPLEMENTATION_PORTFOLIO_CYCLE_PF.md; закрытаяOOS/live profile остаются неутверждёнными.
 
 РеализацияPFпринятаUser. На существующемrunner выполнен один зарегистрированный diagnostic double-slippage replay использованного September2026,с прежними code/data/settings кромеslippage1→2bps. Net_flatcandidate7.810135940568→6.394504564840USDT,PFnull/NO_LOSS;OOSstressнеподтверждён. Productionкод/параметрынеизменены. RESEARCH_DOUBLE_SLIPPAGE.md и reports/slippage_stress_2026-10-18 содержатточныевходы,preflightSHA/evidenceиverification.
+
+Double-slippagediagnosticпринятUser. Следующийанализобнаружилструктурныйblocker: historicalвходиттолькоприпервойсвече,next_actionнепереоткрываетнулевыеlegs. Одинreplayимеетнеболее1flat-to-flatэпизода,поэтому24месяцасамипосебенеобеспечатопределённыйPF. RESEARCH_ADMISSION_BLOCKERS.md фиксируетэтотконфликтинеопределённостьOOSокон;сигналы/критериинеизменены,зависимаяреализацияждётрешенияUserоlifecycle.
+
+Userразрешилисследовательскийподборactivation/drawback/loss%годовымибэктестами,выбрал2025-10-01≤t<2026-10-01иreentryследующимшагомпослеflatвтомчислепослезащитногоубытка. Реализованopt-inresearchcyclepolicy,nextopenвыход/последующийopenentry;defaultнеизменён. 66targeted+1integrationtestPASS,получены525600свечей/1095fundingevents. ЗамороженизапущенотдельныйworkerPID39284,максимум31trial(27grid+control+3stress). IMPLEMENTATION_ANNUAL_RESEARCH_PREPARATION.md/plan.jsonописываютметодику;годовыерезультатыпоканеобъявленыготовыми,выбранныхliveпараметровнет.

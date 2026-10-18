@@ -135,7 +135,15 @@ def verify(database, output):
                     and number(r['equity']).is_finite() for i, r in enumerate(curve)), 'curve timeline mismatch')
         require(number(curve[-1]['equity']) == number(result['equity']), 'terminal curve mismatch')
         require(sum((number(t['fee']) for t in trades), Decimal(0)) == number(result['fees']), 'fees mismatch')
-        require(len(trades) == result['rebalances']+2, 'trade count mismatch')
+        if 'cycle_policy' in result:
+            require(arm == 'candidate' and result['cycle_policy'] == manifest['settings']['cycle_policy'],
+                    'cycle policy mismatch')
+            require(sum(t.get('phase') == 'CYCLE_ENTRY' for t in trades) == 2*(result['cycle_entries']-1) and
+                    sum(t.get('phase') == 'REBALANCE' for t in trades) == result['rebalances'] and
+                    len({t['time'] for t in trades if t.get('phase') in ('CYCLE_LOSS','CYCLE_TRAILING')}) == result['cycle_exits'],
+                    'cycle trade count mismatch')
+        else:
+            require(len(trades) == result['rebalances']+2, 'trade count mismatch')
         if terminal:
             exit = summary['terminal_closeout'][arm]
             require(exit['mode'] == 'SYNTHETIC_CANDLE_CLOSEOUT' and
