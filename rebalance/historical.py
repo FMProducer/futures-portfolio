@@ -43,7 +43,7 @@ def funding_rows(path):
     return result
 
 
-def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=None):
+def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=None, state_sink=None):
     spread_bps, slippage_bps = map(decimal, (spread_bps, slippage_bps))
     if min(spread_bps, slippage_bps) < 0 or spread_bps/2+slippage_bps >= 10000:
         raise ValueError('invalid execution costs')
@@ -133,6 +133,9 @@ def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=No
         rebalances=len(trades)-2, rejected_funding_checks=rejected,
         max_close_drawdown_pct=str(max_dd), terminal='OPEN_MTM',
         quantities={s:str(l.units*config.step) for s,l in p.legs.items()})
+    if state_sink is not None:
+        from copy import deepcopy
+        state_sink(deepcopy(p))
     return result, trades, curve
 
 

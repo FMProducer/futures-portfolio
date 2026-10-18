@@ -55,3 +55,11 @@ rebalance.comparison сопоставляет принятый historical.replay
 Добавлен rebalance.research_runner:отдельный explicit запуск сравнения с копией исходников/входов,PROSPECTIVE registration до вычисления иchild Python из snapshot. COMPLETED записывается после evidence export,FAILED при расчётной ошибке;crash supervisor может оставить видимыйINCOMPLETE. Один trial/output не запускается повторно. Это подключение только нового offline entry point:ручные historical/comparison и public-paper не объявляются автоматически зарегистрированными. Нет обхода OOS/admission требований,оптимизации или автоматического выбора победителя.
 
 Отчёт реализации: IMPLEMENTATION_REGISTERED_RESEARCH_RUNNER.md.
+
+## Проверка сохранённого исследования
+
+Принятый registered runner опубликован в commit69d528d. Добавлен отдельный read-only rebalance.research_verify: читает SQLite через mode=ro, сверяет конкретную попытку с экспортом, snapshot и восемь evidence файлов по SHA/размеру/ролям/путям; проверяет регистрацию/хронологию, funding mode и settings, совпадение summary с arm results, Net/equity, fees, timeline и initial fills hold. Архивный код не импортируется и backtest не запускается. PASS означает только согласованность сохранённых evidence; локальные файлы/реестр не имеют независимой аутентификации, OOS/исполнение/допуск не подтверждены. Отчёт IMPLEMENTATION_RESEARCH_EVIDENCE_VERIFIER.md.
+
+## Предложение терминальной оценки
+
+Evidence verifier принят User. Методика TERMINAL_VALUATION_PROPOSAL.md утверждена User2026-10-18 только для offline research. Реализован opt-in --terminal-closeout в registered runner: отдельные synthetic exits обеих ног на копии Portfolio, OPEN_MTM baseline сохранён, funding внутри окна начисляется до выхода. Новый fixed registered replay и 51targeted tests PASS; отчёт IMPLEMENTATION_SYNTHETIC_CLOSEOUT.md. PF/cycle, реальное исполнение и live profile остаются открытыми. Старый verifier проверяет новые terminal evidence по SHA; смысловые проверки terminal выполняет отдельный verify.py данного этапа.

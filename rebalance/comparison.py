@@ -9,7 +9,7 @@ from .historical import candles, funding_rows, replay, sha
 from .kernel import Config, Portfolio, decimal
 
 
-def hold(rows,config,capital,spread_bps,slippage_bps,funding):
+def hold(rows,config,capital,spread_bps,slippage_bps,funding,*,state_sink=None):
     rows,funding=deepcopy(rows),deepcopy(funding)
     if len(rows)<2: raise ValueError('requires at least two candles')
     for i,row in enumerate(rows):
@@ -68,13 +68,17 @@ def hold(rows,config,capital,spread_bps,slippage_bps,funding):
         fees=str(p.fees),funding=str(p.funding),funding_events=index,rebalances=0,
         rejected_funding_checks=0,max_close_drawdown_pct=str(max_dd),terminal='OPEN_MTM',
         quantities={s:str(l.units*config.step) for s,l in p.legs.items()})
+    if state_sink is not None: state_sink(deepcopy(p))
     return result,fills,curve
 
 
-def compare(rows,config,capital,spread_bps,slippage_bps,funding):
+def compare(rows,config,capital,spread_bps,slippage_bps,funding,*,terminal_closeout=False):
     # Hold validation precedes candidate execution; both receive detached inputs.
-    control=hold(rows,config,capital,spread_bps,slippage_bps,funding)
-    candidate=replay(deepcopy(rows),config,capital,spread_bps,slippage_bps,deepcopy(funding))
+    states={}
+    control=hold(rows,config,capital,spread_bps,slippage_bps,funding,
+                 state_sink=(lambda p: states.update(hold=p)) if terminal_closeout else None)
+    candidate=replay(deepcopy(rows),config,capital,spread_bps,slippage_bps,deepcopy(funding),
+                     state_sink=(lambda p: states.update(candidate=p)) if terminal_closeout else None)
     if candidate[1][:2]!=control[1]: raise ValueError('initial fills differ')
     if [r['time'] for r in candidate[2]]!=[r['time'] for r in control[2]]:
         raise ValueError('valuation timeline differs')
@@ -86,6 +90,12 @@ def compare(rows,config,capital,spread_bps,slippage_bps,funding):
                      'full fills, trade candle mark proxy, no depth/latency/liquidation',
                      'terminal open positions; closing costs excluded for BOTH arms',
                      'net already includes fees/funding; delta is not proof of alpha'])
+    if terminal_closeout:
+        from .closeout import closeout
+        exits={arm:closeout(states[arm],rows[-1]['close'],spread_bps,slippage_bps,
+                           capital,data[2]) for arm,data in (('candidate',candidate),('hold',control))}
+        exits['delta_net_flat']=str(D(exits['candidate']['net_flat'])-D(exits['hold']['net_flat']))
+        summary['terminal_closeout']=exits
     return summary,candidate,control
 
 

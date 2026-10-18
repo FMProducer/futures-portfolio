@@ -8,14 +8,15 @@ import sys
 
 from .trial_registry import Registry, artifacts
 
-SOURCES=('__init__.py','research_runner.py','trial_registry.py','comparison.py','historical.py','kernel.py')
+SOURCES=('__init__.py','research_runner.py','trial_registry.py','comparison.py','historical.py','kernel.py','closeout.py')
 
 
 def write(path,value):
     with Path(path).open('x',encoding='utf-8') as stream: json.dump(value,stream,indent=2)
 
 
-def run_study(database,identity,candles,config,output,*,funding=None,funding_zero=False):
+def run_study(database,identity,candles,config,output,*,funding=None,funding_zero=False,terminal_closeout=False):
+    if type(terminal_closeout) is not bool: raise ValueError('terminal_closeout must be boolean')
     if bool(funding) == bool(funding_zero): raise ValueError('choose funding CSV or explicit zero')
     database,output=Path(database).resolve(),Path(output).resolve()
     output.mkdir(parents=True,exist_ok=False) # Exclusive study/output claim, never resume.
@@ -44,6 +45,7 @@ def run_study(database,identity,candles,config,output,*,funding=None,funding_zer
         source_head=None
     metadata=dict(output=str(output),original_paths=originals,source_head=source_head,engine='comparison',
         funding_mode='ASSUMED_ZERO' if funding_zero else 'CSV_RATES',
+        terminal_closeout=terminal_closeout,
         data_usage='NOT_ESTABLISHED; caller must disclose prior use',admission_ready=False)
     registry=Registry(database)
     registry.start(identity,files,metadata,mode='PROSPECTIVE')
@@ -95,8 +97,11 @@ def worker(database,identity,output):
         from .historical import candles, funding_rows
         from .kernel import Config
         settings=json.loads(paths['config'].read_text(encoding='utf-8-sig'))
+        terminal=snapshot['metadata'].get('terminal_closeout',False)
+        if type(terminal) is not bool: raise ValueError('invalid terminal flag')
         summary,candidate,control=compare(candles(paths['data']),Config(**settings['strategy']),
-            settings['capital'],settings['spread_bps'],settings['slippage_bps'],funding_rows(paths.get('funding')))
+            settings['capital'],settings['spread_bps'],settings['slippage_bps'],funding_rows(paths.get('funding')),
+            terminal_closeout=terminal)
         evidence={}
         for name,value in (('comparison',summary),('execution_manifest',dict(
                 artifacts=snapshot['artifacts'],metadata=snapshot['metadata'],settings=settings,
@@ -133,10 +138,11 @@ def main():
     group=run.add_mutually_exclusive_group(required=True)
     group.add_argument('--funding',type=Path)
     group.add_argument('--funding-zero',action='store_true')
+    run.add_argument('--terminal-closeout',action='store_true',help='add separate synthetic closing evaluation')
     args=parser.parse_args()
     if args.action=='worker': raise SystemExit(worker(args.database,args.id,args.output))
     outcome=run_study(args.database,args.id,args.candles,args.config,args.output,
-                      funding=args.funding,funding_zero=args.funding_zero)
+                      funding=args.funding,funding_zero=args.funding_zero,terminal_closeout=args.terminal_closeout)
     print(json.dumps(outcome,indent=2))
     if outcome['status']!='COMPLETED': raise SystemExit(2)
 

@@ -1,0 +1,155 @@
+{
+  "status": "PASS",
+  "read_only_evidence_check": {
+    "status": "PASS",
+    "scope": "EXPORTED_EVIDENCE_CONSISTENCY",
+    "trial_id": "fixed-BTCUSDT-synthetic-closeout",
+    "checked_snapshot_artifacts": 9,
+    "checked_evidence": 8,
+    "replay_performed": false,
+    "oos_status": "NOT_ESTABLISHED",
+    "terminal_closeout_validation": "HASH_ONLY; semantic checks apply to OPEN_MTM arms",
+    "admission_ready": false,
+    "trading_authorized": false,
+    "limitations": [
+      "local registry and files are not independently authenticated",
+      "no replay, economic model validation or completeness of all attempts",
+      "absolute original snapshot paths required; relocation unsupported"
+    ]
+  },
+  "open_results_trades_curves_exact": true,
+  "matched_summary_open_exact": true,
+  "illustration_formula_exact": true,
+  "closeout": {
+    "candidate": {
+      "mode": "SYNTHETIC_CANDLE_CLOSEOUT",
+      "time": 1790812799999,
+      "mark_proxy": "83576.90",
+      "sell_price": "83560.184620",
+      "buy_price": "83593.615380",
+      "equity_open": "10011.06966847132799999999999",
+      "price_adjustment": "-1.086499700",
+      "exit_fees": "2.1730328307600",
+      "equity_flat": "10007.81013594056799999999999",
+      "net_flat": "7.81013594056799999999999",
+      "formula_equity": "10007.81013594056799999999999",
+      "decimal_bridge_residual": "0E-23",
+      "max_close_plus_exit_drawdown_pct": "0.2944687246513410952860231718",
+      "terminal_curve_point": {
+        "time": 1790812799999,
+        "phase": "TERMINAL",
+        "equity": "10007.81013594056799999999999"
+      },
+      "fills": [
+        {
+          "id": "synthetic-terminal-1790812799999-LONG",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "LONG",
+          "units": 30,
+          "quantity": "0.030",
+          "price": "83560.184620",
+          "fee": "1.0027222154400"
+        },
+        {
+          "id": "synthetic-terminal-1790812799999-SHORT",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "SHORT",
+          "units": 35,
+          "quantity": "0.035",
+          "price": "83593.615380",
+          "fee": "1.1703106153200"
+        }
+      ],
+      "quantities": {
+        "LONG": "0.000",
+        "SHORT": "0.000"
+      },
+      "margin": "0",
+      "unrealized": "0",
+      "total_fees": "6.4646422394320",
+      "funding": "0",
+      "admission_ready": false,
+      "trading_authorized": false,
+      "limitations": [
+        "synthetic full fills; not exchange execution evidence",
+        "same-time terminal phase; no elapsed time/funding beyond window",
+        "close-only drawdown plus exit; no intrabar liquidation model"
+      ]
+    },
+    "hold": {
+      "mode": "SYNTHETIC_CANDLE_CLOSEOUT",
+      "time": 1790812799999,
+      "mark_proxy": "83576.90",
+      "sell_price": "83560.184620",
+      "buy_price": "83593.615380",
+      "equity_open": "9996.9836953600000",
+      "price_adjustment": "-1.069784320",
+      "exit_fees": "2.1395686400000",
+      "equity_flat": "9993.7743424000000",
+      "net_flat": "-6.2256576000000",
+      "formula_equity": "9993.7743424000000",
+      "decimal_bridge_residual": "0E-13",
+      "max_close_plus_exit_drawdown_pct": "0.0622565760000",
+      "terminal_curve_point": {
+        "time": 1790812799999,
+        "phase": "TERMINAL",
+        "equity": "9993.7743424000000"
+      },
+      "fills": [
+        {
+          "id": "synthetic-terminal-1790812799999-LONG",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "LONG",
+          "units": 32,
+          "quantity": "0.032",
+          "price": "83560.184620",
+          "fee": "1.0695703631360"
+        },
+        {
+          "id": "synthetic-terminal-1790812799999-SHORT",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "SHORT",
+          "units": 32,
+          "quantity": "0.032",
+          "price": "83593.615380",
+          "fee": "1.0699982768640"
+        }
+      ],
+      "quantities": {
+        "LONG": "0.000",
+        "SHORT": "0.000"
+      },
+      "margin": "0",
+      "unrealized": "0",
+      "total_fees": "4.1504384000000",
+      "funding": "0",
+      "admission_ready": false,
+      "trading_authorized": false,
+      "limitations": [
+        "synthetic full fills; not exchange execution evidence",
+        "same-time terminal phase; no elapsed time/funding beyond window",
+        "close-only drawdown plus exit; no intrabar liquidation model"
+      ]
+    },
+    "delta_net_flat": "14.03579354056799999999999"
+  },
+  "source_sha256": {
+    "rebalance/closeout.py": "8a90c96a08964aa3a7e1591dc50e666b9e6797e39075957c2d04454679eec88f",
+    "rebalance/historical.py": "4c477ddc43824b0f7115ff63ff8285a6f3869d505a2fb76701e1837c490d779c",
+    "rebalance/comparison.py": "dc2bd4ded89211e382a8edf6061abd02165fe67cd3c0c08960c7c1d43009d82f",
+    "rebalance/research_runner.py": "048cdfd02bc6e5481067d2679eed0dfe949d0db8534fa7fe03baf9831f5d1516",
+    "rebalance/research_verify.py": "306e3b1010133c21c4f407f513940491a16aa886922529d4ffa55e590548fe1e",
+    "rebalance/scenarios/test_closeout.py": "dacc3092a6a87da199208c13d7d76961e1a0a6226c6cadba43d461a0e30754e6"
+  },
+  "replay_performed_by_verifier": false,
+  "admission_ready": false,
+  "trading_authorized": false
+}

@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "scope": "EXPORTED_EVIDENCE_CONSISTENCY",
+  "trial_id": "fixed-BTCUSDT-current",
+  "checked_snapshot_artifacts": 8,
+  "checked_evidence": 8,
+  "replay_performed": false,
+  "oos_status": "NOT_ESTABLISHED",
+  "admission_ready": false,
+  "trading_authorized": false,
+  "limitations": [
+    "local registry and files are not independently authenticated",
+    "no replay, economic model validation or completeness of all attempts",
+    "absolute original snapshot paths required; relocation unsupported"
+  ]
+}
