@@ -1,0 +1,24 @@
+{
+  "base_head": "2013055dbb4b82fedccf192cba8029c174df4db9",
+  "tests_passed": 148,
+  "regression_identical": {
+    "result": true,
+    "trades": true,
+    "equity": true
+  },
+  "live_final": {
+    "status": "STREAM_OBSERVATION_COMPLETED",
+    "rest_fences": 2,
+    "received_events": 0,
+    "final_state": "DISCONNECTED_NEEDS_REST",
+    "trading_authorized": false
+  },
+  "sqlite_integrity": "ok",
+  "sha256": {
+    "rebalance/user_stream.py": "44b2212b407d1dcaf2cfed146fc939e5b507f6a15ca79d6b4379325b879c97c7",
+    "rebalance/checkpoint.py": "9f6dc10f07eebe16085f5c186998309409282b2c3a83f8330b475da7ac8cd02b",
+    "rebalance/scenarios/test_user_stream.py": "de1b7ed7b1bb7b46af5fb08b1b9aa9e2e3c89ea70aeab0475e34815143583abe",
+    "rebalance/scenarios/test_checkpoint.py": "af35fbd998db96bb3270dda0645c9f6309db88f8cc21fa9a3e176e6731dba4c0",
+    "rebalance/kernel.py": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb"
+  }
+}

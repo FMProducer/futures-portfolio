@@ -1,0 +1,116 @@
+{
+  "original_project_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio",
+  "checked_source": "44db0bb9d1b1675868ef351de24422ed6c7ab817",
+  "native_core_state_discovery": {
+    "paper_count": 0,
+    "real_count": 0,
+    "total_tpv": 0,
+    "total_pnl": 0,
+    "total_initial": 0,
+    "total_pnl_pct": 0
+  },
+  "native_state_schema_summary": {
+    "paper_count": 0,
+    "real_count": 1,
+    "total_tpv": 0,
+    "total_pnl": 0,
+    "total_initial": 0,
+    "total_pnl_pct": 0
+  },
+  "native_shadow_details_error": "NameError(\"name '_read_log_lines' is not defined\")",
+  "anonymous_overview_status": 302,
+  "page_status": {
+    "/": 200,
+    "/history": 200,
+    "/settings": 200,
+    "/ticker/real/BTCUSDT": 200,
+    "/logs/real/BTCUSDT": 200,
+    "/api/overview": 200,
+    "/api/history": 200,
+    "/api/ticker/real/BTCUSDT": 500
+  },
+  "ticker_has_invalid_csrf_script": true,
+  "ticker_onclick_handlers": [
+    "toggleNav()",
+    "pm2Action('pm2_restart', 'real-btcusdt)",
+    "pm2Action('pm2_stop', 'real-btcusdt)",
+    "emergencyStop('BTCUSDT', 'real')",
+    "closeModal()"
+  ],
+  "disabled_emergency": {
+    "status": 200,
+    "body": {
+      "steps": [
+        {
+          "step": "pm2_stop",
+          "success": false
+        },
+        {
+          "step": "pm2_delete",
+          "success": false
+        }
+      ],
+      "success": true
+    },
+    "mocked_calls": [
+      [
+        "pm2",
+        "stop",
+        "real-btcusdt"
+      ],
+      [
+        "pm2",
+        "delete",
+        "real-btcusdt"
+      ]
+    ]
+  },
+  "paper_start_command": {
+    "status": 200,
+    "mocked_calls": [
+      [
+        "pm2",
+        "start",
+        "core/main.py",
+        "--name",
+        "paper-btcusdt",
+        "--cwd",
+        "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\audit_2026-10-16\\_sandbox\\dashboard_fixture",
+        "--interpreter",
+        "python",
+        "--",
+        "--config",
+        "config.json",
+        "--ticker",
+        "BTCUSDT"
+      ]
+    ]
+  },
+  "arbitrary_target": {
+    "status": 200,
+    "mocked_calls": [
+      [
+        "pm2",
+        "stop",
+        "all"
+      ]
+    ]
+  },
+  "source_default_key_forged_cookie_status": 200,
+  "forged_session_missing_csrf": {
+    "status": 200,
+    "mocked_calls": [
+      [
+        "pm2",
+        "stop",
+        "real-btcusdt"
+      ],
+      [
+        "pm2",
+        "delete",
+        "real-btcusdt"
+      ]
+    ]
+  },
+  "invalid_log_lines_status": 500
+}

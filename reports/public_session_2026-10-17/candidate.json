@@ -1,0 +1,14 @@
+{
+  "head": "075bae175fb9958dc67c9d9c263425b2c15e5a36",
+  "working_tree_candidate": true,
+  "code_sha256": {
+    "rebalance/public_paper.py": "74a33cd6f346eb393a57e4c96e8f7f49b3c5912a6a68929d2dcdfe9d717d6d03",
+    "rebalance/public_session.py": "c7446e4ea8c67a37634747186d508bcd33eca3c04e5017422678a261c2d4a6b0",
+    "rebalance/scenarios/test_public_paper.py": "40b69361b71567924f74a2e71d76a68323d9491edc0eff849f403d3887817ed6",
+    "rebalance/scenarios/test_public_session.py": "a19b37e55f5890218ac8609e5397410c59d5ab35733252f956b7001303619784",
+    "rebalance/README.md": "3e7a760e1c983547763efa1197a0fca4e6bdbbced1ee27aae08eefbe11842a94"
+  },
+  "patch_sha256": "3662d5f0dcecbf57aa11fa8924359f0f5d156a9020dab42c1811eb0c86fab5cc",
+  "inherited_pending_changes": "prior public-paper closing fix and prior reports preserved",
+  "trading_authorized": false
+}

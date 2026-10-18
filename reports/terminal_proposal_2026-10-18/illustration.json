@@ -1,0 +1,71 @@
+{
+  "status": "ILLUSTRATION_NOT_ADOPTED",
+  "replay_performed": false,
+  "inputs": {
+    "candidate_result.json": {
+      "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\research_runner_2026-10-18\\fixed_BTCUSDT\\candidate_result.json",
+      "sha256": "aca6c17a338d4e7751a6090f8be02a210a6bd931a3a9853e6ff19f6a5e1a9dac"
+    },
+    "hold_result.json": {
+      "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\research_runner_2026-10-18\\fixed_BTCUSDT\\hold_result.json",
+      "sha256": "1b6d6fa418ddcb16d2642232be98ad1123aa91f5e13e94e9a74994623ca4d0ec"
+    },
+    "frozen/inputs/config.json": {
+      "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\research_runner_2026-10-18\\fixed_BTCUSDT\\frozen\\inputs\\config.json",
+      "sha256": "cef8dc2f53a4df59ea947474eaed8bad93a9a5bcd76ca5cf219b80ff062a3eca"
+    },
+    "frozen/inputs/data.csv": {
+      "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\research_runner_2026-10-18\\fixed_BTCUSDT\\frozen\\inputs\\data.csv",
+      "sha256": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a"
+    }
+  },
+  "terminal_time": 1790812799999,
+  "close_proxy": "83576.90",
+  "synthetic_sell_price": "83560.184620",
+  "synthetic_buy_price": "83593.615380",
+  "settings": {
+    "capital": "10000",
+    "spread_bps": "2",
+    "slippage_bps": "1",
+    "strategy": {
+      "step": "0.001",
+      "min_notional": "5.3",
+      "leverage": "7",
+      "fee_rate": "0.0004",
+      "surplus_pp": "0.7",
+      "deficit_pp": "0.7",
+      "trail_pp": "0.09"
+    }
+  },
+  "arms": {
+    "candidate": {
+      "long_quantity": "0.030",
+      "short_quantity": "0.035",
+      "open_net": "11.06966847132799999999999",
+      "adverse_price_adjustment": "-1.086499700",
+      "exit_fees": "2.1730328307600",
+      "estimated_flat_equity": "10007.81013594056799999999999",
+      "estimated_flat_net": "7.81013594056799999999999",
+      "added_exit_cost": "3.2595325307600"
+    },
+    "hold": {
+      "long_quantity": "0.032",
+      "short_quantity": "0.032",
+      "open_net": "-3.0163046400000",
+      "adverse_price_adjustment": "-1.069784320",
+      "exit_fees": "2.1395686400000",
+      "estimated_flat_equity": "9993.7743424000000",
+      "estimated_flat_net": "-6.2256576000000",
+      "added_exit_cost": "3.2093529600000"
+    }
+  },
+  "estimated_flat_delta": "14.03579354056799999999999",
+  "admission_ready": false,
+  "trading_authorized": false,
+  "limitations": [
+    "candle close proxy; synthetic quotes, full fills, no execution proof",
+    "no intrabar liquidation/depth/latency/partial or extra time funding",
+    "existing fees/funding already in open_net; only incremental exit costs subtracted",
+    "diagnostic illustration on previously used data, no PF/OOS evaluation"
+  ]
+}

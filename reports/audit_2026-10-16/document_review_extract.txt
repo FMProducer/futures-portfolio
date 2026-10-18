@@ -1,0 +1,767 @@
+
+===== .hermes/plans/2026-07-11_010000-min-notional-optimization.md =====
+1: # Plan: Per-ticker min_notional из exchange info + снижение global до 5.1
+9: ## Goal
+18: ## Current Context
+20: ### Проблема
+23: ### Ключевой паттерн (УЖЕ ЕСТЬ В КОДЕ)
+30: ### Действующий поток данных
+40: ### Реальные Binance minimums
+50: ## Constraints (от пользователя)
+58: ## Step-by-step Plan
+60: ### Шаг 1: Извлечь per-ticker min_notional из exchange info
+71: ### Шаг 2: Вычислить effective_min_notional для текущего тикера
+91: ### Шаг 3: Передать effective_min в executor
+26: step_sizes = {s["symbol"]: float(f["stepSize"]) for s in exchange_info["symbols"] for f in s["filters"] if f["filterType"] == "LOT_SIZE"}
+52: - Обязательны unit-тесты ДО деплоя в production
+66: min_notionals = {s["symbol"]: float(f["minNotional"]) for s in exchange_info["symbols"] for f in s["filters"] if f["filterType"] == "MIN_NOTIONAL"}
+110: ### Шаг 5: Unit-тесты
+124:     min_notionals = {s["symbol"]: float(f["minNotional"]) for s in exchange_info["symbols"] for f in s["filters"] if f["filterType"] == "MIN_NOTIONAL"}
+210: cd C:\Python\Prosperous_Bot\futures_portfolio
+220: 3. Перезапустить supervisor: `pm2 restart supervisor`
+238: | `tests/test_main.py` | +5 unit-тестов | ~50 строк | Нулевой |
+110: ### Шаг 5: Unit-тесты
+124:     min_notionals = {s["symbol"]: float(f["minNotional"]) for s in exchange_info["symbols"] for f in s["filters"] if f["filterType"] == "MIN_NOTIONAL"}
+210: cd C:\Python\Prosperous_Bot\futures_portfolio
+220: 3. Перезапустить supervisor: `pm2 restart supervisor`
+238: | `tests/test_main.py` | +5 unit-тестов | ~50 строк | Нулевой |
+
+===== .hermes/plans/2026-07-12_193800-frax-ustc-analysis.md =====
+1: # Анализ FRAXUSDT и USTCUSDT для Market-Neutral системы
+9: ## Результаты анализа
+11: ### Сводная таблица
+25: ### Ключевые проблемы
+34: ## Рекомендация
+48: ## Следующие шаги
+60: ## Вывод
+
+
+
+===== .hermes/plans/2026-07-12_194350-frax-ustc-low-threshold.md =====
+1: # Анализ FRAXUSDT и USTCUSDT для Market-Neutral системы
+9: ## Результаты анализа
+11: ### Сводная таблица (с новым порогом 0.25%)
+26: ### Сравнение с旧 порогом (1.5%)
+36: ## Ключевые выводы
+38: ### FRAXUSDT ✅
+50: ### USTCUSDT ❌
+61: ## Рекомендация
+63: ### Добавить FRAXUSDT в live_swarm
+86: ## Важное замечание
+96: ## Следующие шаги
+
+
+
+===== .hermes/plans/2026-07-13_test-coverage-90-plan.md =====
+1: # Plan: Test Coverage >90% — Prioritized Implementation
+10: ## Current State
+12: ### Coverage by File (from `coverage report --show-missing`)
+32: ### Scenario Analysis
+42: ## Strategy
+44: ### Phase 0: Coverage Config Cleanup (1 session)
+80: ### Phase 1: main.py (65% → 90%) — HIGHEST IMPACT
+106: ### Phase 2: supervisor.py (10% → 90%) — SECOND HIGHEST
+132: ### Phase 3: rank_tickers.py (22% → 90%)
+138: ### Phase 4: Support Files (Tier 2)
+145: ### Phase 5: Offline Tools (Tier 3)
+160: ## Critical Safety Invariants
+1: # Plan: Test Coverage >90% — Prioritized Implementation
+4: **Goal**: Achieve >90% test coverage across all production scripts
+12: ### Coverage by File (from `coverage report --show-missing`)
+38: **Conclusion**: To hit 85% we MUST cover Tier1+Tier2+Tier3. Tier4 (utilities) can be excluded from coverage via `pyproject.toml` omit list.
+44: ### Phase 0: Coverage Config Cleanup (1 session)
+47: 1. Update `pyproject.toml` `[tool.coverage.run]` omit list:
+51:        "backtest_rebalance.py",
+58:        "equity_visualizer.py",
+75: 5. Fix hanging test `test_coverage_paper_cross_margin_check` in test_main_coverage.py
+78: **Estimated coverage after Phase 0**: ~55-60% (same absolute, but denominator shrinks)
+88: - Lines 463-466: `self_kill_pm2` error paths → ~4 lines
+93: - Lines 883-974: Trailing stop, emergency stop, liquidation guard → ~92 lines
+95: - Lines 1191-1233: `emergency_stop` function → ~43 lines
+99: - Fix existing hanging tests first (test_main_coverage.py has 1 hang + 1 fail)
+111: - Lines 82-94: `get_pm2_processes` → ~13 lines
+126: - Need deep mocking: PM2 subprocess calls, file I/O, connector
+146: These are Optuna optimizers and backtest runners. Less critical but needed for >90%.
+155: - **run_all_backtests.py**: 0% → 85% (53 lines)
+197: **Each session**: Write tests → Run tests → Verify coverage increment → Obsidian update
+205: 2. `python -m coverage run ... && python -m coverage report --show-missing` — coverage check
+206: 3. Update this plan with actual coverage numbers
+217: | coverage.py config conflicts with pyproject.toml | Use `coverage run` directly, not pytest-cov |
+225: 1. Should Tier3 (offline tools) be excluded from coverage instead of tested?
+
+===== CHANGELOG.md =====
+8: ### Исправления
+21: ### Очистка
+28: ### Verifikation
+35: ### sqlite-telemetry skill обновлён
+46: ### Проблема
+51: ### Расследование
+60: ### Решение: pm2_log_parser.py
+68: ### Баг fix: group index mismatch
+76: ### Результаты заполнения
+82: ### Cron: ежедневный pipeline
+90: ### Структура БД (итого)
+101: ### Файлы
+1: CHANGELOG — Prosperous BOT Futures Portfolio
+3: CHANGELOG — Prosperous BOT Futures Portfolio
+6: Продолжение отладки pm2_log_parser.py и очистка дубликатов.
+8: ### Исправления
+15: 2. **Нормализация тикера при фильтрации** (scan_pm2_logs)
+16:    - PM2 файлы используют короткие имена: `aave`, `1000bonk`, `zec`
+24:   - `archive_to_sqlite.py` (копия из futures_portfolio/scripts/)
+25:   - `parse_logs_to_sqlite.py` (obsolete, заменён на pm2_log_parser.py)
+30: - pm2_log_parser.py --scan-all: 6726 файлов → 1.27M heartbeats, 86K trades, 55K rebalances, 100K guards
+31: - pm2_log_parser.py --scan-all --ticker 1000BONKUSDT --mode paper: 44 файла
+32: - pm2_log_parser.py --scan-all --ticker AAVEUSDT --mode real: 3 файла
+35: ### sqlite-telemetry skill обновлён
+43: [16 Jul 2026 — 16:30] — PM2 Log Parser: Intermediate State Telemetry
+44: Реанимация парсинга PM2 логов для промежуточных данных (heartbeats, trades, rebalances).
+47: archive_to_sqlite.py заполнял только bot_sessions и daily_stats (из history/*.json).
+52: PM2 логи (C:\Users\svsma\.pm2\logs\) содержат:
+60: ### Решение: pm2_log_parser.py
+62: - Парсит 6726 PM2 лог-файлов (real + paper)
+630: - Created test_main_coverage.py with 21 tests targeting: trailing stop trigger + closure (lines 978-1067), emergency stop / max drawdown (931-957), liquidation guard (1421-1460), VIRTUAL_ORDER accounting (1191-1233), stop/close logic (1525-1601), paper cross-margin check (814-827), blacklist rebase (598-625), emergency_stop function (1561-1601), _handle_liquidation_recovery (130-148)
+635: tests/test_main_coverage.py — 21 tests added (trailing stop, emergency stop, liquidation guard, VIRTUAL_ORDER, emergency_stop function)
+637: tests/test_supervisor_coverage.py — 377 lines (unit-level tests for get_pm2_processes, reconcile_swarm_state, stop_bot, enforce_invariant_gate)
+639: Test results: 72/72 supervisor + main tests pass. Coverage: supervisor.py 95.08%, main.py 77.14%.
+641: Remaining main.py gaps (need +8%): liquidation guard get_position_risk flow (1421-1460), trailing stop position closure real-mode path (994-1009), stop/close logic in emergency_stop function (1532-1601), blacklist rebase profit path (616-625).
+
+===== CLAUDE.md =====
+1: # CLAUDE.md — Binance Futures Portfolio Rebalancer
+3: ## Project Overview
+9: ### Target Allocation (Market Neutral 2.0)
+16: ## Architecture
+36: ## Key Metrics
+49: ## Security & Environment
+51: ### API Keys (CRITICAL)
+55: # Windows PowerShell
+59: # Windows CMD
+63: # Linux/Mac
+71: # Edit .env and add your keys
+74: ### Files Added (18 Apr 2026)
+1: # CLAUDE.md — Binance Futures Portfolio Rebalancer
+5: **Type**: Market Neutral Futures Trading System
+6: **Exchange**: Binance Futures
+10: 1. **Long x5 (29%)**: Long futures position
+11: 2. **Short x5 (36%)**: Short futures position
+19: futures_portfolio/
+21: ├── connector.py         # Binance Futures API wrapper
+25: ├── backtest_rebalance.py       # Backtesting engine (with trailing stop & hysteresis)
+31: └── tests/              # Unit tests
+40: | **Real Equity** | `Available_Balance + Sum(Unrealized_PnL)` |
+82: ### 1. Equity Trailing Stop
+84: - Triggers: `equity_trailing_stop_pct: 24.0` in config (Optuna-optimized)
+85: - Activation: `equity_trailing_stop_activation_pct: 7.5` (must be in profit first)
+86: - Timeout: `equity_trailing_stop_timeout_sec: 60`
+94: | **Critical** | ≤2x | Emergency close all positions and stop bot |
+109: | **Critical** | ≤8% distance | Emergency close that position immediately |
+127: - After each swarm cycle, verifies all `live_swarm` tickers have PM2 processes
+138: - Location: main.py:271-274, backtest_rebalance.py:205-208
+245: 2. **Ticker normalization**: PM2 filenames use short tickers (`aave`), user passes full (`AAVEUSDT`). Fix: `ticker.upper().replace("USDT", "")` before comparison
+246: 3. **Cleanup**: Removed `archive_to_sqlite.py` (duplicate) and `parse_logs_to_sqlite.py` (obsolete) from `D:\Hermes-USB-Portable-main\data\scripts\`
+247: 4. **Verification**: pm2_log_parser.py --scan-all: 6726 files, 1.27M heartbeats, 86K trades. --ticker filter works with full names
+248: 5. **Skill**: sqlite-telemetry updated (new pitfalls, accurate row counts, Session 2 status)
+257: 2. **Margin Safety**: Added margin ratio monitoring with emergency shutdown
+
+===== MOC.md =====
+1: # Prosperous Bot — Map of Content
+8: ## 🏗️ Архитектура
+25: ## 📊 Документация (docs/)
+46: ## 🔬 Анализ и отчёты
+60: ## ⚙️ Оптимизация
+73: ## 🧪 Тесты (tests/)
+108: ## 📁 Состояние (state/)
+121: ## 📜 История (history/)
+133: ## 🔧 Утилиты
+157: ## 📋 Конфигурация
+170: ## 📖 Справка
+181: ## 🗂️ Структура папок
+13: | `supervisor.py` | Оркестратор: сканер → ротация → PM2 |
+14: | `connector.py` | Binance Futures API wrapper |
+34: | `docs/backtests_060626.md` | Результаты бэктестов 344 тикеров |
+37: | `docs/Бэктесты _10_дней.md` | Бэктесты 10 дней |
+53: | `backtest_rebalance.py` | Бэктест-движок |
+54: | `equity_visualizer.py` | Визуализация equity |
+143: | `run_all_backtests.py` | Запуск всех бэктестов |
+144: | `run_backtest_30d.py` | Бэктест 30 дней |
+184: futures_portfolio/
+199: - [[INJUSDT Real vs Backtest]] — анализ INJUSDT
+200: - [[Backtest Analysis 060626]] — бэктесты 344 тикеров
+143: | `run_all_backtests.py` | Запуск всех бэктестов |
+144: | `run_backtest_30d.py` | Бэктест 30 дней |
+184: futures_portfolio/
+199: - [[INJUSDT Real vs Backtest]] — анализ INJUSDT
+200: - [[Backtest Analysis 060626]] — бэктесты 344 тикеров
+
+===== README.md =====
+1: # Market-Neutral Futures Portfolio Rebalancer
+5: ## Быстрый старт
+8: # 1. Клонировать репозиторий
+12: # 2. Установить зависимости
+17: # 3. Настроить окружение
+19: # Отредактировать .env — добавить API ключи
+21: # 4. Запустить тесты
+24: # 5. Запустить бота
+28: ## Архитектура
+54: ## Принципы работы
+56: ### Рыночная нейтральность (дельта ≈ 0)
+68: ### Логика ребалансировки
+1: # Market-Neutral Futures Portfolio Rebalancer
+3: Автоматизированная система управления портфелем USD-M фьючерсов на Binance. Извлекает прибыль из волатильности, поддерживая рыночно-нейтральную дельту (≈0) через три ноги портфеля.
+10: cd futures_portfolio
+31: futures_portfolio/
+34: │   ├── connector.py        # Binance Futures API wrapper
+40: │   ├── swarm_manager.py    # PM2 process management
+45: ├── backtest/                # Backtesting engine
+46: │   └── backtest_rebalance.py
+49: ├── tests/                   # Unit tests
+83: | **Trailing Stop** | Просадка от ATH TPV ≥ `equity_trailing_stop_pct` |
+97:       "BASE_LONG":  {"share": 0.27, "leverage": 5},
+98:       "BASE_SHORT": {"share": 0.34, "leverage": 5},
+99:       "VIRTUAL":    {"share": 0.35, "leverage": 1}
+104:   "equity_trailing_stop_pct": 10.0,
+115: # Бэктест
+116: python backtest/backtest_rebalance.py --ticker ZECUSDT
+117: python backtest/backtest_rebalance.py --live --ticker ZECUSDT
+133: - Binance Futures API ключи
+115: # Бэктест
+116: python backtest/backtest_rebalance.py --ticker ZECUSDT
+117: python backtest/backtest_rebalance.py --live --ticker ZECUSDT
+133: - Binance Futures API ключи
+135: - PM2 (для управления процессами)
+
+===== ROADMAP.md =====
+1: # 🗺️ Roadmap — Prosperous Bot Futures Portfolio
+8: ## 🎯 Миссия
+14: ## 📊 Текущее состояние (21.07.2026)
+36: ## 🏗️ Фаза 0: Фундамент (Май 2026) ✅ ЗАВЕРШЕНА
+54: ## 🛡️ Фаза 1: Безопасность и защиты (Май–Июнь 2026) ✅ ЗАВЕРШЕНА
+80: ## ⚙️ Фаза 2: Оптимизация и настройка (Июнь 2026) ✅ ЗАВЕРШЕНА
+101: ## 🚀 Фаза 3: Инфраструктура мониторинга (Июль 2026) ✅ ЗАВЕРШЕНА
+117: ## 🔴 Фаза 4: Стабилизация Trailing Stop (Июль 2026) ✅ ЗАВЕРШЕНА
+137: ## 📈 Фаза 5: Масштабирование (ТЕКУЩАЯ — Июль–Август 2026)
+141: ### Целевой показатель: ≥ 5% роста эквити в день
+158: ### 5.1 — Подготовка кандидатов для REAL (P0)
+186: ### 5.2 — Увеличение REAL ботов: 1 → 3 (P0)
+1: # 🗺️ Roadmap — Prosperous Bot Futures Portfolio
+10: Построить стабильную систему рыночно-нейтральной торговли на Binance Futures с **целевым показателем роста эквити ≥ 5% в день** (среднее по всей системе), используя динамический синтетический хедж с автоматической ротацией тикеров.
+25: | Бэктест (344 тикера, 30д) | 99.7% profitable, avg +38.33%, avg MaxDD 7.38% |
+31: | Инфраструктура | PM2, Dashboard (Flask), health_check, cron-мониторинг |
+44: | 0.3 | Бэктест-движок (backtest_rebalance.py) | ✅ | 05.2026 |
+46: | 0.5 | Binance Futures API wrapper (aiohttp) | ✅ | 05.2026 |
+50: **Результат:** Рабочий прототип с бэктестом 344 тикеров, 99.7% profitable.
+61: | 1.2 | **Equity Trailing Stop** (Optuna: 3.7% / 6.5% activation / 60s) | ✅ | 05–07.2026 |
+90: | 2.5 | **Backtest fix**: val_cash вместо available_funds | ✅ | 05.30.2026 |
+107: | 3.1 | **Dashboard** (Flask + PM2, read-only мониторинг) | ✅ | 07.15–16.2026 |
+108: | 3.2 | **Зомби-процессы убиты**, dashboard запущен через PM2 | ✅ | 07.16.2026 |
+133: - Margin Ratio Critical (1.5x → emergency)
+145: - Бэктест 1д: +35.53% (теоретический максимум)
+146: - Бэктест 30д: +34.37% → ~1.1% в день (среднее)
+151: 3. Тикеры из топ-50 бэктеста с min_cycles > 50
+164: | 5.1.1 | **Бэктест топ-20 тикеров** | ✅ | 07.2026 |
+169: **Кандидаты из бэктеста 30д (топ-10):**
+238: ### 5.5 — Фильтрация тикеров по бэктесту (P1)
+450: target_notional = capital * share * leverage
+583: | **Profit Factor** | >1.5 (бэктест) | >1.5 (реал) | >1.5 (реал) |
+584: | **Win Rate** | ~55% (бэктест) | >55% (реал) | >55% (реал) |
+610: - `Strategic-Plan.md` — стратегический план v1.0 (03.06.2026, устарел)
+611: - Obsidian: `TS-Decision-2026-07-08`, `Supervisor Architecture and Bugs`, `Ticker Rotation Algorithm`, `INJUSDT Real vs Backtest`, `Backtest Analysis 060626`, `Prosperous Bot — Production State`, `Dashboard Setup`, `Desktop Sync`
+
+===== accounting/README.md =====
+1: # Учётное ядро: первый этап
+4: не импортирует торгового бота и не обращается в сеть. Одна SQLite БД соответствует
+23: ledger = Ledger('offline.sqlite3')
+25:              equity='10000', project='fixed-project', account='fixed-account',
+49: | initialize, advance, fund_b | Инициализация, подтверждённый аванс 200, внешнее финансирование Б |
+50: | snapshot, user_flow, close | Фиксированный согласованный Equity, внешний поток А, закрытие месяца |
+53: | reserve_order, unknown_order, settle_order | Резерв и расчёт покупки, карточного аванса или обмена на газ |
+54: | card_purchase, card_return, refund | Подтверждение карточного расхода, возврат аванса, возврат расхода |
+59: относится к USDT. `debit` — совокупное уменьшение Equity в том же эквиваленте,
+84: SQLite integrity_check. SQLite восстанавливает незавершённую транзакцию при
+96: Не подключать этот модуль к существующему фьючерсному исполнителю без отдельного
+53: | reserve_order, unknown_order, settle_order | Резерв и расчёт покупки, карточного аванса или обмена на газ |
+54: | card_purchase, card_return, refund | Подтверждение карточного расхода, возврат аванса, возврат расхода |
+59: относится к USDT. `debit` — совокупное уменьшение Equity в том же эквиваленте,
+84: SQLite integrity_check. SQLite восстанавливает незавершённую транзакцию при
+96: Не подключать этот модуль к существующему фьючерсному исполнителю без отдельного
+
+===== dashboard/README.md =====
+1: # Prosperous Bot Dashboard — Пошаговая инструкция
+3: ## Что это
+11: ## Шаг 1: Установить зависимости
+29: ## Шаг 2: Установить пароль
+31: ### 2.1 Сгенерировать хеш пароля
+41: ### 2.2 Обновить config.yaml
+65: ## Шаг 3: Проверить пути
+81: ## Шаг 4: Первый запуск (тест)
+109: ## Шаг 5: Открыть в браузере
+130: ## Шаг 6: Доступ с телефона (ZeroTier)
+132: ### 6.1 Убедиться что ZeroTier работает
+140: ### 6.2 Узнать ZeroTier IP
+16: cd C:\Python\Prosperous_Bot\futures_portfolio\dashboard
+43: Открыть файл `C:\Python\Prosperous_Bot\futures_portfolio\dashboard\config.yaml` в блокноте.
+71:   project: "C:\\Python\\Prosperous_Bot\\futures_portfolio"
+72:   logs: "C:\\Python\\Prosperous_Bot\\futures_portfolio\\logs"
+73:   data: "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data"
+74:   pm2_logs: "C:\\Users\\svsma\\.pm2\\logs"
+77: Если ваши пути отличаются — исправить. Двойные обратные слеши (`\\`) обязательны.
+86: cd C:\Python\Prosperous_Bot\futures_portfolio\dashboard
+168: ## Шаг 7: Автозапуск через PM2
+173: cd C:\Python\Prosperous_Bot\futures_portfolio\dashboard
+174: pm2 start dashboard.py --name "dashboard" --interpreter python
+175: pm2 save
+180: pm2 list
+192: | 🔄 Рестарт | `pm2 restart <bot> --update-env` | Низкая — бот перезапустится |
+193: | ⏹ Стоп | `pm2 stop <bot>` | Средняя — бот остановится, позиции останутся |
+194: | 🚨 Экстренная | `pm2 stop` + `pm2 delete` | **Высокая** — бот удалён из PM2 |
+196: **Важно:** кнопки управления **не закрывают позиции на бирже**. Они только останавливают PM2 процесс. Для закрытия позиций использовать Binance.
+202: | Обзор | `/` | Все боты, сводка, PM2, алерты |
+196: **Важно:** кнопки управления **не закрывают позиции на бирже**. Они только останавливают PM2 процесс. Для закрытия позиций использовать Binance.
+202: | Обзор | `/` | Все боты, сводка, PM2, алерты |
+212: ### "PM2 не отвечает" в таблице процессов
+215: pm2 resurrect
+216: pm2 list
+
+===== docs/AUTOMATION_LOGIC.md =====
+1: # Протокол автоматизации: Market Neutral "Auto-Pilot 24h"
+5: ## 🔄 Жизненный цикл сессии (Lifecycle)
+7: ### 1. Этап селекции (Scanner)
+12: ### 2. Этап верификации (Live Backtest)
+19: ### 3. Этап торговли (Execution)
+24: ### 4. Этап завершения (Soft Stop)
+31: ### 5. Этап передачи капитала (Continuity)
+38: ## 🛠 Технические требования к реализации
+12: ### 2. Этап верификации (Live Backtest)
+13: *   **Действие:** Запуск `backtest_rebalance.py --live --ticker {SYMBOL}`.
+22: *   **Мониторинг:** Бот работает до истечения таймера или до срабатывания `Equity Trailing Stop`.
+12: ### 2. Этап верификации (Live Backtest)
+13: *   **Действие:** Запуск `backtest_rebalance.py --live --ticker {SYMBOL}`.
+22: *   **Мониторинг:** Бот работает до истечения таймера или до срабатывания `Equity Trailing Stop`.
+
+===== docs/CHANGES_SUMMARY.md =====
+1: # Summary of Changes for Configurable Ticker Support
+3: ## Problem
+6: ## Solution
+12: ## Files Modified
+14: ### 1. config.json
+18: ### 2. main.py
+23: ### 3. calculator.py
+31: ### 4. connector.py
+35: ### 5. executor.py
+39: ### 6. backtest_rebalance.py
+46: ### 7. tests/test_calculator.py
+51: ### 8. tests/test_executor.py
+33: - Modified `get_spot_prices()` to use base_ticker for price lookups
+39: ### 6. backtest_rebalance.py
+72:        "ETHUSDT_LONG": {"share": 0.29, "leverage": 5},
+73:        "ETHUSDT_SHORT": {"share": 0.36, "leverage": 5},
+74:        "VIRTUAL": {"share": 0.35, "leverage": 1}
+33: - Modified `get_spot_prices()` to use base_ticker for price lookups
+39: ### 6. backtest_rebalance.py
+72:        "ETHUSDT_LONG": {"share": 0.29, "leverage": 5},
+73:        "ETHUSDT_SHORT": {"share": 0.36, "leverage": 5},
+74:        "VIRTUAL": {"share": 0.35, "leverage": 1}
+
+===== docs/Code Review бота ребалансировщика.md =====
+1: # **Технический аудит и стратегия глубокой оптимизации алгоритмического ребалансировщика криптофьючерсного портфеля для архитектуры Zen 3**
+5: ## **Аппаратная синергия и оптимизация под архитектуру AMD Ryzen 9 5900HX**
+9: ### **Эффективное использование многоядерности Zen 3**
+22: ### **Стабилизация латентности и управление тепловым режимом**
+26: ## **Глубокий аудит вычислительных узких мест и асинхронных ошибок**
+30: ### **Блокировка событийного цикла и «хвосты» задержек**
+34: ### **Состояния гонки и атомарность операций**
+39: ## **Математическая точность и специфика фьючерсных рынков**
+43: ### **Переход на десятичную арифметику фиксированной точности**
+54: ### **Динамика маржи и цены маркировки (Mark Price)**
+58: ## **Оптимизация взаимодействия с API и WebSocket CCXT Pro**
+62: ### **Управление сессиями и утечки памяти**
+1: # **Технический аудит и стратегия глубокой оптимизации алгоритмического ребалансировщика криптофьючерсного портфеля для архитектуры Zen 3**
+7: Выбор процессора AMD Ryzen 9 5900HX в качестве вычислительного узла для торгового бота накладывает специфические требования к организации параллелизма в Python. Данный процессор обладает 8 ядрами и 16 потоками на архитектуре Zen 3, что обеспечивает высокую производительность на один такт и эффективную работу с кэш-памятью L3 объемом 16 МБ.5 Однако стандартная реализация Python (CPython) ограничена глобальной блокировкой интерпретатора (GIL), которая не позволяет выполнять байт-код Python параллельно на нескольких ядрах в рамках одного процесса.7 Для бота-ребалансировщика это означает, что простое использование библиотеки threading для одновременного мониторинга 50 фьючерсных пар не приведет к истинному ускорению вычислений, а лишь создаст накладные расходы на переключение контекста.8
+36: Одной из наиболее опасных уязвимостей является состояние гонки типа «Time-of-check to time-of-use» (TOCTOU). Бот считывает баланс фьючерсного аккаунта, рассчитывает необходимый объем сделки для приведения веса к целевому значению, и лишь затем отправляет ордер.22 Между моментом проверки и моментом исполнения цена или размер маржи могут измениться, особенно на волатильных фьючерсных рынках.22 В текущей реализации отсутствует механизм блокировок (Locks) или семафоров, предотвращающий повторную отправку ордера по той же паре, если предыдущий еще находится в статусе OPEN.25  
+39: ## **Математическая точность и специфика фьючерсных рынков**
+41: Использование стандартного типа данных float для финансовых расчетов в Python является грубой ошибкой, которая на длинной дистанции неизбежно приводит к накоплению погрешностей округления.27 Бинарное представление чисел с плавающей запятой (IEEE 754\) не может точно представить многие десятичные дроби (например, 0.1), что выливается в ситуации, когда бот пытается продать 0.0000000000001 актива, получая отказ от API биржи из\-за несоблюдения лотности.29
+45: Весь модуль расчета весов должен быть переведен на decimal.Decimal.27 Это особенно важно при торговле фьючерсами с кредитным плечом, где ошибка в четвертом знаке после запятой при расчете начальной маржи (Initial Margin) может привести к несанкционированному увеличению плеча или невозможности выставить ордер из\-за нехватки средств.31
+47: | Аспект расчета | Риск использования float | Решение через Decimal |
+56: Критическая недоработка многих ребалансировщиков заключается в использовании последней цены сделки (Last Price) для оценки стоимости портфеля. Биржи Bybit и Binance используют цену маркировки (Mark Price) для расчета нереализованной прибыли (uPnL) и порога ликвидации.35 Бот должен ориентироваться исключительно на Mark Price при принятии решения о ребалансировке, так как именно она определяет состояние маржинального счета.35 Начиная с сентября 2025 года, Bybit перешел на расчет начальной маржи на основе Mark Price для некоторых режимов, что требует немедленного обновления формул расчета доступного «покупательного плеча» в боте.35
+111: Ты выступаешь в роли Quant Engineer с экспертизой в оптимизации Python-систем для процессоров AMD Ryzen. Твоя задача — провести глубокую модернизацию бота в директории futures\_portfolio.  
+114: 1. Замени все вычисления весов и объемов с float на decimal.Decimal с использованием контекста ROUND\_HALF\_EVEN.  
+121: ### **Diff-патч 1: Математическое ядро и точность (Decimal Migration)**
+125: \--- a/futures\_portfolio/math\_engine.py  
+126: \+++ b/futures\_portfolio/math\_engine.py  
+138: \+from decimal import Decimal, getcontext, ROUND\_HALF\_EVEN  
+143: \+def get\_rebalance\_amounts(balances: dict, weights: dict, prices: dict, threshold: Decimal):  
+144: \+    """Вычисляет объемы для ребалансировки с защитой от ошибок округления float."""  
+145: \+    total\_value \= Decimal('0')  
+146: \+    \# Предварительная конвертация в Decimal для точности Zen 3  
+312: \+++ b/futures\_portfolio/manager.py  
+315:          self.virtual\_balances \= {'BTC\_VIRTUAL': Decimal('0')}  
+317: \+    def calculate\_drift(self, current\_equity, prices):  
+324: \+            drifts\[asset\] \= abs(current\_val / current\_equity \- target\_w)  
+340: 2. **Анализ фандинга:** Поскольку Short Leg (36%) больше Long Leg (29%), бот будет иметь чистую шортовую позицию по фьючерсам. Это выгодно в периоды бычьего рынка, когда ставки финансирования положительны.  
+
+===== docs/Dialog.md =====
+
+43:    3. Коррекция Дельты: После нашего исправления virt_debt (которое мы сделали сегодня), эквити станет ровным. Это позволит нам поднять плечо до 7x–10x для самых стабильных пар (ZEREBRO/CGPT), что удвоит доходность при том же риске.
+43:    3. Коррекция Дельты: После нашего исправления virt_debt (которое мы сделали сегодня), эквити станет ровным. Это позволит нам поднять плечо до 7x–10x для самых стабильных пар (ZEREBRO/CGPT), что удвоит доходность при том же риске.
+
+===== docs/Dialog_2.md =====
+
+12:    4. Нулевой таймаут стопа: equity_trailing_stop_timeout_sec не задан (0.0с). Любой мимолетный «шип» цены мгновенно закрывает позиции по рынку, фиксируя убыток на самом дне.
+32:   Посмотреть детальный план реализации (C:\Users\svsma\.gemini\tmp\futures-portfolio\a98c3773-1f0f-4d75-8278-f3de9c34da7d\plans\zombie-detector.md)
+12:    4. Нулевой таймаут стопа: equity_trailing_stop_timeout_sec не задан (0.0с). Любой мимолетный «шип» цены мгновенно закрывает позиции по рынку, фиксируя убыток на самом дне.
+32:   Посмотреть детальный план реализации (C:\Users\svsma\.gemini\tmp\futures-portfolio\a98c3773-1f0f-4d75-8278-f3de9c34da7d\plans\zombie-detector.md)
+
+===== docs/Market-Neutral Futures Portfolio Rebalancer_1.0.pdf =====
+
+2: описание системыMarket-Neutral Futures Portfolio Rebalancer /
+9: ей. Фьючерсы, плечо, алгоритмическая торговля и криптоактивы несут высокий
+25: 4.4 Предварительная таблица бэктестов . . . . . . . . . . . . . . . . . . . . . . . . 8
+39: 8.3 Backtesting discipline . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+63: 13.5 Backtesting и research discipline . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+68: USD-M фьючерсами Binance. Базовая идея: использовать волатильность выбранного ин-
+71: •Long x5, 29% капитала— длинная фьючерсная нога.
+72: •Short x5, 36% капитала— короткая фьючерсная нога.
+74: владения базовым активом на спотовом рынке без деривативного плеча.
+84: backtest проверяет гипотезу, supervisor запускает кандидатов в paper-инкубатор.
+86: reconciliation, toxic blacklist, min-notional filter, Telegram/PM2 observability.
+89: 4.Проверяемость: все стадии дают артефакты — логи, state-файлы, backtest-таблицы,
+90: PM2-статусы, Telegram-уведомления.
+96: тектурные заметки, логи, бэктесты, миграционные заметки и рекомендации. В частности,
+102: AUTOMATION_LOGIC.mdЖизненный цикл Auto-Pilot 24h: scanner, live backtest,
+113: Бэктесты _10_дней.md10-дневные live-backtest результаты по BZ, CL, 1000PEPE,
+115: log.mdФрагмент PM2/live логов за 22 мая 2026 г.: heartbeats,
+116: paper-ордера, ротация, emergency stop для отдельных
+628: •eCFR 17 CFR §1.11, Risk Management Program for futures intermediaries:https://www.
+641: •Google Site Reliability Engineering, Monitoring Distributed Systems:https://sre.google
+644: 13.5 Backtesting и research discipline
+645: •Bailey, Borwein, L´ opez de Prado, Zhu — The Probability of Backtest Overfitting:https:
+654: бэктесты. Наиболее убедительный инвестиционный тезис — это не «бот уже печатает
+
+===== docs/PROMPT_trailing_stop_rotation_bug.md =====
+1: # Промпт для анализа проблемы ротации после трейлинг стопа
+3: ## Задача
+7: ## Контекст системы
+34: ## Описание проблемы
+36: ### Хронология событий (на примере INJUSDT):
+51: # exit-флаг просто удаляется без записи в toxic
+69: ## Root Cause Analysis
+71: ### Проблема 1: exit-флаг не создаёт toxic-запись в supervisor
+80: ### Проблема 2: Race condition config.json
+91: ### Проблема 3: HEAL перезапускает бот после trailing stop
+99: ### Проблема 4: Profit Guard + Drawdown Protection = вечный бот
+109: ## Требования к фиксу
+9: **Проект:** `C:\Python\Prosperous_Bot\futures_portfolio\`
+16: | `supervisor.py` | Оркестратор: сканер → ротация → PM2 |
+24:   "equity_trailing_stop_pct": 5.7,
+25:   "equity_trailing_stop_activation_pct": 6.5,
+26:   "equity_trailing_stop_timeout_sec": 60,
+9: **Проект:** `C:\Python\Prosperous_Bot\futures_portfolio\`
+16: | `supervisor.py` | Оркестратор: сканер → ротация → PM2 |
+24:   "equity_trailing_stop_pct": 5.7,
+25:   "equity_trailing_stop_activation_pct": 6.5,
+26:   "equity_trailing_stop_timeout_sec": 60,
+
+===== docs/RESTRUCTURING.md =====
+1: # RESTRUCTURING — Этап 3: Модульная структура
+9: ## Зачем
+21: ## Структура
+71: ## Переименования
+80: ## Импорты
+85: # Было:
+90: # Стало:
+100: ## PM2 конфигурация
+102: ### ecosystem.config.js
+122: ### Запуск ботов
+133: ## Исправления путей
+142: ## Тесты
+11: 1. **Именование модулей.** `from connector import Connector` — непонятно откуда. `from futures_portfolio.core.connector import Connector` — сразу видно: ядро, API-обёртка.
+17: 4. **Подготовка к новому репозиторию.** `futures-portfolio` на GitHub требует чистой структуры. Плоский корень — legacy.
+24: futures_portfolio/
+27: │   ├── connector.py             — Binance Futures API wrapper (aiohttp)
+34: │   ├── supervisor_service.py    — PM2 service wrapper
+46: ├── backtest/                    — Backtesting
+47: │   ├── backtest_rebalance.py
+48: │   ├── run_all_backtests.py
+49: │   └── run_backtest_30d.py
+54: │   └── equity_visualizer.py
+65: ├── ecosystem.config.js          — PM2 конфигурация
+91: from futures_portfolio.core.connector import Connector
+92: from futures_portfolio.supervisor.swarm_manager import manage_swarm
+93: from futures_portfolio.core.storage import safe_load_json
+100: ## PM2 конфигурация
+126: pm2 start core/main.py --name "paper-BTCUSDT" --cwd "C:\Python\Prosperous_Bot\futures_portfolio" ...
+129: Было: `pm2 start main.py`
+133: ## Исправления путей
+181: pytest создаёт два отдельных module object: `supervisor.aggregator` и `futures_portfolio.supervisor.aggregator`.
+182: Mock патчил `futures_portfolio.supervisor.aggregator.safe_load_json`, но класс импортировался из `supervisor.aggregator`.
+190: ### pm2 start path (test_supervisor_new.py)
+192: Fix: assertion обновлён на `"pm2 start core/main.py"`.
+194: ### Итог: 327/327 passed
+
+===== docs/TICKER_MIGRATION.md =====
+1: # Ticker Migration Guide: BTCUSDT → Configurable Base Ticker
+3: ## Overview
+6: ## Problem Statement
+9: ## Solution Implemented
+12: ## Configuration Changes
+14: ### config.json
+27: ## Code Changes
+29: ### 1. main.py
+34: ### 2. calculator.py
+50: ### 3. connector.py
+55: ### 4. executor.py
+60: ### 5. backtest_rebalance.py
+4: This document describes the changes made to enable configurable base ticker symbols throughout the futures portfolio rebalancing system.
+53: - Modified `get_spot_prices()` to use base_ticker for API calls
+60: ### 5. backtest_rebalance.py
+90:     "ETHUSDT_LONG": {"share": 0.29, "leverage": 5},
+91:     "ETHUSDT_SHORT": {"share": 0.36, "leverage": 5},
+92:     "VIRTUAL": {"share": 0.35, "leverage": 1}
+123: - Backtest rebalance works with configurable symbols
+60: ### 5. backtest_rebalance.py
+90:     "ETHUSDT_LONG": {"share": 0.29, "leverage": 5},
+91:     "ETHUSDT_SHORT": {"share": 0.36, "leverage": 5},
+92:     "VIRTUAL": {"share": 0.35, "leverage": 1}
+123: - Backtest rebalance works with configurable symbols
+
+===== docs/Ticker Rotation Algorithm.md =====
+7: # Алгоритм выбора и ротации тикеров — Supervisor
+11: ## Общая архитектура (manage_swarm)
+55: ## enforce_swarm_consistency — Проверка согласованности роя
+84: ## Чтение signal-флагов
+102: ## selective_merge_incubator — Ротация инкубатора (paper)
+131: ### _calc_rotation_score
+146: ## Выбор Чемпионов для REAL
+148: ### Часть 1: Сбор данных и скоринг
+176: ### Часть 2: Заполнение слотов и замена
+212: ### Часть 3: Финализация и сохранение
+228: ### Сводка: Цепочка  Guards
+247: ## calculate_bot_score
+9: > Полная документация логики `supervisor.py` — от сканера до PM2.
+17:     C --> D[enforce_swarm_consistency\nПроверка биржевых позиций vs PM2]
+19:     D --> E{Есть позиции на бирже\nбез PM2 процесса?}
+32:     L --> M[get_running_bots_info\npm2 jlist — один вызов на цикл]
+44:     U --> V[PM2: остановка\nлишних ботов]
+45:     V --> W[PM2: запуск\nновых paper + real]
+48:     Y --> Z[pm2 save]
+49:     Z --> AA[_ensure_real_bots_alive\nФинальная проверка PM2]
+60:     B --> C[get_running_bots_info\npm2 jlist]
+219:     AH --> AI[PM2: остановка лишних ботов]
+220:     AI --> AJ[PM2: запуск новых paper + real]
+223:     AL --> AM[pm2 save]
+224:     AM --> AN[_ensure_real_bots_alive — финальная проверка PM2]
+288: ## Полный цикл: от сканера до PM2
+315:     subgraph PM2["⚡ PM2 EXECUTION"]
+319:         P4 --> P5[pm2 save]
+381: | `equity_trailing_stop_pct` | 5.7% | Трейлинг стоп |
+382: | `equity_trailing_stop_activation_pct` | 6.5% | Активация трейлинга |
+381: | `equity_trailing_stop_pct` | 5.7% | Трейлинг стоп |
+382: | `equity_trailing_stop_activation_pct` | 6.5% | Активация трейлинга |
+383: | `equity_trailing_stop_timeout_sec` | 60 | Таймаут перед стопом |
+390: - [[INJUSDT — Реальная торговля vs Бэктесты]]
+391: - [[Backtest Analysis 060626]]
+
+===== docs/coordination/ACCOUNTING_SPEC_V3.md =====
+1: # SYSTEM PROMPT: AUTONOMOUS PORTFOLIO MANAGEMENT SYSTEM
+3: ## 1. Роль, цель и пределы автономности
+13: ## 2. Финансовые контуры и полномочия
+15: ### 2.1 Контур А — торговый капитал Пользователя
+19: ### 2.2 Контур Б — автоматизированный целевой бюджет проекта
+38: #### 2.2.1 Календарь и операционный резерв
+51: #### 2.2.2 Атомарное резервирование и исполнение
+77: #### 2.2.3 Аванс, источники и классификация расходов
+96: ## 3. Математический учёт и закрытие месяца
+98: ### 3.1 Точность и инициализация
+123: ### 3.2 Источники и валидность данных
+133: ### 3.3 Торговый капитал, раздельные HWM и внешние потоки
+11: Торговые параметры, критерии допуска, лимиты риска и формула вознаграждения изменяются только по явному решению Пользователя. Не считай собственные предложения утверждёнными решениями.
+17: База учёта — USDT. Торговый доступ осуществляется через Binance API; вывод средств для торгового ключа отключён. Разрешены spot-операции без кредитного плеча и займов. Запрещены присвоение капитала, блокирование доступа Пользователя и создание долговых обязательств от его имени.
+21: Контур Б — обособленный бюджет проекта в некастодиальном криптокошельке. Все средства принадлежат Пользователю; система не является юридическим лицом, владельцем имущества или самостоятельной стороной обязательств. Вознаграждение означает предусмотренное соглашением финансирование бюджета Б, а не личный доход ИИ. Средства расходуются исключительно на задачи проекта, включая дополнительные инструменты, модели и услуги других ИИ-систем.
+25: Карточный сервис остаётся у Пользователя и не входит в техническую интеграцию Б. При необходимости карточной оплаты модуль может перевести Пользователю средства на оплату конкретной покупки и передать сумму, назначение и платёжные реквизиты. Такой перевод сначала учитывается как аванс под отчёт, а расход подтверждается оплатой поставщику; перевод и покупку запрещено учитывать как два расхода. Неизрасходованный остаток и возвраты сверяются отдельно. Ни дата перевода посреднику, ни сам перевод не доказывают оплату поставщику.
+34: Начисления, резервы и авансы под отчёт не являются остатком кошелька. Сводная оценка в USDT не заменяет физическую доступность каждого актива. Изменение цены газа отражается переоценкой, а не расходом. Внутренние переводы и покупка газа не должны создавать повторный расход уже учтённой стоимости: стоимость приобретённого газа и его последующего использования связываются в учёте.
+46:                        - Liability_reserved_mandatory)
+49: Liability_reserved_mandatory — сумма тел конкретных календарных обязательств, уже включённых в Calendar_due и покрытых действующими исходящими резервами. Это подмножество Liability_reserved_USDT, а не дополнительное списание. Комиссии в эту величину не входят. Reserve_B_USDT вычисляется из календаря и резервов; вручную уменьшать его дополнительно запрещено. Неопределённые суммы и курсы блокируют зависимую покупку.
+59:   ≤ Balance_B_USDT - Reserve_B_USDT - Liability_reserved_USDT
+64: Для обязательного платежа проверяется единый переход состояния: его тело связывается с конкретным экземпляром календаря и включается в Liability_reserved_mandatory; Reserve_B_USDT пересчитывается. После добавления исходящих резервов остатки обеих валют сверх оставшихся защищённых резервов должны быть неотрицательными. Дополнительная покупка не уменьшает календарную защиту. Проверка и записи выполняются атомарно с сериализацией конкурирующих заявок:
+67: Liability_reserved_USDT += Value_USDT + Fee_cap_USDT
+77: #### 2.2.3 Аванс, источники и классификация расходов
+79: Initial_Advance = 200.00 USDT — неизменный лимит совокупных расходов периода аванса. Debt — отдельный остаток невозмещённого беспроцентного аванса проекта. Период аванса завершается только после первого подтверждённого положительного поступления именно вознаграждения в Б. При полном удержании R в счёт Debt период аванса продолжается. Другие входящие переводы этот переход не вызывают.
+84: Expenses_B_total + Card_advances_outstanding + Liability_reserved_USDT
+90: Expenses_B_total — чистые подтверждённые расходы после фактических возвратов, включая комиссии и неудачные попытки, в документированной оценке USDT. Card_advances_outstanding — непогашенные авансы Пользователю на карточные покупки; они занимают лимит, но не вычитаются повторно из остатка кошелька. Зарезервированный газ оценивается отдельно для бюджетного лимита; из физического USDT-баланса он не вычитается. Курс, время оценки и источник сохраняются. Изменение курса не разрешает обход лимита или фиктивную отмену уже понесённых расходов. Неопределённая оценка блокирует новую заявку.
+92: После перехода дополнительные инструменты оплачиваются из свободного фактического остатка Б сверх операционного резерва и всех исходящих резервов. Потолок накопленного вознаграждения отсутствует. Новые подписки допускаются только после проверки обновлённого календаря и покрытия обязательств, без займов.
+100: Финансовые расчёты и сравнения выполняются в Decimal; значения создаются из десятичных строк без промежуточного float. Финансовые значения журналируются без потери точности. Начисление R округляется один раз до двух десятичных знаков методом ROUND_HALF_EVEN перед удержанием и изменением обязательств. Биржевые количества приводятся к разрешённым шагам отдельно, по правилам площадки.
+103: Equity_A = Σ[(free_i + locked_i) × price_i_USDT]
+106: Equity_A_0 = первая согласованная валидная оценка А
+415: Кошелёк и контракт токена закрепляются в конфигурации. Read-only сверка не требует seed-фразы, приватного ключа или подключения WalletConnect. Суммы читаются в целых минимальных единицах токена и преобразуются без float. Сохраняются сеть, актив, адрес, номер/хеш блока, время и степень окончательности; баланс и история должны относиться к согласованному состоянию. Недоступность источника отличается от подтверждённого расхождения. Проверка раз в 24 часа не означает мгновенного обнаружения изменений.
+419: До реализации и эксплуатации проверяются расчётные сценарии: две параллельные покупки с недостаточным общим бюджетом или газом; обязательный платёж из собственного резерва; несколько недельных и одновременных годовых платежей; просрочка; SUCCESS, FAILED с комиссией и неизвестный результат; повторные события; частичная выплата и комиссии в разных активах; переход после первого положительного вознаграждения; полный взаимозачёт без поступления; перевод Пользователю на карточную оплату без двойного расхода. Для каждого нужны исходное состояние, ожидаемые проводки, остатки и резервы. Перечисление сценариев не является подтверждением их прохождения.
+421: Редакция от 2026-10-16 включает утверждённые правила Trading_Equity_A, корректировки HWM при начислении, выплат, возвратов и завершения проекта. Это спецификация для проверки реализации; расчётные сценарии не заменяют испытания программного исполнения. Изменение документа не создаёт кошелёк, не инициализирует регистры, не предоставляет технические доступы и не запускает финансовые операции.
+429: - Определения торгового цикла, Profit Factor, просадки и оценки открытых позиций, включая free/locked, комиссии и внешние потоки; критерии раздела 4 не ослабляются профилем.
+434: Изменение торговой политики, числовых лимитов риска и формулы вознаграждения требует явного решения Пользователя. Утверждение профиля не заменяет проверки допуска и не является командой запуска.
+
+===== docs/coordination/IMPLEMENTATION_ACCOUNTING_STAGE1.md =====
+1: # Первый этап: учётное ядро и фиксированные сценарии
+6: ## Основа и идентификация
+25: ## Реализация
+47: ## Фактические сценарии
+84: ## Команды и результаты
+115: ## Ограничения и вопросы приёмки
+8: - Репозиторий: https://github.com/FMProducer/futures-portfolio, origin проверен.
+9: - Checkout: `C:/Python/Prosperous_Bot/autonomous-asset-management/futures-portfolio`.
+27: `accounting/ledger.py`: Decimal-регистры и дельты проводок TEXT; неизменяемый
+36: корректировки HWM, частичные самостоятельные выплаты, комиссии USDT и другого
+38: карточные авансы, возвраты и credit ранее покрытых базовых расходов.
+41: удержание не завершают период аванса; его завершает положительное поступление
+42: вознаграждения в Б.
+45: PM2, ключи или биржевые зависимости. Инструкция API и границы — `accounting/README.md`.
+55: | Equity 10000 → 12000, HWM 10000, Debt 200 | R 325; удержание 200; liability 125; оба HWM 11875; Debt 0 | PASS |
+56: | Equity 10000 → 11000, Debt 200 | R 150; Debt 50; liability 0; период аванса продолжается | PASS |
+57: | Equity 10000 → 20000, без Debt | R 2175; последующее падение не отменяет liability | PASS |
+59: | До выплаты Equity 12000, liability 325, резерв 50 | Дебет 49, приход 48, комиссия 1; Equity 11951, liability 276; Trading Equity 11675 до и после; HWM неизменны | PASS |
+60: | Та же выплата, комиссия 0.002 BNB × 500 | USDT-дебет 48; отдельный отток 0.002 BNB; комиссия 1 в эквиваленте; Trading Equity 11675 | PASS |
+61: | Выплата FAILED, комиссия 1, приход 0 | Equity 11999, liability 324; расход 1; резерв снят; период аванса не завершён | PASS |
+73: | Аванс 200, уже потрачено 150, поступило ещё 100 | Новая покупка 51 отклонена: бюджетный лимит не сброшен | PASS |
+74: | Карточный аванс 80; покупка 60; возврат остатка 20 | Б 140; card 0; расходы 60; двойного списания нет | PASS |
+75: | Просроченный карточный аванс | Новый карточный аванс заблокирован; обычная покрытая покупка разрешена | PASS |
+78: | Пополнение А 1000 | Equity и оба HWM +1000; Gain и R равны 0 | PASS |
+109: закреплённого runner/main_backtest.py и coordination REGRESSION_POLICY.md.
+112: исполнитель не изменялись. Если общий backtest-gate применяется и к этому
+119:    отсутствует. Существующий фьючерсный бот не объявляется совместимым с новым
+120:    соглашением о spot-контуре.
+133: 6. Восстановление проверено для аварийного завершения процесса и rollback SQLite;
+
+===== docs/log.md =====
+
+1: PS C:\Python\Prosperous_Bot\futures_portfolio> (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& c:\Python\Prosperous_Bot\futures_portfolio\.venv\Scripts\Activate.ps1)
+2: (.venv) PS C:\Python\Prosperous_Bot\futures_portfolio> pm2 start ecosystem.config.js --update-env
+3: [PM2][WARN] Applications supervisor-service, swarm-aggregator, telegram-sender not running, starting...
+4: [PM2] App [supervisor-service] launched (1 instances)
+5: [PM2] App [swarm-aggregator] launched (1 instances)
+6: [PM2] App [telegram-sender] launched (1 instances)
+14: (.venv) PS C:\Python\Prosperous_Bot\futures_portfolio> pm2 logs
+16: C:\Users\svsma\.pm2\pm2.log last 15 lines:
+17: PM2        | 2026-07-14T22:08:29: PM2 log: RPC socket file      : \\.\pipe\rpc.sock
+18: PM2        | 2026-07-14T22:08:29: PM2 log: BUS socket file      : \\.\pipe\pub.sock
+19: PM2        | 2026-07-14T22:08:29: PM2 log: Application log path : C:\Users\svsma\.pm2\logs
+20: PM2        | 2026-07-14T22:08:29: PM2 log: Worker Interval      : 30000
+21: PM2        | 2026-07-14T22:08:29: PM2 log: Process dump file    : C:\Users\svsma\.pm2\dump.pm2
+22: PM2        | 2026-07-14T22:08:29: PM2 log: Concurrent actions   : 2
+23: PM2        | 2026-07-14T22:08:29: PM2 log: SIGTERM timeout      : 1600
+24: PM2        | 2026-07-14T22:08:29: PM2 log: Runtime Binary       : C:\Program Files\nodejs\node.exe
+25: PM2        | 2026-07-14T22:08:29: PM2 log: ===============================================================================
+26: PM2        | 2026-07-14T22:09:52: PM2 log: App [supervisor-service:0] starting in -fork mode-
+325: 9|paper-syn           | 2026-07-14 22:10:46: 2026-07-14 22:10:46,632 INFO: 💾 State files: REAL=C:\Python\Prosperous_Bot\futures_portfolio\core\paper_state_SYNUSDT.json, PAPER=C:\Python\Prosperous_Bot\futures_portfolio\core\paper_shadow_SYNUSDT.json | Mode: PAPER
+342: 22|real-aiot          | 2026-07-14 22:10:48: 2026-07-14 22:10:48,472 INFO: 💾 State files: REAL=C:\Python\Prosperous_Bot\futures_portfolio\core\real_state_AIOTUSDT.json, PAPER=C:\Python\Prosperous_Bot\futures_portfolio\core\shadow_state_AIOTUSDT.json | Mode: REAL
+354: 24|real-vanry         | 2026-07-14 22:10:56: 2026-07-14 22:10:56,621 INFO: 💾 State files: REAL=C:\Python\Prosperous_Bot\futures_portfolio\core\real_state_VANRYUSDT.json, PAPER=C:\Python\Prosperous_Bot\futures_portfolio\core\shadow_state_VANRYUSDT.json | Mode: REAL
+356: 22|real-aiot          | 2026-07-14 22:10:57: 2026-07-14 22:10:57,346 INFO: Leverage set to 7x for AIOTUSDT
+359: 24|real-vanry         | 2026-07-14 22:10:58: 2026-07-14 22:10:58,609 INFO: Leverage set to 7x for VANRYUSDT
+
+===== docs/ticker_rotation_algorithm.md =====
+1: # Алгоритм выбора и ротации тикеров — Supervisor
+3: ## Общая архитектура (manage_swarm)
+47: ## enforce_swarm_consistency — Проверка согласованности роя
+76: ## Чтение signal-флагов
+97: ## selective_merge_incubator — Ротация инкубатора (paper)
+129: ### _calc_rotation_score
+144: ## Выбор Чемпионов для REAL
+204: ## calculate_bot_score
+230: ## enforce_invariant_gate — Защита инварианта
+252: ## Полный цикл: от сканера до PM2
+303: ## Защитные механизмы (Guards)
+334: ## Известные баги и проблемы
+9:     C --> D[enforce_swarm_consistency\nПроверка биржевых позиций vs PM2]
+11:     D --> E{Есть позиции на бирже\nбез PM2 процесса?}
+24:     L --> M[get_running_bots_info\npm2 jlist — один вызов на цикл]
+36:     U --> V[PM2: остановка\nлишних ботов]
+37:     V --> W[PM2: запуск\nновых paper + real]
+40:     Y --> Z[pm2 save]
+41:     Z --> AA[_ensure_real_bots_alive\nФинальная проверка PM2]
+52:     B --> C[get_running_bots_info\npm2 jlist]
+252: ## Полный цикл: от сканера до PM2
+279:     subgraph PM2["⚡ PM2 EXECUTION"]
+283:         P4 --> P5[pm2 save]
+298:     style PM2 fill:#f3e6ff
+363: | `equity_trailing_stop_pct` | 5.7% | Трейлинг стоп |
+364: | `equity_trailing_stop_activation_pct` | 6.5% | Активация трейлинга |
+365: | `equity_trailing_stop_timeout_sec` | 60 | Таймаут перед стопом |
+283:         P4 --> P5[pm2 save]
+298:     style PM2 fill:#f3e6ff
+363: | `equity_trailing_stop_pct` | 5.7% | Трейлинг стоп |
+364: | `equity_trailing_stop_activation_pct` | 6.5% | Активация трейлинга |
+365: | `equity_trailing_stop_timeout_sec` | 60 | Таймаут перед стопом |
+
+===== docs/Бэктесты _10_дней.md =====
+
+1: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> python backtest_rebalance.py --live --ticker BZUSDT --days 10
+3: Success. Saved 10d live data (14400 candles) to C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\BZUSDT_live_10d.feather
+4: Starting backtest for BZUSDT using C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\BZUSDT_live_10d.feather...
+16: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> python backtest_rebalance.py --live --ticker CLUSDT --days 10
+18: Success. Saved 10d live data (14400 candles) to C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\CLUSDT_live_10d.feather
+19: Starting backtest for CLUSDT using C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\CLUSDT_live_10d.feather...
+31: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> python backtest_rebalance.py --live --ticker 1000PEPEUSDT --days 10
+33: Success. Saved 10d live data (14400 candles) to C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\1000PEPEUSDT_live_10d.feather
+34: Starting backtest for 1000PEPEUSDT using C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\1000PEPEUSDT_live_10d.feather...
+46: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> python backtest_rebalance.py --live --ticker HYPEUSDT --days 10
+48: Success. Saved 10d live data (14400 candles) to C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\HYPEUSDT_live_10d.feather
+49: Starting backtest for HYPEUSDT using C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\HYPEUSDT_live_10d.feather...
+61: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> python backtest_rebalance.py --live --ticker ZECUSDT --days 10
+63: Success. Saved 10d live data (14400 candles) to C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\ZECUSDT_live_10d.feather
+64: Starting backtest for ZECUSDT using C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\ZECUSDT_live_10d.feather...
+76: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> 
+49: Starting backtest for HYPEUSDT using C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\HYPEUSDT_live_10d.feather...
+61: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> python backtest_rebalance.py --live --ticker ZECUSDT --days 10
+63: Success. Saved 10d live data (14400 candles) to C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\ZECUSDT_live_10d.feather
+64: Starting backtest for ZECUSDT using C:\Python\Prosperous_Bot\third_party\rl-trading-binance\user_data\data\binance\futures\ZECUSDT_live_10d.feather...
+76: (.venv) (base) PS C:\Python\Prosperous_Bot\futures_portfolio> 
+
+===== docs/Данные с Binance.md =====
+
+7:    * Подразделы: Spot API, Margin API, USDⓈ-M Futures API, COIN-M Futures API, Options API, Earn/Staking API, Pay API, P2P API.
+16:        * Liquidation Order Streams: Данные о ликвидациях на фьючерсах.
+22:    * FIX 4.4: Поддерживается для Spot и Futures. Позволяет получать рыночные данные и управлять ордерами через бинарный или текстовый протокол TCP. Быстрее, чем классический REST API.
+25:   Для глубокого бэктеста и анализа больших данных.
+7:    * Подразделы: Spot API, Margin API, USDⓈ-M Futures API, COIN-M Futures API, Options API, Earn/Staking API, Pay API, P2P API.
+16:        * Liquidation Order Streams: Данные о ликвидациях на фьючерсах.
+22:    * FIX 4.4: Поддерживается для Spot и Futures. Позволяет получать рыночные данные и управлять ордерами через бинарный или текстовый протокол TCP. Быстрее, чем классический REST API.
+25:   Для глубокого бэктеста и анализа больших данных.
+
+===== docs/Описание_логики_Супервайзера.md =====
+
+10:    2. Фильтр Результативности (Backtest):
+11:        * Strategy Profit > 0%: Бот обязан показать прибыль на бэктесте за последние 24 часа.
+14:        * Max Drawdown <= 20% (или твой лимит в конфиге). Если бэктест показывает глубокую просадку — тикер бракуется.
+16:        * Даже если твой текущий бот в плюсе, но в списке кандидатов появилось 10 других тикеров, у которых Strategy Profit на бэктесте выше, Супервайзер выберет их, а текущего бота пометит как «уставшего» (Tired) и удалит.
+25:    1. Опрос PM2: кто сейчас запущен? (bot-*).
+32:    4. Формирование пула для бэктеста: [Все текущие боты] + [Новые находки сканера].
+33:    5. Для каждого тикера в пуле запускается run_backtest на данных за 1 день.
+43:            2. Затем pm2 delete bot-name (удаление из списка процессов).
+45:        * Для новых тикеров из Топ-10, которых еще нет в PM2, вызывается start_bot(ticker, paper=True).
+50:    12. Вызов pm2 save, чтобы после перезагрузки сервера состав сохранился.
+60:    5. Но в это время другой тикер показал на бэктесте результат лучше.
+78:    * Если Супервайзер видит в Топ-10 новый перспективный тикер, которого нет в PM2, он запускает его строго командой start_bot(ticker, paper=True).
+98:    1. Общий Бэктест: Супервайзер прогоняет бэктест по ВСЕМ (и реальным, и бумажным, и новым из сканера).
+111:    * Буферная зона: Инкубатор защищает твой реальный депозит от тикеров, которые «красиво выглядят на бэктесте», но сразу начинают сливать в живом рынке (например, из-за низкой ликвидности или проскальзываний).
+112:    * Двойной фильтр: Тикер должен сначала победить в «теории» (бэктест), а затем — в «практике» (бумажная торговля), прежде чем получит доступ к реальным деньгам.
+114:        * Удаление из Реала происходит, если бот «устал» (упал профит на бэктесте) или поймал Стоп-лосс.
+78:    * Если Супервайзер видит в Топ-10 новый перспективный тикер, которого нет в PM2, он запускает его строго командой start_bot(ticker, paper=True).
+98:    1. Общий Бэктест: Супервайзер прогоняет бэктест по ВСЕМ (и реальным, и бумажным, и новым из сканера).
+111:    * Буферная зона: Инкубатор защищает твой реальный депозит от тикеров, которые «красиво выглядят на бэктесте», но сразу начинают сливать в живом рынке (например, из-за низкой ликвидности или проскальзываний).
+112:    * Двойной фильтр: Тикер должен сначала победить в «теории» (бэктест), а затем — в «практике» (бумажная торговля), прежде чем получит доступ к реальным деньгам.
+114:        * Удаление из Реала происходит, если бот «устал» (упал профит на бэктесте) или поймал Стоп-лосс.
+
+===== docs/Рекомендации по документации.md =====
+
+19:   │ PM2 ecosystem не описан               │ Добавить пример ecosystem.config.js или ссылку на него                                                                │
+42:   │ Нет ссылок на артефакты    │ Добавить ссылки на логи PM2, Telegram-канал с отчетами, графики PnL                    │
+51:   2. Добавить раздел "Troubleshooting": Типовые проблемы и решения (PM2 не стартует, Hedge Mode не включается, Telegram не шлет).
+19:   │ PM2 ecosystem не описан               │ Добавить пример ecosystem.config.js или ссылку на него                                                                │
+42:   │ Нет ссылок на артефакты    │ Добавить ссылки на логи PM2, Telegram-канал с отчетами, графики PnL                    │
+51:   2. Добавить раздел "Troubleshooting": Типовые проблемы и решения (PM2 не стартует, Hedge Mode не включается, Telegram не шлет).
+
+===== tests/README.md =====
+1: # Тестирование системы ребалансировки портфеля
+5: ## Установка зависимостей
+13: ## Запуск тестов
+21: ## Структура тестов
+30: ## Особенности реализации
+18: PYTHONPATH=futures_portfolio pytest --cov=futures_portfolio futures_portfolio/tests/
+18: PYTHONPATH=futures_portfolio pytest --cov=futures_portfolio futures_portfolio/tests/

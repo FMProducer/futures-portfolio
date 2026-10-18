@@ -1,0 +1,48 @@
+{
+  "version": "dataset-catalog-v1",
+  "symbol_declared": "BTCUSDT",
+  "interval": "1m",
+  "artifact": {
+    "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\audit_2026-10-16\\market_data\\BTCUSDT.csv",
+    "sha256": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a",
+    "bytes": 4862487
+  },
+  "candles": {
+    "status": "PASS",
+    "rows": 43200,
+    "first_open_time": 1788220800000,
+    "last_open_time": 1790812740000,
+    "last_close_time": 1790812799999,
+    "duplicate_timestamps": 0,
+    "out_of_order": 0,
+    "missing_minutes": 0,
+    "misaligned_timestamps": 0,
+    "invalid_rows": 0,
+    "errors": []
+  },
+  "provenance": {
+    "source_declared": null,
+    "acquired_utc_declared": null,
+    "status": "INCOMPLETE"
+  },
+  "usage": "previously_used",
+  "oos_status": "ALREADY_USED",
+  "funding": {
+    "status": "NOT_PROVIDED",
+    "coverage": "NOT_ESTABLISHED",
+    "zero_funding_assumed": false
+  },
+  "filters": {
+    "status": "NOT_PROVIDED",
+    "historical_applicability": "NOT_ESTABLISHED"
+  },
+  "inspected_utc": "2026-10-18T10:15:36.968164+00:00",
+  "admission_ready": false,
+  "trading_authorized": false,
+  "limitations": [
+    "CSV symbol is caller-declared, not authenticated",
+    "SHA proves byte identity, not source authenticity",
+    "No historical exchange schedule/filters or OOS freshness inferred"
+  ],
+  "status": "INVENTORIED"
+}

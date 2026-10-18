@@ -1,0 +1,87 @@
+{
+  "status": "PASS",
+  "virtual_hours": 24,
+  "wall_clock_hours_tested": 0,
+  "observations": 1441,
+  "funding_events": 3,
+  "revision": 1441,
+  "receipts": 5,
+  "funding": "0.0016500",
+  "fees": "2.002997780300",
+  "portfolio": {
+    "portfolio": {
+      "config": {
+        "deficit_pp": "0.7",
+        "fee_rate": "0.0004",
+        "leverage": "7",
+        "min_notional": "5.3",
+        "step": "0.001",
+        "surplus_pp": "0.7",
+        "trail_pp": "0.09"
+      },
+      "extrema": {
+        "LONG": {
+          "peak": "25.01877721670704835598503808",
+          "trough": "25"
+        },
+        "SHORT": {
+          "peak": "25.01863915900629611630038229",
+          "trough": "25"
+        }
+      },
+      "fees": "2.002997780300",
+      "funding": "0.0016500",
+      "legs": {
+        "LONG": {
+          "avg": "100.11001",
+          "initial_units": 25010,
+          "margin": "357.67876430",
+          "open_fees": "1.001500540040",
+          "units": 25010
+        },
+        "SHORT": {
+          "avg": "99.89001",
+          "initial_units": 25065,
+          "margin": "357.6775858071428571428571429",
+          "open_fees": "1.001497240260",
+          "units": 25065
+        }
+      },
+      "liability": "0",
+      "order_reserve": "0",
+      "realized": "0",
+      "receipts": {
+        "public-funding:1800028800000": [
+          "FUNDING",
+          "0.0005500"
+        ],
+        "public-funding:1800057600000": [
+          "FUNDING",
+          "0.0005500"
+        ],
+        "public-funding:1800086400000": [
+          "FUNDING",
+          "0.0005500"
+        ],
+        "public:1800000000000:LONG": [
+          "ADD",
+          "LONG",
+          25010,
+          "100.11001",
+          "1.001500540040"
+        ],
+        "public:1800000000000:SHORT": [
+          "ADD",
+          "SHORT",
+          25065,
+          "99.89001",
+          "1.001497240260"
+        ]
+      },
+      "wallet": "9997.998652219700"
+    },
+    "version": "shared-wallet-state-v1"
+  },
+  "protocol_sha": "91abeae4b6fabd34fc0485d8e9be20c070e9427e6d6163ee50b9b3f678deadb2",
+  "trading_authorized": false
+}

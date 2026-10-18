@@ -1,0 +1,90 @@
+{
+  "head": "d55cdf74e7cc59431e45452633136e3991d4ad41",
+  "prepared_utc": "2026-10-18T10:03:29.881711+00:00",
+  "server_time": 1792317810338,
+  "target_funding": 1792339200000,
+  "target_funding_utc": "2026-10-18T16:00:00+00:00",
+  "nominal_end_utc": "2026-10-19T10:03:30.338000+00:00",
+  "duration_seconds": 86400,
+  "study_hours": 24,
+  "minimum_funding_events": 3,
+  "minimum_span_ms": 82800000,
+  "sources": {
+    "__init__.py": "519c6d8b58835caa6e8c3068e3a5784038e7221defb0b7bf6e9143d78a928cd0",
+    "public_session.py": "c7446e4ea8c67a37634747186d508bcd33eca3c04e5017422678a261c2d4a6b0",
+    "public_paper.py": "74a33cd6f346eb393a57e4c96e8f7f49b3c5912a6a68929d2dcdfe9d717d6d03",
+    "kernel.py": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb",
+    "durable.py": "3333e6e184982e8e5a123494b8508de7b20a479daca664670bd7452aa1e8db06",
+    "binance_readonly.py": "bf1f34f0658914c2c8132985259a713566c3bfa1c08f25061d90ec759a62b3e4"
+  },
+  "runner_sha256": "00ae740641c865a446e6816de5060bfa757ca4fca35b2e3dd004e465cb80091b",
+  "settings": {
+    "capital": "10000",
+    "spread_bps": "2",
+    "slippage_bps": "1",
+    "strategy": {
+      "step": "0.001",
+      "min_notional": "5.3",
+      "leverage": "7",
+      "fee_rate": "0.0004",
+      "surplus_pp": "0.7",
+      "deficit_pp": "0.7",
+      "trail_pp": "0.09"
+    }
+  },
+  "filters": {
+    "LOT_SIZE": {
+      "filterType": "LOT_SIZE",
+      "stepSize": "0.001",
+      "minQty": "0.001",
+      "maxQty": "1000"
+    },
+    "MARKET_LOT_SIZE": {
+      "maxQty": "120",
+      "filterType": "MARKET_LOT_SIZE",
+      "minQty": "0.001",
+      "stepSize": "0.001"
+    },
+    "MIN_NOTIONAL": {
+      "notional": "50",
+      "filterType": "MIN_NOTIONAL"
+    }
+  },
+  "preflight": {
+    "symbol": "BTCUSDT",
+    "before": 1792317809120,
+    "after": 1792317810338,
+    "mark": {
+      "symbol": "BTCUSDT",
+      "markPrice": "82128.80000000",
+      "indexPrice": "82153.43695652",
+      "estimatedSettlePrice": "82192.60392548",
+      "lastFundingRate": "0.00009405",
+      "interestRate": "0.00010000",
+      "nextFundingTime": 1792339200000,
+      "time": 1792317809001
+    },
+    "book": {
+      "symbol": "BTCUSDT",
+      "bidPrice": "82133.00",
+      "bidQty": "6.839",
+      "askPrice": "82133.10",
+      "askQty": "0.805",
+      "time": 1792317809430,
+      "lastUpdateId": 11851494990682
+    }
+  },
+  "gates": [
+    "STOPPED at bounded duration",
+    "first target funding and at least three distinct funding timestamps; span at least 23 hours",
+    "no pending inputs",
+    "exact offline replay of all results and portfolio",
+    "no duplicate cash or fills",
+    "SQLite integrity ok",
+    "no orders",
+    "snapshot hashes unchanged"
+  ],
+  "failure_policy": "freeze and preserve; no rerun or parameter changes on this window",
+  "owner": "User-owned project; simulated capital only",
+  "trading_authorized": false
+}

@@ -1,0 +1,555 @@
+--- a/rebalance/public_paper.py
++++ b/rebalance/public_paper.py
+@@ -4,6 +4,7 @@
+ This is not an atomic account snapshot, exchange execution or a funding model.
+ """
+ import argparse
++from contextlib import closing
+ from dataclasses import asdict
+ import hashlib
+ import json
+@@ -99,7 +100,7 @@
+                   for name in ('public_paper.py','kernel.py','durable.py')}))
+         path = Path(path)
+         if path.exists():
+-            with sqlite3.connect(path) as db:
++            with closing(sqlite3.connect(path)) as db:
+                 if not db.execute("SELECT 1 FROM sqlite_master WHERE name='public_paper'").fetchone():
+                     raise ValueError('foreign database; use a dedicated public-paper path')
+         path.parent.mkdir(parents=True,exist_ok=True)
+@@ -120,9 +121,10 @@
+                 db.rollback()
+                 raise
+ 
+-    def step(self, sample):
++    def step(self, sample, *, funding=None):
+         # Detach caller-owned mutable input before validation and transaction.
+         sample = json.loads(encode(sample))
++        funding = None if funding is None else json.loads(encode(funding))
+         mark,bid,ask = validate(sample,self.symbol)
+         stamp = sample['after']
+         identity = 'public:'+str(stamp)
+@@ -134,15 +136,34 @@
+                 raise ValueError('foreign order state')
+             if last is not None and stamp <= last:
+                 raise ValueError('out-of-order observation')
++            if last is not None and stamp-last > 120000:
++                raise ValueError('observation gap; freeze until explicit restart decision')
++            funding_amount = decimal(0)
++            if funding is not None:
++                # One exact scheduled BTC funding event. No guessed interval/rate.
++                if (self.symbol != 'BTCUSDT' or due is None or last is None or not last < due <= stamp
++                        or not isinstance(funding,list) or len(funding) != 1):
++                    raise ValueError('unexpected or incomplete funding evidence')
++                row = funding[0]
++                if (row['symbol'] != self.symbol or type(row['fundingTime']) is not int
++                        or row['fundingTime'] != due or row.get('rateType','Regular') != 'Regular'):
++                    raise ValueError('funding identity or type mismatch')
++                rate, funding_mark = decimal(row['fundingRate']),decimal(row['markPrice'])
++                if funding_mark <= 0:
++                    raise ValueError('invalid funding mark')
++                funding_amount = (p.legs['SHORT'].units-p.legs['LONG'].units)*p.config.step*funding_mark*rate
++                p.cash_event('public-funding:'+str(due),funding_amount,'FUNDING')
++                due = sample['mark']['nextFundingTime']
+             if due is not None and stamp >= due and any(l.units for l in p.legs.values()):
+                 raise ValueError('funding UNKNOWN; freeze until explicit reconciliation')
+-            if last is not None and stamp-last > 120000:
+-                raise ValueError('observation gap; freeze until explicit restart decision')
+             if last is not None and stamp//60000 == last//60000:
+-                db.execute('UPDATE public_paper SET last_time=? WHERE id=1',(stamp,))
+-                return dict(status='SAME_MINUTE',time=stamp,mode='PAPER',fills=[],trading_authorized=False)
++                db.execute('UPDATE public_paper SET last_time=?,funding_due=? WHERE id=1',(stamp,due))
++                result = dict(status='SAME_MINUTE',time=stamp,mode='PAPER',fills=[],trading_authorized=False)
++                if funding is not None:
++                    result.update(funding_delta=str(funding_amount),equity=str(p.snapshot(mark)['equity']))
++                return result
+             bid_cost,ask_cost = bid*(1-self.slippage),ask*(1+self.slippage)
+-            entry = not p.receipts
++            entry = not any(l.initial_units for l in p.legs.values())
+             actions = (p.plan_entry(mark,bid_cost,ask_cost) if entry
+                        else [p.next_action(mark,bid_cost,ask_cost)])
+             fills = []
+@@ -172,11 +193,15 @@
+                 raise ValueError('simulation requires liquidation model')
+             db.execute('UPDATE public_paper SET last_time=?,funding_due=? WHERE id=1',
+                        (stamp,sample['mark']['nextFundingTime']))
+-            return dict(status='APPLIED',mode='PAPER',time=stamp,gap_ms=None if last is None else stamp-last,
++            result = dict(status='APPLIED',mode='PAPER',time=stamp,gap_ms=None if last is None else stamp-last,
+                         fills=fills,equity=str(snap['equity']),fees=str(p.fees),
+                         quantities={s:str(l.units*p.config.step) for s,l in p.legs.items()},
+                         trading_authorized=False)
+-        return self.store._apply(identity,sample,change)
++            if funding is not None:
++                result['funding_delta'] = str(funding_amount)
++            return result
++        request = sample if funding is None else dict(sample=sample,funding=funding)
++        return self.store._apply(identity,request,change)
+ 
+ 
+ def main():
+--- /dev/null
++++ b/rebalance/public_session.py
+@@ -0,0 +1,232 @@
++"""Supervised public REST paper sessions with durable recovery; no trading API.
++
++Bounded foreground execution, not a background daemon. Long data gaps freeze.
++"""
++import argparse
++from contextlib import contextmanager
++import hashlib
++import json
++from pathlib import Path
++import time
++import urllib.parse
++import urllib.request
++
++from .binance_readonly import ReadError
++from .durable import encode
++from .public_paper import Paper, PublicReader, rules, validate
++
++
++class SessionReader(PublicReader):
++    def funding(self, symbol, timestamp):
++        if symbol != 'BTCUSDT' or type(timestamp) is not int or timestamp <= 0:
++            raise ValueError('only exact scheduled BTCUSDT funding is supported')
++        query = urllib.parse.urlencode(dict(symbol=symbol,startTime=timestamp,endTime=timestamp,limit=1000))
++        request = urllib.request.Request('https://fapi.binance.com/fapi/v1/fundingRate?'+query,method='GET')
++        try:
++            with self.opener.open(request,timeout=15) as response:
++                rows = json.loads(response.read())
++        except Exception:
++            raise ReadError('funding_request_failed') from None
++        if rows == []:
++            raise ReadError('funding_not_published')
++        return rows
++
++
++@contextmanager
++def exclusive(path):
++    """OS lock is released on process death; no stale lock deletion shortcut."""
++    with open(str(path)+'.lock','a+b') as stream:
++        stream.seek(0,2)
++        if stream.tell() == 0:
++            stream.write(b'0')
++            stream.flush()
++        stream.seek(0)
++        if __import__('os').name == 'nt':
++            import msvcrt
++            try:
++                msvcrt.locking(stream.fileno(),msvcrt.LK_NBLCK,1)
++            except OSError:
++                raise ValueError('another paper session owns this database') from None
++            try:
++                yield
++            finally:
++                stream.seek(0)
++                msvcrt.locking(stream.fileno(),msvcrt.LK_UNLCK,1)
++        else:
++            import fcntl
++            try:
++                fcntl.flock(stream.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
++            except OSError:
++                raise ValueError('another paper session owns this database') from None
++            try:
++                yield
++            finally:
++                fcntl.flock(stream.fileno(),fcntl.LOCK_UN)
++
++
++class Session:
++    def __init__(self, paper, reader, *, monotonic=time.monotonic, sleep=time.sleep):
++        if paper.symbol != 'BTCUSDT':
++            raise ValueError('session funding supports BTCUSDT only')
++        self.paper,self.reader = paper,reader
++        self.monotonic,self.sleep = monotonic,sleep
++        binding = encode(dict(paper=json.loads(paper.binding),
++            session_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()))
++        with paper.store.connection() as db:
++            db.execute('BEGIN IMMEDIATE')
++            try:
++                db.execute('CREATE TABLE IF NOT EXISTS session_state (id INTEGER PRIMARY KEY CHECK(id=1), binding TEXT NOT NULL, status TEXT NOT NULL, reason TEXT)')
++                db.execute('CREATE TABLE IF NOT EXISTS session_inputs (id TEXT PRIMARY KEY, payload TEXT NOT NULL, result TEXT)')
++                db.execute('CREATE TABLE IF NOT EXISTS session_log (seq INTEGER PRIMARY KEY, body TEXT NOT NULL)')
++                db.execute("CREATE TRIGGER IF NOT EXISTS session_payload_immutable BEFORE UPDATE ON session_inputs WHEN NEW.id != OLD.id OR NEW.payload != OLD.payload OR OLD.result IS NOT NULL BEGIN SELECT RAISE(ABORT,'immutable session input'); END")
++                db.execute("CREATE TRIGGER IF NOT EXISTS session_input_no_delete BEFORE DELETE ON session_inputs BEGIN SELECT RAISE(ABORT,'immutable session input'); END")
++                for operation in ('UPDATE','DELETE'):
++                    db.execute(f"CREATE TRIGGER IF NOT EXISTS session_log_no_{operation.lower()} BEFORE {operation} ON session_log BEGIN SELECT RAISE(ABORT,'immutable session log'); END")
++                old = db.execute('SELECT binding FROM session_state').fetchone()
++                if old:
++                    if old[0] != binding:
++                        raise ValueError('session code or input binding changed')
++                else:
++                    db.execute("INSERT INTO session_state VALUES(1,?,'STOPPED',NULL)",(binding,))
++                db.commit()
++            except BaseException:
++                db.rollback()
++                raise
++
++    def state(self):
++        with self.paper.store.connection() as db:
++            status,reason = db.execute('SELECT status,reason FROM session_state').fetchone()
++        return dict(status=status,reason=reason,trading_authorized=False)
++
++    def log(self, status, **data):
++        with self.paper.store.connection() as db:
++            db.execute('BEGIN IMMEDIATE')
++            try:
++                db.execute('INSERT INTO session_log(body) VALUES(?)',(encode(dict(status=status,**data)),))
++                db.execute('UPDATE session_state SET status=?,reason=? WHERE id=1',(status,data.get('reason')))
++                db.commit()
++            except BaseException:
++                db.rollback()
++                raise
++
++    def enqueue(self, payload):
++        body = encode(payload)
++        identity = 'capture:'+str(payload['sample']['after'])
++        with self.paper.store.connection() as db:
++            db.execute('BEGIN IMMEDIATE')
++            try:
++                old = db.execute('SELECT payload FROM session_inputs WHERE id=?',(identity,)).fetchone()
++                if old and old[0] != body:
++                    raise ValueError('conflicting captured input')
++                if not old:
++                    db.execute('INSERT INTO session_inputs VALUES(?,?,NULL)',(identity,body))
++                db.commit()
++            except BaseException:
++                db.rollback()
++                raise
++        return identity
++
++    def recover(self):
++        with self.paper.store.connection() as db:
++            rows = db.execute('SELECT id,payload FROM session_inputs WHERE result IS NULL ORDER BY rowid').fetchall()
++        for identity,body in rows:
++            payload = json.loads(body)
++            result = self.paper.step(payload['sample'],funding=payload['funding'])
++            # If the process dies after step, replay returns its cached result.
++            with self.paper.store.connection() as db:
++                db.execute('UPDATE session_inputs SET result=? WHERE id=? AND result IS NULL',(encode(result),identity))
++
++    def capture(self):
++        sample = self.reader.capture(self.paper.symbol)
++        validate(sample,self.paper.symbol)
++        with self.paper.store.connection() as db:
++            last,due = db.execute('SELECT last_time,funding_due FROM public_paper').fetchone()
++        funding = None
++        if last is not None and sample['after']-last > 120000:
++            raise ValueError('observation gap; freeze until explicit restart decision')
++        if due is not None and sample['after'] >= due:
++            funding = self.reader.funding(self.paper.symbol,due)
++            # Funding fetch can take time; never fill using the earlier quotes.
++            sample = self.reader.capture(self.paper.symbol)
++            validate(sample,self.paper.symbol)
++        return dict(sample=sample,funding=funding)
++
++    def run(self, *, duration=60, interval=5, max_errors=3):
++        if (type(duration) is not int or not 1 <= duration <= 86400
++                or type(interval) is not int or not 2 <= interval <= 30
++                or type(max_errors) is not int or not 1 <= max_errors <= 10):
++            raise ValueError('invalid bounded session schedule')
++        with exclusive(self.paper.store.path):
++            if self.state()['status'] == 'FROZEN':
++                raise ValueError('session is FROZEN; no automatic reset')
++            start = self.monotonic()
++            errors = 0
++            try:
++                self.log('RECOVERING')
++                self.recover()
++                self.log('RUNNING')
++                while self.monotonic()-start < duration:
++                    try:
++                        payload = self.capture()
++                        self.enqueue(payload)
++                        self.recover()
++                        errors = 0
++                        self.log('RUNNING',server_time=payload['sample']['after'])
++                    except ReadError as exc:
++                        errors += 1
++                        self.log('RETRYING',reason=exc.details['kind'],consecutive_errors=errors)
++                        if errors >= max_errors:
++                            self.log('FROZEN',reason='public read retries exhausted')
++                            return self.state()
++                    remaining = duration-(self.monotonic()-start)
++                    if remaining > 0:
++                        self.sleep(min(interval,remaining))
++                if errors:
++                    self.log('FROZEN',reason='session ended with unresolved public read failure')
++                else:
++                    self.log('STOPPED',reason='duration complete')
++            except KeyboardInterrupt:
++                self.log('STOPPED',reason='operator interrupt')
++            except Exception as exc:
++                self.log('FROZEN',reason=type(exc).__name__+': '+str(exc))
++            return self.state()
++
++    def export(self, path):
++        path = Path(path)
++        path.mkdir(parents=True,exist_ok=False)
++        with self.paper.store.connection() as db:
++            db.execute('BEGIN')
++            binding,status,reason = db.execute('SELECT binding,status,reason FROM session_state').fetchone()
++            inputs = [dict(id=i,payload=json.loads(p),result=None if r is None else json.loads(r))
++                      for i,p,r in db.execute('SELECT id,payload,result FROM session_inputs ORDER BY rowid')]
++            logs = [json.loads(r[0]) for r in db.execute('SELECT body FROM session_log ORDER BY seq')]
++            portfolio,revision = db.execute('SELECT body,revision FROM portfolio').fetchone()
++            db.commit()
++        body = dict(binding=json.loads(binding),status=status,reason=reason,inputs=inputs,
++            log=logs,portfolio=json.loads(portfolio),revision=revision,trading_authorized=False)
++        (path/'session.json').write_text(json.dumps(body,indent=2),encoding='utf-8')
++        return body
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--config',type=Path,required=True)
++    parser.add_argument('--database',type=Path,required=True)
++    parser.add_argument('--output',type=Path,required=True)
++    parser.add_argument('--duration',type=int,default=60)
++    args = parser.parse_args()
++    if args.output.exists():
++        parser.error('output exists; choose a new output folder')
++    reader = SessionReader()
++    settings = json.loads(args.config.read_text(encoding='utf-8-sig'))
++    paper = Paper(args.database,'BTCUSDT',settings,rules(reader.get('/fapi/v1/exchangeInfo'),'BTCUSDT'))
++    session = Session(paper,reader)
++    state = session.run(duration=args.duration)
++    session.export(args.output)
++    print(encode(state))
++    if state['status'] == 'FROZEN':
++        raise SystemExit(2)
++
++
++if __name__ == '__main__':
++    main()
+--- a/rebalance/scenarios/test_public_paper.py
++++ b/rebalance/scenarios/test_public_paper.py
+@@ -79,7 +79,7 @@
+     p.step(s)
+     before=p.store.load()
+     with pytest.raises(ValueError,match='funding UNKNOWN'):
+-        p.step(sample(900000))
++        p.step(sample(680000))
+     assert p.store.load() == before
+ 
+ 
+--- /dev/null
++++ b/rebalance/scenarios/test_public_session.py
+@@ -0,0 +1,200 @@
++from copy import deepcopy
++from decimal import Decimal as D
++import json
++import sqlite3
++
++import pytest
++
++from rebalance.binance_readonly import ReadError
++from rebalance.durable import pack
++from rebalance.public_paper import Paper
++from rebalance.public_session import Session, SessionReader, exclusive
++from rebalance.scenarios.test_public_paper import sample, inputs
++
++
++class Clock:
++    def __init__(self): self.now=0
++    def monotonic(self): return self.now
++    def sleep(self,seconds): self.now+=seconds
++
++
++class Feed:
++    def __init__(self,values,funding=None):
++        self.values=iter(values)
++        self.rate=funding
++        self.calls=0
++    def capture(self,symbol):
++        self.calls+=1
++        value=next(self.values)
++        if isinstance(value,Exception): raise value
++        return deepcopy(value)
++    def funding(self,symbol,stamp):
++        if isinstance(self.rate,Exception): raise self.rate
++        return deepcopy(self.rate)
++
++
++def make(tmp_path,inputs,feed):
++    p=Paper(tmp_path/'paper.sqlite','BTCUSDT',*inputs)
++    clock=Clock()
++    return p,Session(p,feed,monotonic=clock.monotonic,sleep=clock.sleep)
++
++
++def funding(stamp=650000):
++    return [dict(symbol='BTCUSDT',fundingTime=stamp,fundingRate='0.001',markPrice='101',rateType='Regular')]
++
++
++def seeded(tmp_path,inputs):
++    p=Paper(tmp_path/'paper.sqlite','BTCUSDT',*inputs)
++    first=sample()
++    first['mark']['nextFundingTime']=650000
++    p.step(first)
++    # An independently seeded unequal simulated exposure exercises nonzero cash.
++    state,_=p.store.load()
++    state.legs['SHORT'].units-=100
++    with p.store.connection() as db:
++        db.execute('UPDATE portfolio SET body=?',(pack(state),))
++    return p
++
++
++def test_short_read_failure_recovers_and_restart(tmp_path,inputs):
++    feed=Feed([sample(),ReadError('public_request_failed'),sample(660000)])
++    p,s=make(tmp_path,inputs,feed)
++    assert s.run(duration=6,interval=2)['status'] == 'STOPPED'
++    assert p.store.load()[1] == 2
++    assert len(p.store.load()[0].receipts) == 2
++    with p.store.connection() as db:
++        assert db.execute('SELECT count(*) FROM session_inputs').fetchone()[0] == 2
++    again=Session(Paper(p.store.path,'BTCUSDT',*inputs),Feed([sample(660010)]),
++                  monotonic=Clock().monotonic,sleep=lambda _:None)
++    # Replay the persisted inbox directly, without contacting the exhausted feed.
++    before=p.store.load()
++    again.recover()
++    assert p.store.load() == before
++
++
++@pytest.mark.parametrize('committed',[False,True])
++def test_pending_input_after_crash_before_and_after_fill(tmp_path,inputs,committed):
++    p,s=make(tmp_path,inputs,Feed([]))
++    payload=dict(sample=sample(),funding=None)
++    identity=s.enqueue(payload)
++    assert p.store.load()[1] == 0
++    result=p.step(payload['sample']) if committed else None
++    restarted=Session(Paper(p.store.path,'BTCUSDT',*inputs),Feed([]))
++    restarted.recover()
++    assert p.store.load()[1] == 1
++    with p.store.connection() as db:
++        saved=json.loads(db.execute('SELECT result FROM session_inputs WHERE id=?',(identity,)).fetchone()[0])
++        assert saved == result if committed else len(saved['fills']) == 2
++    assert len(p.store.load()[0].receipts) == 2
++
++
++def test_gap_freezes_durably_without_reset(tmp_path,inputs):
++    p,s=make(tmp_path,inputs,Feed([sample(),sample(720001)]))
++    assert s.run(duration=4,interval=2)['status'] == 'FROZEN'
++    before=p.store.load()
++    restarted=Session(Paper(p.store.path,'BTCUSDT',*inputs),Feed([sample(660000)]))
++    with pytest.raises(ValueError,match='FROZEN'):
++        restarted.run(duration=1)
++    assert p.store.load() == before
++
++
++def test_funding_atomic_nonzero_and_duplicate(tmp_path,inputs):
++    p=seeded(tmp_path,inputs)
++    before,_=p.store.load()
++    second=sample(650001) # same decision minute as the first
++    rows=funding()
++    result=p.step(second,funding=rows)
++    expected=(before.legs['SHORT'].units-before.legs['LONG'].units)*before.config.step*D('101')*D('.001')
++    assert D(result['funding_delta']) == expected != 0
++    after,revision=p.store.load()
++    assert after.wallet-before.wallet == after.funding-before.funding == expected
++    assert p.step(second,funding=rows) == result
++    assert p.store.load()[1] == revision
++    with p.store.connection() as db:
++        assert db.execute('SELECT funding_due FROM public_paper').fetchone()[0] == 3600000
++
++
++def test_funding_fetch_refreshes_prices(tmp_path,inputs):
++    p=seeded(tmp_path,inputs)
++    feed=Feed([sample(650001),sample(650010)],funding())
++    clock=Clock()
++    s=Session(p,feed,monotonic=clock.monotonic,sleep=clock.sleep)
++    assert s.run(duration=1)['status'] == 'STOPPED'
++    assert feed.calls == 2
++    with p.store.connection() as db:
++        body=json.loads(db.execute('SELECT payload FROM session_inputs').fetchone()[0])
++        assert body['sample']['after'] == 650010
++
++
++@pytest.mark.parametrize('change',[
++    lambda r:r.clear(),
++    lambda r:r.append(deepcopy(r[0])),
++    lambda r:r[0].update(fundingTime=649999),
++    lambda r:r[0].update(symbol='ETHUSDT'),
++    lambda r:r[0].update(fundingRate='NaN'),
++    lambda r:r[0].update(markPrice='0'),
++    lambda r:r[0].update(rateType='Special'),
++])
++def test_bad_funding_cannot_change_portfolio(tmp_path,inputs,change):
++    p=seeded(tmp_path,inputs)
++    before=p.store.load()
++    rows=funding()
++    change(rows)
++    with pytest.raises(ValueError):
++        p.step(sample(650001),funding=rows)
++    assert p.store.load() == before
++
++
++def test_funding_and_journal_rollback_together(tmp_path,inputs):
++    p=seeded(tmp_path,inputs)
++    before=p.store.load()
++    with p.store.connection() as db:
++        db.execute("CREATE TRIGGER crash BEFORE INSERT ON events BEGIN SELECT RAISE(ABORT,'crash'); END")
++    with pytest.raises(sqlite3.IntegrityError):
++        p.step(sample(650001),funding=funding())
++    assert p.store.load() == before
++    with p.store.connection() as db:
++        assert db.execute('SELECT funding_due FROM public_paper').fetchone()[0] == 650000
++
++
++def test_unknown_funding_is_not_assumed_zero(tmp_path,inputs):
++    p=seeded(tmp_path,inputs)
++    feed=Feed([sample(650001)],ReadError('funding_not_published'))
++    clock=Clock()
++    s=Session(p,feed,monotonic=clock.monotonic,sleep=clock.sleep)
++    before=p.store.load()
++    assert s.run(duration=1)['status'] == 'FROZEN'
++    assert p.store.load() == before
++
++
++def test_immutable_inbox_and_exclusive_lock(tmp_path,inputs):
++    p,s=make(tmp_path,inputs,Feed([]))
++    s.enqueue(dict(sample=sample(),funding=None))
++    bad=sample()
++    bad['book']['askPrice']='101'
++    with pytest.raises(ValueError,match='conflicting'):
++        s.enqueue(dict(sample=bad,funding=None))
++    with p.store.connection() as db:
++        with pytest.raises(sqlite3.IntegrityError):
++            db.execute("UPDATE session_inputs SET payload='{}'")
++    with exclusive(p.store.path):
++        with pytest.raises(ValueError,match='another'):
++            with exclusive(p.store.path): pass
++
++
++def test_funding_transport_exact_get_no_credentials(monkeypatch):
++    reader=SessionReader()
++    requests=[]
++    class Response:
++        def __enter__(self): return self
++        def __exit__(self,*args): pass
++        def read(self): return json.dumps(funding()).encode()
++    def open_request(request,timeout):
++        requests.append(request)
++        return Response()
++    monkeypatch.setattr(reader.opener,'open',open_request)
++    assert reader.funding('BTCUSDT',650000) == funding()
++    request=requests[0]
++    assert request.method == 'GET' and request.headers == {}
++    assert 'startTime=650000&endTime=650000' in request.full_url
++    with pytest.raises(ValueError): reader.funding('ETHUSDT',650000)
+--- a/rebalance/README.md
++++ b/rebalance/README.md
+@@ -77,6 +77,14 @@
+ Отчёт: docs/coordination/IMPLEMENTATION_PAPER_ORCHESTRATOR.md.
+ # Public REST paper: isolated balance
+ 
++For a supervised foreground session, use:
++
++`python -m rebalance.public_session --config rebalance/historical_example.json --database reports/public_session_manual/runtime/paper.sqlite --output reports/public_session_manual/run_01 --duration 3600`
++
++Duration is bounded to 1–86400 seconds (default 60), polling every 5 seconds; Ctrl+C stops and keeps state. The session holds an OS lock, journals captured inputs before applying them, and recovers unacknowledged inputs idempotently after restart. Use a NEW report folder each time; resume with the SAME database and code/config within the 120-second observation bound. This version changes the code binding, so previous public-paper databases require a separate experiment, not silent migration. A gap >120 seconds, invalid data or exhausted read retries durably FROZEN the session; there is no automatic reset. Network failure does not liquidate or clear simulated positions.
++
++BTCUSDT regular funding can be reconciled using the exact scheduled timestamp from public funding history. The cash amount uses the simulator's pre-event quantities and the published funding mark/rate, not private account receipts. Quotes are collected again after the funding fetch. Funding, fills and time/horizon advance commit together. Missing/ambiguous/Special funding cannot advance state. See docs/coordination/IMPLEMENTATION_PUBLIC_SESSION.md for checks and remaining limitations.
++
+ `python -m rebalance.public_paper --symbol BTCUSDT --config rebalance/historical_example.json --database reports/public_paper_manual/runtime/paper.sqlite --output reports/public_paper_manual/probe_01 --samples 2`
+ 
+ This bounded command reads only public Binance endpoints, without keys. Use a NEW database for a new experiment and a NEW output folder on every invocation. The database is bound to code, configuration, symbol and exchange filters. It cannot import an observer, CSV-paper or real account database.

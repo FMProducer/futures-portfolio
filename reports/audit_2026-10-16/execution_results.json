@@ -1,0 +1,45 @@
+{
+  "limit_ack_loss": {
+    "result": {
+      "orderId": 2
+    },
+    "accepted_order_calls": [
+      {
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "timeInForce": "GTC",
+        "quantity": 1,
+        "price": 100,
+        "positionSide": "LONG"
+      },
+      {
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "timeInForce": "GTC",
+        "quantity": 1,
+        "price": 100,
+        "positionSide": "LONG"
+      }
+    ],
+    "stable_client_id_present": false
+  },
+  "cancel_fill_race": {
+    "result": {
+      "status": "SUCCESS_FALLBACK",
+      "executed_qty": "1.0",
+      "realized_pnl": "0.0",
+      "commission": "0.0"
+    },
+    "actual_final_limit_fill": "1",
+    "requested_market_qty": "0.8",
+    "actual_total": "1.8"
+  },
+  "market_ack_loss": {
+    "status": "ERROR",
+    "message": "fixture: uncertain",
+    "trade_pnl": 0.0,
+    "commission": 0.0
+  }
+}

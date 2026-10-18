@@ -1,0 +1,26 @@
+[
+  {
+    "symbol": "BTCUSDT",
+    "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-09.zip",
+    "status": "DOWNLOADED",
+    "sha256": "e1a821b5bf6b48d57da01c3e390b8a467a698155def5c18c2c63c0eb044a3247",
+    "checksum": "e1a821b5bf6b48d57da01c3e390b8a467a698155def5c18c2c63c0eb044a3247",
+    "bytes": 1796984
+  },
+  {
+    "symbol": "ETHUSDT",
+    "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2026-09.zip",
+    "status": "DOWNLOADED",
+    "sha256": "c85c7ec631fa7fe3a90c30e4ef6a76aeac0b88be895872388d87a6a8fd3d2892",
+    "checksum": "c85c7ec631fa7fe3a90c30e4ef6a76aeac0b88be895872388d87a6a8fd3d2892",
+    "bytes": 1858695
+  },
+  {
+    "symbol": "ZECUSDT",
+    "url": "https://data.binance.vision/data/futures/um/monthly/klines/ZECUSDT/1m/ZECUSDT-1m-2026-09.zip",
+    "status": "DOWNLOADED",
+    "sha256": "9c24be88c1c79ed0f060b99535548f8cb8d6f7be343ec108dd756aa5981baea7",
+    "checksum": "9c24be88c1c79ed0f060b99535548f8cb8d6f7be343ec108dd756aa5981baea7",
+    "bytes": 1858187
+  }
+]
