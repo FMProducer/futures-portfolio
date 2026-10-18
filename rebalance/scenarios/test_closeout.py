@@ -91,7 +91,12 @@ def test_matched_open_baseline_unchanged_and_funding_before_exit(portfolio):
     candidate=compare(rows,portfolio.config,'1000','2','1',funding,terminal_closeout=True)
     extended=deepcopy(candidate[0])
     terminal=extended.pop('terminal_closeout')
-    assert extended==baseline[0] and candidate[1:]==baseline[1:]
+    extended.pop('cycles')
+    extended.pop('profit_factor')
+    baseline_summary=deepcopy(baseline[0])
+    baseline_summary.pop('cycles')
+    baseline_summary.pop('profit_factor')
+    assert extended==baseline_summary and candidate[1:]==baseline[1:]
     assert candidate[0]['candidate']['funding_events']==1
     for arm in ('candidate','hold'):
         assert terminal[arm]['funding']==baseline[0][arm]['funding']

@@ -1,4 +1,4 @@
-"""Offline matched OPEN_MTM strategy/hold comparison; no PF/admission claim."""
+"""Offline matched comparison and portfolio-cycle PF; no admission authority."""
 import argparse
 from copy import deepcopy
 from decimal import Decimal as D
@@ -9,7 +9,9 @@ from .historical import candles, funding_rows, replay, sha
 from .kernel import Action, Config, Portfolio, decimal
 
 
-def cycles(trades,config,result,funding,mark,terminal=None):
+def cycles(trades,config,result,funding,rows,terminal=None):
+    marks={row['time']:row['open'] for row in rows}
+    mark=rows[-1]['close']
     p=Portfolio(config,result['initial_equity'])
     events=[]
     active=None
@@ -39,7 +41,7 @@ def cycles(trades,config,result,funding,mark,terminal=None):
         if active is None:
             active=dict(start=stamp,wallet=p.wallet,fees=p.fees,funding=p.funding)
         p.fill('cycle-fill-'+str(len(p.receipts)),Action(fill['kind'],fill['side'],fill['units']),
-               fill['price'],fill['fee'],fill['price'])
+               fill['price'],fill['fee'],mark if synthetic else marks[stamp])
         if not any(leg.units for leg in p.legs.values()):
             events.append(dict(start=active['start'],end=stamp,
                 completion='SYNTHETIC' if synthetic else 'NATURAL_SIMULATED',
@@ -170,7 +172,7 @@ def compare(rows,config,capital,spread_bps,slippage_bps,funding,*,terminal_close
                            capital,data[2]) for arm,data in (('candidate',candidate),('hold',control))}
         exits['delta_net_flat']=str(D(exits['candidate']['net_flat'])-D(exits['hold']['net_flat']))
         summary['terminal_closeout']=exits
-    summary['cycles']={arm:cycles(data[1],config,data[0],funding,rows[-1]['close'],
+    summary['cycles']={arm:cycles(data[1],config,data[0],funding,rows,
         summary.get('terminal_closeout',{}).get(arm)) for arm,data in (('candidate',candidate),('hold',control))}
     summary['profit_factor']=summary['cycles']['candidate']['profit_factor']
     return summary,candidate,control
