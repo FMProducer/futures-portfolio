@@ -1,10 +1,7 @@
 {
-  "status": "BLOCKED_BEFORE_START",
-  "reason": "DNS timeouts for github.com and fapi.binance.com, including outside sandbox; public preflight failed",
-  "study_started": false,
-  "frozen_protocol_created": false,
-  "worker_started": false,
-  "local_commit": "f64ae9057d77027bc35d2c22b48de97999bd460b",
-  "push_confirmed": false,
+  "status": "RUNNING",
+  "started_utc": "2026-10-18T10:03:51.397072+00:00",
+  "target_funding_utc": "2026-10-18T16:00:00+00:00",
+  "nominal_end_utc": "2026-10-19T10:03:30.338000+00:00",
   "trading_authorized": false
 }
