@@ -13,7 +13,7 @@ import urllib.request
 
 from .binance_readonly import ReadError
 from .durable import encode
-from .public_paper import Paper, PublicReader, rules, validate
+from .public_paper import CaptureError, Paper, PublicReader, rules, validate
 
 
 class SessionReader(PublicReader):
@@ -172,6 +172,18 @@ class Session:
                         self.recover()
                         errors = 0
                         self.log('RUNNING',server_time=payload['sample']['after'])
+                    except CaptureError as exc:
+                        # Rejected public data is evidence, never a trading input.
+                        errors+=1
+                        with self.paper.store.connection() as db:
+                            last=db.execute('SELECT last_time FROM public_paper').fetchone()[0]
+                        stamp=exc.sample.get('after') if isinstance(exc.sample,dict) else None
+                        gap=last is not None and type(stamp) is int and stamp-last>120000
+                        self.log('RETRYING' if exc.retryable and not gap and errors<max_errors else 'FROZEN',
+                            reason=exc.kind,consecutive_errors=errors,rejected_capture=exc.sample,
+                            retryable=exc.retryable,observation_gap_exceeded=gap)
+                        if not exc.retryable or gap or errors>=max_errors:
+                            return self.state()
                     except ReadError as exc:
                         errors += 1
                         self.log('RETRYING',reason=exc.details['kind'],consecutive_errors=errors)

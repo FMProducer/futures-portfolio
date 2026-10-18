@@ -77,6 +77,8 @@ wallet из config. Ключи, Binance observer DB и старый dashboard н
 Отчёт: docs/coordination/IMPLEMENTATION_PAPER_ORCHESTRATOR.md.
 # Public REST paper: isolated balance
 
+Capture validation now records structured rejected public snapshots in the immutable session log. A capture span >10s or quote age >10s is discarded and retried within the existing consecutive-error bound (default3). It never produces fills or moves the portfolio cursor. Wrong symbols, malformed/future/regressing timestamps and invalid financial payloads remain fatal. The >120s observation-gap guard remains in force; retrying cannot bridge it. Historical failed windows remain failed and require a separate explicitly authorized experiment/version.
+
 For a supervised foreground session, use:
 
 `python -m rebalance.public_session --config rebalance/historical_example.json --database reports/public_session_manual/runtime/paper.sqlite --output reports/public_session_manual/run_01 --duration 3600`

@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "head": "3c5c36421110690bb764750faebfde2b840fa161",
+  "tests": 18,
+  "candidate_regression": "result/trades/equity exact match",
+  "initial_fills": "exact match",
+  "valuation_timestamps": "exact match",
+  "hold_fills": 2,
+  "data_usage": "PREVIOUSLY_USED",
+  "test_sha256": "ab2c46f25b465ff59cb30ba027c32ca73f2cc3d901dce36568d7fa645a5766d7",
+  "admission_ready": false,
+  "trading_authorized": false
+}

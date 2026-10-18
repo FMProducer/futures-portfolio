@@ -5,6 +5,8 @@ This is not an atomic account snapshot, exchange execution or a funding model.
 """
 import argparse
 from contextlib import closing
+from copy import deepcopy
+from decimal import InvalidOperation
 from dataclasses import asdict
 import hashlib
 import json
@@ -40,27 +42,54 @@ class PublicReader:
             raise ReadError('public_request_failed') from None
 
     def capture(self, symbol):
+        started=time.monotonic()
         before = self.get('/fapi/v1/time')['serverTime']
         mark = self.get('/fapi/v1/premiumIndex', symbol)
         book = self.get('/fapi/v1/ticker/bookTicker', symbol)
         after = self.get('/fapi/v1/time')['serverTime']
-        sample = dict(symbol=symbol, before=before, after=after, mark=mark, book=book)
+        sample = dict(symbol=symbol, before=before, after=after, mark=mark, book=book,
+                      collection_elapsed_ms=int((time.monotonic()-started)*1000))
         validate(sample, symbol)
         return sample
 
 
-def validate(sample, symbol):
+class CaptureError(ValueError):
+    def __init__(self,kind,sample,*,retryable=False):
+        super().__init__(kind)
+        self.kind,self.sample,self.retryable=kind,deepcopy(sample),retryable
+
+
+def validate(sample,symbol):
+    try:
+        return _validate(sample,symbol)
+    except CaptureError:
+        raise
+    except (KeyError,TypeError,ValueError,InvalidOperation):
+        raise CaptureError('invalid_capture_payload',sample) from None
+
+
+def _validate(sample, symbol):
     """10s is a capture/freshness bound, not a trading-risk policy approval."""
     before, after = sample['before'], sample['after']
-    if (type(before) is not int or type(after) is not int or before <= 0
-            or not 0 <= after-before <= 10000 or sample['symbol'] != symbol):
-        raise ValueError('invalid capture interval or symbol')
+    if type(before) is not int or type(after) is not int or before<=0:
+        raise CaptureError('invalid_capture_timestamp',sample)
+    if sample['symbol']!=symbol:
+        raise CaptureError('wrong_capture_symbol',sample)
+    if after<before:
+        raise CaptureError('capture_time_regression',sample)
+    if after-before>10000:
+        raise CaptureError('capture_span_exceeded',sample,retryable=True)
     mark, book = sample['mark'], sample['book']
     for part in (mark, book):
         stamp = part['time']
-        if (part['symbol'] != symbol or type(stamp) is not int
-                or not 0 <= after-stamp <= 10000):
-            raise ValueError('stale, future or wrong-symbol price')
+        if part['symbol']!=symbol:
+            raise CaptureError('wrong_quote_symbol',sample)
+        if type(stamp) is not int:
+            raise CaptureError('invalid_quote_timestamp',sample)
+        if after<stamp:
+            raise CaptureError('future_quote',sample)
+        if after-stamp>10000:
+            raise CaptureError('stale_quote',sample,retryable=True)
     bid, ask, price, bidqty, askqty = map(decimal,
         (book['bidPrice'],book['askPrice'],mark['markPrice'],book['bidQty'],book['askQty']))
     due = mark['nextFundingTime']

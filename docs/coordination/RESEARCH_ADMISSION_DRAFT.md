@@ -35,3 +35,11 @@
 Известный BTCUSDT September2026 помечен previously_used/ALREADY_USED;это не независимый OOS. Источник из прежнего market_data_manifest — declared evidence,точное время получения не восстановлено и не выдумывается. Поля admission_ready/trading_authorized всегда false. Никаких24месячных/OOS данных на этом этапе не открывали и не скачивали.
 
 Отчёт реализации: IMPLEMENTATION_DATASET_CATALOG.md. Это завершает инструмент инвентаризации;не утверждает определения PF/циклов/terminal closeout и не заменяет strategy_admission_profile.
+
+## Реализованный исследовательский контроль hold
+
+rebalance.comparison сопоставляет принятый historical.replay с удержанием первоначальных LONG/SHORT без ребалансировок. Проверяются идентичность первых fills и общей timeline;капитал,fee,spread/slippage и funding-rate inputs одинаковы. Funding cash каждой стороны зависит от её фактического simulated inventory. Нет внешних потоков;интерфейс не объявляет их поддержанными.
+
+Текущая реализация — только matched OPEN_MTM:закрывающих fills и terminal exit costs нет у обеих сторон. Поэтому пункт terminal equity остаётся открытым. PF/cycle не вычисляются,admission_ready=false. Расходы на вход и последующие сделки уже включены в Net;повторно fees не вычитаются. Delta Net к hold — диагностический результат на использованных данных,не доказательство alpha/OOS/реальной исполнимости.
+
+Отчёт: IMPLEMENTATION_MATCHED_HOLD.md. Исполняемые production-модули и работающий24h snapshot не менялись.
