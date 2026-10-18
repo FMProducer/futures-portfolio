@@ -49,3 +49,9 @@ rebalance.comparison сопоставляет принятый historical.replay
 Добавлен offline rebalance.trial_registry с отдельной SQLite:registration snapshot code/config/data SHA иmetadata,режим PROSPECTIVE/RETROSPECTIVE,один неизменяемый terminal outcome иполный отчёт без фильтрацииfailed/aborted/incomplete. COMPLETED означает завершение заявленного запуска,нечисловойPASS/допуск. Несовпавшие/изменённые входы не разрешается завершать какCOMPLETED;неудачу можно записать FAILED с причиной. Идемпотентные повторы не дублируют попытку.
 
 Исторические evidence импортируются только как RETROSPECTIVE без подмены времени регистрации. Повторное использование data hash показывается,но semantic overlap временных окон/OOS freshness не устанавливаются. PROSPECTIVE — declaration,не доказательство выполнения из зафиксированного executable snapshot. Неинтегрированные/незарегистрированные запуски реестр не обнаруживает;автоматическое подключение к runner — отдельная работа. Все admission flags остаютсяfalse. Отчёт IMPLEMENTATION_TRIAL_REGISTRY.md.
+
+## Подключение к offline runner
+
+Добавлен rebalance.research_runner:отдельный explicit запуск сравнения с копией исходников/входов,PROSPECTIVE registration до вычисления иchild Python из snapshot. COMPLETED записывается после evidence export,FAILED при расчётной ошибке;crash supervisor может оставить видимыйINCOMPLETE. Один trial/output не запускается повторно. Это подключение только нового offline entry point:ручные historical/comparison и public-paper не объявляются автоматически зарегистрированными. Нет обхода OOS/admission требований,оптимизации или автоматического выбора победителя.
+
+Отчёт реализации: IMPLEMENTATION_REGISTERED_RESEARCH_RUNNER.md.
