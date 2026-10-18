@@ -1,0 +1,117 @@
+{
+  "trials": [
+    {
+      "id": "fixed-BTCUSDT-current",
+      "snapshot": {
+        "artifacts": {
+          "code": {
+            "bytes": 8545,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\rebalance\\historical.py",
+            "sha256": "c9afe323e56dd3dc9cfd934ccd2c13a4b7d37315934a65da0e1091a391f731e4"
+          },
+          "config": {
+            "bytes": 258,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\rebalance\\historical_example.json",
+            "sha256": "cef8dc2f53a4df59ea947474eaed8bad93a9a5bcd76ca5cf219b80ff062a3eca"
+          },
+          "data": {
+            "bytes": 4862487,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\audit_2026-10-16\\market_data\\BTCUSDT.csv",
+            "sha256": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a"
+          },
+          "kernel": {
+            "bytes": 10705,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\rebalance\\kernel.py",
+            "sha256": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb"
+          }
+        },
+        "metadata": {
+          "data_usage": "PREVIOUSLY_USED",
+          "head": "e1b48839f8d587dc401d8e43fcec556afb01ab4b",
+          "recording": "after completed fixed replay"
+        },
+        "mode": "RETROSPECTIVE"
+      },
+      "started_utc": "2026-10-18T11:07:26.873442+00:00",
+      "outcome": {
+        "evidence": {
+          "manifest": {
+            "bytes": 1261,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\trial_registry_2026-10-18\\fixed_BTCUSDT\\manifest.json",
+            "sha256": "4a089b95f45bbcbccb48c0c7929d59da68f9a9e4db9c891b8079505c71477a18"
+          },
+          "result": {
+            "bytes": 580,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\trial_registry_2026-10-18\\fixed_BTCUSDT\\result.json",
+            "sha256": "aca6c17a338d4e7751a6090f8be02a210a6bd931a3a9853e6ff19f6a5e1a9dac"
+          }
+        },
+        "reason": null,
+        "status": "COMPLETED"
+      },
+      "finished_utc": "2026-10-18T11:07:26.892948+00:00"
+    },
+    {
+      "id": "day-forward-failed-original",
+      "snapshot": {
+        "artifacts": {
+          "code": {
+            "bytes": 11182,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\day_forward_2026-10-18\\runtime\\code\\rebalance\\public_session.py",
+            "sha256": "c7446e4ea8c67a37634747186d508bcd33eca3c04e5017422678a261c2d4a6b0"
+          },
+          "config": {
+            "bytes": 2976,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\day_forward_2026-10-18\\frozen.json",
+            "sha256": "17190d143b11ea84e3e1902306abdef036fb492e79b2d440b17d2911fe6d840f"
+          },
+          "data": {
+            "bytes": 270668,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\day_forward_2026-10-18\\result\\session.json",
+            "sha256": "ce193ff11c625ad250f208e5237053b658823251b236dcff09ea5ef11fbe92b2"
+          }
+        },
+        "metadata": {
+          "config_artifact": "full frozen manifest",
+          "data_artifact": "captured public observations and results export",
+          "recording": "historical failed study, archived source snapshot"
+        },
+        "mode": "RETROSPECTIVE"
+      },
+      "started_utc": "2026-10-18T11:07:26.907972+00:00",
+      "outcome": {
+        "evidence": {
+          "verification": {
+            "bytes": 673,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\day_forward_2026-10-18\\verification.json",
+            "sha256": "379e500bc43906fcfbf94a011818aac4a68ae44dcbba08ed5bf474da3f94c15c"
+          }
+        },
+        "reason": "capture validation; see frozen study evidence",
+        "status": "FAILED"
+      },
+      "finished_utc": "2026-10-18T11:07:26.920474+00:00"
+    }
+  ],
+  "total": 2,
+  "counts": {
+    "INCOMPLETE": 0,
+    "COMPLETED": 1,
+    "FAILED": 1,
+    "ABORTED": 0
+  },
+  "data_hash_occurrences": {
+    "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a": 1,
+    "ce193ff11c625ad250f208e5237053b658823251b236dcff09ea5ef11fbe92b2": 1
+  },
+  "oos_status": "NOT_ESTABLISHED",
+  "admission_ready": false,
+  "trading_authorized": false,
+  "limitations": [
+    "records only explicitly registered attempts; not proof all experiments were registered",
+    "PROSPECTIVE is a declaration, not proof code ran from a frozen snapshot",
+    "hash equality cannot detect a temporary overlay reverted before finish",
+    "file identity is not semantic time-window overlap or OOS independence",
+    "local SQLite immutability is not independent tamper evidence"
+  ]
+}

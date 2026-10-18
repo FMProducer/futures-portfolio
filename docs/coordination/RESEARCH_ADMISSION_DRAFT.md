@@ -43,3 +43,9 @@ rebalance.comparison сопоставляет принятый historical.replay
 Текущая реализация — только matched OPEN_MTM:закрывающих fills и terminal exit costs нет у обеих сторон. Поэтому пункт terminal equity остаётся открытым. PF/cycle не вычисляются,admission_ready=false. Расходы на вход и последующие сделки уже включены в Net;повторно fees не вычитаются. Delta Net к hold — диагностический результат на использованных данных,не доказательство alpha/OOS/реальной исполнимости.
 
 Отчёт: IMPLEMENTATION_MATCHED_HOLD.md. Исполняемые production-модули и работающий24h snapshot не менялись.
+
+## Реестр исследовательских попыток
+
+Добавлен offline rebalance.trial_registry с отдельной SQLite:registration snapshot code/config/data SHA иmetadata,режим PROSPECTIVE/RETROSPECTIVE,один неизменяемый terminal outcome иполный отчёт без фильтрацииfailed/aborted/incomplete. COMPLETED означает завершение заявленного запуска,нечисловойPASS/допуск. Несовпавшие/изменённые входы не разрешается завершать какCOMPLETED;неудачу можно записать FAILED с причиной. Идемпотентные повторы не дублируют попытку.
+
+Исторические evidence импортируются только как RETROSPECTIVE без подмены времени регистрации. Повторное использование data hash показывается,но semantic overlap временных окон/OOS freshness не устанавливаются. PROSPECTIVE — declaration,не доказательство выполнения из зафиксированного executable snapshot. Неинтегрированные/незарегистрированные запуски реестр не обнаруживает;автоматическое подключение к runner — отдельная работа. Все admission flags остаютсяfalse. Отчёт IMPLEMENTATION_TRIAL_REGISTRY.md.
