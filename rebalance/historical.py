@@ -43,7 +43,12 @@ def funding_rows(path):
     return result
 
 
-def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=None, state_sink=None):
+def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=None, state_sink=None, cycle_policy=None):
+    if cycle_policy is not None:
+        if store is not None: raise ValueError('cycle research does not support durable execution')
+        if set(cycle_policy)!={'activation_pct','drawback_pct','loss_pct'}: raise ValueError('invalid cycle policy fields')
+        activation,drawback,loss=map(decimal,(cycle_policy['activation_pct'],cycle_policy['drawback_pct'],cycle_policy['loss_pct']))
+        if not 0<drawback<activation<100 or not 0<loss<100: raise ValueError('invalid cycle percentages')
     spread_bps, slippage_bps = map(decimal, (spread_bps, slippage_bps))
     if min(spread_bps, slippage_bps) < 0 or spread_bps/2+slippage_bps >= 10000:
         raise ValueError('invalid execution costs')
@@ -57,6 +62,10 @@ def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=No
     rejected = 0
     peak = p.wallet
     max_dd = D(0)
+    cycle_start=p.wallet
+    peak_pct=D(0)
+    armed=False
+    entries=exits=rebalance_fills=0
 
     def prices(mid):
         friction = (spread_bps/2+slippage_bps)/10000
@@ -78,19 +87,43 @@ def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=No
     for i, bar in enumerate(rows):
         apply_funding(bar['time'])
         bid, ask = prices(bar['open'])
-        if i == 0:
+        entry = i == 0 or cycle_policy is not None and not any(leg.units for leg in p.legs.values())
+        exit_reason=None
+        if entry:
+            cycle_start=p.wallet
+            peak_pct=D(0)
+            armed=False
+            p.extrema.clear()
             actions = p.plan_entry(bar['open'], bid, ask)
             if actions[0].kind == 'WAIT':
-                raise ValueError('entry blocked: '+actions[0].reason)
+                if i == 0: raise ValueError('entry blocked: '+actions[0].reason)
+                actions=[]
+            else:
+                entries+=1
         else:
             # Signal observes only the fully completed previous bar. Execution
             # quotes are current open with explicit adverse cost assumptions.
-            if store is None:
+            if cycle_policy is not None:
+                prior=rows[i-1]['close']
+                sell,buy=prices(prior)
+                ql,qs=(p.legs[s].units*config.step for s in ('LONG','SHORT'))
+                close_equity=p.snapshot(prior)['equity']+ql*(sell-prior)+qs*(prior-buy)
+                close_equity-=(ql*sell+qs*buy)*config.fee_rate
+                net_pct=(close_equity-cycle_start)/cycle_start*100
+                peak_pct=max(peak_pct,net_pct)
+                armed=armed or peak_pct>=activation
+                if net_pct<=-loss: exit_reason='CYCLE_LOSS'
+                elif armed and peak_pct-net_pct>=drawback: exit_reason='CYCLE_TRAILING'
+            if exit_reason:
+                actions=[Action('REDUCE',s,leg.units) for s,leg in p.legs.items() if leg.units]
+                exits+=1
+            elif store is None:
                 action = p.next_action(rows[i-1]['close'], bid, ask)
+                actions = [] if action.kind == 'WAIT' else [action]
             else:
                 action = Action(**store.observe(f'observe-{i}', rows[i-1]['close'], bid, ask))
                 p, _ = store.load()
-            actions = [] if action.kind == 'WAIT' else [action]
+                actions = [] if action.kind == 'WAIT' else [action]
         for action in actions:
             buy = (action.side == 'LONG') == (action.kind == 'ADD')
             price = ask if buy else bid
@@ -114,10 +147,14 @@ def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=No
                     raise
                 rejected += 1
                 continue
-            if i == 0 and store is None:
+            if entry and store is None:
                 p.legs[action.side].initial_units = action.units
-            trades.append(dict(time=bar['time'], kind=action.kind, side=action.side,
-                               units=action.units, price=str(price), fee=str(fee)))
+            record=dict(time=bar['time'], kind=action.kind, side=action.side,
+                        units=action.units, price=str(price), fee=str(fee))
+            if cycle_policy is not None and i>0:
+                record['phase']=exit_reason or ('CYCLE_ENTRY' if entry else 'REBALANCE')
+            trades.append(record)
+            if not entry and not exit_reason: rebalance_fills+=1
         apply_funding(bar['time']+59999)
         snapshot = p.snapshot(bar['close'])
         equity = snapshot['equity']
@@ -130,9 +167,13 @@ def replay(rows, config, capital, spread_bps, slippage_bps, funding, *, store=No
         initial_equity=str(capital), equity=str(equity), net_mtm=str(equity-decimal(capital)),
         realized=str(p.realized), unrealized=str(sum((r['upl'] for r in snapshot['legs'].values()), D(0))),
         fees=str(p.fees), funding=str(p.funding), funding_events=funding_index,
-        rebalances=len(trades)-2, rejected_funding_checks=rejected,
+        rebalances=rebalance_fills if cycle_policy is not None else len(trades)-2, rejected_funding_checks=rejected,
         max_close_drawdown_pct=str(max_dd), terminal='OPEN_MTM',
         quantities={s:str(l.units*config.step) for s,l in p.legs.items()})
+    if cycle_policy is not None:
+        result['cycle_policy']=dict(cycle_policy)
+        result['cycle_entries']=entries
+        result['cycle_exits']=exits
     if state_sink is not None:
         from copy import deepcopy
         state_sink(deepcopy(p))

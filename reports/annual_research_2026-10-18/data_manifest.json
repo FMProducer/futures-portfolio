@@ -1,0 +1,114 @@
+{
+  "status": "CAPTURED_VALIDATED",
+  "start": 1759276800000,
+  "end_exclusive": 1790812800000,
+  "candles": 525600,
+  "funding_events": 1095,
+  "records": [
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2025-10.zip",
+      "sha256": "bb7f53350fe27b6d8e38b5856ffc43f9ecda9d568d5bf31d0db0cd011da7100f",
+      "bytes": 1913274,
+      "rows": 44640,
+      "acquired_utc": "2026-10-18T18:00:36.225156+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2025-11.zip",
+      "sha256": "981da0b054f99b959fe6245fb363336b46908d358f37251d59bad308f375bc54",
+      "bytes": 1856815,
+      "rows": 43200,
+      "acquired_utc": "2026-10-18T18:00:39.748629+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2025-12.zip",
+      "sha256": "2d5b2e1887dac1dfe450010877de7203a72e19df7a771067b980bbb07ad3069c",
+      "bytes": 1868657,
+      "rows": 44640,
+      "acquired_utc": "2026-10-18T18:00:43.170472+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-01.zip",
+      "sha256": "58e9c620a6acda209d25766b3cf4262f3104649f5c26f247d933e0da8bb7946f",
+      "bytes": 1852279,
+      "rows": 44640,
+      "acquired_utc": "2026-10-18T18:00:46.881392+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-02.zip",
+      "sha256": "805626ad2dc5b704d52c211996d12e9e4b1be234998f3dba4b3d34ff79be0337",
+      "bytes": 1743792,
+      "rows": 40320,
+      "acquired_utc": "2026-10-18T18:00:50.286735+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-03.zip",
+      "sha256": "c472a865f230bf1b5b17e124770a83c083144e3e11a115733288fb8f3e3b8baa",
+      "bytes": 1911731,
+      "rows": 44640,
+      "acquired_utc": "2026-10-18T18:00:53.551212+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-04.zip",
+      "sha256": "515b86570f0c6924f6dc2cf90589d3db90f3de9c6bfd9a22dde0429995dc5405",
+      "bytes": 1810071,
+      "rows": 43200,
+      "acquired_utc": "2026-10-18T18:00:56.633938+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-05.zip",
+      "sha256": "d91548e94220d5211bb32447cc4b604ee266d145f2092edc5ec613328cbbc20a",
+      "bytes": 1845894,
+      "rows": 44640,
+      "acquired_utc": "2026-10-18T18:00:59.675419+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-06.zip",
+      "sha256": "9b214199eb5063585c7ed0f59ba19323326d68ac024b85106713989399204490",
+      "bytes": 1838455,
+      "rows": 43200,
+      "acquired_utc": "2026-10-18T18:01:01.842307+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-07.zip",
+      "sha256": "f18440bb58f0c7e1ff63cbb906132002877c4914540c8aebab920da6937cff73",
+      "bytes": 1844583,
+      "rows": 44640,
+      "acquired_utc": "2026-10-18T18:01:05.433538+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-08.zip",
+      "sha256": "adfd0846ea580681aeb18a6bdf06660dcfcc1a7b6819ea2eecfc3c53240ec67a",
+      "bytes": 1817920,
+      "rows": 44640,
+      "acquired_utc": "2026-10-18T18:01:09.180777+00:00"
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-09.zip",
+      "sha256": "e1a821b5bf6b48d57da01c3e390b8a467a698155def5c18c2c63c0eb044a3247",
+      "bytes": 1796984,
+      "rows": 43200,
+      "acquired_utc": "2026-10-18T18:01:12.705359+00:00"
+    },
+    {
+      "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1759276800000&endTime=1790812799999&limit=1000",
+      "sha256": "b69ef2e17725f3923263bb6d1bc6b9ddc43cfe2b180cbd8c5e04a727c4fdc7a3",
+      "bytes": 126386,
+      "acquired_utc": "2026-10-18T18:01:13.261975+00:00"
+    },
+    {
+      "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1788048000001&endTime=1790812799999&limit=1000",
+      "sha256": "3a3b751b8ef8aae4b9eb3a24d1da1acd9636b633d0e0fcaba5f77a325ad3a6a9",
+      "bytes": 11976,
+      "acquired_utc": "2026-10-18T18:01:13.818558+00:00"
+    }
+  ],
+  "data_usage": "RESEARCH_SELECTION_NOT_OOS",
+  "funding_coverage": "one actual event in each 8h bucket; raw milliseconds preserved",
+  "files": {
+    "BTCUSDT.csv": "8e408f35c5d9d3f1b588b1a8c88ba4408cb0e5c0103ff65d0fc266829d952d98",
+    "funding.csv": "d6b92c42010efad91f0fed7f949afde8eb9c4da583222bb12e6d25fafafc658f"
+  },
+  "historical_filters_verified": false,
+  "admission_ready": false,
+  "trading_authorized": false
+}

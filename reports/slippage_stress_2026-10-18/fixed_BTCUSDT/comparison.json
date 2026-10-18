@@ -1,0 +1,235 @@
+{
+  "mode": "MATCHED_CANDLE_OPEN_MTM",
+  "candidate": {
+    "candles": 43200,
+    "start": 1788220800000,
+    "end": 1790812799999,
+    "initial_equity": "10000",
+    "equity": "10010.19730366097999999999998",
+    "net_mtm": "10.19730366097999999999998",
+    "realized": "80.96538949913721039058672265",
+    "unrealized": "-66.4768531891372103905867211",
+    "fees": "4.2912326490200",
+    "funding": "0",
+    "funding_events": 0,
+    "rebalances": 69,
+    "rejected_funding_checks": 0,
+    "max_close_drawdown_pct": "0.2954001989088699082699563528",
+    "terminal": "OPEN_MTM",
+    "quantities": {
+      "LONG": "0.030",
+      "SHORT": "0.035"
+    }
+  },
+  "hold": {
+    "candles": 43200,
+    "start": 1788220800000,
+    "end": 1790812799999,
+    "initial_equity": "10000",
+    "equity": "9996.4809779200000",
+    "net_mtm": "-3.5190220800000",
+    "realized": "0",
+    "unrealized": "-1.508152320",
+    "fees": "2.0108697600000",
+    "funding": "0",
+    "funding_events": 0,
+    "rebalances": 0,
+    "rejected_funding_checks": 0,
+    "max_close_drawdown_pct": "0.0351902208000",
+    "terminal": "OPEN_MTM",
+    "quantities": {
+      "LONG": "0.032",
+      "SHORT": "0.032"
+    }
+  },
+  "delta_net_mtm": "13.71632574097999999999998",
+  "profit_factor": null,
+  "cycle_definition": "PORTFOLIO_FLAT_TO_FLAT",
+  "admission_ready": false,
+  "trading_authorized": false,
+  "limitations": [
+    "matched research assumptions, not executable market evidence",
+    "full fills, trade candle mark proxy, no depth/latency/liquidation",
+    "terminal open positions; closing costs excluded for BOTH arms",
+    "net already includes fees/funding; delta is not proof of alpha"
+  ],
+  "terminal_closeout": {
+    "candidate": {
+      "mode": "SYNTHETIC_CANDLE_CLOSEOUT",
+      "time": 1790812799999,
+      "mark_proxy": "83576.90",
+      "sell_price": "83551.826930",
+      "buy_price": "83601.973070",
+      "equity_open": "10010.19730366097999999999998",
+      "price_adjustment": "-1.629749550",
+      "exit_fees": "2.1730495461400",
+      "equity_flat": "10006.39450456483999999999998",
+      "net_flat": "6.39450456483999999999998",
+      "formula_equity": "10006.39450456483999999999998",
+      "decimal_bridge_residual": "0E-23",
+      "max_close_plus_exit_drawdown_pct": "0.2954001989088699082699563528",
+      "terminal_curve_point": {
+        "time": 1790812799999,
+        "phase": "TERMINAL",
+        "equity": "10006.39450456483999999999998"
+      },
+      "fills": [
+        {
+          "id": "synthetic-terminal-1790812799999-LONG",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "LONG",
+          "units": 30,
+          "quantity": "0.030",
+          "price": "83551.826930",
+          "fee": "1.0026219231600"
+        },
+        {
+          "id": "synthetic-terminal-1790812799999-SHORT",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "SHORT",
+          "units": 35,
+          "quantity": "0.035",
+          "price": "83601.973070",
+          "fee": "1.1704276229800"
+        }
+      ],
+      "quantities": {
+        "LONG": "0.000",
+        "SHORT": "0.000"
+      },
+      "margin": "0",
+      "unrealized": "0",
+      "total_fees": "6.4642821951600",
+      "funding": "0",
+      "admission_ready": false,
+      "trading_authorized": false,
+      "limitations": [
+        "synthetic full fills; not exchange execution evidence",
+        "same-time terminal phase; no elapsed time/funding beyond window",
+        "close-only drawdown plus exit; no intrabar liquidation model"
+      ]
+    },
+    "hold": {
+      "mode": "SYNTHETIC_CANDLE_CLOSEOUT",
+      "time": 1790812799999,
+      "mark_proxy": "83576.90",
+      "sell_price": "83551.826930",
+      "buy_price": "83601.973070",
+      "equity_open": "9996.4809779200000",
+      "price_adjustment": "-1.604676480",
+      "exit_fees": "2.1395686400000",
+      "equity_flat": "9992.7367328000000",
+      "net_flat": "-7.2632672000000",
+      "formula_equity": "9992.7367328000000",
+      "decimal_bridge_residual": "0E-13",
+      "max_close_plus_exit_drawdown_pct": "0.0726326720000",
+      "terminal_curve_point": {
+        "time": 1790812799999,
+        "phase": "TERMINAL",
+        "equity": "9992.7367328000000"
+      },
+      "fills": [
+        {
+          "id": "synthetic-terminal-1790812799999-LONG",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "LONG",
+          "units": 32,
+          "quantity": "0.032",
+          "price": "83551.826930",
+          "fee": "1.0694633847040"
+        },
+        {
+          "id": "synthetic-terminal-1790812799999-SHORT",
+          "time": 1790812799999,
+          "phase": "TERMINAL",
+          "kind": "REDUCE",
+          "side": "SHORT",
+          "units": 32,
+          "quantity": "0.032",
+          "price": "83601.973070",
+          "fee": "1.0701052552960"
+        }
+      ],
+      "quantities": {
+        "LONG": "0.000",
+        "SHORT": "0.000"
+      },
+      "margin": "0",
+      "unrealized": "0",
+      "total_fees": "4.1504384000000",
+      "funding": "0",
+      "admission_ready": false,
+      "trading_authorized": false,
+      "limitations": [
+        "synthetic full fills; not exchange execution evidence",
+        "same-time terminal phase; no elapsed time/funding beyond window",
+        "close-only drawdown plus exit; no intrabar liquidation model"
+      ]
+    },
+    "delta_net_flat": "13.65777176483999999999998"
+  },
+  "cycles": {
+    "candidate": {
+      "definition": "PORTFOLIO_FLAT_TO_FLAT",
+      "profit_factor": null,
+      "status": "NO_LOSS",
+      "gross_profit": "6.39450456483999999999998",
+      "gross_loss": "0",
+      "completed_cycles": 1,
+      "natural_simulated_cycles": 0,
+      "synthetic_cycles": 1,
+      "zero_cycles": 0,
+      "open_cycles": 0,
+      "real_quarantine_cycles": 0,
+      "episodes": [
+        {
+          "start": 1788220800000,
+          "end": 1790812799999,
+          "completion": "SYNTHETIC",
+          "net": "6.39450456483999999999998",
+          "fees": "6.4642821951600",
+          "funding": "0"
+        }
+      ],
+      "external_flows": "NONE; unsupported",
+      "terminal_equity": "10006.39450456483999999999998",
+      "terminal_net": "6.39450456483999999999998",
+      "admission_ready": false,
+      "trading_authorized": false
+    },
+    "hold": {
+      "definition": "PORTFOLIO_FLAT_TO_FLAT",
+      "profit_factor": "0",
+      "status": "NO_PROFIT",
+      "gross_profit": "0",
+      "gross_loss": "7.2632672000000",
+      "completed_cycles": 1,
+      "natural_simulated_cycles": 0,
+      "synthetic_cycles": 1,
+      "zero_cycles": 0,
+      "open_cycles": 0,
+      "real_quarantine_cycles": 0,
+      "episodes": [
+        {
+          "start": 1788220800000,
+          "end": 1790812799999,
+          "completion": "SYNTHETIC",
+          "net": "-7.2632672000000",
+          "fees": "4.1504384000000",
+          "funding": "0"
+        }
+      ],
+      "external_flows": "NONE; unsupported",
+      "terminal_equity": "9992.7367328000000",
+      "terminal_net": "-7.2632672000000",
+      "admission_ready": false,
+      "trading_authorized": false
+    }
+  }
+}

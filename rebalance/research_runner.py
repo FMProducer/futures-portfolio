@@ -101,7 +101,7 @@ def worker(database,identity,output):
         if type(terminal) is not bool: raise ValueError('invalid terminal flag')
         summary,candidate,control=compare(candles(paths['data']),Config(**settings['strategy']),
             settings['capital'],settings['spread_bps'],settings['slippage_bps'],funding_rows(paths.get('funding')),
-            terminal_closeout=terminal)
+            terminal_closeout=terminal,cycle_policy=settings.get('cycle_policy'))
         evidence={}
         for name,value in (('comparison',summary),('execution_manifest',dict(
                 artifacts=snapshot['artifacts'],metadata=snapshot['metadata'],settings=settings,

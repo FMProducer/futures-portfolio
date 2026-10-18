@@ -116,7 +116,7 @@ def verify(database, output):
         friction = (spread/2+slip)/10000
         require(mark > 0 and step > 0 and 0 <= rate < 1 and min(spread, slip) >= 0 and friction < 1,
                 'invalid terminal costs')
-    require(summary['mode'] == 'MATCHED_CANDLE_OPEN_MTM' and summary['profit_factor'] is None and
+    require(summary['mode'] == 'MATCHED_CANDLE_OPEN_MTM' and
             summary['admission_ready'] is False and summary['trading_authorized'] is False,
             'unexpected comparison/admission mode')
     arms = {}
@@ -135,7 +135,15 @@ def verify(database, output):
                     and number(r['equity']).is_finite() for i, r in enumerate(curve)), 'curve timeline mismatch')
         require(number(curve[-1]['equity']) == number(result['equity']), 'terminal curve mismatch')
         require(sum((number(t['fee']) for t in trades), Decimal(0)) == number(result['fees']), 'fees mismatch')
-        require(len(trades) == result['rebalances']+2, 'trade count mismatch')
+        if 'cycle_policy' in result:
+            require(arm == 'candidate' and result['cycle_policy'] == manifest['settings']['cycle_policy'],
+                    'cycle policy mismatch')
+            require(sum(t.get('phase') == 'CYCLE_ENTRY' for t in trades) == 2*(result['cycle_entries']-1) and
+                    sum(t.get('phase') == 'REBALANCE' for t in trades) == result['rebalances'] and
+                    len({t['time'] for t in trades if t.get('phase') in ('CYCLE_LOSS','CYCLE_TRAILING')}) == result['cycle_exits'],
+                    'cycle trade count mismatch')
+        else:
+            require(len(trades) == result['rebalances']+2, 'trade count mismatch')
         if terminal:
             exit = summary['terminal_closeout'][arm]
             require(exit['mode'] == 'SYNTHETIC_CANDLE_CLOSEOUT' and
@@ -192,6 +200,19 @@ def verify(database, output):
         exits = summary['terminal_closeout']
         require(number(exits['delta_net_flat']) == number(exits['candidate']['net_flat'])-
                 number(exits['hold']['net_flat']), 'terminal delta mismatch')
+    if summary['cycle_definition'] == 'PORTFOLIO_FLAT_TO_FLAT':
+        from .comparison import cycles
+        from .historical import candles, funding_rows
+        from .kernel import Config
+        data = candles(snapshot['artifacts']['data']['path'])
+        rates = funding_rows(snapshot['artifacts']['funding']['path']) if mode == 'CSV_RATES' else []
+        expected_cycles = {arm:cycles(value[1],Config(**manifest['settings']['strategy']),value[0],rates,data,
+            summary.get('terminal_closeout',{}).get(arm)) for arm,value in arms.items()}
+        require(summary['cycles'] == expected_cycles and
+                summary['profit_factor'] == expected_cycles['candidate']['profit_factor'], 'cycle/PF mismatch')
+    else:
+        require(summary['cycle_definition'] == 'NOT_APPROVED' and summary['profit_factor'] is None and
+                'cycles' not in summary, 'unknown cycle definition')
     return dict(status='PASS', scope='EXPORTED_EVIDENCE_CONSISTENCY', trial_id=registration['id'],
                 checked_snapshot_artifacts=len(roles), checked_evidence=len(names),
                 replay_performed=False, oos_status='NOT_ESTABLISHED',

@@ -83,7 +83,8 @@ def test_semantic_inconsistency_even_with_updated_hashes(study, mutation):
 
 
 @pytest.mark.parametrize('mutation', ['missing','price','quantity','duplicate','fee','equity',
-                                    'funding','drawdown','delta','claim','unexpected'])
+                                    'funding','drawdown','delta','claim','unexpected',
+                                    'cycle_net','quarantine','pf'])
 def test_terminal_semantics_reject_rehashed_corruption(study,mutation):
     run_study(**study,terminal_closeout=mutation!='unexpected')
     path=study['output']/'comparison.json'
@@ -103,6 +104,9 @@ def test_terminal_semantics_reject_rehashed_corruption(study,mutation):
         if mutation=='drawdown': exit['max_close_plus_exit_drawdown_pct']='99'
         if mutation=='delta': summary['terminal_closeout']['delta_net_flat']='99'
         if mutation=='claim': exit['trading_authorized']=True
+        if mutation=='cycle_net': summary['cycles']['candidate']['episodes'][0]['net']='99'
+        if mutation=='quarantine': summary['cycles']['candidate']['real_quarantine_cycles']=1
+        if mutation=='pf': summary['profit_factor']='99'
     path.write_text(json.dumps(summary))
     with sqlite3.connect(study['database']) as db:
         body=json.loads(db.execute('SELECT body FROM outcomes').fetchone()[0])
@@ -114,5 +118,5 @@ def test_terminal_semantics_reject_rehashed_corruption(study,mutation):
     report=json.loads(report_path.read_text())
     report['trials'][0]['outcome']=body
     report_path.write_text(json.dumps(report))
-    with pytest.raises(ValueError,match='terminal'):
+    with pytest.raises(ValueError,match='terminal|cycle/PF'):
         verify(study['database'],study['output'])
