@@ -104,7 +104,8 @@ class BacktestState:
         unrealized_pnl_short = self.pos_short * (self.short_entry_price - price) if self.pos_short > 0 else Decimal('0')
         margin_long = (self.pos_long * self.long_entry_price) / self.l_lev if self.pos_long > 0 else Decimal('0')
         margin_short = (self.pos_short * self.short_entry_price) / self.s_lev if self.pos_short > 0 else Decimal('0')
-        virtual_equity = (self.virt_qty * price) - self.virt_debt
+        # VIRTUAL = чистый USDT-кэш (маржа), не пересчитывается по цене актива
+        virtual_equity = Decimal('0')  # virt_debt сокращается в TPV (см. live-паритет)
         return self.val_cash + margin_long + unrealized_pnl_long + margin_short + unrealized_pnl_short + virtual_equity
 
     def get_tpv_fast(self, price: float) -> float:
@@ -113,8 +114,6 @@ class BacktestState:
         p = float(price)
         l_entry = float(self.long_entry_price)
         s_entry = float(self.short_entry_price)
-        v_qty = float(self.virt_qty)
-        v_debt = float(self.virt_debt)
         cash = float(self.val_cash)
         l_lev = float(self.l_lev)
         s_lev = float(self.s_lev)
@@ -123,7 +122,8 @@ class BacktestState:
         upnl_s = pos_s * (s_entry - p) if pos_s > 0 else 0.0
         m_l = (pos_l * l_entry) / l_lev if pos_l > 0 else 0.0
         m_s = (pos_s * s_entry) / s_lev if pos_s > 0 else 0.0
-        v_eq = (v_qty * p) - v_debt
+        # VIRTUAL = чистый USDT-кэш (маржа), не пересчитывается по цене актива
+        v_eq = 0.0  # virt_debt сокращается в TPV (live-паритет)
         return cash + m_l + upnl_l + m_s + upnl_s + v_eq
 
     # cap per-run fill log so a runaway run cannot grow the JSON unboundedly
@@ -339,7 +339,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         state.last_rebalance_price = start_price
         target_v_share = Decimal(str(targets["VIRTUAL"]["share"]))
         virt_cost = target_v_share * state.initial_capital
-        state.virt_qty = virt_cost / start_price
+        state.virt_qty = Decimal('0')  # VIRTUAL = чистый USDT-кэш, qty больше не нужен
         state.virt_debt = virt_cost
 
         trend_guard_cfg = config.get("trend_guard", {})
@@ -392,7 +392,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 # Re-init virtual leg
                 target_v_share = Decimal(str(targets["VIRTUAL"]["share"]))
                 virt_cost = target_v_share * state.initial_capital
-                state.virt_qty = virt_cost / mid_price
+                state.virt_qty = Decimal('0')  # VIRTUAL = чистый USDT-кэш, qty больше не нужен
                 state.virt_debt = virt_cost
                 state.cooldown_until_bar = 0
 
@@ -493,14 +493,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             state.short_entry_price = Decimal('0')
                         state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))))
                     elif key == "VIRTUAL":
-                        exec_price, commission = sim.simulate_market_execution("SELL", qty, mid_price)
-                        v_entry_price = (state.virt_debt / state.virt_qty) if state.virt_qty > 0 else exec_price
-                        allocated_debt_reduction = qty * v_entry_price
-                        realized_pnl = qty * (exec_price - v_entry_price)
-                        state.virt_qty -= qty
-                        state.virt_debt -= allocated_debt_reduction
-                        state.val_cash += allocated_debt_reduction + realized_pnl - commission
-                        state.log_fill(i, "SELL", "VIRTUAL", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))))
+                        # VIRTUAL = чистый USDT-кэш: «продажа» = release cash label (value-neutral)
+                        release_usdt = abs(Decimal(str(act["diff_usdt"])))
+                        if state.virt_debt >= release_usdt:
+                            state.virt_debt -= release_usdt
+                        else:
+                            state.virt_debt = Decimal('0')  # dust
+                        state.val_cash += release_usdt  # высвобождение кэша
+                        state.log_fill(i, "RELEASE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
 
                 expansions.sort(key=lambda x: 0 if x["key"] == "VIRTUAL" else 1)
                 remaining_funds = Decimal(str(calc_res.get("val_cash", calc_res.get("available_funds", 0.0))))
@@ -541,13 +541,11 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.pos_short += qty
                         state.log_fill(i, "SELL", "BASE_SHORT", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
                     elif key == "VIRTUAL":
-                        exec_price, commission = sim.simulate_market_execution("BUY", qty, mid_price)
-                        cash_spent = (qty * exec_price) + commission
-                        state.val_cash -= cash_spent
-                        state.virt_qty += qty
-                        state.virt_debt += cash_spent
-                        actual_equity_spent = cash_spent
-                        state.log_fill(i, "BUY", "VIRTUAL", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
+                        # VIRTUAL = чистый USDT-кэш: «покупка» = designate cash label (value-neutral)
+                        designate_usdt = abs(Decimal(str(act["diff_usdt"])))
+                        state.virt_debt += designate_usdt
+                        state.val_cash -= designate_usdt  # кэш уходит в «метку V»
+                        state.log_fill(i, "DESIGNATE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
 
                     remaining_funds -= actual_equity_spent
 
@@ -721,7 +719,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             continue
 
             # --- 5. Проверка математического инварианта ---
-            virtual_equity = (state.virt_qty * mid_price) - state.virt_debt
+            # VIRTUAL = чистый USDT-кэш: virt_debt сокращается в TPV, virtual_equity = 0
+            virtual_equity = Decimal('0')
             current_tpv = state.val_cash + m_long + upnl_l + m_short + upnl_s + virtual_equity
             assert current_tpv > Decimal('0'), "Критический дефолт портфеля: TPV <= 0"
 

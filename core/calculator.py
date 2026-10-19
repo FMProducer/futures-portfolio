@@ -38,22 +38,18 @@ class PortfolioCalculator:
 
         self.pnl_l = (l_qty * (self.price - self.last_rebalance_price)) if l_qty > 0 else Decimal('0')
         self.pnl_s = (s_qty * (self.last_rebalance_price - self.price)) if s_qty > 0 else Decimal('0')
-        self.pnl_v = (self.virt_qty * (self.price - self.last_rebalance_price)) if self.virt_qty > 0 else Decimal('0')
 
         # Real MTM PnL (for TPV) relative to entry prices for futures
         mtm_pnl_l = (l_qty * (self.price - Decimal(str(long_entry_price)))) if l_qty > 0 else Decimal('0')
         mtm_pnl_s = (s_qty * (Decimal(str(short_entry_price)) - self.price)) if s_qty > 0 else Decimal('0')
         
-        # 1. Рассчитываем ЧИСТЫЙ PnL виртуальной ноги (MTM)
-        # Если есть цена входа, считаем по ней. Если нет — по дельте от долга.
-        self.virt_value = self.virt_qty * self.price
-        if virt_entry_price > 0:
-            self.pnl_v = (self.price - Decimal(str(virt_entry_price))) * self.virt_qty
-        elif self.virt_debt > 0:
-            self.pnl_v = self.virt_value - self.virt_debt
-        else:
-            v_target_share = Decimal(str(self.targets.get("VIRTUAL", {}).get("share", 0.35)))
-            self.pnl_v = self.virt_value - (self.initial_capital * v_target_share)
+        # 1. VIRTUAL = чистый USDT-кэш (свободная маржа на аккаунте), а не спотовая
+        #    позиция в активе. Стоимость ноги = вложенные USDT (virt_debt); она НЕ
+        #    пересчитывается по цене актива. PnL чистой маржи = 0. Ребалансировка
+        #    доли V к целевому значению продолжается по тому же порогу
+        #    (share_virt_raw = val_virt/tpv ниже не меняется логически).
+        self.virt_value = self.virt_debt
+        self.pnl_v = Decimal('0')
 
         # [SSOT] TPV = Доступный баланс (кэш) + PnL фьючерсов + Рыночная стоимость виртуальной ноги
         # real_equity должен передаваться как "Чистый кэш" (Wallet Balance - virt_debt)

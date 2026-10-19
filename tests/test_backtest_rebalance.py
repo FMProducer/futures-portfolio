@@ -47,10 +47,12 @@ def test_backtest_state():
     # price is 105
     # long: PnL = 1 * (105-100) = 5, margin = 100/5 = 20
     # short: PnL = 1 * (100-105) = -5, margin = 100/5 = 20
-    # virtual: 1 * 105 - 50 = 55
-    # TPV = 1000 + 20 + 5 + 20 - 5 + 55 = 1095
-    assert state.get_tpv(Decimal('105')) == Decimal('1095')
-    assert state.get_tpv_fast(105.0) == 1095.0
+    # [NEW MODEL] VIRTUAL = fixed USDT, no price revaluation.
+    # get_tpv: virtual_equity = 0 (virt_debt nets out)
+    # TPV = val_cash + margin_l + upnl_l + margin_s + upnl_s + 0
+    # TPV = 1000 + 20 + 5 + 20 + (-5) + 0 = 1040
+    assert state.get_tpv(Decimal('105')) == Decimal('1040')
+    assert state.get_tpv_fast(105.0) == 1040.0
 
 @pytest.mark.asyncio
 async def test_run_backtest_normal_and_guards(tmp_path):
