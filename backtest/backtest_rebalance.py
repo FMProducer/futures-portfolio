@@ -12,7 +12,7 @@ import math
 import logging
 import argparse
 import traceback
-from decimal import Decimal, ROUND_HALF_EVEN, getcontext
+from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation, getcontext
 
 try:
     from core.calculator import PortfolioCalculator
@@ -54,7 +54,11 @@ class MarketOrderSlippageSimulator:
 def quantize_qty(qty: Decimal, step_size: Decimal) -> Decimal:
     if step_size <= Decimal('0'):
         return qty
-    remainder = qty % step_size
+    try:
+        remainder = qty % step_size
+    except InvalidOperation:
+        # runaway qty not representable at fixed precision: skip expansion instead of crashing the backtest
+        return Decimal('0')
     return qty - remainder
 
 def validate_notional(qty: Decimal, price: Decimal, min_notional: Decimal) -> bool:
@@ -87,6 +91,9 @@ class BacktestState:
     last_rebalance_price: Decimal = Decimal('0')
     history: List[float] = field(default_factory=list)
     rebalance_log: List[Dict[str, Any]] = field(default_factory=list)
+    fills: List[Dict[str, Any]] = field(default_factory=list)
+    events: List[Dict[str, Any]] = field(default_factory=list)
+    fill_count: int = 0
 
     # Leverage values from config (added to fix hardcoded 5x in TPV calc)
     l_lev: Decimal = Decimal('5')
@@ -118,6 +125,25 @@ class BacktestState:
         m_s = (pos_s * s_entry) / s_lev if pos_s > 0 else 0.0
         v_eq = (v_qty * p) - v_debt
         return cash + m_l + upnl_l + m_s + upnl_s + v_eq
+
+    # cap per-run fill log so a runaway run cannot grow the JSON unboundedly
+    MAX_FILLS = 200_000
+
+    def log_fill(self, bar: int, side: str, leg: str, qty: Decimal, price: Decimal,
+                  commission: Decimal, realized_pnl: Decimal, tpv: float) -> None:
+        self.fill_count += 1
+        if len(self.fills) >= self.MAX_FILLS:
+            return
+        self.fills.append({
+            "bar": int(bar), "side": side, "leg": leg,
+            "qty": float(qty), "price": float(price),
+            "commission": float(commission), "realized_pnl": float(realized_pnl),
+            "tpv": tpv,
+        })
+
+    def log_event(self, bar: int, kind: str, tpv: float, detail: str = "") -> None:
+        if len(self.events) < self.MAX_FILLS:
+            self.events.append({"bar": int(bar), "kind": kind, "tpv": tpv, "detail": detail})
 
 async def download_live_data(symbol: str, data_dir: str, days: float = 2.0) -> str:
     endpoint = "https://fapi.binance.com/fapi/v1/klines"
@@ -165,7 +191,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         quiet: bool = False,
                         threshold_surplus_override: Optional[float] = None,
                         threshold_deficit_override: Optional[float] = None,
-                        capital_override: Optional[float] = None) -> Optional[Dict[str, Any]]:
+                        capital_override: Optional[float] = None,
+                        since_utc: Optional[str] = None,
+                        until_utc: Optional[str] = None) -> Optional[Dict[str, Any]]:
     try:
         if quiet:
             logger.setLevel(logging.WARNING)
@@ -176,28 +204,82 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         base_ticker: str = ticker_override if ticker_override else config.get("base_ticker", "BTCUSDT")
 
         if live_mode:
+            # explicit --live / live_mode=True: refresh from the exchange
             file_path = await download_live_data(base_ticker, data_dir, days)
         else:
-            possible_files: List[str] = [
-                os.path.join(data_dir, f"{base_ticker}_live.feather"),
-                os.path.join(data_dir, f"{base_ticker}_live_10d.feather"),
-                os.path.join(data_dir, f"{base_ticker}_live_48h.feather")
-            ]
-            file_path = next((p for p in possible_files if os.path.exists(p)), None)
-
-        if not file_path or not os.path.exists(file_path):
-            file_path = await download_live_data(base_ticker, data_dir, days)
+            # offline backtest: use only already-downloaded feather data.
+            # Pick the longest available history; iloc[-max_bars:] below trims it to the requested window,
+            # so a 365d file also serves a 1d/30d run deterministically.
+            import glob
+            candidates = {
+                p for p in glob.glob(os.path.join(data_dir, f"{base_ticker}*.feather"))
+            }
+            candidates |= {
+                os.path.join(data_dir, suffix) for suffix in
+                (f"{base_ticker}_live.feather", f"{base_ticker}_live_10d.feather", f"{base_ticker}_live_48h.feather")
+            }
+            candidates = {p for p in candidates if os.path.exists(p)}
+            if not candidates:
+                raise FileNotFoundError(
+                    f"No local data for {base_ticker} in {data_dir} "
+                    f"(expected {base_ticker}_live.feather or {base_ticker}*.feather). "
+                    f"Run once with --live to download, or drop a feather into data/."
+                )
+            file_path = max(candidates, key=lambda p: (os.path.getsize(p), p))
+            logger.info(f"Offline backtest using local {os.path.basename(file_path)}")
 
         df: pd.DataFrame = pd.read_feather(file_path)
         df = df[['open', 'high', 'low', 'close', 'volume']]
-        
+        FULL_FILE_LEN = len(df)  # anchor for --until index math (pre-trim)
+
         portfolio_cfg: Dict[str, Any] = config["portfolios"][0]
         
         bars_per_day = 1440
         max_bars = int(days * bars_per_day)
-        if len(df) > max_bars:
+        if since_utc is not None:
+            # feather has no time axis: data ends at the download time (mtime), 1 bar per minute.
+            # Trim the window to start at since_utc; --days then only further limits the tail.
+            end_ts = pd.Timestamp.fromtimestamp(os.path.getmtime(file_path), tz="UTC").floor("min")
+            since_ts = pd.Timestamp(since_utc, tz="UTC").floor("min")
+            if since_ts > end_ts:
+                raise ValueError(f"--since {since_utc} is after the end of the local data ({end_ts})")
+            min_bars_needed = int((end_ts - since_ts).total_seconds() // 60)
+            # --since wins over --days: run the full [since, end] window so the backtest
+            # actually starts at 30.03.2026, not at "the last N days"
+            keep = min(len(df), min_bars_needed + 1)
+            df = df.iloc[-keep:] if keep < len(df) else df
+            logger.info(f"Window: since {since_ts} -> {end_ts} ({len(df)} bars; --days ignored in since mode)")
+        elif len(df) > max_bars:
             df = df.iloc[-max_bars:]
-        
+
+        if until_utc is not None:
+            # hard stop: trim everything after the until boundary (UTC)
+            full_len = FULL_FILE_LEN
+            end_ts = pd.Timestamp.fromtimestamp(os.path.getmtime(file_path), tz="UTC").floor("min")
+            until_ts = pd.Timestamp(until_utc, tz="UTC").floor("min")
+            if until_ts > end_ts:
+                logger.warning(f"--until {until_utc} is after the end of the local data ({end_ts}); ignoring")
+            else:
+                # full-file index of the last bar inside [.., until_ts]:
+                # file bar i starts at end_ts - (full_len - 1 - i) minutes
+                idx_last = full_len - 1 - int((end_ts - until_ts).total_seconds() // 60)
+                # df may already be head-trimmed by --since: full index of df row 0
+                head_dropped = full_len - len(df)
+                keep_upto = max(0, min(len(df), idx_last + 1 - head_dropped))
+                if keep_upto < len(df):
+                    df = df.iloc[:keep_upto]
+                    logger.info(f"--until {until_ts}: frame trimmed to {len(df)} bars")
+
+        # metadata for the dashboard: where in the full feather file this window lives
+        data_window = {
+            "feather": os.path.basename(file_path),
+            "offset": int(FULL_FILE_LEN - len(df)),   # bars skipped before df row 0
+            "bars": int(len(df)),
+            "since_utc": since_utc,
+            "until_utc": until_utc,
+            "bars_per_day": 1440,
+        }
+
         initial_capital: float = capital_override if capital_override is not None else portfolio_cfg.get("initial_capital", 1000.0)
         
         # Инъекция параметров Кросс-Маржи из конфигурации
@@ -400,6 +482,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.val_cash += released_margin + realized_pnl - commission
                         if state.pos_long == Decimal('0'):
                             state.long_entry_price = Decimal('0')
+                        state.log_fill(i, "SELL", "BASE_LONG", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))))
                     elif key == "BASE_SHORT":
                         exec_price, commission = sim.simulate_market_execution("BUY", qty, mid_price)
                         realized_pnl = qty * (state.short_entry_price - exec_price)
@@ -408,6 +491,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.val_cash += released_margin + realized_pnl - commission
                         if state.pos_short == Decimal('0'):
                             state.short_entry_price = Decimal('0')
+                        state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))))
                     elif key == "VIRTUAL":
                         exec_price, commission = sim.simulate_market_execution("SELL", qty, mid_price)
                         v_entry_price = (state.virt_debt / state.virt_qty) if state.virt_qty > 0 else exec_price
@@ -416,6 +500,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.virt_qty -= qty
                         state.virt_debt -= allocated_debt_reduction
                         state.val_cash += allocated_debt_reduction + realized_pnl - commission
+                        state.log_fill(i, "SELL", "VIRTUAL", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))))
 
                 expansions.sort(key=lambda x: 0 if x["key"] == "VIRTUAL" else 1)
                 remaining_funds = Decimal(str(calc_res.get("val_cash", calc_res.get("available_funds", 0.0))))
@@ -447,12 +532,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.val_cash -= margin_required + commission
                         state.long_entry_price = ((state.pos_long * state.long_entry_price) + (qty * exec_price)) / (state.pos_long + qty)
                         state.pos_long += qty
+                        state.log_fill(i, "BUY", "BASE_LONG", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
                     elif key == "BASE_SHORT":
                         exec_price, commission = sim.simulate_market_execution("SELL", qty, mid_price)
                         margin_required = (qty * exec_price) / lev
                         state.val_cash -= margin_required + commission
                         state.short_entry_price = ((state.pos_short * state.short_entry_price) + (qty * exec_price)) / (state.pos_short + qty)
                         state.pos_short += qty
+                        state.log_fill(i, "SELL", "BASE_SHORT", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
                     elif key == "VIRTUAL":
                         exec_price, commission = sim.simulate_market_execution("BUY", qty, mid_price)
                         cash_spent = (qty * exec_price) + commission
@@ -460,6 +547,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.virt_qty += qty
                         state.virt_debt += cash_spent
                         actual_equity_spent = cash_spent
+                        state.log_fill(i, "BUY", "VIRTUAL", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
 
                     remaining_funds -= actual_equity_spent
 
@@ -556,6 +644,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.liquidations_counter += 1
                     state.dormant_capital = Decimal(str(state.account_free_margin + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = i + cooldown_bars_duration
+                    state.log_event(i, "liquidation", float(state.dormant_capital), "HARD CROSS LIQUIDATION")
                     logger.warning(f"Bar {i}: Entering {toxic_cooldown_days}d cooldown after HARD Liquidation.")
                     state.history.append(float(state.dormant_capital))
                     continue
@@ -625,6 +714,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             logger.warning(f"Bar {i}: Trailing Stop triggered. Entering {toxic_cooldown_days}d cooldown.")
                             state.trailing_stop_triggered = True
                             state.stops_counter += 1
+                            state.log_event(i, "trailing_stop", total_tpv_with_reserve, f"DD {drawdown_from_ath:.2f}% from ATH")
                             state.dormant_capital = Decimal(str(total_tpv_with_reserve))
                             state.cooldown_until_bar = i + cooldown_bars_duration
                             state.history.append(float(state.dormant_capital))
@@ -682,7 +772,13 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "trailing_stop_triggered": state.stops_counter > 0,
             "trend_guard_blocks": int(tg_blocked_count),
             "velocity_guard_blocks": int(vg_blocked_count),
-            "sortino_ratio": float(sortino_ratio)
+            "sortino_ratio": float(sortino_ratio),
+            "equity_curve": equity_curve.tolist(),
+            "fills": state.fills,
+            "fill_count": state.fill_count,
+            "events": state.events,
+            "initial_capital": float(initial_capital),
+            "data_window": data_window
         }
     except Exception as e:
         logger.error(f"Backtest failed: {e}")
@@ -698,9 +794,47 @@ if __name__ == "__main__":
     parser.add_argument("--capital", type=float, default=None)
     parser.add_argument("--threshold-surplus", type=float, default=None)
     parser.add_argument("--threshold-deficit", type=float, default=None)
+    parser.add_argument("--since", default="2026-03-30 07:00",
+                        help="backtest start (UTC). Standard BTCUSDT window: 2026-03-30 07:00. "
+                             "Pass empty string '' to fall back to pure --days mode.")
+    parser.add_argument("--until", default="2026-10-18 20:59",
+                        help="hard end boundary (UTC). Standard: 2026-10-18 20:59 (end of local data). "
+                             "Pass empty string '' to run to end of data.")
     args = parser.parse_args()
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-    asyncio.run(run_backtest(args.config, data_dir, args.live, args.ticker, args.days,
-                             capital_override=args.capital,
-                             threshold_surplus_override=args.threshold_surplus,
-                             threshold_deficit_override=args.threshold_deficit))
+    since = args.since.strip() or None
+    until = args.until.strip() if args.until else None
+    import re
+    def _norm_wd(s: str) -> str:
+        s = s.strip()
+        # 'YYYY-MM-DDHH:MM' -> 'YYYY-MM-DD HH:MM' (copypasta from terminals drops the space)
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}\d{2}:\d{2}", s):
+            s = s[:10] + " " + s[10:]
+        return s.replace("T", " ").strip()
+    if since: since = _norm_wd(since)
+    if until: until = _norm_wd(until)
+    res = asyncio.run(run_backtest(args.config, data_dir, args.live, args.ticker, args.days,
+                                   capital_override=args.capital,
+                                   threshold_surplus_override=args.threshold_surplus,
+                                   threshold_deficit_override=args.threshold_deficit,
+                                   since_utc=since, until_utc=until))
+
+    # auto-refresh the single dashboard: write the result jsons, regenerate the html,
+    # and delete any stale copies so only reports/btc_365d_dashboard.html exists
+    if res is not None:
+        import pathlib, subprocess
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        reports = pathlib.Path(root) / "reports"
+        curve = res.pop("equity_curve", [])
+        (reports / "btc_365d_backtest_result.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
+        (reports / "btc_365d_equity.json").write_text(json.dumps(curve), encoding="utf-8")
+        viz = pathlib.Path(root) / "scripts" / "visualize_365d_dashboard.py"
+        r = subprocess.run([sys.executable, str(viz)], capture_output=True, text=True)
+        if r.returncode == 0:
+            print(r.stdout.strip())
+            for extra in reports.glob("btc_365d_dashboard_v*.html"):
+                extra.unlink()
+                print(f"removed stale {extra.name}")
+        else:
+            print("dashboard regeneration failed:")
+            print(r.stderr[-2000:])
