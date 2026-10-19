@@ -3,8 +3,8 @@
   "limit_order_enabled": false,
   "limit_offset_pct": 0.1,
   "limit_timeout_sec": 30,
-  "min_notional_usdt": 5.3,
-  "paper_mode": false,
+  "min_notional_usdt": 6.0,
+  "paper_mode": true,
   "max_orders_per_second": 10,
   "min_cycles_for_rank": 15,
   "min_cycles_for_rotation": 6,
@@ -22,8 +22,8 @@
   "equity_trailing_stop_timeout_sec": 40,
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
-  "telegram_enabled": true,
-  "telegram_use_queue": true,
+  "telegram_enabled": false,
+  "telegram_use_queue": false,
   "telegram_summary_interval_min": 1,
   "portfolios": [
     {
@@ -40,15 +40,15 @@
       "siphoning_threshold_pct": 1000.0,
       "targets": {
         "BASE_LONG": {
-          "share": 0.5,
+          "share": 0.25,
           "leverage": 7
         },
         "BASE_SHORT": {
-          "share": 0.5,
+          "share": 0.25,
           "leverage": 7
         },
         "VIRTUAL": {
-          "share": 0.0,
+          "share": 0.5,
           "leverage": 1
         }
       },
@@ -68,6 +68,10 @@
         "BTCUSDT": {
           "surplus": 0.01,
           "deficit": 0.04
+        },
+        "ZECUSDT": {
+          "surplus": 0.01,
+          "deficit": 0.04
         }
       }
     }
@@ -81,7 +85,7 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [],
-  "base_ticker": "",
+  "base_ticker": "ZECUSDT",
   "probation_paper": {},
   "probation_real": {}
 }
