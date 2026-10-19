@@ -1,0 +1,52 @@
+{
+  "status": "PRICE_SEQUENCE_DIAGNOSTIC_ONLY",
+  "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\BTCUSDT_live_365d.feather",
+  "source_sha256": "de0ab2af9e54b58b8a3f9751687b8d91ee6d11d8dd4cf0fcd02268dd87aa471d",
+  "rows": 525600,
+  "settings": {
+    "capital": "10000",
+    "spread_bps": "2",
+    "slippage_bps": "1",
+    "strategy": {
+      "step": "0.001",
+      "min_notional": "5.3",
+      "leverage": "7",
+      "fee_rate": "0.0004",
+      "surplus_pp": "0.7",
+      "deficit_pp": "0.7",
+      "trail_pp": "0.09"
+    }
+  },
+  "fills": 181,
+  "rebalances": 179,
+  "equity": "9943.889826925559999999999970",
+  "fees": "7.701314414440",
+  "net_excluding_funding": "-56.110173074440000000000030",
+  "max_close_drawdown_pct": "3.916914582362447914246655173",
+  "worst_equity_step": {
+    "row_zero_based": 151128,
+    "equity_change": "-18.213800000000000000000000",
+    "prior_close": "77349.6",
+    "close": "75693.8",
+    "delta_before_btc": "0.011",
+    "price_pnl": "-18.2138",
+    "fills_pnl_less_fees": "0"
+  },
+  "max_absolute_delta_btc": "0.021",
+  "max_arithmetic_residual": "1E-23",
+  "quantities": {
+    "LONG": "0.041",
+    "SHORT": "0.042"
+  },
+  "code_sha256": {
+    "rebalance/kernel.py": "2a490e176c780a4d812935f79296a934c1c88413369e08eb0c4e25acbec12e15",
+    "rebalance/durable.py": "72870954b064a805d9b1dacfdfdb47b71dcab4770c0b613ac85a9acfd0b73446"
+  },
+  "limitations": [
+    "No timestamps in source: calendar coverage and minute continuity unverified.",
+    "Funding unavailable and excluded, not assumed economically zero.",
+    "Open positions marked to close; no terminal close, cycle policy or optimization.",
+    "Synthetic execution spread/slippage; no depth or liquidation model."
+  ],
+  "trading_authorized": false
+}

@@ -175,12 +175,16 @@ class Portfolio:
         mark, bid, ask = quotes(mark, bid, ask)
         if any(l.units for l in self.legs.values()):
             raise ValueError('entry requires flat portfolio')
-        target = self.snapshot(mark)['target']
         trial, actions = deepcopy(self), []
         for side, price in (('LONG', ask), ('SHORT', bid)):
+            target = trial.snapshot(mark)['target']
             unit = self.config.step * (price + (mark-price)*(1 if side == 'LONG' else -1))
             unit -= self.config.step * price * self.config.fee_rate
-            units = nearest(target, unit, 10**18)
+            fee_unit = self.config.step * price * self.config.fee_rate
+            natural = int(target / unit) if unit > 0 and target > 0 else 0
+            affordable = int(trial.snapshot(mark)['available'] /
+                             (self.config.step*price/self.config.leverage+fee_unit))
+            units = min(natural, affordable)
             if not units or units*self.config.step*price < self.config.min_notional:
                 return [Action('WAIT', reason='entry_min_notional_or_step')]
             action = Action('ADD', side, units)
@@ -202,7 +206,8 @@ class Portfolio:
             row = self.extrema.setdefault(side, {'peak': D(25), 'trough': D(25)})
             share = snap['legs'][side]['share']
             ready[side] = {kind: bool(self.legs[side].units and row[key] is not None and
-                ((row[key]-share) if kind == 'REDUCE' else (share-row[key])) >= self.config.trail_pp)
+                ((row[key]-share) if kind == 'REDUCE' else (share-row[key])) >=
+                self.config.trail_pp*(D('.3') if kind == 'REDUCE' and side == 'SHORT' else D(1)))
                 for kind, key in (('REDUCE', 'peak'), ('ADD', 'trough'))}
             if self.legs[side].units:
                 row['peak'] = max(D(25) if row['peak'] is None else row['peak'], share)
@@ -222,16 +227,20 @@ class Portfolio:
                             else (snap['target']-snap['legs'][side]['decision']))
                 if kind == 'REDUCE':
                     unit = self.config.step*(leg.avg+sign*(mark-leg.avg))-leg.open_fees/leg.units
-                    units = nearest(distance, unit, leg.units)
+                    scale = D('.9')*(D('1.5') if unit > 0 and abs(distance) >= 5*unit else D(1))
+                    units = nearest(distance*scale, unit, leg.units)
                     if sign*(price-leg.avg) < 0:
                         continue
                     if units*self.config.step*sign*(price-leg.avg) < units*fee_unit + leg.open_fees*D(units)/leg.units:
                         continue
                 else:
                     unit = self.config.step*(price+sign*(mark-price))-fee_unit
-                    natural = nearest(distance*D('.825'), unit, 10**18)
+                    other = self.legs['SHORT' if side == 'LONG' else 'LONG']
+                    scale = D('.81875')*(D('.9') if leg.units < other.units else D(1))
+                    natural = nearest(distance*scale, unit, 10**12)
                     affordable = int(snap['available']/(self.config.step*price/self.config.leverage+fee_unit))
-                    units = min(natural, affordable, max(0, 2*leg.initial_units-leg.units))
+                    cap = 2*leg.initial_units if leg.initial_units > 0 else max(1, 2*leg.units)
+                    units = min(natural, affordable, max(0, cap-leg.units))
                     if natural and not units:
                         pending = Action('WAIT', side, reason='add_shared_margin_or_cap')
                 if not units or units*self.config.step*price < self.config.min_notional:

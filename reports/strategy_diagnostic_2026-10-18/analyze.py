@@ -77,7 +77,58 @@ def main():
                      'maximum is after all fills at each timestamp, before synthetic terminal',
                      'price provenance requires separate exchange-data audit'],
         admission_ready=False,trading_authorized=False)
-    with (base/'diagnostic.json').open('x',encoding='utf-8') as stream: json.dump(report,stream,indent=2)
+    qty={'LONG':D(0),'SHORT':D(0)}
+    ti=fi=nonzero=0
+    previous_equity=D('10000')
+    previous_close=None
+    maximum_residual=D(0)
+    totals={k:D(0) for k in ('price','fills_less_fees','funding','observed','residual','fees')}
+    funding=sorted(funding,key=lambda e:e['fundingTime'])
+    with (annual/'runtime/data/BTCUSDT.csv').open(newline='') as stream:
+        for i,bar in enumerate(csv.DictReader(stream)):
+            stamp=int(bar['open_time'])
+            assert curve[i]['time']==stamp+59999
+            close=D(bar['close'])
+            if previous_close is None: previous_close=D(bar['open'])
+            price=(qty['LONG']-qty['SHORT'])*(close-previous_close)
+            cash=D(0)
+            while fi<len(funding) and funding[fi]['fundingTime']<=stamp:
+                event=funding[fi]
+                cash+=(qty['SHORT']-qty['LONG'])*D(event['markPrice'])*D(event['fundingRate'])
+                fi+=1
+            fills_component=D(0)
+            while ti<len(trades) and trades[ti]['time']==stamp:
+                trade=trades[ti]
+                change=trade['units']*step*(1 if trade['kind']=='ADD' else -1)
+                signed=change*(1 if trade['side']=='LONG' else -1)
+                fee=D(trade['fee'])
+                fills_component+=signed*(close-D(trade['price']))-fee
+                totals['fees']+=fee
+                qty[trade['side']]+=change
+                ti+=1
+            while fi<len(funding) and funding[fi]['fundingTime']<=stamp+59999:
+                event=funding[fi]
+                cash+=(qty['SHORT']-qty['LONG'])*D(event['markPrice'])*D(event['fundingRate'])
+                fi+=1
+            observed=D(curve[i]['equity'])-previous_equity
+            residual=observed-price-fills_component-cash
+            maximum_residual=max(maximum_residual,abs(residual))
+            assert abs(residual)<D('1e-19'), (stamp,str(residual))
+            for key,value in dict(price=price,fills_less_fees=fills_component,funding=cash,
+                                  observed=observed,residual=residual).items(): totals[key]+=value
+            nonzero+=qty['LONG']!=qty['SHORT']
+            previous_close=close
+            previous_equity=D(curve[i]['equity'])
+    result=load(study/'candidate_result.json')
+    assert i+1==len(curve)==result['candles'] and ti==len(trades) and fi==result['funding_events']
+    assert {k:str(v) for k,v in qty.items()}==result['quantities']
+    assert totals['funding']==D(result['funding']) and totals['fees']==D(result['fees'])
+    report['all_minute_reconciliation']=dict(minutes=i+1,fills=ti,funding_events=fi,
+        nonzero_delta_minutes=nonzero,max_absolute_arithmetic_residual=str(maximum_residual),
+        numerical_tolerance='1e-19',totals={k:str(v) for k,v in totals.items()},
+        final_quantities={k:str(v) for k,v in qty.items()})
+    report['limitations'][0]='all minute bridges checked against saved prices, fills and funding; not execution realism'
+    with (base/'minute_reconciliation.json').open('x',encoding='utf-8') as stream: json.dump(report,stream,indent=2)
     print(json.dumps(report,indent=2))
 
 

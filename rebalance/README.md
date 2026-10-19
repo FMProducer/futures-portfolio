@@ -5,6 +5,17 @@
 биржевой available margin. Экономика — kernel.py, исторические свечи —
 historical.py, сохранение состояния и жизненный цикл — durable.py.
 
+Стоимость ноги: оставшаяся выделенная стоимость входа + UPL − оставшиеся
+комиссии открытия. Адаптация last_current_trading_logic.md от 18 октября:
+seed peak/trough=25, trailing по старому экстремуму, REDUCE SHORT использует
+0.3*trail_pp. После fill REDUCE peak=25+half, ADD trough=25−0.9*half,
+где half=(surplus_pp+deficit_pp)/2. Raw-полоса не запрещает исполнение внутри.
+REDUCE sizing=nearest(excess*0.9*(1.5 при excess>=5*unit, иначе 1)).
+ADD sizing=nearest(deficit*0.81875*(0.9 для меньшей по количеству ноги)).
+Состояние shared-wallet-state-v3 отклоняет старые v1/v2 без отдельной миграции;
+существующие БД автоматически не сбрасываются. Подробности и ограничения:
+docs/coordination/IMPLEMENTATION_TINVEST_ADAPTATION.md.
+
 ## Запуск принятого исторического сценария с SQLite
 
 Из корня репозитория. Выберите новые имена для БД и результата:

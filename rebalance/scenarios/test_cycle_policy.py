@@ -31,9 +31,9 @@ def test_loss_exit_reentry_on_following_bar_with_reset_state():
 def test_trailing_activation_peak_and_next_open_execution():
     data=rows(['100']*5)
     # Spread creates unequal hedge quantities; received funding arms the trailing.
-    funding=[dict(time=1,rate=D('1'),mark=D('100')),
-             dict(time=60001,rate=D('-0.5'),mark=D('100'))]
-    result,trades,_=replay(data,CONFIG,'1000','1000','0',funding,
+    funding=[dict(time=1,rate=D('2'),mark=D('100')),
+             dict(time=60001,rate=D('-1'),mark=D('100'))]
+    result,trades,_=replay(data,CONFIG,'1000','2000','0',funding,
         cycle_policy=dict(activation_pct='0.1',drawback_pct='0.05',loss_pct='50'))
     exits=[t for t in trades if t.get('phase')=='CYCLE_TRAILING']
     assert exits and exits[0]['time']==120000

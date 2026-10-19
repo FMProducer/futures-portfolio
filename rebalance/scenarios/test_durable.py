@@ -5,7 +5,7 @@ import sqlite3
 
 import pytest
 
-from rebalance.durable import Store, pack
+from rebalance.durable import Store, pack, unpack
 from rebalance.kernel import Action, Config, Portfolio
 from rebalance.historical import replay
 
@@ -37,6 +37,28 @@ def test_state_roundtrip_keeps_decimal_extrema_and_receipts(store):
     assert restored == before and r == revision
     assert restored.extrema['LONG']['peak'] is None
     assert restored.receipts['funding'] == ('FUNDING', '-2.1')
+
+
+@pytest.mark.parametrize('version',['shared-wallet-state-v1','shared-wallet-state-v2'])
+def test_legacy_trailing_state_requires_migration(store, version):
+    body = json.loads(pack(store.load()[0]))
+    body['version'] = version
+    with pytest.raises(ValueError, match='migration required'):
+        unpack(json.dumps(body))
+
+
+def test_document_consume_pin_survives_restart(store):
+    p = store.load()[0]
+    for action in p.plan_entry('100', '100', '100'):
+        p.fill('entry-'+action.side, action, '100', '0', '100')
+        p.legs[action.side].initial_units = action.units
+    p.next_action('110', '110', '110')
+    action = p.next_action('109', '109', '109')
+    assert action.kind == 'REDUCE'
+    p.fill('reduce', action, '109', '0', '109')
+    restored = unpack(pack(p))
+    assert restored.extrema == p.extrema
+    assert restored.extrema['LONG']['peak'] == D('25.7')
 
 
 def test_prepared_reserve_survives_restart_without_cash_spend(store):

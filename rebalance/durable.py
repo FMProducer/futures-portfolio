@@ -11,7 +11,7 @@ import sqlite3
 from .kernel import Action, Config, Leg, Portfolio, SIDES, decimal, ZERO
 
 TERMINAL = ('FILLED', 'CANCELED', 'REJECTED')
-VERSION = 'shared-wallet-state-v1'
+VERSION = 'shared-wallet-state-v3'
 
 
 def encode(value):
