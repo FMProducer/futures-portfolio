@@ -1,7 +1,0 @@
-venv/
-_sandbox/
-document_text/
-market_data/
-screenshots/
-*.log
-__pycache__/
