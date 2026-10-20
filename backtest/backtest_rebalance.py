@@ -112,6 +112,7 @@ class BacktestState:
     commission_paid: Decimal = Decimal('0')
     realized_total: Decimal = Decimal('0')
     funding_paid: Decimal = Decimal('0')
+    funding_from_virtual: Decimal = Decimal('0')
     slippage_paid: Decimal = Decimal('0')
     liquidation_loss_total: Decimal = Decimal('0')
     ledger_base: Optional[Decimal] = None
@@ -200,6 +201,27 @@ class BacktestState:
         self.virt_debt -= amount
         self.val_cash += amount
         return amount
+
+    def pay_funding(self, amount: Decimal) -> Decimal:
+        amount = Decimal(str(amount))
+        if amount > 0 and amount > self.val_cash:
+            self.funding_from_virtual += self.release_virtual(amount - self.val_cash)
+        self.val_cash -= amount
+        self.funding_paid += amount
+        return amount
+
+    def cross_margin_distance_pct(self, price: Decimal, mmr: Decimal,
+                                  free_margin: Decimal = Decimal('0')) -> Decimal:
+        long_notional = self.pos_long * price
+        short_notional = self.pos_short * price
+        upnl_l = self.pos_long * (price - self.long_entry_price) if self.pos_long > 0 else Decimal('0')
+        upnl_s = self.pos_short * (self.short_entry_price - price) if self.pos_short > 0 else Decimal('0')
+        total_margin_balance = (self.val_cash + self.margin_long() + upnl_l
+                                + self.margin_short() + upnl_s + free_margin)
+        if total_margin_balance <= 0:
+            return Decimal('-100')
+        total_mm = (long_notional + short_notional) * mmr
+        return ((total_margin_balance - total_mm) / total_margin_balance) * Decimal('100')
 
     # cap per-run fill log so a runaway run cannot grow the JSON unboundedly
     MAX_FILLS = 200_000
@@ -839,30 +861,18 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             long_notional = state.pos_long * mid_price
             short_notional = state.pos_short * mid_price
             total_drag = (long_notional + short_notional) * funding_drag_step
-            state.val_cash -= total_drag
-            state.funding_paid += total_drag
+            state.pay_funding(total_drag)
 
             # --- 2.5 Unified Predictive Cross-Margin Liquidation Guard ---
             # Расчет метрик Кросс-Маржи согласно спецификации Binance Futures
             mmr = Decimal('0.004')  # Maintenance Margin Rate для плеча <= 5x
             
-            upnl_l = state.pos_long * (mid_price - state.long_entry_price) if state.pos_long > 0 else Decimal('0')
-            upnl_s = state.pos_short * (state.short_entry_price - mid_price) if state.pos_short > 0 else Decimal('0')
-            m_long = (state.pos_long * state.long_entry_price) / l_lev if state.pos_long > 0 else Decimal('0')
-            m_short = (state.pos_short * state.short_entry_price) / s_lev if state.pos_short > 0 else Decimal('0')
-            
-            # Совокупный Margin Balance суб-счета + внешняя подушка обеспечения аккаунта
-            futures_margin_balance = state.val_cash + m_long + upnl_l + m_short + upnl_s
-            total_margin_balance = futures_margin_balance + state.account_free_margin
-            
-            # Общий Maintenance Margin Requirement для обеих фьючерсных позиций
-            total_mm = (long_notional + short_notional) * mmr
+            m_long = state.margin_long()
+            m_short = state.margin_short()
 
             if state.pos_long > 0 or state.pos_short > 0:
-                if total_margin_balance > 0:
-                    cross_liq_dist_pct = ((total_margin_balance - total_mm) / total_margin_balance) * Decimal('100')
-                else:
-                    cross_liq_dist_pct = Decimal('-100')
+                cross_liq_dist_pct = state.cross_margin_distance_pct(
+                    mid_price, mmr, state.account_free_margin)
 
                 liq_distance_warn_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)))
                 liq_distance_crit_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)))
@@ -1139,6 +1149,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "realized_pnl_total": float(state.realized_total),
             "commission_paid": float(state.commission_paid),
             "funding_paid": float(state.funding_paid),
+            "funding_from_virtual": float(state.funding_from_virtual),
             "slippage_paid": float(state.slippage_paid),
             "liquidation_loss_total": float(state.liquidation_loss_total),
             "open_positions": {"long": float(state.pos_long), "short": float(state.pos_short)},

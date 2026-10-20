@@ -535,6 +535,7 @@ def build_payload(prefix: str) -> Dict[str, Any]:
     internal_transfer_count = int(_finite(result.get("internal_transfer_count", len(internal_fills))))
     # One basis for KPIs and reconciliation: mark-to-mid attribution (slippage shown separately).
     funding = _finite(attr_totals.get("funding"))
+    funding_from_virtual = _finite(result.get("funding_from_virtual", 0.0))
     commissions = _finite(attr_totals.get("commissions"))
     realized = _finite(attr_totals.get("realized"))
     unrealized = _finite(attr_totals.get("unrealized"))
@@ -571,6 +572,8 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         kpi("BUY / SELL", f"{_int(buys)} / {_int(sells)}", "Exchange fill count by side; BUY also closes shorts and SELL closes longs.", ""),
         kpi("Commissions", f"-{_money(commissions)} USDT", "Taker commissions, mark-to-mid attribution basis.", "neg"),
         kpi("Funding", f"-{_money(funding)} USDT", "Funding drag reconstructed from open notional per bar.", "neg"),
+        kpi("Funding from VIRTUAL", f"{_money(funding_from_virtual)} USDT",
+            "Portion of funding paid by transferring VIRTUAL cash. Already included in Funding; not deducted again in PnL attribution.", ""),
         kpi("Realized PnL", f"{_money(realized)} USDT", "Mark-to-mid realized PnL; slippage is shown separately.", "pos" if realized >= 0 else "neg"),
         kpi("Unrealized PnL", f"{_money(unrealized)} USDT", "Mark-to-mid PnL of positions open at the final bar.", "pos" if unrealized >= 0 else "neg"),
         kpi("Accounting", "OK" if accounting_ok is not False else "FAILED",
