@@ -90,6 +90,7 @@ class BacktestState:
     trailing_stop_triggered: bool = False
     last_rebalance_price: Decimal = Decimal('0')
     history: List[float] = field(default_factory=list)
+    total_commission: float = 0.0
     rebalance_log: List[Dict[str, Any]] = field(default_factory=list)
     fills: List[Dict[str, Any]] = field(default_factory=list)
     events: List[Dict[str, Any]] = field(default_factory=list)
@@ -132,6 +133,7 @@ class BacktestState:
     def log_fill(self, bar: int, side: str, leg: str, qty: Decimal, price: Decimal,
                   commission: Decimal, realized_pnl: Decimal, tpv: float) -> None:
         self.fill_count += 1
+        self.total_commission += float(commission)
         if len(self.fills) >= self.MAX_FILLS:
             return
         self.fills.append({
@@ -193,7 +195,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         threshold_deficit_override: Optional[float] = None,
                         capital_override: Optional[float] = None,
                         since_utc: Optional[str] = None,
-                        until_utc: Optional[str] = None) -> Optional[Dict[str, Any]]:
+                        until_utc: Optional[str] = None,
+                        time_index: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
     try:
         if quiet:
             logger.setLevel(logging.WARNING)
@@ -270,6 +273,22 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     df = df.iloc[:keep_upto]
                     logger.info(f"--until {until_ts}: frame trimmed to {len(df)} bars")
 
+        # --- real UTC time axis (sidecar *_times.txt next to the feather, one ISO minute per bar) ---
+        sidecar = os.path.splitext(file_path)[0] + "_times.txt"
+        if time_index is not None and len(time_index) == FULL_FILE_LEN:
+            times = list(time_index)
+        elif os.path.exists(sidecar):
+            with open(sidecar, "r", encoding="utf-8") as tf:
+                all_times = [ln.strip() for ln in tf if ln.strip()]
+            times = all_times[-FULL_FILE_LEN:] if len(all_times) >= FULL_FILE_LEN else all_times
+        else:
+            times = None
+        if times is not None and len(times) == FULL_FILE_LEN:
+            _off = FULL_FILE_LEN - len(df)
+            window_times = times[_off:_off + len(df)]
+        else:
+            window_times = None  # fall back to mtime-based reconstruction in the dashboard
+
         # metadata for the dashboard: where in the full feather file this window lives
         data_window = {
             "feather": os.path.basename(file_path),
@@ -278,6 +297,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "since_utc": since_utc,
             "until_utc": until_utc,
             "bars_per_day": 1440,
+            "start_utc": window_times[0] if window_times else None,
+            "end_utc": window_times[-1] if window_times else None,
+            "timestamps_available": bool(window_times),
         }
 
         initial_capital: float = capital_override if capital_override is not None else portfolio_cfg.get("initial_capital", 1000.0)
@@ -748,6 +770,15 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         else:
             sortino_ratio = 0.0
 
+        # --- dashboard extras (visualization only; no trading logic touched) ---
+        # per-bar position snapshots at the moment of each rebalance (for share analysis)
+        try:
+            import plotly.graph_objects as _go
+            from plotly.subplots import make_subplots as _mk
+            _HAVE_PLOTLY = True
+        except Exception:
+            _HAVE_PLOTLY = False
+
         if not quiet:
             logger.info(f"Refactored Cross-Margin Backtest for {base_ticker}:")
             logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% | Cycles: {state.cycles}")
@@ -777,7 +808,16 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "fill_count": state.fill_count,
             "events": state.events,
             "initial_capital": float(initial_capital),
-            "data_window": data_window
+            "data_window": data_window,
+            "window_times": window_times,
+            "final_tpv": float(equity_curve[-1]) if len(equity_curve) else float(initial_capital),
+            "total_commission": float(state.total_commission),
+            "total_realized_pnl": sum(f["realized_pnl"] for f in state.fills),
+            "base_ticker": base_ticker,
+            "bars_used": int(len(df)),
+            "bars_total_in_file": int(FULL_FILE_LEN),
+            "market_orders_filled": int(sim.get_summary()["filled"]),
+            "cooldown_bars": int(cooldown_bars_duration),
         }
     except Exception as e:
         logger.error(f"Backtest failed: {e}")
@@ -837,3 +877,24 @@ if __name__ == "__main__":
         else:
             print("dashboard regeneration failed:")
             print(r.stderr[-2000:])
+
+        # canonical enhanced dashboard: ONE self-contained offline html per run
+        # (reports/<ticker_lower>_12m_dashboard.html). Generated inline so it always
+        # reflects this exact result; no strategy numbers are modified here.
+        dash_script = pathlib.Path(root) / "scripts" / "generate_dashboard_enhanced.py"
+        if dash_script.exists():
+            res["equity_curve"] = curve  # generator expects the full result dict
+            tmp_payload = reports / "_dashboard_payload.json"
+            tmp_payload.write_text(json.dumps(res), encoding="utf-8")
+            r2 = subprocess.run([sys.executable, str(dash_script), "--payload", str(tmp_payload)],
+                                capture_output=True, text=True)
+            tmp_payload.unlink(missing_ok=True)
+            if r2.returncode == 0:
+                print(r2.stdout.strip())
+                ticker_slug = str(res.get("base_ticker", "btc")).lower()
+                for extra in reports.glob("*dashboard*_v[0-9]*.html"):
+                    extra.unlink()
+                    print(f"removed stale {extra.name}")
+            else:
+                print("enhanced dashboard generation failed:")
+                print(r2.stderr[-2000:])
