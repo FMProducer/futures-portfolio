@@ -1,12 +1,1 @@
-node_modules/
-__pycache__/
-*.pyc
-
-# hygiene: transfer artifacts & screenshots must never be committed
-*.bundle
-*.tar.gz
-0001-*.patch
-_render_v3.png
-reports/_dashboard_final.png
-docs/coordination/accounting_stage1_evidence/*.log
-nul
+reports/
