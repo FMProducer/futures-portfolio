@@ -7,6 +7,20 @@
 .env.local
 .env.*.local
 
+# ── Bundle / vendor ───────────────────────────────────────────
+node_modules/
+
+# ── Reports (generated HTML, never commit) ─────────────────────
+reports/
+
+# ── Data artifacts (large binaries, never commit) ──────────────
+data/*.feather
+data/*.npz
+data/*.parquet
+*.npz
+*.parquet
+_render_*.png
+
 # ── State files (runtime data, never commit) ─────────────────
 core/*.json
 !core/config.json
