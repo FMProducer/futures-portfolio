@@ -45,34 +45,38 @@ async def collect():
             data = json.loads(msg)
             now = time.time()
 
-            # Binance sends full depth snapshot on each message
             # Take one snapshot per minute
+            # Binance depth stream keys: 'b'=bids, 'a'=asks, 'u'=finalUpdateId
             if last_ts is None or now - last_ts >= SNAPSHOT_INTERVAL:
                 last_ts = now
+                bids = data.get("b", [])[:20]
+                asks = data.get("a", [])[:20]
+                bid_count = len(bids)
+                best_bid = float(bids[0][0]) if bids else None
+                best_ask = float(asks[0][0]) if asks else None
+                spread = round(best_ask - best_bid, 2) if best_bid and best_ask else None
+
                 row = {
                     "timestamp": int(now * 1000),
                     "dt": datetime.fromtimestamp(now, tz=timezone.utc).isoformat(),
-                    "lastUpdateId": data.get("lastUpdateId", 0),
-                    "bids": json.dumps(data.get("bids", [])[:20]),
-                    "asks": json.dumps(data.get("asks", [])[:20]),
-                    "best_bid": float(data["bids"][0][0]) if data.get("bids") else None,
-                    "best_ask": float(data["asks"][0][0]) if data.get("asks") else None,
-                    "spread": None,
+                    "lastUpdateId": data.get("u", 0),
+                    "bids": json.dumps(bids),
+                    "asks": json.dumps(asks),
+                    "best_bid": best_bid,
+                    "best_ask": best_ask,
+                    "spread": spread,
                 }
-                if row["best_bid"] and row["best_ask"]:
-                    row["spread"] = round(row["best_ask"] - row["best_bid"], 2)
-
                 snapshots.append(row)
                 elapsed = now - start_time
                 pct = 100 * elapsed / DURATION_SEC
-                print(f"  [{pct:.0f}%] {row['dt']}  bid={row['best_bid']:.2f} ask={row['best_ask']:.2f} "
-                      f"spread={row['spread']}  ({len(snapshots)} snaps, {len(data.get('bids',[]))} bids)",
+                bid_s = f"{best_bid:.2f}" if best_bid is not None else "N/A"
+                ask_s = f"{best_ask:.2f}" if best_ask is not None else "N/A"
+                print(f"  [{pct:.0f}%] {row['dt']}  bid={bid_s} ask={ask_s} "
+                      f"spread={spread}  ({len(snapshots)} snaps, {bid_count} bids/asks)",
                       flush=True)
 
     # Save
     df = pd.DataFrame(snapshots)
-    # Feather can't write complex types - remove the raw JSON columns for the main file
-    # and save them separately
     df_num = df[["timestamp", "dt", "best_bid", "best_ask", "spread"]].copy()
     df_num.to_feather(out_feather)
 
