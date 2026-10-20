@@ -41,3 +41,6 @@ if res:
     json.dump(curve, open(os.path.join(ROOT, "reports", f"{prefix}_equity.json"), "w", encoding="utf-8"))
     print(json.dumps({k: v for k, v in res.items() if isinstance(v, (int, float, str))}, indent=2, default=str))
     print(f"equity_curve: {len(curve)} points")
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    from visualize_zec_dashboard import main as build_dashboard
+    build_dashboard(prefix)

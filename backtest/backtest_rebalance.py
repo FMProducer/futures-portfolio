@@ -93,7 +93,12 @@ class BacktestState:
     rebalance_log: List[Dict[str, Any]] = field(default_factory=list)
     fills: List[Dict[str, Any]] = field(default_factory=list)
     events: List[Dict[str, Any]] = field(default_factory=list)
+    siphoning_log: List[Dict[str, Any]] = field(default_factory=list)
     fill_count: int = 0
+    commission_paid: Decimal = Decimal('0')
+    realized_total: Decimal = Decimal('0')
+    funding_paid: Decimal = Decimal('0')
+    slippage_paid: Decimal = Decimal('0')
 
     # Leverage values from config (added to fix hardcoded 5x in TPV calc)
     l_lev: Decimal = Decimal('5')
@@ -130,20 +135,36 @@ class BacktestState:
     MAX_FILLS = 200_000
 
     def log_fill(self, bar: int, side: str, leg: str, qty: Decimal, price: Decimal,
-                  commission: Decimal, realized_pnl: Decimal, tpv: float) -> None:
+                  commission: Decimal, realized_pnl: Decimal, tpv: float,
+                  mid_price: Optional[Decimal] = None, leverage: Optional[Decimal] = None,
+                  trigger: str = "rebalance", cycle_id: Optional[int] = None) -> None:
         self.fill_count += 1
+        self.commission_paid += Decimal(str(commission))
+        self.realized_total += Decimal(str(realized_pnl))
+        if mid_price is not None:
+            self.slippage_paid += abs(Decimal(str(qty))) * abs(Decimal(str(price)) - Decimal(str(mid_price)))
         if len(self.fills) >= self.MAX_FILLS:
             return
         self.fills.append({
             "bar": int(bar), "side": side, "leg": leg,
             "qty": float(qty), "price": float(price),
+            "mid": float(mid_price) if mid_price is not None else float(price),
+            "notional": float(abs(Decimal(str(qty))) * Decimal(str(price))),
+            "leverage": float(leverage) if leverage is not None else None,
             "commission": float(commission), "realized_pnl": float(realized_pnl),
-            "tpv": tpv,
+            "commission_cum": float(self.commission_paid),
+            "realized_cum": float(self.realized_total),
+            "funding_cum": float(self.funding_paid),
+            "trigger": trigger,
+            "rebalance_id": int(cycle_id) if cycle_id is not None else int(self.cycles),
+            "tpv": float(tpv),
         })
 
-    def log_event(self, bar: int, kind: str, tpv: float, detail: str = "") -> None:
+    def log_event(self, bar: int, kind: str, tpv: float, detail: str = "", **extra: Any) -> None:
         if len(self.events) < self.MAX_FILLS:
-            self.events.append({"bar": int(bar), "kind": kind, "tpv": tpv, "detail": detail})
+            event = {"bar": int(bar), "kind": kind, "tpv": float(tpv), "detail": detail}
+            event.update(extra)
+            self.events.append(event)
 
 async def download_live_data(symbol: str, data_dir: str, days: float = 2.0) -> str:
     endpoint = "https://fapi.binance.com/fapi/v1/klines"
@@ -229,6 +250,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             logger.info(f"Offline backtest using local {os.path.basename(file_path)}")
 
         df: pd.DataFrame = pd.read_feather(file_path)
+        time_values = None
+        if "time" in df.columns:
+            # feather timestamps are the only real time axis; keep them for the dashboard
+            time_values = (pd.to_datetime(df["time"], utc=True).dt.as_unit("ms").astype("int64").to_numpy())
         df = df[['open', 'high', 'low', 'close', 'volume']]
         FULL_FILE_LEN = len(df)  # anchor for --until index math (pre-trim)
 
@@ -236,6 +261,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         
         bars_per_day = 1440
         max_bars = int(days * bars_per_day)
+        head_dropped = 0
         if since_utc is not None:
             # feather has no time axis: data ends at the download time (mtime), 1 bar per minute.
             # Trim the window to start at since_utc; --days then only further limits the tail.
@@ -247,9 +273,12 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             # --since wins over --days: run the full [since, end] window so the backtest
             # actually starts at 30.03.2026, not at "the last N days"
             keep = min(len(df), min_bars_needed + 1)
-            df = df.iloc[-keep:] if keep < len(df) else df
+            if keep < len(df):
+                head_dropped = len(df) - keep
+                df = df.iloc[-keep:]
             logger.info(f"Window: since {since_ts} -> {end_ts} ({len(df)} bars; --days ignored in since mode)")
         elif len(df) > max_bars:
+            head_dropped = len(df) - max_bars
             df = df.iloc[-max_bars:]
 
         if until_utc is not None:
@@ -264,20 +293,28 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 # file bar i starts at end_ts - (full_len - 1 - i) minutes
                 idx_last = full_len - 1 - int((end_ts - until_ts).total_seconds() // 60)
                 # df may already be head-trimmed by --since: full index of df row 0
-                head_dropped = full_len - len(df)
                 keep_upto = max(0, min(len(df), idx_last + 1 - head_dropped))
                 if keep_upto < len(df):
                     df = df.iloc[:keep_upto]
                     logger.info(f"--until {until_ts}: frame trimmed to {len(df)} bars")
 
+        time_window = (
+            time_values[head_dropped:head_dropped + len(df)]
+            if time_values is not None and len(time_values) >= head_dropped + len(df)
+            else None
+        )
         # metadata for the dashboard: where in the full feather file this window lives
         data_window = {
             "feather": os.path.basename(file_path),
-            "offset": int(FULL_FILE_LEN - len(df)),   # bars skipped before df row 0
+            "offset": int(head_dropped),   # bars skipped before df row 0
             "bars": int(len(df)),
+            "input_bars": int(FULL_FILE_LEN),
             "since_utc": since_utc,
             "until_utc": until_utc,
             "bars_per_day": 1440,
+            "time_source": "feather_time" if time_window is not None else "mtime",
+            "start_utc": pd.Timestamp(int(time_window[0]), unit="ms", tz="UTC").strftime("%Y-%m-%d %H:%M") if time_window is not None and len(time_window) else None,
+            "end_utc": pd.Timestamp(int(time_window[-1]), unit="ms", tz="UTC").strftime("%Y-%m-%d %H:%M") if time_window is not None and len(time_window) else None,
         }
 
         initial_capital: float = capital_override if capital_override is not None else portfolio_cfg.get("initial_capital", 1000.0)
@@ -370,11 +407,16 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             if i == state.cooldown_until_bar and state.cooldown_until_bar > 0:
                 if state.dormant_capital < Decimal('5.0'):
                     logger.critical(f"Bar {i}: Capital too low to restart ({state.dormant_capital:.2f}). Backtest effectively dead.")
+                    state.log_event(i, "cooldown_dead", float(state.dormant_capital), "capital below 5 USDT")
                     state.cooldown_until_bar = len(df) + 1  # Dead forever
                     state.history.append(float(state.dormant_capital))
                     continue
 
                 logger.info(f"Bar {i}: Cooldown finished. Reviving bot. Rebased capital: {state.dormant_capital:.2f}")
+                state.log_event(i, "cooldown_end", float(state.dormant_capital),
+                                f"rebased {state.dormant_capital:.2f}",
+                                rebased=float(state.dormant_capital),
+                                reserve_reset=float(state.siphoning_reserve))
                 state.initial_capital = state.dormant_capital
                 state.val_cash = state.dormant_capital
                 state.pos_long = Decimal('0')
@@ -434,8 +476,11 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     trend_eff = (net_move / total_path) if total_path > 0 else 0
                     net_move_pct = net_move / p_start if p_start > 0 else 0
                     if net_move_pct > tg_min_move_pct and trend_eff > tg_eff_threshold:
+                        blocked = [a["key"] for a in actions]
                         actions = []
                         tg_blocked_count += 1
+                        state.log_event(i, "trend_guard_block", float(state.get_tpv_fast(float(mid_price))),
+                                        f"trend move {net_move_pct*100:.2f}% eff {trend_eff:.2f}", keys=blocked)
                 
                 if actions and i >= tg_nmg_bars:
                     nmg_prices = close_prices[max(0, i - tg_nmg_bars):i + 1]
@@ -443,25 +488,35 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         nmg_old = nmg_prices[0]
                         nmg_move = abs(close_prices[i] - nmg_old) / nmg_old if nmg_old > 0 else 0
                         if nmg_move > tg_nmg_pct:
+                            blocked = [a["key"] for a in actions]
                             actions = []
                             tg_blocked_count += 1
+                            state.log_event(i, "trend_guard_block", float(state.get_tpv_fast(float(mid_price))),
+                                            f"net move {nmg_move*100:.2f}%", keys=blocked)
 
             # --- Velocity Guard: блокировка при быстром движении цены ---
             if actions and vg_cooldown_bars > 0:
+                blocked = [a["key"] for a in actions]
                 vg_cooldown_bars -= 1
                 actions = []
                 vg_blocked_count += 1
+                state.log_event(i, "velocity_guard_block", float(state.get_tpv_fast(float(mid_price))),
+                                f"cooldown {vg_cooldown_bars} bars left", keys=blocked)
             elif actions and i >= vg_window_bars:
                 vg_prices = close_prices[max(0, i - vg_window_bars):i + 1]
                 if len(vg_prices) >= 2:
                     vg_old = vg_prices[0]
                     vg_move = abs(close_prices[i] - vg_old) / vg_old if vg_old > 0 else 0
                     if vg_move > vg_velocity_pct:
+                        blocked = [a["key"] for a in actions]
                         actions = []
                         vg_blocked_count += 1
                         vg_cooldown_bars = vg_window_bars  # блокируем на окно
+                        state.log_event(i, "velocity_guard_block", float(state.get_tpv_fast(float(mid_price))),
+                                        f"velocity {vg_move*100:.2f}%", keys=blocked)
 
             if actions:
+                fills_before = len(state.fills)
                 reductions = [a for a in actions if a.get("is_reduction", False)]
                 expansions = [a for a in actions if not a.get("is_reduction", False)]
 
@@ -482,7 +537,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.val_cash += released_margin + realized_pnl - commission
                         if state.pos_long == Decimal('0'):
                             state.long_entry_price = Decimal('0')
-                        state.log_fill(i, "SELL", "BASE_LONG", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))))
+                        state.log_fill(i, "SELL", "BASE_LONG", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
                     elif key == "BASE_SHORT":
                         exec_price, commission = sim.simulate_market_execution("BUY", qty, mid_price)
                         realized_pnl = qty * (state.short_entry_price - exec_price)
@@ -491,7 +547,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.val_cash += released_margin + realized_pnl - commission
                         if state.pos_short == Decimal('0'):
                             state.short_entry_price = Decimal('0')
-                        state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))))
+                        state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
                     elif key == "VIRTUAL":
                         # VIRTUAL = чистый USDT-кэш: «продажа» = release cash label (value-neutral)
                         release_usdt = abs(Decimal(str(act["diff_usdt"])))
@@ -500,7 +557,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         else:
                             state.virt_debt = Decimal('0')  # dust
                         state.val_cash += release_usdt  # высвобождение кэша
-                        state.log_fill(i, "RELEASE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
+                        state.log_fill(i, "RELEASE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance", cycle_id=state.cycles + 1)
 
                 expansions.sort(key=lambda x: 0 if x["key"] == "VIRTUAL" else 1)
                 remaining_funds = Decimal(str(calc_res.get("val_cash", calc_res.get("available_funds", 0.0))))
@@ -512,6 +570,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
                     if remaining_funds <= Decimal('0'):
                         state.skipped_expansions_counter += 1
+                        state.log_event(i, "skipped_expansion", float(state.get_tpv_fast(float(mid_price))),
+                                        "no remaining funds", key=key)
                         continue
 
                     max_usdt = remaining_funds * lev
@@ -532,35 +592,49 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.val_cash -= margin_required + commission
                         state.long_entry_price = ((state.pos_long * state.long_entry_price) + (qty * exec_price)) / (state.pos_long + qty)
                         state.pos_long += qty
-                        state.log_fill(i, "BUY", "BASE_LONG", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
+                        state.log_fill(i, "BUY", "BASE_LONG", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
                     elif key == "BASE_SHORT":
                         exec_price, commission = sim.simulate_market_execution("SELL", qty, mid_price)
                         margin_required = (qty * exec_price) / lev
                         state.val_cash -= margin_required + commission
                         state.short_entry_price = ((state.pos_short * state.short_entry_price) + (qty * exec_price)) / (state.pos_short + qty)
                         state.pos_short += qty
-                        state.log_fill(i, "SELL", "BASE_SHORT", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
+                        state.log_fill(i, "SELL", "BASE_SHORT", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
                     elif key == "VIRTUAL":
                         # VIRTUAL = чистый USDT-кэш: «покупка» = designate cash label (value-neutral)
                         designate_usdt = abs(Decimal(str(act["diff_usdt"])))
                         state.virt_debt += designate_usdt
                         state.val_cash -= designate_usdt  # кэш уходит в «метку V»
-                        state.log_fill(i, "DESIGNATE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))))
+                        state.log_fill(i, "DESIGNATE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance", cycle_id=state.cycles + 1)
 
                     remaining_funds -= actual_equity_spent
 
                 state.cycles += 1
                 state.last_rebalance_price = mid_price
-                state.rebalance_log.append({
-                    "step": i, "price": float(mid_price), "tpv": float(state.get_tpv(mid_price)),
-                    "shares": {"L": calc_res["share_long_pct"], "S": calc_res["share_short_pct"], "V": calc_res["share_virt_pct"], "C": calc_res["share_cash_pct"]},
-                    "actions": [f"{a['key']} {'SELL' if a['is_reduction'] else 'BUY'}" for a in actions]
-                })
+                if len(state.fills) > fills_before:
+                    state.rebalance_log.append({
+                        "step": i, "cycle_id": state.cycles, "price": float(mid_price), "tpv": float(state.get_tpv(mid_price)),
+                        "shares": {"L": calc_res["share_long_pct"], "S": calc_res["share_short_pct"], "V": calc_res["share_virt_pct"], "C": calc_res["share_cash_pct"]},
+                        "targets": {k: float(v.get("share", 0.0)) for k, v in targets.items()},
+                        "thresholds": {"surplus": float(threshold_surplus), "deficit": float(threshold_deficit)},
+                        "actions": [f"{a['key']} {'SELL' if a['is_reduction'] else 'BUY'}" for a in actions],
+                        "actions_detail": [
+                            {"key": a["key"], "side": "SELL" if a["is_reduction"] else "BUY",
+                             "diff_usdt": float(a["diff_usdt"]), "leverage": float(a["leverage"]),
+                             "is_reduction": bool(a["is_reduction"])}
+                            for a in actions
+                        ],
+                        "volume_usdt": float(sum(abs(Decimal(str(a["diff_usdt"]))) for a in actions)),
+                    })
 
             long_notional = state.pos_long * mid_price
             short_notional = state.pos_short * mid_price
             total_drag = (long_notional + short_notional) * funding_drag_step
             state.val_cash -= total_drag
+            state.funding_paid += total_drag
 
             # --- 2.5 Unified Predictive Cross-Margin Liquidation Guard ---
             # Расчет метрик Кросс-Маржи согласно спецификации Binance Futures
@@ -592,23 +666,36 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     
                     # Закрытие Long
                     if state.pos_long > 0:
-                        exec_p, comm = sim.simulate_market_execution("SELL", state.pos_long, mid_price)
-                        realized_pnl = state.pos_long * (exec_p - state.long_entry_price)
+                        qty_close = state.pos_long
+                        exec_p, comm = sim.simulate_market_execution("SELL", qty_close, mid_price)
+                        realized_pnl = qty_close * (exec_p - state.long_entry_price)
                         state.val_cash += m_long + realized_pnl - comm
                         state.pos_long = Decimal('0')
                         state.long_entry_price = Decimal('0')
+                        state.log_fill(i, "SELL", "BASE_LONG", qty_close, exec_p, comm, realized_pnl,
+                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                       leverage=l_lev, trigger="liquidation", cycle_id=state.cycles)
 
                     # Закрытие Short
                     if state.pos_short > 0:
-                        exec_p, comm = sim.simulate_market_execution("BUY", state.pos_short, mid_price)
-                        realized_pnl = state.pos_short * (state.short_entry_price - exec_p)
+                        qty_close = state.pos_short
+                        exec_p, comm = sim.simulate_market_execution("BUY", qty_close, mid_price)
+                        realized_pnl = qty_close * (state.short_entry_price - exec_p)
                         state.val_cash += m_short + realized_pnl - comm
                         state.pos_short = Decimal('0')
                         state.short_entry_price = Decimal('0')
+                        state.log_fill(i, "BUY", "BASE_SHORT", qty_close, exec_p, comm, realized_pnl,
+                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                       leverage=s_lev, trigger="liquidation", cycle_id=state.cycles)
 
                     state.liquidations_counter += 1
                     state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = i + cooldown_bars_duration
+                    state.log_event(i, "liquidation", float(state.dormant_capital),
+                                    f"predictive cross distance {float(cross_liq_dist_pct):.2f}%")
+                    state.log_event(i, "cooldown_start", float(state.dormant_capital),
+                                    "predictive liquidation", until_bar=int(state.cooldown_until_bar),
+                                    reason="liquidation")
                     logger.warning(f"Bar {i}: Entering {toxic_cooldown_days}d cooldown after Predictive Liquidation.")
                     state.history.append(float(state.dormant_capital))
                     continue
@@ -643,6 +730,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.dormant_capital = Decimal(str(state.account_free_margin + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = i + cooldown_bars_duration
                     state.log_event(i, "liquidation", float(state.dormant_capital), "HARD CROSS LIQUIDATION")
+                    state.log_event(i, "cooldown_start", float(state.dormant_capital),
+                                    "hard liquidation", until_bar=int(state.cooldown_until_bar),
+                                    reason="liquidation")
                     logger.warning(f"Bar {i}: Entering {toxic_cooldown_days}d cooldown after HARD Liquidation.")
                     state.history.append(float(state.dormant_capital))
                     continue
@@ -661,6 +751,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.siphoning_reserve += Decimal(str(siphon_amount))
                     state.val_cash -= Decimal(str(siphon_amount))
                     total_tpv_with_reserve -= siphon_amount
+                    state.siphoning_log.append({
+                        "bar": int(i), "amount": float(siphon_amount),
+                        "reserve": float(state.siphoning_reserve),
+                    })
 
             # --- 4b. Max Drawdown Limit (Emergency Stop) ---
             if max_drawdown_limit_pct < 100.0:
@@ -672,21 +766,34 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.stops_counter += 1
                     # Закрыть все позиции по текущей цене
                     if state.pos_long > 0:
-                        exec_p, comm = sim.simulate_market_execution("SELL", state.pos_long, mid_price)
-                        realized_pnl = state.pos_long * (exec_p - state.long_entry_price)
-                        m_l = (state.pos_long * state.long_entry_price) / l_lev
+                        qty_close = state.pos_long
+                        exec_p, comm = sim.simulate_market_execution("SELL", qty_close, mid_price)
+                        realized_pnl = qty_close * (exec_p - state.long_entry_price)
+                        m_l = (qty_close * state.long_entry_price) / l_lev
                         state.val_cash += m_l + realized_pnl - comm
                         state.pos_long = Decimal('0')
                         state.long_entry_price = Decimal('0')
+                        state.log_fill(i, "SELL", "BASE_LONG", qty_close, exec_p, comm, realized_pnl,
+                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                       leverage=l_lev, trigger="max_dd_stop", cycle_id=state.cycles)
                     if state.pos_short > 0:
-                        exec_p, comm = sim.simulate_market_execution("BUY", state.pos_short, mid_price)
-                        realized_pnl = state.pos_short * (state.short_entry_price - exec_p)
-                        m_s = (state.pos_short * state.short_entry_price) / s_lev
+                        qty_close = state.pos_short
+                        exec_p, comm = sim.simulate_market_execution("BUY", qty_close, mid_price)
+                        realized_pnl = qty_close * (state.short_entry_price - exec_p)
+                        m_s = (qty_close * state.short_entry_price) / s_lev
                         state.val_cash += m_s + realized_pnl - comm
                         state.pos_short = Decimal('0')
                         state.short_entry_price = Decimal('0')
+                        state.log_fill(i, "BUY", "BASE_SHORT", qty_close, exec_p, comm, realized_pnl,
+                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                       leverage=s_lev, trigger="max_dd_stop", cycle_id=state.cycles)
                     state.dormant_capital = Decimal(str(total_tpv_with_reserve))
                     state.cooldown_until_bar = len(df) + 1  # больше не стартуем
+                    state.log_event(i, "max_dd_stop", float(state.dormant_capital),
+                                    f"max drawdown limit {max_drawdown_limit_pct}%")
+                    state.log_event(i, "cooldown_start", float(state.dormant_capital),
+                                    "max drawdown limit", until_bar=int(state.cooldown_until_bar),
+                                    reason="max_dd_stop")
                     state.history.append(float(state.dormant_capital))
                     continue
 
@@ -715,6 +822,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             state.log_event(i, "trailing_stop", total_tpv_with_reserve, f"DD {drawdown_from_ath:.2f}% from ATH")
                             state.dormant_capital = Decimal(str(total_tpv_with_reserve))
                             state.cooldown_until_bar = i + cooldown_bars_duration
+                            state.log_event(i, "cooldown_start", float(state.dormant_capital),
+                                            f"trailing stop DD {drawdown_from_ath:.2f}%",
+                                            until_bar=int(state.cooldown_until_bar),
+                                            reason="trailing_stop")
                             state.history.append(float(state.dormant_capital))
                             continue
 
@@ -759,6 +870,13 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 s = sim.get_summary()
                 logger.info(f"Market Orders: {s['filled']}/{s['attempted']} filled")
 
+        final_price = Decimal(str(close_prices[-1])) if len(close_prices) else Decimal('0')
+        final_unrealized = Decimal('0')
+        if state.pos_long > 0:
+            final_unrealized += state.pos_long * (final_price - state.long_entry_price)
+        if state.pos_short > 0:
+            final_unrealized += state.pos_short * (state.short_entry_price - final_price)
+
         return {
             "profit_pct": float(profit_pct),
             "max_dd_pct": float(max_dd_pct),
@@ -776,7 +894,35 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "fills": state.fills,
             "fill_count": state.fill_count,
             "events": state.events,
+            "rebalances": state.rebalance_log,
+            "siphoning_log": state.siphoning_log,
             "initial_capital": float(initial_capital),
+            "final_equity": float(equity_curve[-1]) if len(equity_curve) else 0.0,
+            "final_unrealized_pnl": float(final_unrealized),
+            "realized_pnl_total": float(state.realized_total),
+            "commission_paid": float(state.commission_paid),
+            "funding_paid": float(state.funding_paid),
+            "slippage_paid": float(state.slippage_paid),
+            "open_positions": {"long": float(state.pos_long), "short": float(state.pos_short)},
+            "ticker": base_ticker,
+            "settings": {
+                "commission_pct": float(sim.commission_pct),
+                "slippage_pct": float(slippage),
+                "targets": {k: {"share": float(v.get("share", 0.0)), "leverage": float(v.get("leverage", 1))}
+                            for k, v in targets.items()},
+                "thresholds": {"surplus": float(threshold_surplus), "deficit": float(threshold_deficit)},
+                "siphoning_threshold_pct": float(siphoning_threshold_pct),
+                "reinvestment_ratio": float(reinvestment_ratio),
+                "funding_rate_per_day": float(daily_funding_rate),
+                "bars_per_day": int(bars_per_day),
+                "trailing_stop_pct": float(trailing_stop_pct),
+                "trailing_stop_activation_pct": float(trailing_stop_activation_pct),
+                "trailing_stop_timeout_sec": int(trailing_stop_timeout_sec),
+                "max_drawdown_limit_pct": float(max_drawdown_limit_pct),
+                "cooldown_bars": int(cooldown_bars_duration),
+                "min_notional_usdt": float(min_notional_usdt),
+                "account_free_margin": float(paper_account_free_margin),
+            },
             "data_window": data_window
         }
     except Exception as e:
@@ -819,19 +965,31 @@ if __name__ == "__main__":
                                    since_utc=since, until_utc=until))
 
     # auto-refresh the single dashboard: write the result jsons, regenerate the html,
-    # and delete any stale copies so only reports/btc_365d_dashboard.html exists
+    # and delete stale versioned copies only for the current prefix
     if res is not None:
         import pathlib, subprocess
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         reports = pathlib.Path(root) / "reports"
+        try:
+            _cfg = json.load(open(args.config, "r", encoding="utf-8"))
+            _ticker = (args.ticker or _cfg.get("base_ticker", "BTCUSDT")).upper()
+        except Exception:
+            _ticker = (args.ticker or "BTCUSDT").upper()
+        if _ticker == "ZECUSDT":
+            prefix = "zec_12m" if abs(args.days - 365.0) < 1e-9 else f"zec_{int(args.days)}d"
+            viz = pathlib.Path(root) / "scripts" / "visualize_zec_dashboard.py"
+            viz_args = [sys.executable, str(viz), prefix]
+        else:
+            prefix = "btc_365d"
+            viz = pathlib.Path(root) / "scripts" / "visualize_365d_dashboard.py"
+            viz_args = [sys.executable, str(viz)]
         curve = res.pop("equity_curve", [])
-        (reports / "btc_365d_backtest_result.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
-        (reports / "btc_365d_equity.json").write_text(json.dumps(curve), encoding="utf-8")
-        viz = pathlib.Path(root) / "scripts" / "visualize_365d_dashboard.py"
-        r = subprocess.run([sys.executable, str(viz)], capture_output=True, text=True)
+        (reports / f"{prefix}_backtest_result.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
+        (reports / f"{prefix}_equity.json").write_text(json.dumps(curve), encoding="utf-8")
+        r = subprocess.run(viz_args, capture_output=True, text=True)
         if r.returncode == 0:
             print(r.stdout.strip())
-            for extra in reports.glob("btc_365d_dashboard_v*.html"):
+            for extra in reports.glob(f"{prefix}_dashboard_v*.html"):
                 extra.unlink()
                 print(f"removed stale {extra.name}")
         else:
