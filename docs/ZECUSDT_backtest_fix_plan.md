@@ -40,6 +40,23 @@ python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT 
 
 **Критерий завершения:** исходный результат можно повторить на тех же данных и объяснить, какой код и конфиг его создали.
 
+***
+Лучший результат бэктеста:
+
+(.venv) PS C:\Python\Prosperous_Bot\futures_portfolio> python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT --since "2026-10-10 00:00" --until "2026-10-19 23:59"
+Offline backtest using local ZECUSDT_live.feather
+Window: since 2026-10-10 00:00:00+00:00 -> 2026-10-20 18:46:00+00:00 (15527 bars; --days ignored in since mode)
+--until 2026-10-19 23:59:00+00:00: frame trimmed to 14400 bars
+Refactored Cross-Margin Backtest for ZECUSDT:
+Profit: +136.30% | MaxDD: 16.73% | Cycles: 89
+Sortino: 0.0089 | Asset Change: -4.67% | SAFE Reserve: 0.00 USDT
+Remained Account Free Margin: 1000.00 USDT
+Skipped Expansions: 32 | Stops: 0 | Liqs: 0
+Trend Guard blocks: 1 | Velocity Guard blocks: 0
+Market Orders: 104/104 filled
+saved C:\Python\Prosperous_Bot\futures_portfolio\reports\zec_1d_dashboard.html (3.1 MB)
+fills: 128 | rebalances: 89 | period: 2026-10-09 05:13:00 -> 2026-10-19 05:12:00 UTC | generated in 0.3s
+
 ---
 
 **2. Зафиксировать бухгалтерское равенство для TPV**

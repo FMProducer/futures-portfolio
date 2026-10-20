@@ -35,16 +35,16 @@ class MarketOrderSlippageSimulator:
         self.slippage_pct = Decimal(str(slippage_pct))
         self.stats: Dict[str, int] = {"attempted": 0, "filled": 0}
 
+    def execution_price(self, side: str, mid_price: Decimal) -> Decimal:
+        dec_mid = Decimal(str(mid_price))
+        if side.upper() == "BUY":
+            return dec_mid * (Decimal('1') + self.slippage_pct)
+        return dec_mid * (Decimal('1') - self.slippage_pct)
+
     def simulate_market_execution(self, side: str, qty: Decimal, mid_price: Decimal) -> Tuple[Decimal, Decimal]:
         self.stats["attempted"] += 1
         dec_qty = abs(Decimal(str(qty)))
-        dec_mid = Decimal(str(mid_price))
-
-        if side.upper() == "BUY":
-            exec_price = dec_mid * (Decimal('1') + self.slippage_pct)
-        else:
-            exec_price = dec_mid * (Decimal('1') - self.slippage_pct)
-
+        exec_price = self.execution_price(side, mid_price)
         commission = dec_qty * exec_price * self.commission_pct
         self.stats["filled"] += 1
         return exec_price, commission
@@ -64,6 +64,18 @@ def quantize_qty(qty: Decimal, step_size: Decimal) -> Decimal:
 
 def validate_notional(qty: Decimal, price: Decimal, min_notional: Decimal) -> bool:
     return abs(qty * price) >= min_notional
+
+def action_side(key: str, is_reduction: bool) -> str:
+    if key == "BASE_LONG":
+        return "SELL" if is_reduction else "BUY"
+    if key == "BASE_SHORT":
+        return "BUY" if is_reduction else "SELL"
+    return "RELEASE" if is_reduction else "DESIGNATE"
+
+class AccountingMismatch(AssertionError):
+    def __init__(self, details: Dict[str, Any]):
+        self.details = details
+        super().__init__("TPV accounting mismatch: " + json.dumps(details, sort_keys=True))
 
 @dataclass
 class BacktestState:
@@ -96,23 +108,33 @@ class BacktestState:
     events: List[Dict[str, Any]] = field(default_factory=list)
     siphoning_log: List[Dict[str, Any]] = field(default_factory=list)
     fill_count: int = 0
+    internal_transfer_count: int = 0
     commission_paid: Decimal = Decimal('0')
     realized_total: Decimal = Decimal('0')
     funding_paid: Decimal = Decimal('0')
     slippage_paid: Decimal = Decimal('0')
+    liquidation_loss_total: Decimal = Decimal('0')
+    ledger_base: Optional[Decimal] = None
+    accounting_error: Optional[Dict[str, Any]] = None
 
     # Leverage values from config (added to fix hardcoded 5x in TPV calc)
     l_lev: Decimal = Decimal('5')
     s_lev: Decimal = Decimal('5')
 
+    def margin_long(self) -> Decimal:
+        return (self.pos_long * self.long_entry_price) / self.l_lev if self.pos_long > 0 else Decimal('0')
+
+    def margin_short(self) -> Decimal:
+        return (self.pos_short * self.short_entry_price) / self.s_lev if self.pos_short > 0 else Decimal('0')
+
+    def unrealized(self, price: Decimal) -> Decimal:
+        upnl_l = self.pos_long * (price - self.long_entry_price) if self.pos_long > 0 else Decimal('0')
+        upnl_s = self.pos_short * (self.short_entry_price - price) if self.pos_short > 0 else Decimal('0')
+        return upnl_l + upnl_s
+
     def get_tpv(self, price: Decimal) -> Decimal:
-        unrealized_pnl_long = self.pos_long * (price - self.long_entry_price) if self.pos_long > 0 else Decimal('0')
-        unrealized_pnl_short = self.pos_short * (self.short_entry_price - price) if self.pos_short > 0 else Decimal('0')
-        margin_long = (self.pos_long * self.long_entry_price) / self.l_lev if self.pos_long > 0 else Decimal('0')
-        margin_short = (self.pos_short * self.short_entry_price) / self.s_lev if self.pos_short > 0 else Decimal('0')
-        # VIRTUAL = чистый USDT-кэш (маржа), не пересчитывается по цене актива
-        virtual_equity = Decimal('0')  # virt_debt сокращается в TPV (см. live-паритет)
-        return self.val_cash + margin_long + unrealized_pnl_long + margin_short + unrealized_pnl_short + virtual_equity
+        # VIRTUAL is a separate cash bucket, so its value is added back and never revalued.
+        return self.val_cash + self.margin_long() + self.margin_short() + self.unrealized(price) + self.virt_debt
 
     def get_tpv_fast(self, price: float) -> float:
         pos_l = float(self.pos_long)
@@ -121,16 +143,63 @@ class BacktestState:
         l_entry = float(self.long_entry_price)
         s_entry = float(self.short_entry_price)
         cash = float(self.val_cash)
-        l_lev = float(self.l_lev)
-        s_lev = float(self.s_lev)
 
         upnl_l = pos_l * (p - l_entry) if pos_l > 0 else 0.0
         upnl_s = pos_s * (s_entry - p) if pos_s > 0 else 0.0
-        m_l = (pos_l * l_entry) / l_lev if pos_l > 0 else 0.0
-        m_s = (pos_s * s_entry) / s_lev if pos_s > 0 else 0.0
-        # VIRTUAL = чистый USDT-кэш (маржа), не пересчитывается по цене актива
-        v_eq = 0.0  # virt_debt сокращается в TPV (live-паритет)
-        return cash + m_l + upnl_l + m_s + upnl_s + v_eq
+        m_l = (pos_l * l_entry) / float(self.l_lev) if pos_l > 0 else 0.0
+        m_s = (pos_s * s_entry) / float(self.s_lev) if pos_s > 0 else 0.0
+        return cash + m_l + upnl_l + m_s + upnl_s + float(self.virt_debt)
+
+    def accounting_equity(self, price: Decimal) -> Decimal:
+        base = self.initial_capital if self.ledger_base is None else self.ledger_base
+        return (base + self.realized_total + self.unrealized(price)
+                - self.commission_paid - self.funding_paid - self.liquidation_loss_total)
+
+    def accounting_residual(self, price: Decimal) -> Decimal:
+        return (self.get_tpv(price) + self.siphoning_reserve) - self.accounting_equity(price)
+
+    def check_accounting(self, price: Decimal, bar: int, context: str = "") -> Decimal:
+        expected = self.accounting_equity(price)
+        actual = self.get_tpv(price) + self.siphoning_reserve
+        residual = actual - expected
+        tolerance = max(Decimal('1e-6'), abs(expected) * Decimal('1e-9'))
+        if abs(residual) > tolerance:
+            details = {
+                "bar": int(bar),
+                "context": context,
+                "price": float(price),
+                "positions_before_after": {"long": float(self.pos_long), "short": float(self.pos_short)},
+                "entry_prices": {"long": float(self.long_entry_price), "short": float(self.short_entry_price)},
+                "cash": float(self.val_cash),
+                "virtual": float(self.virt_debt),
+                "margin": {"long": float(self.margin_long()), "short": float(self.margin_short())},
+                "realized": float(self.realized_total),
+                "unrealized": float(self.unrealized(price)),
+                "commissions": float(self.commission_paid),
+                "funding": float(self.funding_paid),
+                "liquidation_loss": float(self.liquidation_loss_total),
+                "reserve": float(self.siphoning_reserve),
+                "expected_tpv": float(expected),
+                "actual_tpv": float(actual),
+                "residual": float(residual),
+                "tolerance": float(tolerance),
+            }
+            self.accounting_error = details
+            self.log_event(bar, "accounting_mismatch", float(actual), json.dumps(details, sort_keys=True))
+            raise AccountingMismatch(details)
+        return residual
+
+    def designate_virtual(self, amount: Decimal) -> Decimal:
+        amount = min(abs(Decimal(str(amount))), max(Decimal('0'), self.val_cash))
+        self.val_cash -= amount
+        self.virt_debt += amount
+        return amount
+
+    def release_virtual(self, amount: Decimal) -> Decimal:
+        amount = min(abs(Decimal(str(amount))), self.virt_debt)
+        self.virt_debt -= amount
+        self.val_cash += amount
+        return amount
 
     # cap per-run fill log so a runaway run cannot grow the JSON unboundedly
     MAX_FILLS = 200_000
@@ -140,6 +209,8 @@ class BacktestState:
                   mid_price: Optional[Decimal] = None, leverage: Optional[Decimal] = None,
                   trigger: str = "rebalance", cycle_id: Optional[int] = None) -> None:
         self.fill_count += 1
+        if leg == "VIRTUAL":
+            self.internal_transfer_count += 1
         self.commission_paid += Decimal(str(commission))
         self.realized_total += Decimal(str(realized_pnl))
         if mid_price is not None:
@@ -263,41 +334,69 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         bars_per_day = 1440
         max_bars = int(days * bars_per_day)
         head_dropped = 0
-        if since_utc is not None:
-            # feather has no time axis: data ends at the download time (mtime), 1 bar per minute.
-            # Trim the window to start at since_utc; --days then only further limits the tail.
-            end_ts = pd.Timestamp.fromtimestamp(os.path.getmtime(file_path), tz="UTC").floor("min")
-            since_ts = pd.Timestamp(since_utc, tz="UTC").floor("min")
-            if since_ts > end_ts:
-                raise ValueError(f"--since {since_utc} is after the end of the local data ({end_ts})")
-            min_bars_needed = int((end_ts - since_ts).total_seconds() // 60)
-            # --since wins over --days: run the full [since, end] window so the backtest
-            # actually starts at 30.03.2026, not at "the last N days"
-            keep = min(len(df), min_bars_needed + 1)
-            if keep < len(df):
-                head_dropped = len(df) - keep
-                df = df.iloc[-keep:]
-            logger.info(f"Window: since {since_ts} -> {end_ts} ({len(df)} bars; --days ignored in since mode)")
-        elif len(df) > max_bars:
-            head_dropped = len(df) - max_bars
-            df = df.iloc[-max_bars:]
+        if time_values is not None and len(time_values) >= len(df):
+            # Prefer the real feather time axis over mtime so --since/--until replay the same bars.
+            start_idx = 0
+            end_idx = len(df)
+            if since_utc is not None:
+                since_ts = pd.Timestamp(since_utc, tz="UTC").floor("min")
+                start_idx = int(np.searchsorted(time_values, int(since_ts.timestamp() * 1000), side="left"))
+                if start_idx >= len(df):
+                    data_end = pd.Timestamp(int(time_values[-1]), unit="ms", tz="UTC")
+                    raise ValueError(f"--since {since_utc} is after the end of the local data ({data_end})")
+            elif len(df) > max_bars:
+                start_idx = len(df) - max_bars
 
-        if until_utc is not None:
-            # hard stop: trim everything after the until boundary (UTC)
-            full_len = FULL_FILE_LEN
-            end_ts = pd.Timestamp.fromtimestamp(os.path.getmtime(file_path), tz="UTC").floor("min")
-            until_ts = pd.Timestamp(until_utc, tz="UTC").floor("min")
-            if until_ts > end_ts:
-                logger.warning(f"--until {until_utc} is after the end of the local data ({end_ts}); ignoring")
-            else:
-                # full-file index of the last bar inside [.., until_ts]:
-                # file bar i starts at end_ts - (full_len - 1 - i) minutes
-                idx_last = full_len - 1 - int((end_ts - until_ts).total_seconds() // 60)
-                # df may already be head-trimmed by --since: full index of df row 0
-                keep_upto = max(0, min(len(df), idx_last + 1 - head_dropped))
-                if keep_upto < len(df):
-                    df = df.iloc[:keep_upto]
-                    logger.info(f"--until {until_ts}: frame trimmed to {len(df)} bars")
+            if until_utc is not None:
+                until_ts = pd.Timestamp(until_utc, tz="UTC").floor("min")
+                end_idx = int(np.searchsorted(time_values, int(until_ts.timestamp() * 1000), side="right"))
+                if end_idx <= start_idx:
+                    raise ValueError(f"--until {until_utc} leaves an empty window")
+                if since_utc is None:
+                    # --days limits the tail that ends at --until
+                    start_idx = max(start_idx, end_idx - max_bars)
+
+            head_dropped = start_idx
+            window_len = end_idx - start_idx
+            logger.info(
+                f"Window: {pd.Timestamp(int(time_values[start_idx]), unit='ms', tz='UTC')} -> "
+                f"{pd.Timestamp(int(time_values[end_idx - 1]), unit='ms', tz='UTC')} ({window_len} bars)"
+            )
+            if start_idx > 0 or end_idx < len(df):
+                df = df.iloc[start_idx:end_idx]
+        else:
+            if since_utc is not None:
+                # no time axis: data ends at the download time (mtime), 1 bar per minute.
+                end_ts = pd.Timestamp.fromtimestamp(os.path.getmtime(file_path), tz="UTC").floor("min")
+                since_ts = pd.Timestamp(since_utc, tz="UTC").floor("min")
+                if since_ts > end_ts:
+                    raise ValueError(f"--since {since_utc} is after the end of the local data ({end_ts})")
+                min_bars_needed = int((end_ts - since_ts).total_seconds() // 60)
+                keep = min(len(df), min_bars_needed + 1)
+                if keep < len(df):
+                    head_dropped = len(df) - keep
+                    df = df.iloc[-keep:]
+                logger.info(f"Window: since {since_ts} -> {end_ts} ({len(df)} bars; --days ignored in since mode)")
+            elif len(df) > max_bars:
+                head_dropped = len(df) - max_bars
+                df = df.iloc[-max_bars:]
+
+            if until_utc is not None:
+                # hard stop: trim everything after the until boundary (UTC)
+                full_len = FULL_FILE_LEN
+                end_ts = pd.Timestamp.fromtimestamp(os.path.getmtime(file_path), tz="UTC").floor("min")
+                until_ts = pd.Timestamp(until_utc, tz="UTC").floor("min")
+                if until_ts > end_ts:
+                    logger.warning(f"--until {until_utc} is after the end of the local data ({end_ts}); ignoring")
+                else:
+                    # full-file index of the last bar inside [.., until_ts]:
+                    # file bar i starts at end_ts - (full_len - 1 - i) minutes
+                    idx_last = full_len - 1 - int((end_ts - until_ts).total_seconds() // 60)
+                    # df may already be head-trimmed by --since: full index of df row 0
+                    keep_upto = max(0, min(len(df), idx_last + 1 - head_dropped))
+                    if keep_upto < len(df):
+                        df = df.iloc[:keep_upto]
+                        logger.info(f"--until {until_ts}: frame trimmed to {len(df)} bars")
 
         time_window = (
             time_values[head_dropped:head_dropped + len(df)]
@@ -358,14 +457,6 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         step_sizes = {base_ticker: 0.001}
 
         sim = MarketOrderSlippageSimulator(commission_pct=commission, slippage_pct=slippage)
-        
-        # Инициализация состояния с учетом внешней кросс-маржи
-        state = BacktestState(
-            initial_capital=Decimal(str(initial_capital)), 
-            val_cash=Decimal(str(initial_capital)),
-            account_free_margin=Decimal(str(paper_account_free_margin)),
-            base_ticker=base_ticker
-        )
 
         daily_funding_rate = Decimal('0.0002')
         bars_per_day = Decimal('1440')
@@ -373,12 +464,26 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         l_lev = Decimal(str(targets["BASE_LONG"]["leverage"]))
         s_lev = Decimal(str(targets["BASE_SHORT"]["leverage"]))
 
+        # Инициализация состояния с учетом внешней кросс-маржи
+        state = BacktestState(
+            initial_capital=Decimal(str(initial_capital)),
+            val_cash=Decimal(str(initial_capital)),
+            account_free_margin=Decimal(str(paper_account_free_margin)),
+            base_ticker=base_ticker,
+            l_lev=l_lev,
+            s_lev=s_lev,
+            ledger_base=Decimal(str(initial_capital)),
+        )
+
         start_price = Decimal(str(close_prices[0]))
         state.last_rebalance_price = start_price
         target_v_share = Decimal(str(targets["VIRTUAL"]["share"]))
         virt_cost = target_v_share * state.initial_capital
-        state.virt_qty = Decimal('0')  # VIRTUAL = чистый USDT-кэш, qty больше не нужен
+        # VIRTUAL is a separate cash bucket: move it out of free cash exactly once.
+        state.val_cash -= virt_cost
+        state.virt_qty = Decimal('0')
         state.virt_debt = virt_cost
+        state.check_accounting(start_price, 0, "init")
 
         trend_guard_cfg = config.get("trend_guard", {})
         guards_cfg = portfolio_cfg.get("safety_guards", {})
@@ -419,15 +524,13 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                 rebased=float(state.dormant_capital),
                                 reserve_reset=float(state.siphoning_reserve))
                 state.initial_capital = state.dormant_capital
-                state.val_cash = state.dormant_capital
                 state.pos_long = Decimal('0')
                 state.pos_short = Decimal('0')
                 state.virt_qty = Decimal('0')
-                state.virt_debt = Decimal('0')
                 state.long_entry_price = Decimal('0')
                 state.short_entry_price = Decimal('0')
                 state.siphoning_reserve = Decimal('0')
-                state.tpv_ath = max(float(state.dormant_capital), initial_capital_f)
+                state.tpv_ath = max(float(state.dormant_capital), float(state.initial_capital))
                 state.trailing_stop_violation_start = 0.0
                 state.trailing_stop_triggered = False
                 state.last_rebalance_price = mid_price
@@ -435,15 +538,20 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 # Re-init virtual leg
                 target_v_share = Decimal(str(targets["VIRTUAL"]["share"]))
                 virt_cost = target_v_share * state.initial_capital
-                state.virt_qty = Decimal('0')  # VIRTUAL = чистый USDT-кэш, qty больше не нужен
+                state.virt_qty = Decimal('0')
                 state.virt_debt = virt_cost
+                state.val_cash = state.initial_capital - virt_cost
+                state.ledger_base = (
+                    state.initial_capital - state.realized_total + state.commission_paid
+                    + state.funding_paid + state.liquidation_loss_total
+                )
                 state.cooldown_until_bar = 0
+                state.check_accounting(mid_price, i, "cooldown_rebase")
 
             # --- 2. Portfolio Calculation ---
-            margin_long_current = (state.pos_long * state.long_entry_price) / l_lev if state.pos_long > 0 else Decimal('0')
-            margin_short_current = (state.pos_short * state.short_entry_price) / s_lev if state.pos_short > 0 else Decimal('0')
-            wallet_balance = state.val_cash + margin_long_current + margin_short_current
-            simulated_real_equity = wallet_balance - state.virt_debt
+            wallet_balance = state.val_cash + state.margin_long() + state.margin_short()
+            # VIRTUAL is already excluded from val_cash, so real_equity is the net futures wallet.
+            simulated_real_equity = wallet_balance
 
             calculator = PortfolioCalculator(
                 positions={f"{base_ticker}_LONG": float(state.pos_long), f"{base_ticker}_SHORT": float(state.pos_short)},
@@ -518,117 +626,208 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
             if actions:
                 fills_before = len(state.fills)
+                tpv_before = state.get_tpv(mid_price)
                 reductions = [a for a in actions if a.get("is_reduction", False)]
                 expansions = [a for a in actions if not a.get("is_reduction", False)]
+                execution_records: List[Dict[str, Any]] = []
+                step_size = Decimal(str(step_sizes.get(base_ticker, 0.001)))
+
+                def record(act: Dict[str, Any], status: str, executed_usdt: Decimal = Decimal('0'),
+                           reason: str = "") -> None:
+                    requested = abs(Decimal(str(act["diff_usdt"])))
+                    execution_records.append({
+                        "key": act["key"],
+                        "side": action_side(act["key"], bool(act.get("is_reduction", False))),
+                        "requested_usdt": float(requested),
+                        "executed_usdt": float(executed_usdt),
+                        "status": status,
+                        "reason": reason,
+                        "leverage": float(act.get("leverage", 1)),
+                        "is_reduction": bool(act.get("is_reduction", False)),
+                    })
 
                 for act in reductions:
                     key = act["key"]
-                    lev = Decimal(str(act["leverage"]))
-                    raw_qty = abs(Decimal(str(act["diff_usdt"]))) / mid_price
-                    qty = quantize_qty(raw_qty, Decimal(str(step_sizes.get(base_ticker, 0.001))))
+                    requested_usdt = abs(Decimal(str(act["diff_usdt"])))
+                    lev = Decimal(str(act.get("leverage", 1)))
 
-                    if qty <= Decimal('0') or not validate_notional(qty, mid_price, min_notional_usdt):
+                    if key == "VIRTUAL":
+                        released = state.release_virtual(requested_usdt)
+                        if released <= Decimal('0'):
+                            record(act, "skipped", reason="no_virtual_balance")
+                            state.log_event(i, "skipped_action", float(state.get_tpv_fast(float(mid_price))),
+                                            "no VIRTUAL balance to release", key=key,
+                                            requested_usdt=float(requested_usdt))
+                            continue
+                        state.log_fill(i, "RELEASE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'),
+                                       Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance",
+                                       cycle_id=state.cycles + 1)
+                        record(act, "filled" if released >= requested_usdt else "partial", released,
+                               "capped_by_virtual_balance" if released < requested_usdt else "")
+                        state.check_accounting(mid_price, i, "release_virtual")
+                        continue
+
+                    raw_qty = requested_usdt / mid_price
+                    qty = quantize_qty(raw_qty, step_size)
+                    capped_by = ""
+                    if key == "BASE_LONG" and qty > state.pos_long:
+                        qty = state.pos_long
+                        capped_by = "capped_by_position"
+                    elif key == "BASE_SHORT" and qty > state.pos_short:
+                        qty = state.pos_short
+                        capped_by = "capped_by_position"
+
+                    if qty <= Decimal('0'):
+                        record(act, "skipped", reason=capped_by or "zero_qty_after_step")
+                        state.log_event(i, "skipped_action", float(state.get_tpv_fast(float(mid_price))),
+                                        capped_by or "zero qty after step rounding", key=key,
+                                        requested_usdt=float(requested_usdt))
+                        continue
+                    if not validate_notional(qty, mid_price, min_notional_usdt):
+                        record(act, "skipped", reason="below_min_notional")
+                        state.log_event(i, "skipped_action", float(state.get_tpv_fast(float(mid_price))),
+                                        "below min notional", key=key,
+                                        requested_usdt=float(requested_usdt))
                         continue
 
                     if key == "BASE_LONG":
                         exec_price, commission = sim.simulate_market_execution("SELL", qty, mid_price)
                         realized_pnl = qty * (exec_price - state.long_entry_price)
-                        released_margin = (qty * state.long_entry_price) / lev
+                        released_margin = (qty * state.long_entry_price) / state.l_lev
                         state.pos_long -= qty
                         state.val_cash += released_margin + realized_pnl - commission
                         if state.pos_long == Decimal('0'):
                             state.long_entry_price = Decimal('0')
-                        state.log_fill(i, "SELL", "BASE_LONG", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))),
-                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
-                    elif key == "BASE_SHORT":
+                        state.log_fill(i, "SELL", "BASE_LONG", qty, exec_price, commission, realized_pnl,
+                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                       leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
+                    else:
                         exec_price, commission = sim.simulate_market_execution("BUY", qty, mid_price)
                         realized_pnl = qty * (state.short_entry_price - exec_price)
-                        released_margin = (qty * state.short_entry_price) / lev
+                        released_margin = (qty * state.short_entry_price) / state.s_lev
                         state.pos_short -= qty
                         state.val_cash += released_margin + realized_pnl - commission
                         if state.pos_short == Decimal('0'):
                             state.short_entry_price = Decimal('0')
-                        state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl, float(state.get_tpv_fast(float(mid_price))),
-                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
-                    elif key == "VIRTUAL":
-                        # VIRTUAL = чистый USDT-кэш: «продажа» = release cash label (value-neutral)
-                        release_usdt = abs(Decimal(str(act["diff_usdt"])))
-                        if state.virt_debt >= release_usdt:
-                            state.virt_debt -= release_usdt
-                        else:
-                            state.virt_debt = Decimal('0')  # dust
-                        state.val_cash += release_usdt  # высвобождение кэша
-                        state.log_fill(i, "RELEASE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
-                                       mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance", cycle_id=state.cycles + 1)
+                        state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl,
+                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                       leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
+                    record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
+                    state.check_accounting(mid_price, i, f"reduce_{key}")
 
                 expansions.sort(key=lambda x: 0 if x["key"] == "VIRTUAL" else 1)
-                remaining_funds = Decimal(str(calc_res.get("val_cash", calc_res.get("available_funds", 0.0))))
+                remaining_funds = max(Decimal('0'), state.val_cash)
 
                 for act in expansions:
                     key = act["key"]
-                    lev = Decimal(str(act["leverage"]))
-                    needed_usdt = abs(Decimal(str(act["diff_usdt"])))
+                    requested_usdt = abs(Decimal(str(act["diff_usdt"])))
+                    lev = Decimal(str(act.get("leverage", 1)))
 
                     if remaining_funds <= Decimal('0'):
                         state.skipped_expansions_counter += 1
+                        record(act, "skipped", reason="no_remaining_funds")
                         state.log_event(i, "skipped_expansion", float(state.get_tpv_fast(float(mid_price))),
-                                        "no remaining funds", key=key)
+                                        "no remaining funds", key=key,
+                                        requested_usdt=float(requested_usdt))
                         continue
 
-                    max_usdt = remaining_funds * lev
-                    if needed_usdt > max_usdt:
-                        needed_usdt = max_usdt
-
-                    raw_qty = needed_usdt / mid_price
-                    qty = quantize_qty(raw_qty, Decimal(str(step_sizes.get(base_ticker, 0.001))))
-
-                    if qty <= Decimal('0') or not validate_notional(qty, mid_price, min_notional_usdt):
+                    if key == "VIRTUAL":
+                        designated = state.designate_virtual(requested_usdt)
+                        if designated <= Decimal('0'):
+                            state.skipped_expansions_counter += 1
+                            record(act, "skipped", reason="no_free_cash")
+                            state.log_event(i, "skipped_expansion", float(state.get_tpv_fast(float(mid_price))),
+                                            "no free cash", key=key,
+                                            requested_usdt=float(requested_usdt))
+                            continue
+                        state.log_fill(i, "DESIGNATE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'),
+                                       Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
+                                       mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance",
+                                       cycle_id=state.cycles + 1)
+                        remaining_funds -= designated
+                        record(act, "filled" if designated >= requested_usdt else "partial", designated,
+                               "capped_by_free_cash" if designated < requested_usdt else "")
+                        state.check_accounting(mid_price, i, "designate_virtual")
                         continue
 
-                    actual_equity_spent = needed_usdt / lev
+                    side = action_side(key, False)
+                    position_lev = state.l_lev if key == "BASE_LONG" else state.s_lev
+                    exec_price = sim.execution_price(side, mid_price)
+                    unit_cost = exec_price / position_lev + exec_price * sim.commission_pct
+                    affordable_qty = remaining_funds / unit_cost if unit_cost > 0 else Decimal('0')
+                    raw_qty = requested_usdt / mid_price
+                    qty = quantize_qty(min(raw_qty, affordable_qty), step_size)
+                    capped_by = "capped_by_free_cash" if affordable_qty < raw_qty else ""
+
+                    if qty <= Decimal('0'):
+                        if capped_by:
+                            state.skipped_expansions_counter += 1
+                        record(act, "skipped", reason=capped_by or "zero_qty_after_step")
+                        state.log_event(i, "skipped_expansion" if capped_by else "skipped_action",
+                                        float(state.get_tpv_fast(float(mid_price))),
+                                        capped_by or "zero qty after step rounding", key=key,
+                                        requested_usdt=float(requested_usdt))
+                        continue
+                    if not validate_notional(qty, mid_price, min_notional_usdt):
+                        record(act, "skipped", reason="below_min_notional")
+                        state.log_event(i, "skipped_action", float(state.get_tpv_fast(float(mid_price))),
+                                        "below min notional", key=key,
+                                        requested_usdt=float(requested_usdt))
+                        continue
+
+                    exec_price, commission = sim.simulate_market_execution(side, qty, mid_price)
+                    margin_required = (qty * exec_price) / position_lev
+                    required_cash = margin_required + commission
+                    if required_cash > remaining_funds:
+                        state.skipped_expansions_counter += 1
+                        record(act, "skipped", reason="cash_check")
+                        state.log_event(i, "skipped_expansion", float(state.get_tpv_fast(float(mid_price))),
+                                        "cash check failed", key=key,
+                                        requested_usdt=float(requested_usdt),
+                                        required=float(required_cash), available=float(remaining_funds))
+                        continue
 
                     if key == "BASE_LONG":
-                        exec_price, commission = sim.simulate_market_execution("BUY", qty, mid_price)
-                        margin_required = (qty * exec_price) / lev
-                        state.val_cash -= margin_required + commission
                         state.long_entry_price = ((state.pos_long * state.long_entry_price) + (qty * exec_price)) / (state.pos_long + qty)
                         state.pos_long += qty
-                        state.log_fill(i, "BUY", "BASE_LONG", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
-                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
-                    elif key == "BASE_SHORT":
-                        exec_price, commission = sim.simulate_market_execution("SELL", qty, mid_price)
-                        margin_required = (qty * exec_price) / lev
-                        state.val_cash -= margin_required + commission
+                    else:
                         state.short_entry_price = ((state.pos_short * state.short_entry_price) + (qty * exec_price)) / (state.pos_short + qty)
                         state.pos_short += qty
-                        state.log_fill(i, "SELL", "BASE_SHORT", qty, exec_price, commission, Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
-                                       mid_price=mid_price, leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
-                    elif key == "VIRTUAL":
-                        # VIRTUAL = чистый USDT-кэш: «покупка» = designate cash label (value-neutral)
-                        designate_usdt = abs(Decimal(str(act["diff_usdt"])))
-                        state.virt_debt += designate_usdt
-                        state.val_cash -= designate_usdt  # кэш уходит в «метку V»
-                        state.log_fill(i, "DESIGNATE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'), Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
-                                       mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance", cycle_id=state.cycles + 1)
-
-                    remaining_funds -= actual_equity_spent
+                    state.val_cash -= required_cash
+                    remaining_funds -= required_cash
+                    state.log_fill(i, side, key, qty, exec_price, commission, Decimal('0'),
+                                   float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                   leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
+                    record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
+                    state.check_accounting(mid_price, i, f"expand_{key}")
 
                 state.cycles += 1
                 state.last_rebalance_price = mid_price
                 if len(state.fills) > fills_before:
+                    exchange_records = [r for r in execution_records if r["key"] != "VIRTUAL"]
                     state.rebalance_log.append({
-                        "step": i, "cycle_id": state.cycles, "price": float(mid_price), "tpv": float(state.get_tpv(mid_price)),
-                        "shares": {"L": calc_res["share_long_pct"], "S": calc_res["share_short_pct"], "V": calc_res["share_virt_pct"], "C": calc_res["share_cash_pct"]},
+                        "step": i, "cycle_id": state.cycles, "price": float(mid_price),
+                        "tpv_before": float(tpv_before), "tpv": float(state.get_tpv(mid_price)),
+                        "tpv_basis": "after", "shares_basis": "before",
+                        "shares": {"L": calc_res["share_long_pct"], "S": calc_res["share_short_pct"],
+                                   "V": calc_res["share_virt_pct"], "C": calc_res["share_cash_pct"]},
                         "targets": {k: float(v.get("share", 0.0)) for k, v in targets.items()},
                         "thresholds": {"surplus": float(threshold_surplus), "deficit": float(threshold_deficit)},
-                        "actions": [f"{a['key']} {'SELL' if a['is_reduction'] else 'BUY'}" for a in actions],
-                        "actions_detail": [
-                            {"key": a["key"], "side": "SELL" if a["is_reduction"] else "BUY",
-                             "diff_usdt": float(a["diff_usdt"]), "leverage": float(a["leverage"]),
-                             "is_reduction": bool(a["is_reduction"])}
-                            for a in actions
+                        "actions": [
+                            f'{r["key"]} {r["side"]} req={r["requested_usdt"]:.2f} '
+                            f'exec={r["executed_usdt"]:.2f} {r["status"]}'
+                            + (f' ({r["reason"]})' if r["reason"] else "")
+                            for r in execution_records
                         ],
-                        "volume_usdt": float(sum(abs(Decimal(str(a["diff_usdt"]))) for a in actions)),
+                        "actions_detail": execution_records,
+                        "requested_volume_usdt": float(sum(
+                            (Decimal(str(r["requested_usdt"])) for r in exchange_records), Decimal('0'))),
+                        "volume_usdt": float(sum(
+                            (Decimal(str(r["executed_usdt"])) for r in exchange_records), Decimal('0'))),
+                        "internal_transfer_usdt": float(sum(
+                            (Decimal(str(r["executed_usdt"])) for r in execution_records if r["key"] == "VIRTUAL"),
+                            Decimal('0'))),
                     })
 
             long_notional = state.pos_long * mid_price
@@ -690,6 +889,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                        leverage=s_lev, trigger="liquidation", cycle_id=state.cycles)
 
                     state.liquidations_counter += 1
+                    state.check_accounting(mid_price, i, "predictive_liquidation")
                     state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = i + cooldown_bars_duration
                     state.log_event(i, "liquidation", float(state.dormant_capital),
@@ -721,13 +921,19 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.account_free_margin += futures_margin_balance
                         if state.account_free_margin < 0:
                             state.account_free_margin = Decimal('0')
-                    
+
+                    # The whole futures account (including the VIRTUAL cash bucket) is wiped.
+                    wiped_tpv = state.get_tpv(mid_price)
+                    state.realized_total += upnl_l + upnl_s
                     state.val_cash = Decimal('0')
+                    state.virt_debt = Decimal('0')
                     state.pos_long = Decimal('0')
                     state.long_entry_price = Decimal('0')
                     state.pos_short = Decimal('0')
                     state.short_entry_price = Decimal('0')
+                    state.liquidation_loss_total += wiped_tpv
                     state.liquidations_counter += 1
+                    state.check_accounting(mid_price, i, "hard_liquidation")
                     state.dormant_capital = Decimal(str(state.account_free_margin + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = i + cooldown_bars_duration
                     state.log_event(i, "liquidation", float(state.dormant_capital), "HARD CROSS LIQUIDATION")
@@ -788,7 +994,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_fill(i, "BUY", "BASE_SHORT", qty_close, exec_p, comm, realized_pnl,
                                        float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
                                        leverage=s_lev, trigger="max_dd_stop", cycle_id=state.cycles)
-                    state.dormant_capital = Decimal(str(total_tpv_with_reserve))
+                    state.check_accounting(mid_price, i, "max_dd_stop")
+                    state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = len(df) + 1  # больше не стартуем
                     state.log_event(i, "max_dd_stop", float(state.dormant_capital),
                                     f"max drawdown limit {max_drawdown_limit_pct}%")
@@ -830,13 +1037,11 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             state.history.append(float(state.dormant_capital))
                             continue
 
-            # --- 5. Проверка математического инварианта ---
-            # VIRTUAL = чистый USDT-кэш: virt_debt сокращается в TPV, virtual_equity = 0
-            virtual_equity = Decimal('0')
-            current_tpv = state.val_cash + m_long + upnl_l + m_short + upnl_s + virtual_equity
-            assert current_tpv > Decimal('0'), "Критический дефолт портфеля: TPV <= 0"
-
-            state.history.append(float(total_tpv_with_reserve))
+            # --- 5. Bar-boundary accounting invariant ---
+            current_tpv = state.get_tpv(mid_price)
+            assert current_tpv > Decimal('0'), "Critical portfolio default: TPV <= 0"
+            state.check_accounting(mid_price, i, "bar_close")
+            state.history.append(float(current_tpv + state.siphoning_reserve))
 
         equity_curve: npt.NDArray[np.float64] = np.array(state.history)
         profit_pct: float = (equity_curve[-1] / (initial_capital + 1e-9) - 1) * 100
@@ -877,6 +1082,11 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             final_unrealized += state.pos_long * (final_price - state.long_entry_price)
         if state.pos_short > 0:
             final_unrealized += state.pos_short * (state.short_entry_price - final_price)
+        final_tpv = state.get_tpv(final_price)
+        final_tpv_with_reserve = final_tpv + state.siphoning_reserve
+        expected_tpv = state.accounting_equity(final_price)
+        residual = final_tpv_with_reserve - expected_tpv
+        tolerance = max(Decimal('1e-6'), abs(expected_tpv) * Decimal('1e-9'))
 
         return {
             "profit_pct": float(profit_pct),
@@ -885,6 +1095,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "asset_chg_pct": float(asset_chg_pct),
             "siphoning_reserve": float(state.siphoning_reserve),
             "skipped_expansions": int(state.skipped_expansions_counter),
+            "partial_expansions": sum(
+                1 for rb in state.rebalance_log for a in rb.get("actions_detail", [])
+                if a.get("status") == "partial" and not a.get("is_reduction")
+            ),
+            "skipped_actions": sum(
+                1 for rb in state.rebalance_log for a in rb.get("actions_detail", [])
+                if a.get("status") == "skipped"
+            ),
             "liquidations": int(state.liquidations_counter),
             "trailing_stops": int(state.stops_counter),
             "trailing_stop_triggered": state.stops_counter > 0,
@@ -894,16 +1112,29 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "equity_curve": equity_curve.tolist(),
             "fills": state.fills,
             "fill_count": state.fill_count,
+            "exchange_fill_count": int(state.fill_count - state.internal_transfer_count),
+            "internal_transfer_count": int(state.internal_transfer_count),
+            "accounting": {
+                "expected_tpv": float(expected_tpv),
+                "actual_tpv": float(final_tpv_with_reserve),
+                "residual": float(residual),
+                "tolerance": float(tolerance),
+                "ok": abs(residual) <= tolerance,
+            },
+            "accounting_ok": bool(abs(residual) <= tolerance),
+            "accounting_residual": float(residual),
             "events": state.events,
             "rebalances": state.rebalance_log,
             "siphoning_log": state.siphoning_log,
             "initial_capital": float(initial_capital),
-            "final_equity": float(equity_curve[-1]) if len(equity_curve) else 0.0,
+            "final_equity": float(final_tpv_with_reserve),
+            "final_tpv": float(final_tpv_with_reserve),
             "final_unrealized_pnl": float(final_unrealized),
             "realized_pnl_total": float(state.realized_total),
             "commission_paid": float(state.commission_paid),
             "funding_paid": float(state.funding_paid),
             "slippage_paid": float(state.slippage_paid),
+            "liquidation_loss_total": float(state.liquidation_loss_total),
             "open_positions": {"long": float(state.pos_long), "short": float(state.pos_short)},
             "ticker": base_ticker,
             "settings": {
@@ -977,7 +1208,9 @@ if __name__ == "__main__":
         except Exception:
             _ticker = (args.ticker or "BTCUSDT").upper()
         if _ticker == "ZECUSDT":
-            prefix = "zec_12m" if abs(args.days - 365.0) < 1e-9 else f"zec_{int(args.days)}d"
+            window_bars = int(res.get("data_window", {}).get("bars", int(args.days * 1440)))
+            window_days = window_bars / 1440.0
+            prefix = "zec_12m" if abs(window_days - 365.0) < 0.5 else f"zec_{int(round(window_days))}d"
             viz = pathlib.Path(root) / "scripts" / "visualize_zec_dashboard.py"
             viz_args = [sys.executable, str(viz), prefix]
         else:

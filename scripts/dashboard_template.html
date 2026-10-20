@@ -244,7 +244,7 @@ dl.meta{display:grid;grid-template-columns:minmax(110px,.6fr) 1.4fr;gap:5px 10px
     <div class="section-subhead"><h3>Rebalance table</h3><span class="badge" id="rebalance-count-badge"></span></div>
     <div class="table-wrap">
       <table aria-label="Rebalances">
-        <thead><tr><th>#</th><th>UTC</th><th>Local</th><th class="num">Price</th><th class="num">TPV</th><th class="num">Volume</th><th class="num">L%</th><th class="num">S%</th><th class="num">V%</th><th class="num">C%</th><th class="num">Tgt L</th><th class="num">Tgt S</th><th class="num">Tgt V</th><th>Threshold</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>UTC</th><th>Local</th><th class="num">Price</th><th class="num">TPV</th><th class="num">Volume req → exec</th><th class="num">L% before</th><th class="num">S% before</th><th class="num">V% before</th><th class="num">C% before</th><th class="num">Tgt L</th><th class="num">Tgt S</th><th class="num">Tgt V</th><th>Threshold</th><th>Actions</th></tr></thead>
         <tbody id="rebalance-body"></tbody>
       </table>
     </div>
@@ -559,7 +559,8 @@ dl.meta{display:grid;grid-template-columns:minmax(110px,.6fr) 1.4fr;gap:5px 10px
     $('#f-ticker').value = meta.ticker || '';
     $('#overview-badges').innerHTML =
       '<span class="badge accent">' + esc(meta.ticker || '—') + '</span>' +
-      '<span class="badge">' + fmtInt(D.counts.fills) + ' fills</span>' +
+      '<span class="badge">' + fmtInt(D.counts.exchange_fills || D.counts.fills) + ' exchange fills</span>' +
+      '<span class="badge">' + fmtInt(D.counts.internal_transfers || 0) + ' internal transfers</span>' +
       '<span class="badge">' + fmtInt(D.counts.rebalances) + ' rebalances</span>' +
       '<span class="badge">' + fmtInt(D.counts.trailing_stops) + ' stops</span>' +
       '<span class="badge ' + (D.attribution.ok ? 'ok' : 'bad') + '">attribution ' + (D.attribution.ok ? 'balanced' : 'mismatch') + '</span>';
@@ -919,6 +920,12 @@ dl.meta{display:grid;grid-template-columns:minmax(110px,.6fr) 1.4fr;gap:5px 10px
     var vals = visibleEquityValues();
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
     var p1 = percentile(vals, 0.01), p99 = percentile(vals, 0.99);
+    if (isNum(eh.initial)) {
+      lo = Math.min(lo, eh.initial);
+      hi = Math.max(hi, eh.initial);
+      p1 = Math.min(p1, eh.initial);
+      p99 = Math.max(p99, eh.initial);
+    }
     var yrange = undefined;
     var ytype = 'linear';
     var clipped = false;
@@ -1150,10 +1157,10 @@ dl.meta{display:grid;grid-template-columns:minmax(110px,.6fr) 1.4fr;gap:5px 10px
       var tgt = r.targets || {};
       return '<tr><td>' + fmtInt(r.cycle_id) + '</td><td class="mono">' + esc(r.utc) + '</td><td class="mono">' +
         esc(localString(r.time)) + '</td><td class="num">' + fmtPrice(r.price) + '</td><td class="num">' +
-        fmtMoney(r.tpv) + '</td><td class="num">' + fmtMoney(r.volume_usdt) + '</td><td class="num">' +
+        fmtMoney(r.tpv) + '</td><td class="num">' + fmtMoney(r.requested_volume_usdt) + ' → ' + fmtMoney(r.volume_usdt) + '</td><td class="num">' +
         fmtPlainPct(r.long_pct) + '</td><td class="num">' + fmtPlainPct(r.short_pct) + '</td><td class="num">' +
-        fmtPlainPct(r.virtual_pct) + '</td><td class="num">' + fmtPlainPct(r.target_long_pct) + '</td><td class="num">' +
-        fmtPlainPct(r.target_short_pct) + '</td><td class="num">' + fmtPlainPct(r.target_virtual_pct) + '</td><td class="num">' + fmtPlainPct(r.cash_pct) + '</td><td class="mono">' +
+        fmtPlainPct(r.virtual_pct) + '</td><td class="num">' + fmtPlainPct(r.cash_pct) + '</td><td class="num">' +
+        fmtPlainPct(r.target_long_pct) + '</td><td class="num">' + fmtPlainPct(r.target_short_pct) + '</td><td class="num">' + fmtPlainPct(r.target_virtual_pct) + '</td><td class="mono">' +
         esc(Object.keys(th).length ? Object.keys(th).map(function (k) { return k + '=' + th[k]; }).join(', ') : '—') +
         '</td><td>' + esc((r.actions || []).join(', ') || '—') + '</td></tr>';
     }).join('') : '<tr><td colspan="15" class="empty">No rebalances in the selected range.</td></tr>';

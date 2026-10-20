@@ -273,13 +273,17 @@ def _safe_rebalances(rebalances: Sequence[Dict[str, Any]], times: np.ndarray, n:
             "utc": _utc(int(times[bar])) if n else "",
             "cycle_id": int(reb.get("cycle_id") or idx + 1),
             "price": _round(reb.get("price"), 8),
+            "tpv_before": _round(reb.get("tpv_before"), 2),
             "tpv": _round(reb.get("tpv"), 2),
             "shares": reb.get("shares", {}),
+            "shares_basis": reb.get("shares_basis", "before"),
             "targets": targets,
             "thresholds": reb.get("thresholds") or settings.get("thresholds", {}),
             "actions": reb.get("actions", []),
             "actions_detail": reb.get("actions_detail", []),
+            "requested_volume_usdt": _round(reb.get("requested_volume_usdt"), 2),
             "volume_usdt": _round(reb.get("volume_usdt"), 2),
+            "internal_transfer_usdt": _round(reb.get("internal_transfer_usdt"), 2),
         })
     return out
 
@@ -318,9 +322,9 @@ def _cooldowns(events: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def _quality_checks(
     *, n: int, dw: Dict[str, Any], equity: np.ndarray, closes: np.ndarray,
     ohlc: Optional[Dict[str, Any]], times: np.ndarray, time_source: str,
-    fills_count: int, fills_total: int, attr_totals: Dict[str, float],
-    result: Dict[str, Any], initial: float, final: float, outlier_ratio: float,
-    max_abs_return: float,
+    fills_count: int, fills_total: int, exchange_fills: int, internal_transfers: int,
+    attr_totals: Dict[str, float], result: Dict[str, Any], initial: float, final: float,
+    outlier_ratio: float, max_abs_return: float,
 ) -> List[Dict[str, str]]:
     checks: List[Dict[str, str]] = []
 
@@ -353,26 +357,36 @@ def _quality_checks(
         bad_prices += sum(int(np.sum(~np.isfinite(np.asarray(ohlc[k], dtype=float)))) for k in ("open", "high", "low", "close"))
     add("warn" if bad_prices or bad_equity else "ok", "Finite values",
         f"price={bad_prices:,} / equity={bad_equity:,}")
-    add("fail" if fills_count == 0 else "ok", "Trades", f"{fills_count:,} fills")
+    add("fail" if exchange_fills == 0 else "ok", "Trades", f"{exchange_fills:,} exchange fills")
     add("ok" if n else "fail", "Equity", f"{n:,} points")
+    add("ok", "Fill split", f"{exchange_fills:,} exchange / {internal_transfers:,} internal VIRTUAL transfers")
     if fills_total > fills_count:
         add("warn", "Fill log cap", f"{fills_count:,} of {fills_total:,} fills embedded")
     tol = max(1.0, abs(initial) * 1e-6, abs(final - initial) * 1e-6)
     residual = _finite(attr_totals.get("residual"))
     add("ok" if abs(residual) <= tol else "fail", "Attribution balance",
         f"residual {_money(residual)} USDT (tolerance {_money(tol)})")
+    accounting_ok = result.get("accounting_ok")
+    if accounting_ok is not None:
+        acc_res = _finite(result.get("accounting_residual"))
+        acc_tol = _finite((result.get("accounting") or {}).get("tolerance"))
+        add("ok" if accounting_ok else "fail", "Engine accounting",
+            f"TPV residual {_money(acc_res)} USDT (tolerance {_money(acc_tol)})")
+    engine_net = (_finite(result.get("realized_pnl_total")) + _finite(result.get("final_unrealized_pnl"))
+                  - _finite(result.get("commission_paid")) - _finite(result.get("funding_paid")))
+    engine_diff = engine_net - (final - initial)
+    add("ok" if abs(engine_diff) <= tol else "warn", "Execution-basis PnL",
+        f"engine net vs final equity diff {_money(engine_diff)} USDT")
     for key, label in (("funding_paid", "Funding"), ("commission_paid", "Commissions"),
-                       ("slippage_paid", "Slippage"), ("final_unrealized_pnl", "Unrealized")):
+                       ("slippage_paid", "Slippage")):
         if key not in result:
             continue
         if key == "funding_paid":
             diff = _finite(result[key]) - _finite(attr_totals.get("funding"))
         elif key == "commission_paid":
             diff = _finite(result[key]) - _finite(attr_totals.get("commissions"))
-        elif key == "slippage_paid":
-            diff = _finite(result[key]) - _finite(attr_totals.get("slippage"))
         else:
-            diff = _finite(result[key]) - _finite(attr_totals.get("unrealized"))
+            diff = _finite(result[key]) - _finite(attr_totals.get("slippage"))
         scale = max(1.0, abs(_finite(result.get(key))))
         add("ok" if abs(diff) <= scale * 1e-6 else "warn", f"{label} reconstruction",
             f"engine vs dashboard diff {_money(diff)}")
@@ -498,29 +512,43 @@ def build_payload(prefix: str) -> Dict[str, Any]:
     else:
         sharpe = 0.0
 
-    closing = [f for f in fills_raw if abs(_finite(f.get("realized_pnl"))) > 0]
+    exchange_fills = [f for f in fills_raw if str(f.get("leg", "")) != "VIRTUAL"]
+    internal_fills = [f for f in fills_raw if str(f.get("leg", "")) == "VIRTUAL"]
+    closing = [f for f in exchange_fills if abs(_finite(f.get("realized_pnl"))) > 0]
     wins = [f for f in closing if _finite(f.get("realized_pnl")) > 0]
     losses = [f for f in closing if _finite(f.get("realized_pnl")) < 0]
     win_rate = (len(wins) / len(closing) * 100.0) if closing else 0.0
     gross_win = sum(_finite(f.get("realized_pnl")) for f in wins)
     gross_loss = abs(sum(_finite(f.get("realized_pnl")) for f in losses))
     profit_factor = (gross_win / gross_loss) if gross_loss > 0 else (math.inf if gross_win > 0 else 0.0)
-    total_notional = sum(abs(_finite(f.get("qty"))) * _finite(f.get("price")) for f in fills_raw)
-    avg_trade = total_notional / len(fills_raw) if fills_raw else 0.0
+    total_notional = sum(abs(_finite(f.get("qty"))) * _finite(f.get("price")) for f in exchange_fills)
+    avg_trade = total_notional / len(exchange_fills) if exchange_fills else 0.0
     avg_equity = (initial + final) / 2.0
     turnover = total_notional / avg_equity if avg_equity else 0.0
     span_min = max(0.0, (int(times[-1]) - int(times[0])) / 60_000.0) if n else 0.0
     cycles = int(_finite(result.get("cycles")))
     executed_rebalances = len(rebalances_raw)
     avg_rebalance_min = span_min / max(1, executed_rebalances or cycles)
-    buys = sum(1 for f in fills_raw if str(f.get("side", "")).upper() == "BUY")
-    sells = sum(1 for f in fills_raw if str(f.get("side", "")).upper() == "SELL")
-    funding = _finite(result.get("funding_paid", attr_totals.get("funding")))
-    commissions = _finite(result.get("commission_paid", attr_totals.get("commissions")))
-    realized = _finite(result.get("realized_pnl_total", attr_totals.get("realized")))
-    unrealized = _finite(result.get("final_unrealized_pnl", attr_totals.get("unrealized")))
+    buys = sum(1 for f in exchange_fills if str(f.get("side", "")).upper() == "BUY")
+    sells = sum(1 for f in exchange_fills if str(f.get("side", "")).upper() == "SELL")
+    exchange_fill_count = int(_finite(result.get("exchange_fill_count", len(exchange_fills))))
+    internal_transfer_count = int(_finite(result.get("internal_transfer_count", len(internal_fills))))
+    # One basis for KPIs and reconciliation: mark-to-mid attribution (slippage shown separately).
+    funding = _finite(attr_totals.get("funding"))
+    commissions = _finite(attr_totals.get("commissions"))
+    realized = _finite(attr_totals.get("realized"))
+    unrealized = _finite(attr_totals.get("unrealized"))
+    slippage = _finite(attr_totals.get("slippage"))
+    reserve = _finite(attr_totals.get("reserve"))
     residual = _finite(attr_totals.get("residual"))
     net_pnl = final - initial
+    accounting_ok = result.get("accounting_ok")
+    accounting_residual = _finite(result.get("accounting_residual"))
+    accounting_tolerance = _finite((result.get("accounting") or {}).get("tolerance"))
+    partial_expansions = sum(
+        1 for rb in rebalances_raw for a in (rb.get("actions_detail") or [])
+        if a.get("status") == "partial" and not a.get("is_reduction")
+    )
 
     def kpi(label: str, value: str, tip: str, cls: str = "") -> Dict[str, str]:
         return {"label": label, "value": value, "tip": tip, "cls": cls}
@@ -538,16 +566,22 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         kpi("Sortino", f"{_finite(result.get('sortino_ratio')):.4f}", "Mean per-minute return / downside deviation (engine value).", ""),
         kpi("Sharpe", f"{sharpe:.4f}", "Mean per-minute return / std per-minute return * sqrt(525600), annualized.", ""),
         kpi("Rebalances", _int(executed_rebalances), "Executed rebalances with at least one logged fill.", ""),
-        kpi("Trades", _int(result.get("fill_count", len(fills_raw))), "Executed fills (cap note in Data Quality if truncated).", ""),
-        kpi("BUY / SELL", f"{_int(buys)} / {_int(sells)}", "Fill count by side; BUY also closes shorts and SELL closes longs.", ""),
-        kpi("Commissions", f"-{_money(commissions)} USDT", "Sum of taker commissions on all fills.", "neg"),
+        kpi("Exchange fills", _int(exchange_fill_count), "Fills on the exchange; VIRTUAL cash transfers are excluded.", ""),
+        kpi("Internal transfers", _int(internal_transfer_count), "VIRTUAL designate/release transfers; not exchange fills.", ""),
+        kpi("BUY / SELL", f"{_int(buys)} / {_int(sells)}", "Exchange fill count by side; BUY also closes shorts and SELL closes longs.", ""),
+        kpi("Commissions", f"-{_money(commissions)} USDT", "Taker commissions, mark-to-mid attribution basis.", "neg"),
         kpi("Funding", f"-{_money(funding)} USDT", "Funding drag reconstructed from open notional per bar.", "neg"),
-        kpi("Realized PnL", f"{_money(realized)} USDT", "Engine realized PnL of closed quantity (gross of slippage).", "pos" if realized >= 0 else "neg"),
-        kpi("Unrealized PnL", f"{_money(unrealized)} USDT", "Engine mark-to-market PnL of positions open at the final bar.", "pos" if unrealized >= 0 else "neg"),
+        kpi("Realized PnL", f"{_money(realized)} USDT", "Mark-to-mid realized PnL; slippage is shown separately.", "pos" if realized >= 0 else "neg"),
+        kpi("Unrealized PnL", f"{_money(unrealized)} USDT", "Mark-to-mid PnL of positions open at the final bar.", "pos" if unrealized >= 0 else "neg"),
+        kpi("Accounting", "OK" if accounting_ok is not False else "FAILED",
+            f"Engine TPV invariant residual {_money(accounting_residual)} USDT (tolerance {_money(accounting_tolerance)}).",
+            "pos" if accounting_ok is not False else "neg"),
         kpi("Liquidations", _int(result.get("liquidations", 0)), "Predictive/hard cross-margin liquidation events.", "neg" if _finite(result.get("liquidations")) else ""),
         kpi("Trailing stops", _int(result.get("trailing_stops", 0)), "Trailing-stop and max-drawdown emergency stop events.", "warn" if _finite(result.get("trailing_stops")) else ""),
-        kpi("Skipped actions", _int(result.get("skipped_expansions", 0)), "Expansions skipped because free margin ran out.", "warn" if _finite(result.get("skipped_expansions")) else ""),
-        kpi("Avg trade size", f"{_money(avg_trade)} USDT", "Gross fill notional / number of fills.", ""),
+        kpi("Skipped expansions", _int(result.get("skipped_expansions", 0)),
+            f"Fully skipped expansions; {partial_expansions} more were partially capped by free cash.",
+            "warn" if _finite(result.get("skipped_expansions")) or partial_expansions else ""),
+        kpi("Avg trade size", f"{_money(avg_trade)} USDT", "Gross exchange notional / exchange fills.", ""),
         kpi("Turnover", f"{turnover:,.2f}x", "Gross fill notional / average equity.", ""),
         kpi("Win rate", f"{win_rate:.2f}%", "Winning closing fills / all closing fills (realized PnL != 0).", ""),
         kpi("Profit factor", "∞" if math.isinf(profit_factor) else f"{profit_factor:.3f}",
@@ -562,6 +596,7 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         n=n, dw=dw, equity=equity, closes=closes, ohlc=ohlc, times=times,
         time_source=time_source, fills_count=len(fills_raw),
         fills_total=int(result.get("fill_count", len(fills_raw))),
+        exchange_fills=exchange_fill_count, internal_transfers=internal_transfer_count,
         attr_totals=attr_totals, result=result, initial=initial, final=final,
         outlier_ratio=outlier_ratio, max_abs_return=max_abs_return,
     )
@@ -586,6 +621,12 @@ def build_payload(prefix: str) -> Dict[str, Any]:
             "text": "PnL attribution does not reconcile to final equity.",
             "detail": f"residual {_money(residual)} USDT; inspect margin/accounting, liquidation and cooldown paths.",
         })
+    if accounting_ok is False:
+        warnings.append({
+            "level": "error",
+            "text": "Backtest accounting did not pass reconciliation.",
+            "detail": f"TPV residual {_money(accounting_residual)} USDT; result is not trustworthy.",
+        })
     if int(result.get("fill_count", len(fills_raw))) > len(fills_raw):
         warnings.append({
             "level": "warn",
@@ -605,8 +646,8 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         _recon("Unrealized PnL (mark-to-mid)", unrealized),
         _recon("Commissions", commissions, "-", True),
         _recon("Funding", funding, "-", True),
-        _recon("Slippage", _finite(attr_totals.get("slippage")), "-", True),
-        _recon("Reserve / siphoning", _finite(attr_totals.get("reserve")), "-", True),
+        _recon("Slippage", slippage, "-", True),
+        _recon("Reserve / siphoning", reserve, "-", True),
         _recon("Residual / other", residual),
         {"label": "Final equity", "operator": "=", "value": final, "signed_value": final},
     ]
@@ -654,7 +695,7 @@ def build_payload(prefix: str) -> Dict[str, Any]:
             "drawdown": [_round(float(dd_pct[i]), 4) for i in eq_idx],
             "initial": initial,
             "stats": equity_stats,
-            "initial_range": [equity_stats["p1"], equity_stats["p99"]],
+            "initial_range": [min(equity_stats["p1"], initial), max(equity_stats["p99"], initial)],
         },
         "drawdown": {
             "times": [int(times[i]) for i in eq_idx],
@@ -686,6 +727,8 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         "counts": {
             "fills": len(fills_raw),
             "fill_count": int(result.get("fill_count", len(fills_raw))),
+            "exchange_fills": exchange_fill_count,
+            "internal_transfers": internal_transfer_count,
             "buy": buys,
             "sell": sells,
             "events": len(events),
@@ -693,6 +736,7 @@ def build_payload(prefix: str) -> Dict[str, Any]:
             "liquidations": int(_finite(result.get("liquidations"))),
             "trailing_stops": int(_finite(result.get("trailing_stops"))),
             "skipped": int(_finite(result.get("skipped_expansions"))),
+            "partial_expansions": partial_expansions,
             "trend_blocks": int(_finite(result.get("trend_guard_blocks"))),
             "velocity_blocks": int(_finite(result.get("velocity_guard_blocks"))),
             "closing": len(closing),

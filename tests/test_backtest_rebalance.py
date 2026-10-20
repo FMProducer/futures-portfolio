@@ -35,24 +35,101 @@ def test_helper_functions():
     assert validate_notional(Decimal('1'), Decimal('10'), Decimal('15')) is False
 
 def test_backtest_state():
-    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('1000'), base_ticker="BTCUSDT")
-    # Test get_tpv with active long and short positions
+    # VIRTUAL is a separate cash bucket: 950 free + 50 virtual = 1000 total.
+    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('950'),
+                          virt_debt=Decimal('50'), base_ticker="BTCUSDT")
     state.pos_long = Decimal('1')
     state.long_entry_price = Decimal('100')
     state.pos_short = Decimal('1')
     state.short_entry_price = Decimal('100')
-    state.virt_qty = Decimal('1')
-    state.virt_debt = Decimal('50')
-    
-    # price is 105
-    # long: PnL = 1 * (105-100) = 5, margin = 100/5 = 20
-    # short: PnL = 1 * (100-105) = -5, margin = 100/5 = 20
-    # [NEW MODEL] VIRTUAL = fixed USDT, no price revaluation.
-    # get_tpv: virtual_equity = 0 (virt_debt nets out)
-    # TPV = val_cash + margin_l + upnl_l + margin_s + upnl_s + 0
-    # TPV = 1000 + 20 + 5 + 20 + (-5) + 0 = 1040
+
+    # price 105: long margin 20 + PnL 5, short margin 20 + PnL -5, virtual cash 50.
     assert state.get_tpv(Decimal('105')) == Decimal('1040')
     assert state.get_tpv_fast(105.0) == 1040.0
+    # Virtual cash is not revalued with the base asset.
+    assert state.get_tpv(Decimal('200')) == state.get_tpv(Decimal('105'))
+
+
+def test_leverage_does_not_create_capital():
+    for lev in (Decimal('3'), Decimal('5'), Decimal('7')):
+        notional = Decimal('2310')
+        margin = notional / lev
+        state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('1000') - margin,
+                              base_ticker="BTCUSDT", l_lev=lev, s_lev=lev)
+        state.pos_long = notional / Decimal('100')
+        state.long_entry_price = Decimal('100')
+        assert state.get_tpv(Decimal('100')) == Decimal('1000')
+
+
+def test_virtual_transfers_are_tpv_neutral_and_capped():
+    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('1000'),
+                          base_ticker="BTCUSDT")
+    state.designate_virtual(Decimal('100'))
+    assert state.get_tpv(Decimal('100')) == Decimal('1000')
+    state.release_virtual(Decimal('150'))
+    assert state.get_tpv(Decimal('100')) == Decimal('1000')
+    assert state.virt_debt == Decimal('0')
+    assert state.val_cash == Decimal('1000')
+    assert state.release_virtual(Decimal('10')) == Decimal('0')
+
+def _flat_config() -> dict:
+    return {
+        "base_ticker": "BTCUSDT",
+        "max_drawdown_limit": 200.0,
+        "toxic_cooldown_days": 0.01,
+        "min_notional_usdt": 1.0,
+        "portfolios": [{
+            "initial_capital": 1000.0,
+            "paper_account_free_margin": 0.0,
+            "targets": {
+                "BASE_LONG": {"share": 0.33, "leverage": 7.0},
+                "BASE_SHORT": {"share": 0.33, "leverage": 7.0},
+                "VIRTUAL": {"share": 0.34},
+            },
+            "rebalance_threshold_surplus": 0.0,
+            "rebalance_threshold_deficit": 0.0,
+        }],
+    }
+
+
+@pytest.mark.asyncio
+async def test_first_bar_has_no_phantom_capital(tmp_path):
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(_flat_config()), encoding="utf-8")
+    prices = [100.0] * 20
+    pd.DataFrame({
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(prices),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    res = await run_backtest(str(config_file), str(tmp_path), live_mode=False, days=0.1,
+                             commission=0.0, slippage=0.0, quiet=True)
+    assert res is not None
+    assert res["accounting_ok"] is True
+    assert abs(res["equity_curve"][0] - 1000.0) < 0.01
+
+
+@pytest.mark.asyncio
+async def test_explicit_window_uses_feather_time_not_mtime(tmp_path):
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(_flat_config()), encoding="utf-8")
+    times = pd.date_range("2026-10-10 00:00", periods=30, freq="min", tz="UTC")
+    prices = [100.0] * len(times)
+    pd.DataFrame({
+        "time": times,
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(times),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    res = await run_backtest(str(config_file), str(tmp_path), live_mode=False, days=0.1,
+                             since_utc="2026-10-10 00:10", until_utc="2026-10-10 00:19",
+                             commission=0.0, slippage=0.0, quiet=True)
+    assert res is not None
+    dw = res["data_window"]
+    assert dw["bars"] == 10
+    assert dw["start_utc"] == "2026-10-10 00:10"
+    assert dw["end_utc"] == "2026-10-10 00:19"
+
 
 @pytest.mark.asyncio
 async def test_run_backtest_normal_and_guards(tmp_path):
