@@ -16,7 +16,8 @@ def sample_params(targets):
         "positions": {"BTCUSDT_LONG": 0.5, "BTCUSDT_SHORT": 0.0},
         "spot_price": 60000.0,
         "real_equity": 10000.0,
-        "virt_qty": 0.03333333333333333, # Equivalent to 2000 USDT at 60k
+        "virt_qty": 0.0,  # virt_qty unused in new model (V = pure cash)
+        "virt_debt": 2000.0,  # V = fixed USDT value
         "long_entry_price": 60000.0,
         "short_entry_price": 0.0,
         "base_ticker": "BTCUSDT",
@@ -26,17 +27,17 @@ def sample_params(targets):
 
 def test_calculator_initialization(sample_params):
     calc = PortfolioCalculator(**sample_params)
-    # TPV = 10000 (Equity) + 2000 (Virtual) = 12000
+    # [NEW MODEL] V = virt_debt (fixed USDT).
+    # TPV = real_equity + mtm_l + mtm_s + virt_value = 10000 + 0 + 0 + 2000 = 12000.
     assert float(calc.tpv) == pytest.approx(12000.0)
     assert float(calc.total_tpv) == pytest.approx(12000.0)
-    
+
     # Notional Long = 0.5 * 60000 = 30000
     # Val Long = Margin (30000/5=6000) + PnL (0) = 6000
     # Share Long = 6000 / 12000 = 50%
     assert float(calc.share_long_pct) == 50.0
     assert float(calc.share_short_pct) == 0.0
-    # Notional Virt = 2000
-    # Share Virt = 2000 / 12000 = 16.67%
+    # V = 2000 / 12000 = 16.67%
     assert float(calc.share_virt_pct) == pytest.approx(16.67, abs=0.1)
 
 def test_calculate_deviations(sample_params, targets):
@@ -44,8 +45,9 @@ def test_calculate_deviations(sample_params, targets):
     threshold = 0.05
     res = calc.calculate_deviations(targets, threshold_surplus=threshold, threshold_deficit=threshold, current_equity=calc.tpv)
     actions = res["actions"]
-    
-    # Shares: L:50%, S:0%, V:16.7%. Targets: L:40%, S:40%, V:20%.
+
+    # [NEW MODEL] Shares: L:50%, S:0%, V:16.7% (V = virt_debt=2000, fixed USDT).
+    # Targets: L:40%, S:40%, V:20%.
     # Deviations: L: +10% (BREACH), S: -40% (BREACH), V: -3.3% (NO BREACH)
     # Threshold is 5%.
     assert len(actions) == 2
@@ -73,6 +75,8 @@ def test_siphoning_reserve_impact(sample_params):
     params = sample_params.copy()
     params["siphoning_reserve"] = 1000.0
     calc = PortfolioCalculator(**params)
+    # TPV = real_equity + mtm + virt_value = 10000 + 0 + 2000 = 12000
+    # total_tpv = TPV + siphoning_reserve = 13000
     assert float(calc.total_tpv) == pytest.approx(13000.0)
     assert float(calc.tpv) == pytest.approx(12000.0)
 
@@ -80,14 +84,14 @@ def test_price_change_impact(sample_params):
     params = sample_params.copy()
     params["spot_price"] = 66000.0
     # l_qty = 0.5, long_entry_price = 60000.0. mtm_pnl_l = 0.5 * (66000 - 60000) = 3000.
-    # real_equity = 10000.
-    # virt_qty = 0.03333..., virt_value = 0.0333... * 66000 = 2200.
-    # TPV = 10000 + 3000 + 2200 = 15200.
+    # real_equity = 10000 (fixed, not price-linked).
+    # V = virt_debt = 2000 (fixed USDT, no revaluation by price).
+    # TPV = 10000 (real_equity) + 3000 (mtm) + 2000 (virt_value) = 15000.
     calc = PortfolioCalculator(**params)
-    assert float(calc.tpv) == pytest.approx(15200.0)
-    # val_long = (0.5 * 60000 / 5) + 3000 = 9000.
-    # Share Long = 9000 / 15200 * 100 = 59.21%
-    assert float(calc.share_long_pct) == pytest.approx(59.21, abs=0.1)
+    assert float(calc.tpv) == pytest.approx(15000.0)
+    # val_long = margin + mtm = (0.5 * 60000 / 5) + 3000 = 6000 + 3000 = 9000
+    # Share Long = 9000 / 15000 * 100 = 60%
+    assert float(calc.share_long_pct) == pytest.approx(60.0, abs=0.1)
 
 def test_negative_tpv_protection():
     calc = PortfolioCalculator(
@@ -105,28 +109,32 @@ def test_ignore_limits_deviation(sample_params, targets):
     params["virt_qty"] = 0.0
     params["positions"] = {"BTCUSDT_LONG": 10.0}
     # val_long = (10 * 60000 / 5) = 120000.
-    # tpv = 100000 (real_equity) + 0 (mtm_pnl) + 0 (virt) = 100000.
-    # share_long = 120000 / 100000 = 1.2
-    # target_share_long = 0.4
-    # diff_share = 1.2 - 0.4 = 0.8
-    # diff_usdt = -0.8 * 100000 * 5 = -400000.
+    # TPV = real_equity + virt_value = 100000 + 2000 = 102000.
+    # val_long = (10 * 60000 / 5) = 120000.
+    # share_long = 120000 / 102000 = 1.1765.
+    # diff_share = 1.1765 - 0.4 = 0.7765.
+    # diff_usdt = -0.7765 * 102000 * 5 = -396030 ≈ -396000.
     calc = PortfolioCalculator(**params)
     res = calc.calculate_deviations(targets, threshold_surplus=0.01, threshold_deficit=0.01, current_equity=calc.tpv, ignore_limits=True)
     actions = res["actions"]
     long_action = next(a for a in actions if a["symbol"] == "BTCUSDT_LONG")
-    assert long_action["diff_usdt"] == pytest.approx(-400000.0)
+    assert long_action["diff_usdt"] == pytest.approx(-396000.0, abs=5000)
 
 def test_limits_deviation(sample_params, targets):
     params = sample_params.copy()
     params["real_equity"] = 100000.0
     params["virt_qty"] = 0.0
     params["positions"] = {"BTCUSDT_LONG": 10.0}
+    # TPV = 100000 + 2000 (virt_debt) = 102000
+    # val_long = 10 * 60000 / 5 = 120000
+    # share_long = 120000 / 102000 = 1.1765
+    # diff_share = 1.1765 - 0.4 = 0.7765
+    # diff_usdt = -0.7765 * 102000 * 5 = -396030 ≈ -396000
     calc = PortfolioCalculator(**params)
     res = calc.calculate_rebalance(targets, threshold_surplus=0.01, threshold_deficit=0.01, current_equity=calc.tpv, ignore_limits=False)
     actions = res["actions"]
     long_action = next(a for a in actions if a["symbol"] == "BTCUSDT_LONG")
-    # TPV is 100,000. diff_usdt is -400,000 as calculated above.
-    assert long_action["diff_usdt"] == pytest.approx(-400000.0)
+    assert long_action["diff_usdt"] == pytest.approx(-396000.0, abs=5000)
 
 def test_anti_churn_fuse(targets):
     # last_reb = 60000. Target share LONG = 40%.
@@ -209,16 +217,15 @@ def test_edge_cases(targets):
     assert float(calc.share_long_pct + calc.share_short_pct + calc.share_virt_pct + calc.share_cash_pct) == 100.0
 
 def test_virt_pnl_paths(targets):
-    # virt_entry_price > 0
+    # [NEW MODEL] VIRTUAL = чистый USDT-кэш. PnL всегда 0 (нет price-linked revaluation).
     calc = PortfolioCalculator(
         positions={}, spot_price=50000.0, real_equity=10000.0, virt_qty=0.1,
         virt_entry_price=40000.0, targets=targets
     )
-    assert float(calc.pnl_v) == pytest.approx(1000.0) # (50000-40000)*0.1
-    
-    # virt_debt > 0
+    assert float(calc.pnl_v) == pytest.approx(0.0)  # V is pure cash, no MTM
+
     calc = PortfolioCalculator(
         positions={}, spot_price=50000.0, real_equity=10000.0, virt_qty=0.1,
         virt_entry_price=0.0, virt_debt=4500.0, targets=targets
     )
-    assert float(calc.pnl_v) == pytest.approx(500.0) # (50000*0.1)-4500
+    assert float(calc.pnl_v) == pytest.approx(0.0)  # V is pure cash, no MTM

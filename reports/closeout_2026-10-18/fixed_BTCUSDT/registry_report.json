@@ -1,0 +1,138 @@
+{
+  "trials": [
+    {
+      "id": "fixed-BTCUSDT-synthetic-closeout",
+      "snapshot": {
+        "artifacts": {
+          "code": {
+            "bytes": 7635,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\code\\rebalance\\research_runner.py",
+            "sha256": "048cdfd02bc6e5481067d2679eed0dfe949d0db8534fa7fe03baf9831f5d1516"
+          },
+          "code:__init__.py": {
+            "bytes": 73,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\code\\rebalance\\__init__.py",
+            "sha256": "519c6d8b58835caa6e8c3068e3a5784038e7221defb0b7bf6e9143d78a928cd0"
+          },
+          "code:closeout.py": {
+            "bytes": 4417,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\code\\rebalance\\closeout.py",
+            "sha256": "8a90c96a08964aa3a7e1591dc50e666b9e6797e39075957c2d04454679eec88f"
+          },
+          "code:comparison.py": {
+            "bytes": 7476,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\code\\rebalance\\comparison.py",
+            "sha256": "dc2bd4ded89211e382a8edf6061abd02165fe67cd3c0c08960c7c1d43009d82f"
+          },
+          "code:historical.py": {
+            "bytes": 8659,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\code\\rebalance\\historical.py",
+            "sha256": "4c477ddc43824b0f7115ff63ff8285a6f3869d505a2fb76701e1837c490d779c"
+          },
+          "code:kernel.py": {
+            "bytes": 10705,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\code\\rebalance\\kernel.py",
+            "sha256": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb"
+          },
+          "code:trial_registry.py": {
+            "bytes": 7993,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\code\\rebalance\\trial_registry.py",
+            "sha256": "8df58a0551daa8b32a7c0af8ca4616916973615ffe008e212f279b836a14cca4"
+          },
+          "config": {
+            "bytes": 258,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\inputs\\config.json",
+            "sha256": "cef8dc2f53a4df59ea947474eaed8bad93a9a5bcd76ca5cf219b80ff062a3eca"
+          },
+          "data": {
+            "bytes": 4862487,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\frozen\\inputs\\data.csv",
+            "sha256": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a"
+          }
+        },
+        "metadata": {
+          "admission_ready": false,
+          "data_usage": "NOT_ESTABLISHED; caller must disclose prior use",
+          "engine": "comparison",
+          "funding_mode": "ASSUMED_ZERO",
+          "original_paths": {
+            "config": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\rebalance\\historical_example.json",
+            "data": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\audit_2026-10-16\\market_data\\BTCUSDT.csv"
+          },
+          "output": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT",
+          "source_head": "69d528df88eca700486dfe591d04016a377ee783",
+          "terminal_closeout": true
+        },
+        "mode": "PROSPECTIVE"
+      },
+      "started_utc": "2026-10-18T11:58:12.442001+00:00",
+      "outcome": {
+        "evidence": {
+          "candidate_equity": {
+            "bytes": 3692114,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\candidate_equity.json",
+            "sha256": "9e5753307d26670bdcfc36bf394955df799dda1590946daff1404d7413616016"
+          },
+          "candidate_result": {
+            "bytes": 580,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\candidate_result.json",
+            "sha256": "aca6c17a338d4e7751a6090f8be02a210a6bd931a3a9853e6ff19f6a5e1a9dac"
+          },
+          "candidate_trades": {
+            "bytes": 11279,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\candidate_trades.json",
+            "sha256": "46d68fab9fe96b0e17b58cf6babfe9fad80331dc56713c106aeddfcfefb8d536"
+          },
+          "comparison": {
+            "bytes": 5696,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\comparison.json",
+            "sha256": "521c6c0707a17877a8b9d4c5c5c0ea834fb1459cee1a7d8ab80b69c2a2a4d063"
+          },
+          "execution_manifest": {
+            "bytes": 4115,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\execution_manifest.json",
+            "sha256": "09c9d2a82632aabb9248cc6f471fd8e68e284974f52f4a879cc9dc8baaeeca0e"
+          },
+          "hold_equity": {
+            "bytes": 3240003,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\hold_equity.json",
+            "sha256": "cbc5872ab1e0d449420087e913283a5ab7470f1e29adff52a44223a195de9e01"
+          },
+          "hold_result": {
+            "bytes": 498,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\hold_result.json",
+            "sha256": "1b6d6fa418ddcb16d2642232be98ad1123aa91f5e13e94e9a74994623ca4d0ec"
+          },
+          "hold_trades": {
+            "bytes": 320,
+            "path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\closeout_2026-10-18\\fixed_BTCUSDT\\hold_trades.json",
+            "sha256": "9b626231ae50e19068cde4324864edafe037b1764793db5ad176cc275cd50c5d"
+          }
+        },
+        "reason": null,
+        "status": "COMPLETED"
+      },
+      "finished_utc": "2026-10-18T11:58:17.470927+00:00"
+    }
+  ],
+  "total": 1,
+  "counts": {
+    "INCOMPLETE": 0,
+    "COMPLETED": 1,
+    "FAILED": 0,
+    "ABORTED": 0
+  },
+  "data_hash_occurrences": {
+    "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a": 1
+  },
+  "oos_status": "NOT_ESTABLISHED",
+  "admission_ready": false,
+  "trading_authorized": false,
+  "limitations": [
+    "records only explicitly registered attempts; not proof all experiments were registered",
+    "PROSPECTIVE is a declaration, not proof code ran from a frozen snapshot",
+    "hash equality cannot detect a temporary overlay reverted before finish",
+    "file identity is not semantic time-window overlap or OOS independence",
+    "local SQLite immutability is not independent tamper evidence"
+  ]
+}

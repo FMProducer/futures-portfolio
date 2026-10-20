@@ -1,0 +1,35 @@
+{
+  "base_head": "1b4eb18937c5223dab6da9052eae1a5ebe15b91d",
+  "date": "2026-10-17",
+  "model": "shared_wallet_252550_offline",
+  "files": [
+    {
+      "path": "rebalance/__init__.py",
+      "sha256": "519c6d8b58835caa6e8c3068e3a5784038e7221defb0b7bf6e9143d78a928cd0"
+    },
+    {
+      "path": "rebalance/kernel.py",
+      "sha256": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb"
+    },
+    {
+      "path": "rebalance/replay.py",
+      "sha256": "84dc7b5437b89cad9804ffacf406b771b8429b130e8cb116d046005c7944784f"
+    },
+    {
+      "path": "rebalance/scenarios/test_kernel.py",
+      "sha256": "d58fba2f52b4a2fcac37d427711f0f840c5de44a638ec7ee3024bddf932fe97e"
+    },
+    {
+      "path": "docs/coordination/IMPLEMENTATION_SHARED_WALLET_252550.md",
+      "sha256": "22b5c1a0d93c4ab11b326e96f4319b9dbac69ed8953a749b26a5a776cfd7a94c"
+    },
+    {
+      "path": "reports/shared_wallet_2026-10-17/replay.json",
+      "sha256": "1bb57848553877d8382b08400d140afcaffd0b7cb8291a85d6f79fc483adb29e"
+    },
+    {
+      "path": "reports/shared_wallet_2026-10-17/tests.xml",
+      "sha256": "14199719eeb6b5291addbddad213b3f7f6c8aeab9010f68c09bc35b8bc4b6305"
+    }
+  ]
+}

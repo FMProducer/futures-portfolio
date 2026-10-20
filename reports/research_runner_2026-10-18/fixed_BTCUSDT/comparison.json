@@ -1,0 +1,56 @@
+{
+  "mode": "MATCHED_CANDLE_OPEN_MTM",
+  "candidate": {
+    "candles": 43200,
+    "start": 1788220800000,
+    "end": 1790812799999,
+    "initial_equity": "10000",
+    "equity": "10011.06966847132799999999999",
+    "net_mtm": "11.06966847132799999999999",
+    "realized": "81.15795417717876675512912013",
+    "unrealized": "-65.7966762971787667551291192",
+    "fees": "4.2916094086720",
+    "funding": "0",
+    "funding_events": 0,
+    "rebalances": 69,
+    "rejected_funding_checks": 0,
+    "max_close_drawdown_pct": "0.2944687246513410952860231718",
+    "terminal": "OPEN_MTM",
+    "quantities": {
+      "LONG": "0.030",
+      "SHORT": "0.035"
+    }
+  },
+  "hold": {
+    "candles": 43200,
+    "start": 1788220800000,
+    "end": 1790812799999,
+    "initial_equity": "10000",
+    "equity": "9996.9836953600000",
+    "net_mtm": "-3.0163046400000",
+    "realized": "0",
+    "unrealized": "-1.005434880",
+    "fees": "2.0108697600000",
+    "funding": "0",
+    "funding_events": 0,
+    "rebalances": 0,
+    "rejected_funding_checks": 0,
+    "max_close_drawdown_pct": "0.0301630464000",
+    "terminal": "OPEN_MTM",
+    "quantities": {
+      "LONG": "0.032",
+      "SHORT": "0.032"
+    }
+  },
+  "delta_net_mtm": "14.08597311132799999999999",
+  "profit_factor": null,
+  "cycle_definition": "NOT_APPROVED",
+  "admission_ready": false,
+  "trading_authorized": false,
+  "limitations": [
+    "matched research assumptions, not executable market evidence",
+    "full fills, trade candle mark proxy, no depth/latency/liquidation",
+    "terminal open positions; closing costs excluded for BOTH arms",
+    "net already includes fees/funding; delta is not proof of alpha"
+  ]
+}

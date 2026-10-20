@@ -119,7 +119,8 @@ def test_monitor_with_paper_and_real():
          patch("pathlib.Path.exists", return_value=True), \
          patch("builtins.open") as mock_file_open, \
          patch("urllib.request.build_opener") as mock_builder, \
-         patch("os.stat") as mock_stat:
+         patch("os.stat") as mock_stat, \
+         patch("dotenv.load_dotenv"):
 
         def fake_open(path, *args, **kwargs):
             m = MagicMock()
@@ -163,7 +164,8 @@ def test_monitor_guard_active():
          patch("pathlib.Path.exists", return_value=True), \
          patch("builtins.open") as mock_file_open, \
          patch("urllib.request.build_opener") as mock_builder, \
-         patch("os.stat") as mock_stat:
+         patch("os.stat") as mock_stat, \
+         patch("dotenv.load_dotenv"):
 
         def fake_open(path, *args, **kwargs):
             m = MagicMock()
@@ -199,7 +201,8 @@ def test_monitor_old_heartbeat():
          patch("pathlib.Path.exists", return_value=True), \
          patch("builtins.open") as mock_file_open, \
          patch("urllib.request.build_opener") as mock_builder, \
-         patch("os.stat") as mock_stat:
+         patch("os.stat") as mock_stat, \
+         patch("dotenv.load_dotenv"):
 
         def fake_open(path, *args, **kwargs):
             m = MagicMock()
@@ -248,7 +251,8 @@ def test_monitor_no_alerts():
          patch("pathlib.Path.exists", return_value=True), \
          patch("builtins.open") as mock_file_open, \
          patch("urllib.request.build_opener") as mock_builder, \
-         patch("os.stat") as mock_stat:
+         patch("os.stat") as mock_stat, \
+         patch("dotenv.load_dotenv"):
 
         def fake_open(path, *args, **kwargs):
             m = MagicMock()

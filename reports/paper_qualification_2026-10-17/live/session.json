@@ -1,0 +1,2036 @@
+{
+  "binding": {
+    "paper": {
+      "code": {
+        "durable.py": "3333e6e184982e8e5a123494b8508de7b20a479daca664670bd7452aa1e8db06",
+        "kernel.py": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb",
+        "public_paper.py": "74a33cd6f346eb393a57e4c96e8f7f49b3c5912a6a68929d2dcdfe9d717d6d03"
+      },
+      "filters": {
+        "LOT_SIZE": {
+          "filterType": "LOT_SIZE",
+          "maxQty": "1000",
+          "minQty": "0.001",
+          "stepSize": "0.001"
+        },
+        "MARKET_LOT_SIZE": {
+          "filterType": "MARKET_LOT_SIZE",
+          "maxQty": "120",
+          "minQty": "0.001",
+          "stepSize": "0.001"
+        },
+        "MIN_NOTIONAL": {
+          "filterType": "MIN_NOTIONAL",
+          "notional": "50"
+        }
+      },
+      "mode": "PUBLIC_REST_PAPER_V1",
+      "settings": {
+        "capital": "10000",
+        "slippage_bps": "1",
+        "spread_bps": "2",
+        "strategy": {
+          "deficit_pp": "0.7",
+          "fee_rate": "0.0004",
+          "leverage": "7",
+          "min_notional": "5.3",
+          "step": "0.001",
+          "surplus_pp": "0.7",
+          "trail_pp": "0.09"
+        }
+      },
+      "symbol": "BTCUSDT"
+    },
+    "session_sha256": "c7446e4ea8c67a37634747186d508bcd33eca3c04e5017422678a261c2d4a6b0"
+  },
+  "status": "STOPPED",
+  "reason": "duration complete",
+  "inputs": [
+    {
+      "id": "capture:1792265448650",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265448650,
+          "before": 1792265447351,
+          "book": {
+            "askPrice": "81488.20",
+            "askQty": "5.341",
+            "bidPrice": "81488.10",
+            "bidQty": "12.739",
+            "lastUpdateId": 11846947398684,
+            "symbol": "BTCUSDT",
+            "time": 1792265447404
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.45719576",
+            "indexPrice": "81522.38173913",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003099",
+            "markPrice": "81488.20000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265447001
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "equity": "9997.4707673498760",
+        "fees": "2.0209061201240",
+        "fills": [
+          {
+            "action": {
+              "kind": "ADD",
+              "reason": "",
+              "side": "LONG",
+              "units": 31
+            },
+            "fee": "1.0105547253680",
+            "price": "81496.348820",
+            "quantity": "0.031"
+          },
+          {
+            "action": {
+              "kind": "ADD",
+              "reason": "",
+              "side": "SHORT",
+              "units": 31
+            },
+            "fee": "1.0103513947560",
+            "price": "81479.951190",
+            "quantity": "0.031"
+          }
+        ],
+        "gap_ms": null,
+        "mode": "PAPER",
+        "quantities": {
+          "LONG": "0.031",
+          "SHORT": "0.031"
+        },
+        "status": "APPLIED",
+        "time": 1792265448650,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265455376",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265455376,
+          "before": 1792265454110,
+          "book": {
+            "askPrice": "81488.20",
+            "askQty": "8.476",
+            "bidPrice": "81488.10",
+            "bidQty": "12.651",
+            "lastUpdateId": 11846947871250,
+            "symbol": "BTCUSDT",
+            "time": 1792265454798
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.49738901",
+            "indexPrice": "81523.36043478",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003099",
+            "markPrice": "81488.20000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265454000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265455376,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265462083",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265462083,
+          "before": 1792265460852,
+          "book": {
+            "askPrice": "81488.20",
+            "askQty": "8.017",
+            "bidPrice": "81488.10",
+            "bidQty": "12.074",
+            "lastUpdateId": 11846948207183,
+            "symbol": "BTCUSDT",
+            "time": 1792265461238
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.53146413",
+            "indexPrice": "81523.53652174",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81488.10000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265461000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "equity": "9997.4707673498760",
+        "fees": "2.0209061201240",
+        "fills": [],
+        "gap_ms": 6707,
+        "mode": "PAPER",
+        "quantities": {
+          "LONG": "0.031",
+          "SHORT": "0.031"
+        },
+        "status": "APPLIED",
+        "time": 1792265462083,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265468791",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265468791,
+          "before": 1792265467557,
+          "book": {
+            "askPrice": "81494.90",
+            "askQty": "9.341",
+            "bidPrice": "81494.80",
+            "bidQty": "12.067",
+            "lastUpdateId": 11846948904928,
+            "symbol": "BTCUSDT",
+            "time": 1792265468251
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.55906679",
+            "indexPrice": "81523.83652174",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81488.89636232",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265467000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265468791,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265475588",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265475588,
+          "before": 1792265474275,
+          "book": {
+            "askPrice": "81494.90",
+            "askQty": "9.738",
+            "bidPrice": "81494.80",
+            "bidQty": "12.800",
+            "lastUpdateId": 11846949349024,
+            "symbol": "BTCUSDT",
+            "time": 1792265475047
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.61136220",
+            "indexPrice": "81528.41956522",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81494.90000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265474001
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265475588,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265483403",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265483403,
+          "before": 1792265482054,
+          "book": {
+            "askPrice": "81494.90",
+            "askQty": "9.770",
+            "bidPrice": "81494.80",
+            "bidQty": "13.378",
+            "lastUpdateId": 11846949759386,
+            "symbol": "BTCUSDT",
+            "time": 1792265482166
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.66099130",
+            "indexPrice": "81528.41086957",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81494.90000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265482000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265483403,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265491187",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265491187,
+          "before": 1792265488905,
+          "book": {
+            "askPrice": "81494.90",
+            "askQty": "4.215",
+            "bidPrice": "81494.80",
+            "bidQty": "13.152",
+            "lastUpdateId": 11846950226236,
+            "symbol": "BTCUSDT",
+            "time": 1792265489455
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.70474686",
+            "indexPrice": "81530.01108696",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81495.80479710",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265489000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265491187,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265497968",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265497968,
+          "before": 1792265496711,
+          "book": {
+            "askPrice": "81494.90",
+            "askQty": "7.222",
+            "bidPrice": "81494.80",
+            "bidQty": "13.570",
+            "lastUpdateId": 11846950601434,
+            "symbol": "BTCUSDT",
+            "time": 1792265497066
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.75161268",
+            "indexPrice": "81532.08630435",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81497.84581709",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265497000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265497968,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265504700",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265504700,
+          "before": 1792265503423,
+          "book": {
+            "askPrice": "81499.20",
+            "askQty": "3.950",
+            "bidPrice": "81499.10",
+            "bidQty": "16.805",
+            "lastUpdateId": 11846951007209,
+            "symbol": "BTCUSDT",
+            "time": 1792265504102
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.78749275",
+            "indexPrice": "81532.25000000",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81497.68744928",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265503000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265504700,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265511437",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265511437,
+          "before": 1792265510225,
+          "book": {
+            "askPrice": "81499.20",
+            "askQty": "7.578",
+            "bidPrice": "81499.10",
+            "bidQty": "16.533",
+            "lastUpdateId": 11846951315083,
+            "symbol": "BTCUSDT",
+            "time": 1792265510109
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.84291196",
+            "indexPrice": "81534.03260870",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81499.10000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265510003
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265511437,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265518217",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265518217,
+          "before": 1792265516898,
+          "book": {
+            "askPrice": "81499.20",
+            "askQty": "8.014",
+            "bidPrice": "81499.10",
+            "bidQty": "15.138",
+            "lastUpdateId": 11846951621471,
+            "symbol": "BTCUSDT",
+            "time": 1792265517281
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.88465640",
+            "indexPrice": "81534.07826087",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81499.20000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265517000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265518217,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265524968",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265524968,
+          "before": 1792265523680,
+          "book": {
+            "askPrice": "81499.20",
+            "askQty": "8.262",
+            "bidPrice": "81499.10",
+            "bidQty": "15.481",
+            "lastUpdateId": 11846951966322,
+            "symbol": "BTCUSDT",
+            "time": 1792265524414
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.94016872",
+            "indexPrice": "81534.09500000",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81499.10000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265524002
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "equity": "9997.4707673498760",
+        "fees": "2.0209061201240",
+        "fills": [],
+        "gap_ms": 6751,
+        "mode": "PAPER",
+        "quantities": {
+          "LONG": "0.031",
+          "SHORT": "0.031"
+        },
+        "status": "APPLIED",
+        "time": 1792265524968,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265531785",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265531785,
+          "before": 1792265530475,
+          "book": {
+            "askPrice": "81499.20",
+            "askQty": "8.133",
+            "bidPrice": "81499.10",
+            "bidQty": "15.563",
+            "lastUpdateId": 11846952295160,
+            "symbol": "BTCUSDT",
+            "time": 1792265530865
+          },
+          "mark": {
+            "estimatedSettlePrice": "81523.97638664",
+            "indexPrice": "81534.16239130",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81499.20000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265530001
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265531785,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265538550",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265538550,
+          "before": 1792265537250,
+          "book": {
+            "askPrice": "81499.20",
+            "askQty": "0.203",
+            "bidPrice": "81499.10",
+            "bidQty": "20.102",
+            "lastUpdateId": 11846952808171,
+            "symbol": "BTCUSDT",
+            "time": 1792265537799
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.02486413",
+            "indexPrice": "81534.99282609",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81500.04613043",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265537000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265538550,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265545248",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265545248,
+          "before": 1792265544009,
+          "book": {
+            "askPrice": "81499.20",
+            "askQty": "7.386",
+            "bidPrice": "81499.10",
+            "bidQty": "18.066",
+            "lastUpdateId": 11846953211160,
+            "symbol": "BTCUSDT",
+            "time": 1792265543688
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.08634140",
+            "indexPrice": "81535.97434783",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81500.75966667",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265544000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265545248,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265552035",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265552035,
+          "before": 1792265550737,
+          "book": {
+            "askPrice": "81511.00",
+            "askQty": "4.836",
+            "bidPrice": "81510.90",
+            "bidQty": "18.648",
+            "lastUpdateId": 11846953838458,
+            "symbol": "BTCUSDT",
+            "time": 1792265551361
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.13559915",
+            "indexPrice": "81535.97869565",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81507.00000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265551000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265552035,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265558804",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265558804,
+          "before": 1792265557508,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "8.880",
+            "bidPrice": "81519.70",
+            "bidQty": "16.543",
+            "lastUpdateId": 11846954427033,
+            "symbol": "BTCUSDT",
+            "time": 1792265557499
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.22380821",
+            "indexPrice": "81548.04565217",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265557003
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265558804,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265565563",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265565563,
+          "before": 1792265564272,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "7.086",
+            "bidPrice": "81519.70",
+            "bidQty": "16.529",
+            "lastUpdateId": 11846955047438,
+            "symbol": "BTCUSDT",
+            "time": 1792265564972
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.31418430",
+            "indexPrice": "81550.23478261",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265564000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265565563,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265572400",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265572400,
+          "before": 1792265571127,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "8.903",
+            "bidPrice": "81519.70",
+            "bidQty": "10.571",
+            "lastUpdateId": 11846955473091,
+            "symbol": "BTCUSDT",
+            "time": 1792265571872
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.43982799",
+            "indexPrice": "81550.23543478",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81519.70000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265571000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265572400,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265579137",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265579137,
+          "before": 1792265577870,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "8.332",
+            "bidPrice": "81519.70",
+            "bidQty": "10.912",
+            "lastUpdateId": 11846955742323,
+            "symbol": "BTCUSDT",
+            "time": 1792265578449
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.55238454",
+            "indexPrice": "81550.56956522",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003100",
+            "markPrice": "81520.04777536",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265578005
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265579137,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265585958",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265585958,
+          "before": 1792265584667,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "9.299",
+            "bidPrice": "81519.70",
+            "bidQty": "10.453",
+            "lastUpdateId": 11846956151081,
+            "symbol": "BTCUSDT",
+            "time": 1792265585137
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.61967899",
+            "indexPrice": "81550.59500000",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81520.96244203",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265585000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "equity": "9997.4707673498760",
+        "fees": "2.0209061201240",
+        "fills": [],
+        "gap_ms": 6821,
+        "mode": "PAPER",
+        "quantities": {
+          "LONG": "0.031",
+          "SHORT": "0.031"
+        },
+        "status": "APPLIED",
+        "time": 1792265585958,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265592710",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265592710,
+          "before": 1792265591448,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.367",
+            "bidPrice": "81519.70",
+            "bidQty": "7.641",
+            "lastUpdateId": 11846956445711,
+            "symbol": "BTCUSDT",
+            "time": 1792265591366
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.68156558",
+            "indexPrice": "81550.58630435",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81520.18858696",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265591000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265592710,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265599419",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265599419,
+          "before": 1792265598169,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.545",
+            "bidPrice": "81519.70",
+            "bidQty": "9.840",
+            "lastUpdateId": 11846956860932,
+            "symbol": "BTCUSDT",
+            "time": 1792265598879
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.76430522",
+            "indexPrice": "81550.59565217",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81519.90780435",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265598000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265599419,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265606122",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265606122,
+          "before": 1792265604877,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "3.993",
+            "bidPrice": "81519.70",
+            "bidQty": "10.656",
+            "lastUpdateId": 11846957213048,
+            "symbol": "BTCUSDT",
+            "time": 1792265604655
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.82335604",
+            "indexPrice": "81554.29891304",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81523.55060870",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265605000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265606122,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265612869",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265612869,
+          "before": 1792265611593,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "7.698",
+            "bidPrice": "81519.70",
+            "bidQty": "10.096",
+            "lastUpdateId": 11846957654932,
+            "symbol": "BTCUSDT",
+            "time": 1792265612345
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.90493627",
+            "indexPrice": "81554.30913043",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81522.31450725",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265611000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265612869,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265619633",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265619633,
+          "before": 1792265618334,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "8.416",
+            "bidPrice": "81519.70",
+            "bidQty": "9.265",
+            "lastUpdateId": 11846957974622,
+            "symbol": "BTCUSDT",
+            "time": 1792265618226
+          },
+          "mark": {
+            "estimatedSettlePrice": "81524.95609565",
+            "indexPrice": "81554.29826087",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81521.68258696",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265618000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265619633,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265626402",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265626402,
+          "before": 1792265625129,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "8.239",
+            "bidPrice": "81519.70",
+            "bidQty": "10.451",
+            "lastUpdateId": 11846958250026,
+            "symbol": "BTCUSDT",
+            "time": 1792265624262
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.02918031",
+            "indexPrice": "81554.30260870",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81520.94368841",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265625000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265626402,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265633248",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265633248,
+          "before": 1792265631972,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "7.846",
+            "bidPrice": "81519.70",
+            "bidQty": "11.953",
+            "lastUpdateId": 11846958537585,
+            "symbol": "BTCUSDT",
+            "time": 1792265631020
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.13849359",
+            "indexPrice": "81554.30260870",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81519.80946377",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265632000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265633248,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265640057",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265640057,
+          "before": 1792265638730,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "2.105",
+            "bidPrice": "81519.70",
+            "bidQty": "12.378",
+            "lastUpdateId": 11846958894537,
+            "symbol": "BTCUSDT",
+            "time": 1792265638219
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.21839565",
+            "indexPrice": "81554.47869565",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003121",
+            "markPrice": "81519.90394203",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265639000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "equity": "9997.4707673498760",
+        "fees": "2.0209061201240",
+        "fills": [],
+        "gap_ms": 6809,
+        "mode": "PAPER",
+        "quantities": {
+          "LONG": "0.031",
+          "SHORT": "0.031"
+        },
+        "status": "APPLIED",
+        "time": 1792265640057,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265646810",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265646810,
+          "before": 1792265645529,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "7.911",
+            "bidPrice": "81519.70",
+            "bidQty": "11.673",
+            "lastUpdateId": 11846959405882,
+            "symbol": "BTCUSDT",
+            "time": 1792265646334
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.31720011",
+            "indexPrice": "81554.47869565",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81519.87451449",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265645002
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265646810,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265653646",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265653646,
+          "before": 1792265652358,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "1.349",
+            "bidPrice": "81519.70",
+            "bidQty": "12.928",
+            "lastUpdateId": 11846959708263,
+            "symbol": "BTCUSDT",
+            "time": 1792265652192
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.39734396",
+            "indexPrice": "81554.45978261",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81519.82691304",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265652000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265653646,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265660384",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265660384,
+          "before": 1792265659115,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "9.850",
+            "bidPrice": "81519.70",
+            "bidQty": "10.616",
+            "lastUpdateId": 11846960292894,
+            "symbol": "BTCUSDT",
+            "time": 1792265659464
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.52675833",
+            "indexPrice": "81555.30152174",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81520.50242754",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265659001
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265660384,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265667175",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265667175,
+          "before": 1792265665857,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.857",
+            "bidPrice": "81519.70",
+            "bidQty": "9.938",
+            "lastUpdateId": 11846960501255,
+            "symbol": "BTCUSDT",
+            "time": 1792265661466
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.65588853",
+            "indexPrice": "81555.14586957",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81520.19318841",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265666000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265667175,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265673920",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265673920,
+          "before": 1792265672651,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.169",
+            "bidPrice": "81519.70",
+            "bidQty": "10.775",
+            "lastUpdateId": 11846961076282,
+            "symbol": "BTCUSDT",
+            "time": 1792265671220
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.80789493",
+            "indexPrice": "81555.17043478",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81520.07997101",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265673000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265673920,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265680682",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265680682,
+          "before": 1792265679387,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "9.834",
+            "bidPrice": "81519.70",
+            "bidQty": "10.839",
+            "lastUpdateId": 11846961298175,
+            "symbol": "BTCUSDT",
+            "time": 1792265676058
+          },
+          "mark": {
+            "estimatedSettlePrice": "81525.97895229",
+            "indexPrice": "81555.16978261",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81519.96578261",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265679001
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265680682,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265687431",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265687431,
+          "before": 1792265686158,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.063",
+            "bidPrice": "81519.70",
+            "bidQty": "11.216",
+            "lastUpdateId": 11846961775110,
+            "symbol": "BTCUSDT",
+            "time": 1792265686237
+          },
+          "mark": {
+            "estimatedSettlePrice": "81526.16079795",
+            "indexPrice": "81555.16391304",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265686001
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265687431,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265694261",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265694261,
+          "before": 1792265692997,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "5.033",
+            "bidPrice": "81519.70",
+            "bidQty": "11.246",
+            "lastUpdateId": 11846962079801,
+            "symbol": "BTCUSDT",
+            "time": 1792265692974
+          },
+          "mark": {
+            "estimatedSettlePrice": "81526.31803539",
+            "indexPrice": "81555.15456522",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265693000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265694261,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265701032",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265701032,
+          "before": 1792265699756,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "5.103",
+            "bidPrice": "81519.70",
+            "bidQty": "11.248",
+            "lastUpdateId": 11846962473955,
+            "symbol": "BTCUSDT",
+            "time": 1792265700436
+          },
+          "mark": {
+            "estimatedSettlePrice": "81526.50336522",
+            "indexPrice": "81554.88717391",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003164",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265700000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "equity": "9997.4707673498760",
+        "fees": "2.0209061201240",
+        "fills": [],
+        "gap_ms": 6771,
+        "mode": "PAPER",
+        "quantities": {
+          "LONG": "0.031",
+          "SHORT": "0.031"
+        },
+        "status": "APPLIED",
+        "time": 1792265701032,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265707848",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265707848,
+          "before": 1792265706584,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "1.896",
+            "bidPrice": "81519.70",
+            "bidQty": "12.383",
+            "lastUpdateId": 11846962870198,
+            "symbol": "BTCUSDT",
+            "time": 1792265706060
+          },
+          "mark": {
+            "estimatedSettlePrice": "81526.66238527",
+            "indexPrice": "81554.88869565",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003185",
+            "markPrice": "81519.70000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265706000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265707848,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265714636",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265714636,
+          "before": 1792265713308,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "7.636",
+            "bidPrice": "81519.70",
+            "bidQty": "11.066",
+            "lastUpdateId": 11846963304391,
+            "symbol": "BTCUSDT",
+            "time": 1792265713580
+          },
+          "mark": {
+            "estimatedSettlePrice": "81526.84858454",
+            "indexPrice": "81554.88934783",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003185",
+            "markPrice": "81519.70000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265713000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265714636,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265721352",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265721352,
+          "before": 1792265720097,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.985",
+            "bidPrice": "81519.70",
+            "bidQty": "10.348",
+            "lastUpdateId": 11846963729972,
+            "symbol": "BTCUSDT",
+            "time": 1792265720243
+          },
+          "mark": {
+            "estimatedSettlePrice": "81527.05024358",
+            "indexPrice": "81554.86913043",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003185",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265720000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265721352,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265728182",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265728182,
+          "before": 1792265726886,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.853",
+            "bidPrice": "81519.70",
+            "bidQty": "10.822",
+            "lastUpdateId": 11846964072276,
+            "symbol": "BTCUSDT",
+            "time": 1792265727443
+          },
+          "mark": {
+            "estimatedSettlePrice": "81527.24103747",
+            "indexPrice": "81554.88500000",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003185",
+            "markPrice": "81519.71160145",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265727000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265728182,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265734921",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265734921,
+          "before": 1792265733647,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "9.447",
+            "bidPrice": "81519.70",
+            "bidQty": "10.943",
+            "lastUpdateId": 11846964268460,
+            "symbol": "BTCUSDT",
+            "time": 1792265732103
+          },
+          "mark": {
+            "estimatedSettlePrice": "81527.42839601",
+            "indexPrice": "81554.87195652",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003185",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265734000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265734921,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265741659",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265741659,
+          "before": 1792265740407,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "10.216",
+            "bidPrice": "81519.70",
+            "bidQty": "10.935",
+            "lastUpdateId": 11846964667179,
+            "symbol": "BTCUSDT",
+            "time": 1792265741171
+          },
+          "mark": {
+            "estimatedSettlePrice": "81527.63066002",
+            "indexPrice": "81554.87630435",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003185",
+            "markPrice": "81519.80000000",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265740000
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265741659,
+        "trading_authorized": false
+      }
+    },
+    {
+      "id": "capture:1792265748400",
+      "payload": {
+        "funding": null,
+        "sample": {
+          "after": 1792265748400,
+          "before": 1792265747121,
+          "book": {
+            "askPrice": "81519.80",
+            "askQty": "9.926",
+            "bidPrice": "81519.70",
+            "bidQty": "10.898",
+            "lastUpdateId": 11846964889785,
+            "symbol": "BTCUSDT",
+            "time": 1792265746491
+          },
+          "mark": {
+            "estimatedSettlePrice": "81527.91338019",
+            "indexPrice": "81554.88782609",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00003185",
+            "markPrice": "81519.76148551",
+            "nextFundingTime": 1792281600000,
+            "symbol": "BTCUSDT",
+            "time": 1792265747002
+          },
+          "symbol": "BTCUSDT"
+        }
+      },
+      "result": {
+        "fills": [],
+        "mode": "PAPER",
+        "status": "SAME_MINUTE",
+        "time": 1792265748400,
+        "trading_authorized": false
+      }
+    }
+  ],
+  "log": [
+    {
+      "status": "RECOVERING"
+    },
+    {
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265448650,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265455376,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265462083,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265468791,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265475588,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265483403,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265491187,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265497968,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265504700,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265511437,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265518217,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265524968,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265531785,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265538550,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265545248,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265552035,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265558804,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265565563,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265572400,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265579137,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265585958,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265592710,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265599419,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265606122,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265612869,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265619633,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265626402,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265633248,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265640057,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265646810,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265653646,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265660384,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265667175,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265673920,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265680682,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265687431,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265694261,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265701032,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265707848,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265714636,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265721352,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265728182,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265734921,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265741659,
+      "status": "RUNNING"
+    },
+    {
+      "server_time": 1792265748400,
+      "status": "RUNNING"
+    },
+    {
+      "reason": "duration complete",
+      "status": "STOPPED"
+    }
+  ],
+  "portfolio": {
+    "portfolio": {
+      "config": {
+        "deficit_pp": "0.7",
+        "fee_rate": "0.0004",
+        "leverage": "7",
+        "min_notional": "5.3",
+        "step": "0.001",
+        "surplus_pp": "0.7",
+        "trail_pp": "0.09"
+      },
+      "extrema": {
+        "LONG": {
+          "peak": "25.26778362010844466799639083",
+          "trough": "25"
+        },
+        "SHORT": {
+          "peak": "25.25254217927028438716770393",
+          "trough": "25"
+        }
+      },
+      "fees": "2.0209061201240",
+      "funding": "0",
+      "legs": {
+        "LONG": {
+          "avg": "81496.348820",
+          "initial_units": 31,
+          "margin": "360.9124019171428571428571429",
+          "open_fees": "1.0105547253680",
+          "units": 31
+        },
+        "SHORT": {
+          "avg": "81479.951190",
+          "initial_units": 31,
+          "margin": "360.8397838414285714285714286",
+          "open_fees": "1.0103513947560",
+          "units": 31
+        }
+      },
+      "liability": "0",
+      "order_reserve": "0",
+      "realized": "0",
+      "receipts": {
+        "public:1792265448650:LONG": [
+          "ADD",
+          "LONG",
+          31,
+          "81496.348820",
+          "1.0105547253680"
+        ],
+        "public:1792265448650:SHORT": [
+          "ADD",
+          "SHORT",
+          31,
+          "81479.951190",
+          "1.0103513947560"
+        ]
+      },
+      "wallet": "9997.9790938798760"
+    },
+    "version": "shared-wallet-state-v1"
+  },
+  "revision": 45,
+  "trading_authorized": false
+}

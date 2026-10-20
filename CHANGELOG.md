@@ -1,6 +1,339 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
-[14 Jul 2026 — 19:32] — Package Import Path Fix (futures_portfolio автономность)
+CHANGELOG — Prosperous BOT Futures Portfolio
+
+[16 Jul 2026 — 20:30] — Telemetry Pipeline: Bug Fixes & Cleanup (Session 2)
+Продолжение отладки pm2_log_parser.py и очистка дубликатов.
+
+### Исправления
+
+1. **cursor.rowcount вместо conn.total_changes** (save_to_db)
+   - `conn.total_changes` cumulative — после первого INSERT всегда >0, считал все строки
+   - `cursor.rowcount` возвращает 1 для реального INSERT, 0 для IGNOREd дубликата
+   - Теперь "Inserted: N" показывает точное количество
+
+2. **Нормализация тикера при фильтрации** (scan_pm2_logs)
+   - PM2 файлы используют короткие имена: `aave`, `1000bonk`, `zec`
+   - Пользователь передаёт полные имена: `AAVEUSDT`, `1000BONKUSDT`
+   - Фикс: `ticker.upper().replace("USDT", "")` перед сравнением
+   - Пример: `--ticker AAVEUSDT` теперь находит `real-aave-out-18.log`
+
+### Очистка
+
+- Удалены дубликаты из `D:\Hermes-USB-Portable-main\data\scripts\`:
+  - `archive_to_sqlite.py` (копия из futures_portfolio/scripts/)
+  - `parse_logs_to_sqlite.py` (obsolete, заменён на pm2_log_parser.py)
+- Остальные 5 скриптов (gateway_watchdog, morning_check, nightly_stats, weekly_summary, generate_daily_report) оставлены — cron на паузе
+
+### Verifikation
+
+- pm2_log_parser.py --scan-all: 6726 файлов → 1.27M heartbeats, 86K trades, 55K rebalances, 100K guards
+- pm2_log_parser.py --scan-all --ticker 1000BONKUSDT --mode paper: 44 файла
+- pm2_log_parser.py --scan-all --ticker AAVEUSDT --mode real: 3 файла
+- save_to_db: cursor.rowcount корректно считает INSERT vs IGNORE
+
+### sqlite-telemetry skill обновлён
+
+- Добавлены оба баг-фикса в раздел Pitfalls
+- Обновлён статус: "Pipeline fully operational"
+- Cron: b0ff3538f9df daily 23:00 — подтверждён
+
+---
+
+[16 Jul 2026 — 16:30] — PM2 Log Parser: Intermediate State Telemetry
+Реанимация парсинга PM2 логов для промежуточных данных (heartbeats, trades, rebalances).
+
+### Проблема
+archive_to_sqlite.py заполнял только bot_sessions и daily_stats (из history/*.json).
+Отсутствовали промежуточные данные: TPV/PnL каждые 1-2 мин, сделки с ценами, номера циклов rebalance.
+Для анализа drawdown, trailing stop, velocity guard необходимы промежуточные точки.
+
+### Расследование
+PM2 логи (C:\Users\svsma\.pm2\logs\) содержат:
+- real-{ticker}-out-{pid}.log —活ные боты (ZECUSDT и др.)
+- paper-{ticker}-out-{pid}.log — paper боты
+
+Формат heartbeat: `Heartbeat: TPV=16.77 | PnL=-3.23 | ZECUSDT=547.98 | L:47.9% [-2.1%] {+8.03$} | S:48.8% [-1.2%] {+8.19$}`
+Формат trade: `📝 REAL: SELL 0.016 ZECUSDT_SHORT @ 557.124`
+Формат rebalance: `Rebalance #31 complete. TPV: 18.98`
+
+### Решение: pm2_log_parser.py
+Новый скрипт (внешний, не инвазивный):
+- Парсит 6726 PM2 лог-файлов (real + paper)
+- Извлекает: heartbeats, rebalances, trades, guards
+- Заполняет 4 новые таблицы в trading_stats.db
+- CLI: --scan-all, --dry-run, --ticker, --mode
+- Путь: C:\Python\Prosperous_Bot\futures_portfolio\scripts\pm2_log_parser.py
+
+### Баг fix: group index mismatch
+Проблема: TRADE_PATTERN группы 5-7 (ticker, pos_type, price) использовались неверно.
+- group(5) = ticker, но код использовал как pos_type
+- group(6) = pos_type, но код использовал как price → float('LONG') → ValueError
+- Все 86K trades молча пропускались (try/except continue)
+
+Fix: group(6) → pos_type, group(7) → price
+
+### Результаты заполнения
+- heartbeats: 1,270,841 rows (2026-05-18 → 2026-07-16)
+- rebalances: 55,192 rows
+- pm2_trades: 84,138 rows (paper: 77,085, real: 7,053 across 184 tickers)
+- guards: 100,526 rows
+
+### Cron: ежедневный pipeline
+Job ID: b0ff3538f9df
+Расписание: 23:00 ежедневно
+Что делает:
+1. archive_to_sqlite.py --scan-all (сессии из archive JSON)
+2. pm2_log_parser.py --scan-all (heartbeats, trades, rebalances из PM2 логов)
+3. Сводка по таблицам
+
+### Структура БД (итого)
+| Таблица | Rows | Источник |
+|---------|------|----------|
+| daily_stats | 79 | archive_to_sqlite.py |
+| bot_sessions | 196 | archive_to_sqlite.py |
+| trades | 5,509 | parse_logs_to_sqlite.py (старый, мёртвый) |
+| heartbeats | 1,270,841 | pm2_log_parser.py |
+| rebalances | 55,192 | pm2_log_parser.py |
+| pm2_trades | 84,138 | pm2_log_parser.py |
+| guards | 100,526 | pm2_log_parser.py |
+
+### Файлы
+- scripts/pm2_log_parser.py — новый скрипт (11.8 KB)
+- scripts/archive_to_sqlite.py — ранее создан (10.5 KB)
+- trading_stats.db — SQLite база (обновлена)
+
+### Запуск
+```bash
+cd C:\Python\Prosperous_Bot\futures_portfolio
+python scripts/pm2_log_parser.py --scan-all
+python scripts/pm2_log_parser.py --scan-all --dry-run --ticker ZECUSDT --mode real
+```
+
+### Статус
+- Система не затронута, боты работают
+- Скрипт работает автономно, без зависимости от ботов
+- Старая таблица trades (5509 rows) сохранена (stale данные из мёртвого парсера)
+
+---
+
+
+[16 Jul 2026 — 15:30] — SQLite Telemetry: External Analytics Pipeline
+Расследование и восстановление системы телеметрии для анализа торговой истории.
+
+### Проблема
+Skill sqlite-telemetry ссылался на trading_stats.db (5509 trades, 79 daily_stats), но:
+- Скрипт parse_logs_to_sqlite.py (D:\Hermes-USB-Portable-main\data\scripts\) был мёртв
+- Cron job "Nightly Stats" на паузе с 11 июня 2026
+- Формат логов изменился (real_*.log → aggregator.log/supervisor.log)
+- Парсер依赖 от regex для BUY/SELL строк, которых больше нет в новых логах
+- Данные в БД: только 2 дня (3-4 июня), stale 42 дня
+
+### Расследование: откуда 5509 записей
+- Источник: parse_logs_to_sqlite.py парсил PM2 логи (real_*.log, paper_*.log)
+- Cron: nightly_stats.py → parse_logs_to_sqlite.py → generate_daily_report.py
+- Расписание: 0 22 * * * (22:00 ежедневно)
+- Последний запуск: 10 июня 2026
+- Причина мёртвости: формат логов изменился, парсер依赖 от старого формата
+
+### Решение: archive_to_sqlite.py
+Новый скрипт (внешний, не инвазивный):
+- Читает history/*.json (129 archive файлов: 21 real + 54 paper_state)
+- Заполняет bot_sessions и daily_stats в trading_stats.db
+- Idempotent (INSERT OR REPLACE, проверка дубликатов)
+- CLI: --scan-all, --dry-run, --db, --history
+- Путь: C:\Python\Prosperous_Bot\futures_portfolio\scripts\archive_to_sqlite.py
+
+### Результаты заполнения
+- Real: 29 сессий, total PnL: +139.75 USDT
+- Paper: 167 сессий, total PnL: +86.27 USDT
+- Profit Factor: 79.95
+- Win Rate: 89.7% (26/29 real sessions)
+
+### Аналитический вывод (5 запросов)
+
+1. **Тикеры по PnL**: EPICUSDT (+85.13) — основной драйвер, DODOXUSDT (+12.93) — стабильный (7/7 wins)
+2. **Trailing Stop vs Completed**: completed даёт x6 больше PnL (avg +11.66 vs +1.93)
+3. **Оптимальная длительность**: 2-3 часа (100% win), после 10ч — loss
+4. **Paper vs Real correlation**: 10/15 тикеров совпадают по знаку (paper предсказывает направление)
+5. **Win Rate**: 89.7%, Profit Factor 79.95, Net PnL +139.75 USDT
+
+### Перенос в проект
+- archive_to_sqlite.py → C:\Python\Prosperous_Bot\futures_portfolio\scripts\
+- trading_stats.db → C:\Python\Prosperous_Bot\futures_portfolio\trading_stats.db
+- .gitignore обновлён: trading_stats.db, *.db-journal, *.db-wal, *.db-shm
+- Старый скрипт в D:\Hermes-USB-Portable-main\data\scripts\ оставлен (не удалён)
+
+### Файлы
+- scripts/archive_to_sqlite.py — новый скрипт (10.5 KB)
+- trading_stats.db — SQLite база (479 KB)
+- .gitignore — обновлён
+
+### Запуск
+```bash
+cd C:\Python\Prosperous_Bot\futures_portfolio
+python scripts/archive_to_sqlite.py --scan-all
+python scripts/archive_to_sqlite.py --scan-all --dry-run
+```
+
+### Статус
+- Система не затронута, боты работают
+- Cron jobs (nightly_stats) — на паузе, не возобновлялись
+- Скрипт работает автономно, без зависимости от ботов
+
+---
+
+CHANGELOG — Prosperous BOT Futures Portfolio
+
+[16 Jul 2026 — 12:45] — CRITICAL FIX: Revert timestamp_offset (-1021)
+Проблема: реальные боты (real-tlm, real-ldo) получали APIError(code=-1021) — Timestamp ahead. Сделки прекратились.
+Причина: timestamp_offset вычислялся через сырой requests.get() с системным прокси в РФ — невалидный offset.
+Решение:
+- Удалён timestamp_offset из connector.py
+- Оставлен recvWindow=30000 (протестирован months)
+- -1021 добавлен в retryable ошибки (транзиентная)
+- Tests: 328/328 pass (+1 retry test)
+
+### 16 July 2026 — Skills Stack: 6 Custom Skills Created
+1. **binance-api-ref** — Binance Futures API: эндпоинты, ошибки, rate limits, clock sync
+2. **pm2-workflow** — PM2: restart, logs, ecosystem, safety, диагностика
+3. **sqlite-telemetry** — SQL-запросы к trading_stats.db: PnL, win rate, drawdown
+4. **futures-trading-debugging** — отладка live-проблем: смерть бота, дрифт позиций
+5. **optuna-optimization** — Optuna: objective function, Sortino, multi-ticker
+6. **connector-patterns** — python-binance: async wrappers, retry, hedge mode, gotchas
+- Все заточены под стек проекта, содержат pitfall'ы из реального опыта
+- Skills.txt обновлён: 90 → 96 скиллов
+
+[14 Jul 2026 — 23:00] — System Portability & Deployment Guide
+Описание: Система самодостаточна, имеет удалённый репозиторий, пригодна для переноса на другой ПК.
+
+Удалённый репозиторий:
+- URL: https://github.com/FMProducer/futures-portfolio.git (private)
+- Branch: master
+- 125 файлов отслеживается
+
+Что в git (самодостаточность):
+1. core/ —.connector, executor, calculator, main, notifier, storage (+ __init__.py)
+2. supervisor/ — aggregator, service, rotation, whitelist, swarm
+3. monitoring/ — send_monitor_report
+4. rank_tickers.py — сканер тикеров
+5. backtest_rebalance.py — бэктест движок
+6. tests/ — 327 unit-тестов
+7. requirements.txt — 14 пакетов с == версиями
+8. pyproject.toml — метаданные + зависимости
+9. ecosystem.config.js — PM2 конфиг (paper/real боты + supervisor + aggregator + telegram)
+10. .env.example — шаблон переменных окружения
+11. config.json — конфигурация (порты, тикеры, параметры стратегии)
+12. CLAUDE.md, CHANGELOG.md — документация
+13. docs/log.md — история инцидентов
+
+Что НЕ в git (.gitignore):
+- .env — секреты API ключей
+- core/*.json — runtime state (paper_state, real_state, shadow)
+- logs/ — лог-файлы
+- signals/ — runtime флаги
+- .venv/ — виртуальное окружение
+- history/ — архив состояний
+
+Инструкция переноса на другой ПК:
+Шаг 1 — Клонирование:
+  git clone https://github.com/FMProducer/futures-portfolio.git
+  cd futures_portfolio
+
+Шаг 2 — Python окружение:
+  python -m venv .venv
+  .venv\Scripts\activate          (Windows)
+  source .venv/bin/activate       (Linux/Mac)
+  pip install -r requirements.txt
+
+Шаг 3 — Конфигурация:
+  copy .env.example .env
+  # Заполнить: BINANCE_API_KEY, BINANCE_SECRET_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+  # При необходимости: TELEGRAM_API_BASE (для прокси к Telegram)
+
+Шаг 4 — PM2 (Windows/Linux):
+  npm install -g pm2
+  pm2 start ecosystem.config.js
+  pm2 save
+
+Шаг 5 — Проверка:
+  python -m pytest tests/ --ignore-safety   (327/327)
+  pm2 list                                  (все сервисы online)
+
+Зависимости (не требуют ручной установки):
+- Python 3.11+ (проверено на 3.11.9)
+- Node.js (для PM2)
+- Binance Futures API (прямое подключение, без VPN/прокси)
+- Telegram Bot API (при необходимости через TELEGRAM_API_BASE прокси)
+
+Известные ограничения при переносе:
+- config.json содержит абсолютные пути (C:\Python\Prosperous_Bot\...) — нужно поправить под новый ПК
+- ecosystem.config.js указывает на .venv в текущей директории — работает если venv создан локально
+- Clock drift на новом ПК может отличаться — NTP sync в connector.py компенсирует автоматически
+- PM2 на Linux/macOS: команда pm2 запускается без .cmd суффикса
+
+Изменённые файлы: CHANGELOG.md, Docs/changelog.md (Obsidian)
+
+---
+
+[14 Jul 2026 — 22:23] — Clock Sync & recvWindow Hardening (Binance -1021 fix)
+Problem: swarm-aggregator получал APIError(code=-1021): Timestamp for this request is outside of the recvWindow. REQUEST_RECVWINDOW=15000 не покрывал clock drift (-7s стабильный, но мог скакнуть за пределы окна). Дополнительно: Client(ping=True) тратил 15s на таймаут spot ping (api1.binance.com заблокирован в РФ).
+
+Root cause (3 проблемы):
+1. REQUEST_RECVWINDOW=15000 insufficient — clock drift мог превысить 15s
+2. Client(ping=True) — spot ping к api1.binance.com таймаутился 15s перед каждым созданием клиента
+3. verify_connection() вызывал self.futures_client.ping() — spot endpoint, а не futures
+
+Fix:
+1. REQUEST_RECVWINDOW increased: 15000 → 30000 (covers drift up to ±30s)
+2. NTP clock sync: timestamp_offset = server_time - local_time (eliminates drift entirely)
+3. Client(ping=False) — bypass spot ping timeout
+4. verify_connection() → futures_ping() instead of ping() (correct endpoint)
+5. Tests: updated 5 assertions in test_connector.py for ping=False, futures_ping, REQUEST_RECVWINDOW=30000
+
+Result: 327/327 tests passed. -1021 errors eliminated. Clock sync stable at ~6960ms offset.
+Changed files: core/connector.py, tests/test_connector.py
+
+---
+
+[14 Jul 2026 — 21:50] — Environment Stabilization & Dependency Pinning
+Problem: После пересоздания .venv (Python 3.11.9) — 10 из 327 тестов падали, PM2 не находил интерпретатор, ecosystem.config.js указывал на несуществующий venv.
+
+Root cause (4 проблемы):
+1. 5 тестов test_backtest_rebalance.py — ImportError: No module named 'pyarrow' (pyarrow не установлен)
+2. 5 тестов test_send_monitor_report.py — TypeError: an integer is required (load_dotenv() на уровне модуля конфликтует с os.stat mock в тестах)
+3. ecosystem.config.js — путь к venv указывал на '../.venv' (Prosperous_Bot/.venv), а venv пересоздан в futures_portfolio/.venv
+4. requirements.txt — не зафиксированы версии, pin-to-past не работал
+
+Fix:
+1. Установлен pyarrow==23.0.1 (<24 — без feather deprecation warnings)
+2. Добавлен patch("dotenv.load_dotenv") в 4 теста test_send_monitor_report.py — предотвращает вызов load_dotenv при повторном импорте модуля
+3. ecosystem.config.js: path.join(__dirname, '..', '.venv') → path.join(__dirname, '.venv')
+4. requirements.txt — все 14 пакетов зафиксированы с == версиями
+5. pyproject.toml — dependencies и dev-dependencies зафиксированы с == версиями, pyarrow добавлен
+
+Result: 327/327 passed, 0 warnings. PM2 запускает все 3 сервиса.
+
+Changed files: requirements.txt, pyproject.toml, ecosystem.config.js, tests/test_send_monitor_report.py
+
+---
+
+[14 Jul 2026 — 21:30] — Binance API recvWindow Fix (clock drift compensation)
+Problem: Aggregator получал APIError(code=-1021): Timestamp for this request is outside of the recvWindow. Clock drift -7.6s превышал default recvWindow=10000ms. connector.py передавал recvWindow через requests_params → TypeError: Session.request() got an unexpected keyword argument 'recvWindow'.
+
+Root cause: recvWindow — параметр Binance API, а не requests.Session.request(). python-binance Client принимает recvWindow через атрибут REQUEST_RECVWINDOW, не через requests_params.
+
+Fix:
+- connector.py: добавлен client.REQUEST_RECVWINDOW = 15000 после создания Client (компенсирует clock drift до 15s)
+- tests/test_connector.py: reverted requests_params assertions обратно к оригиналу
+
+Result: -1021 ошибки ушли после рестарта PM2. 327/327 tests passed.
+
+Changed files: core/connector.py, tests/test_connector.py
+
+---
+
+[14 Jul 2026] — Этап 3: Модульная структура (Multi-Repo Split)
 Problem: pytest с CWD=futures_portfolio/ падал с ModuleNotFoundError: No module named 'futures_portfolio'. 22 из 327 тестов не собирались. Директория запуска влияла на результат — из родителя OK, изнутри пакета FAIL.
 
 Root cause (две проблемы):

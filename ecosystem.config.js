@@ -1,7 +1,7 @@
 const path = require('path');
 
 // Абсолютный путь к python из venv — PM2 всегда использует его
-const VENV_PYTHON = path.join(__dirname, '..', '.venv', 'Scripts', 'python.exe');
+const VENV_PYTHON = path.join(__dirname, '.venv', 'Scripts', 'python.exe');
 // Корневая директория пакета — для PYTHONPATH чтобы все импорты работали
 const PORTFOLIO_ROOT = __dirname;
 

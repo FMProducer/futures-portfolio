@@ -46,8 +46,8 @@ def retry_on_network_error(retries: int = 3, delay: float = 2.0):
                         logger.error(f"Max retries reached for {func.__name__}. Last error: {e}")
                 except BinanceAPIException as e:
                     last_err = e
-                    # Do not retry on client-side errors (except 429 Rate Limit)
-                    if e.status_code and 400 <= e.status_code < 500 and e.status_code != 429:
+                    # Do not retry on client-side errors (except 429 Rate Limit and -1021 Timestamp)
+                    if e.status_code and 400 <= e.status_code < 500 and e.status_code != 429 and e.code != -1021:
                         logger.error(f"Fatal Binance API Error in {func.__name__}: {e}. Aborting retry.")
                         raise e
 
@@ -80,22 +80,28 @@ class BinanceConnector:
                 }
 
                 if self.testnet:
-                    client = Client(self.api_key, self.secret_key, testnet=True, requests_params=requests_params)
+                    client = Client(self.api_key, self.secret_key, testnet=True, requests_params=requests_params, ping=False)
                 else:
-                    client = Client(self.api_key, self.secret_key, testnet=False, requests_params=requests_params)
+                    client = Client(self.api_key, self.secret_key, testnet=False, requests_params=requests_params, ping=False)
                     # Дополнительная проверка, что URL подменились
                     client.API_URL = 'https://api1.binance.com/api'
                     client.FUTURES_URL = 'https://fapi.binance.com/fapi'
+
+                # recvWindow=30000 покрывает clock drift до ±30s
+                # Отказались от timestamp_offset (14 Jul 2026) — сырой requests.get()
+                # через прокси давал невалидный offset, ломая реальных ботов (-1021)
+                client.REQUEST_RECVWINDOW = 30000
 
                 # Отключаем использование системных переменных в сессии requests
                 client.session.trust_env = False
                 return client
 
-            # Делегируем блокирующий вызов (синхронный ping внутри конструктора Client) в отдельный поток
+            # Делегируем блокирующий вызов в отдельный поток (ping=False — без spot timeout)
             self.client = await asyncio.to_thread(_init_client)
             self.futures_client = self.client
 
-        await asyncio.to_thread(self.futures_client.ping)
+        # Проверка через futures endpoint (не spot!)
+        await asyncio.to_thread(self.futures_client.futures_ping)
 
     @retry_on_network_error(retries=5, delay=3.0)
     async def get_positions(self) -> Dict[str, Dict]:

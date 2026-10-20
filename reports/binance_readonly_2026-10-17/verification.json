@@ -1,0 +1,23 @@
+{
+  "base_head": "0a695f9d4522513ef0b37f503f34c096800f6b2e",
+  "tests_passed": 89,
+  "comparison": {
+    "result_identical": true,
+    "trades_identical": true,
+    "equity_identical": true
+  },
+  "live_readonly": {
+    "status": "READ_ONLY_CAPTURED",
+    "rest_bracket_equal": true,
+    "hedge_mode": true,
+    "multi_asset_mode": false,
+    "active_positions": 0,
+    "open_orders": 0,
+    "trading_authorized": false
+  },
+  "source_sha256": {
+    "rebalance/binance_readonly.py": "479b10586d97c5b1baeb2ce7fd0e1ee3f0631f9c183171e668782497c22d7973",
+    "rebalance/scenarios/test_binance_readonly.py": "58d6e3668b8d82d637d567abad5bd42f63555b9f16781aaa0901283e3871f409",
+    "rebalance/kernel.py": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb"
+  }
+}

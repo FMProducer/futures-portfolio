@@ -1,0 +1,33 @@
+{
+  "inputs": {
+    "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\reports\\audit_2026-10-16\\market_data\\BTCUSDT.csv": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a",
+    "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\futures-portfolio\\rebalance\\historical_example.json": "cef8dc2f53a4df59ea947474eaed8bad93a9a5bcd76ca5cf219b80ff062a3eca"
+  },
+  "code": {
+    "comparison.py": "68270b1ef54057c32809302e39f7711a54e20f7b0613172078765f83fc1d5ab2",
+    "historical.py": "c9afe323e56dd3dc9cfd934ccd2c13a4b7d37315934a65da0e1091a391f731e4",
+    "kernel.py": "34aae718a6d4f96a3ab3cbdcee3256ffb5279a03af9c722aef5e4b8377c614eb"
+  },
+  "settings": {
+    "capital": "10000",
+    "spread_bps": "2",
+    "slippage_bps": "1",
+    "strategy": {
+      "step": "0.001",
+      "min_notional": "5.3",
+      "leverage": "7",
+      "fee_rate": "0.0004",
+      "surplus_pp": "0.7",
+      "deficit_pp": "0.7",
+      "trail_pp": "0.09"
+    }
+  },
+  "funding_mode": "ASSUMED_ZERO",
+  "net_flows": "NONE; equal virtual initial capital",
+  "limitations": [
+    "matched research assumptions, not executable market evidence",
+    "full fills, trade candle mark proxy, no depth/latency/liquidation",
+    "terminal open positions; closing costs excluded for BOTH arms",
+    "net already includes fees/funding; delta is not proof of alpha"
+  ]
+}

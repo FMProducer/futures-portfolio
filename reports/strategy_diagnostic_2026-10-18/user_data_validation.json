@@ -1,0 +1,31 @@
+{
+  "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\BTCUSDT_live_365d.feather",
+  "sha256": "de0ab2af9e54b58b8a3f9751687b8d91ee6d11d8dd4cf0fcd02268dd87aa471d",
+  "rows": 525600,
+  "columns": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  "index_type": "RangeIndex",
+  "nonfinite_cells": 0,
+  "invalid_ohlc_rows": 0,
+  "timestamp_present": false,
+  "funding_present": false,
+  "extreme_price_steps": [
+    {
+      "row_zero_based": 151128,
+      "prior_close": 77349.6,
+      "close": 75693.8,
+      "change": -1655.800000000003
+    },
+    {
+      "row_zero_based": 438932,
+      "prior_close": 67581.3,
+      "close": 70307.1,
+      "change": 2725.800000000003
+    }
+  ]
+}

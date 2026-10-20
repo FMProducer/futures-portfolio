@@ -3,34 +3,34 @@
   "limit_order_enabled": false,
   "limit_offset_pct": 0.1,
   "limit_timeout_sec": 30,
-  "min_notional_usdt": 5.1,
-  "paper_mode": false,
+  "min_notional_usdt": 6.0,
+  "paper_mode": true,
   "max_orders_per_second": 10,
-  "min_cycles_for_rank": 6,
+  "min_cycles_for_rank": 15,
   "min_cycles_for_rotation": 6,
-  "max_bots": 20,
-  "paper_mode_bots": 16,
+  "max_bots": 10,
+  "paper_mode_bots": 10,
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
   "supervisor_interval_days": 0.005,
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
-  "max_drawdown_limit": 100.0,
+  "max_drawdown_limit": 200.0,
   "equity_trailing_stop_pct": 0.001,
   "equity_trailing_stop_activation_pct": 9.0,
   "equity_trailing_stop_timeout_sec": 40,
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
-  "telegram_enabled": true,
-  "telegram_use_queue": true,
+  "telegram_enabled": false,
+  "telegram_use_queue": false,
   "telegram_summary_interval_min": 1,
   "portfolios": [
     {
       "name": "SyntheticMarketNeutral",
-      "initial_capital": 20.0,
-      "paper_initial_capital": 20.0,
-      "paper_account_free_margin": 90.0,
+      "initial_capital": 1000.0,
+      "paper_initial_capital": 1000.0,
+      "paper_account_free_margin": 1000.0,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
@@ -40,15 +40,15 @@
       "siphoning_threshold_pct": 1000.0,
       "targets": {
         "BASE_LONG": {
-          "share": 0.5,
+          "share": 0.33,
           "leverage": 7
         },
         "BASE_SHORT": {
-          "share": 0.5,
+          "share": 0.33,
           "leverage": 7
         },
         "VIRTUAL": {
-          "share": 0.0,
+          "share": 0.34,
           "leverage": 1
         }
       },
@@ -68,30 +68,24 @@
         "BTCUSDT": {
           "surplus": 0.01,
           "deficit": 0.04
+        },
+        "ZECUSDT": {
+          "surplus": 0.01,
+          "deficit": 0.04
         }
       }
     }
   ],
-  "live_swarm": [
-    "AIOTUSDT",
-    "TLMUSDT",
-    "VANRYUSDT",
-    "ZECUSDT"
-  ],
-  "use_real_whitelist": true,
-  "real_whitelist": [
-    "AIOTUSDT",
-    "TLMUSDT",
-    "VANRYUSDT",
-    "ZECUSDT"
-  ],
+  "live_swarm": [],
+  "use_real_whitelist": false,
+  "real_whitelist": [],
   "black_list": [],
   "toxic_cooldown_days": 0.01,
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [],
-  "base_ticker": "",
+  "base_ticker": "ZECUSDT",
   "probation_paper": {},
   "probation_real": {}
 }
