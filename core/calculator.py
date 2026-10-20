@@ -199,6 +199,8 @@ class PortfolioCalculator:
                 "base_symbol": "VIRTUAL" if key == "VIRTUAL" else self.base_ticker,
                 "position_side": "BOTH" if key == "VIRTUAL" else key.replace('BASE_', ''),
                 "diff_usdt": float(diff_usdt),
+                "requested_usdt": float(abs(diff_usdt)),
+                "approved_usdt": float(abs(diff_usdt)),
                 "diff_equity": float(diff_equity),
                 "leverage": float(lev),
                 "is_reduction": diff_usdt < 0
@@ -290,6 +292,7 @@ class PortfolioCalculator:
 
             if actual_buy_usdt >= min_notional or ignore_limits:
                 act["diff_usdt"] = float(abs(actual_buy_usdt))
+                act["approved_usdt"] = float(abs(actual_buy_usdt))
                 act["priority"] = 2
                 final_actions.append(act)
                 available_funds -= actual_buy_equity

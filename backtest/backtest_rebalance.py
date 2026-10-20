@@ -634,11 +634,15 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
                 def record(act: Dict[str, Any], status: str, executed_usdt: Decimal = Decimal('0'),
                            reason: str = "") -> None:
-                    requested = abs(Decimal(str(act["diff_usdt"])))
+                    requested = abs(Decimal(str(act.get("requested_usdt", act["diff_usdt"]))))
+                    approved = abs(Decimal(str(act.get("approved_usdt", act["diff_usdt"]))))
+                    if status == "partial" and approved < requested - Decimal('1e-9'):
+                        reason = "capped_by_available_funds" + (f"+{reason}" if reason else "")
                     execution_records.append({
                         "key": act["key"],
                         "side": action_side(act["key"], bool(act.get("is_reduction", False))),
                         "requested_usdt": float(requested),
+                        "approved_usdt": float(approved),
                         "executed_usdt": float(executed_usdt),
                         "status": status,
                         "reason": reason,
@@ -815,8 +819,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         "targets": {k: float(v.get("share", 0.0)) for k, v in targets.items()},
                         "thresholds": {"surplus": float(threshold_surplus), "deficit": float(threshold_deficit)},
                         "actions": [
-                            f'{r["key"]} {r["side"]} req={r["requested_usdt"]:.2f} '
-                            f'exec={r["executed_usdt"]:.2f} {r["status"]}'
+                            f'{r["key"]} {r["side"]} req={r["requested_usdt"]:.2f}'
+                            + (f' appr={r["approved_usdt"]:.2f}'
+                               if abs(r["approved_usdt"] - r["requested_usdt"]) > 1e-9 else "")
+                            + f' exec={r["executed_usdt"]:.2f} {r["status"]}'
                             + (f' ({r["reason"]})' if r["reason"] else "")
                             for r in execution_records
                         ],

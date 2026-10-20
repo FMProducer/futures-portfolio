@@ -187,6 +187,11 @@ async def test_run_backtest_normal_and_guards(tmp_path):
     res = await run_backtest(str(config_file), str(data_dir), live_mode=False, days=0.1)
     assert res is not None
     assert res["cycles"] > 0
+    for rb in res["rebalances"]:
+        for action in rb["actions_detail"]:
+            # approved is mid-based, executed is at the slipped price
+            assert action["executed_usdt"] <= action["approved_usdt"] * 1.01 + 1e-6
+            assert action["approved_usdt"] <= action["requested_usdt"] + 1e-6
 
 @pytest.mark.asyncio
 async def test_run_backtest_liquidation_and_trailing_stop(tmp_path):
