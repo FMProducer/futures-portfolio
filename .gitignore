@@ -1,9 +1,8 @@
+node_modules/
 __pycache__/
 *.pyc
 
-# hygiene
-__pycache__/
-*.pyc
+# hygiene: transfer artifacts & screenshots must never be committed
 *.bundle
 *.tar.gz
 0001-*.patch
