@@ -1,0 +1,6686 @@
+{
+  "profit_pct": 5.936571679233316e+26,
+  "max_dd_pct": 2.473592091186171,
+  "cycles": 11778,
+  "asset_chg_pct": -13.832046909655782,
+  "siphoning_reserve": 0.0,
+  "skipped_expansions": 1,
+  "liquidations": 0,
+  "trailing_stops": 248,
+  "trailing_stop_triggered": true,
+  "trend_guard_blocks": 162,
+  "velocity_guard_blocks": 0,
+  "sortino_ratio": 4.138215455203029,
+  "fills": [
+    {
+      "bar": 0,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.727,
+      "price": 1337.70852,
+      "commission": 0.924089045616,
+      "realized_pnl": 0.0,
+      "tpv": 1129.9340977166698
+    },
+    {
+      "bar": 0,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.727,
+      "price": 1336.37148,
+      "commission": 0.923165418384,
+      "realized_pnl": 0.0,
+      "tpv": 1259.7371723131432
+    },
+    {
+      "bar": 35,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.158,
+      "price": 1348.744035,
+      "commission": 1.164235851012,
+      "realized_pnl": 0.0,
+      "tpv": 1423.4236637608205
+    },
+    {
+      "bar": 35,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.158,
+      "price": 1347.395965,
+      "commission": 1.163072196988,
+      "realized_pnl": 0.0,
+      "tpv": 1586.959195032118
+    },
+    {
+      "bar": 70,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.703,
+      "price": 1356.79806,
+      "commission": 1.466970062472,
+      "realized_pnl": 0.0,
+      "tpv": 1793.2087556352267
+    },
+    {
+      "bar": 70,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.703,
+      "price": 1355.44194,
+      "commission": 1.465503825528,
+      "realized_pnl": 0.0,
+      "tpv": 1999.2681449908416
+    },
+    {
+      "bar": 105,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.434,
+      "price": 1345.342335,
+      "commission": 1.847962231356,
+      "realized_pnl": 0.0,
+      "tpv": 2259.0836448372893
+    },
+    {
+      "bar": 105,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.434,
+      "price": 1343.997665,
+      "commission": 1.846115192644,
+      "realized_pnl": 0.0,
+      "tpv": 2518.659473060931
+    },
+    {
+      "bar": 140,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.326,
+      "price": 1345.37235,
+      "commission": 2.32803231444,
+      "realized_pnl": 0.0,
+      "tpv": 2845.9706080233136
+    },
+    {
+      "bar": 140,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.326,
+      "price": 1344.02765,
+      "commission": 2.32570544556,
+      "realized_pnl": 0.0,
+      "tpv": 3172.979951557753
+    },
+    {
+      "bar": 175,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.464,
+      "price": 1341.8706,
+      "commission": 2.93279238336,
+      "realized_pnl": 0.0,
+      "tpv": 3585.317812909911
+    },
+    {
+      "bar": 175,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.464,
+      "price": 1340.5294,
+      "commission": 2.92986105664,
+      "realized_pnl": 0.0,
+      "tpv": 3997.2753729732694
+    },
+    {
+      "bar": 210,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6.901,
+      "price": 1338.638985,
+      "commission": 3.695179054194,
+      "realized_pnl": 0.0,
+      "tpv": 4516.8014292849675
+    },
+    {
+      "bar": 210,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6.901,
+      "price": 1337.301015,
+      "commission": 3.691485721806,
+      "realized_pnl": 0.0,
+      "tpv": 5035.848381193305
+    },
+    {
+      "bar": 245,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.662,
+      "price": 1343.59146,
+      "commission": 4.655275690608,
+      "realized_pnl": 0.0,
+      "tpv": 5690.359894657948
+    },
+    {
+      "bar": 245,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.662,
+      "price": 1342.24854,
+      "commission": 4.650622741392,
+      "realized_pnl": 0.0,
+      "tpv": 6344.267762738269
+    },
+    {
+      "bar": 280,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 10.941,
+      "price": 1340.039685,
+      "commission": 5.864549677434,
+      "realized_pnl": 0.0,
+      "tpv": 7168.797908472135
+    },
+    {
+      "bar": 280,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 10.941,
+      "price": 1338.700315,
+      "commission": 5.858688058566,
+      "realized_pnl": 0.0,
+      "tpv": 7992.567633766571
+    },
+    {
+      "bar": 315,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 13.8,
+      "price": 1338.44889,
+      "commission": 7.3882378728,
+      "realized_pnl": 0.0,
+      "tpv": 9031.321839428614
+    },
+    {
+      "bar": 315,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 13.8,
+      "price": 1337.11111,
+      "commission": 7.3808533272,
+      "realized_pnl": 0.0,
+      "tpv": 10069.117922272844
+    },
+    {
+      "bar": 350,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 17.391,
+      "price": 1338.098715,
+      "commission": 9.308349901026,
+      "realized_pnl": 0.0,
+      "tpv": 11377.83138621863
+    },
+    {
+      "bar": 350,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 17.391,
+      "price": 1336.761285,
+      "commission": 9.299046202974,
+      "realized_pnl": 0.0,
+      "tpv": 12685.337889304083
+    },
+    {
+      "bar": 385,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 22.158,
+      "price": 1323.071205,
+      "commission": 11.726644704156,
+      "realized_pnl": 0.0,
+      "tpv": 14334.053934225842
+    },
+    {
+      "bar": 385,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 22.158,
+      "price": 1321.748795,
+      "commission": 11.714923919844,
+      "realized_pnl": 0.0,
+      "tpv": 15981.24858989371
+    },
+    {
+      "bar": 420,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 27.912,
+      "price": 1323.211275,
+      "commission": 14.77338924312,
+      "realized_pnl": 0.0,
+      "tpv": 18058.322592523164
+    },
+    {
+      "bar": 420,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 27.912,
+      "price": 1321.888725,
+      "commission": 14.75862323688,
+      "realized_pnl": 0.0,
+      "tpv": 20133.481209612
+    },
+    {
+      "bar": 455,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 35.072,
+      "price": 1326.72303,
+      "commission": 18.612332043264,
+      "realized_pnl": 0.0,
+      "tpv": 22750.29392941567
+    },
+    {
+      "bar": 455,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 35.072,
+      "price": 1325.39697,
+      "commission": 18.593729012736,
+      "realized_pnl": 0.0,
+      "tpv": 25364.69341406237
+    },
+    {
+      "bar": 490,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 43.696,
+      "price": 1341.540435,
+      "commission": 23.447980339104,
+      "realized_pnl": 0.0,
+      "tpv": 28661.376930832343
+    },
+    {
+      "bar": 490,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 43.696,
+      "price": 1340.199565,
+      "commission": 23.424544076896,
+      "realized_pnl": 0.0,
+      "tpv": 31955.020498552018
+    },
+    {
+      "bar": 525,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 54.689,
+      "price": 1350.384855,
+      "commission": 29.540478934038,
+      "realized_pnl": 0.0,
+      "tpv": 36108.282756703135
+    },
+    {
+      "bar": 525,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 54.689,
+      "price": 1349.035145,
+      "commission": 29.510953217962,
+      "realized_pnl": 0.0,
+      "tpv": 40257.71511809903
+    },
+    {
+      "bar": 560,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 67.686,
+      "price": 1374.58695,
+      "commission": 37.21611691908,
+      "realized_pnl": 0.0,
+      "tpv": 45490.139537107294
+    },
+    {
+      "bar": 560,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 67.686,
+      "price": 1373.21305,
+      "commission": 37.17891940092,
+      "realized_pnl": 0.0,
+      "tpv": 50717.7379201378
+    },
+    {
+      "bar": 563,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 6.652,
+      "price": 1359.529425,
+      "commission": 3.61743589404,
+      "realized_pnl": 91.0234735,
+      "tpv": 50187.54599005839
+    },
+    {
+      "bar": 578,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 85.972,
+      "price": 1349.264295,
+      "commission": 46.399579987896,
+      "realized_pnl": 0.0,
+      "tpv": 56715.56343018822
+    },
+    {
+      "bar": 578,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 85.972,
+      "price": 1347.915705,
+      "commission": 46.353203596104,
+      "realized_pnl": 0.0,
+      "tpv": 63233.125964866966
+    },
+    {
+      "bar": 613,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 107.123,
+      "price": 1364.22177,
+      "commission": 58.455811467084,
+      "realized_pnl": 0.0,
+      "tpv": 71451.75888963904
+    },
+    {
+      "bar": 613,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 107.123,
+      "price": 1362.85823,
+      "commission": 58.397384868916,
+      "realized_pnl": 0.0,
+      "tpv": 79662.81180976242
+    },
+    {
+      "bar": 648,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 134.847,
+      "price": 1365.332325,
+      "commission": 73.64438721171,
+      "realized_pnl": 0.0,
+      "tpv": 90016.8915334272
+    },
+    {
+      "bar": 648,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 134.847,
+      "price": 1363.967675,
+      "commission": 73.57077962829,
+      "realized_pnl": 0.0,
+      "tpv": 100361.42264999391
+    },
+    {
+      "bar": 683,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 169.805,
+      "price": 1365.96264,
+      "commission": 92.77891443408,
+      "realized_pnl": 0.0,
+      "tpv": 113405.73449694885
+    },
+    {
+      "bar": 683,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 169.805,
+      "price": 1364.59736,
+      "commission": 92.68618188592,
+      "realized_pnl": 0.0,
+      "tpv": 126438.01575642294
+    },
+    {
+      "bar": 718,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 212.744,
+      "price": 1373.54643,
+      "commission": 116.885504681568,
+      "realized_pnl": 0.0,
+      "tpv": 142871.60980527566
+    },
+    {
+      "bar": 718,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 212.744,
+      "price": 1372.17357,
+      "commission": 116.768677590432,
+      "realized_pnl": 0.0,
+      "tpv": 159290.04691954123
+    },
+    {
+      "bar": 753,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 269.673,
+      "price": 1365.132225,
+      "commission": 147.25572100497,
+      "realized_pnl": 0.0,
+      "tpv": 179993.56300494785
+    },
+    {
+      "bar": 753,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 269.673,
+      "price": 1363.767775,
+      "commission": 147.10853887503,
+      "realized_pnl": 0.0,
+      "tpv": 200677.98235722355
+    },
+    {
+      "bar": 788,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 338.855,
+      "price": 1368.70401,
+      "commission": 185.51687892342,
+      "realized_pnl": 0.0,
+      "tpv": 226760.83920173242
+    },
+    {
+      "bar": 788,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 338.855,
+      "price": 1367.33599,
+      "commission": 185.33145475658,
+      "realized_pnl": 0.0,
+      "tpv": 252819.6496465087
+    },
+    {
+      "bar": 823,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 424.303,
+      "price": 1377.078195,
+      "commission": 233.719363749234,
+      "realized_pnl": 0.0,
+      "tpv": 285679.5674220894
+    },
+    {
+      "bar": 823,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 424.303,
+      "price": 1375.701805,
+      "commission": 233.485761186766,
+      "realized_pnl": 0.0,
+      "tpv": 318509.1871987841
+    },
+    {
+      "bar": 858,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 537.536,
+      "price": 1369.42437,
+      "commission": 294.445959260928,
+      "realized_pnl": 0.0,
+      "tpv": 359907.0033838185
+    },
+    {
+      "bar": 858,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 537.536,
+      "price": 1368.05563,
+      "commission": 294.151660451072,
+      "realized_pnl": 0.0,
+      "tpv": 401266.643989772
+    },
+    {
+      "bar": 893,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 675.072,
+      "price": 1373.74653,
+      "commission": 370.951127000064,
+      "realized_pnl": 0.0,
+      "tpv": 453420.76017383375
+    },
+    {
+      "bar": 893,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 675.072,
+      "price": 1372.37347,
+      "commission": 370.580361255936,
+      "realized_pnl": 0.0,
+      "tpv": 505526.7742404087
+    },
+    {
+      "bar": 928,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 853.895,
+      "price": 1368.24378,
+      "commission": 467.33460900924,
+      "realized_pnl": 0.0,
+      "tpv": 571231.9773420674
+    },
+    {
+      "bar": 928,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 853.895,
+      "price": 1366.87622,
+      "commission": 466.86750795076,
+      "realized_pnl": 0.0,
+      "tpv": 636876.5917896968
+    },
+    {
+      "bar": 963,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1082.529,
+      "price": 1359.689505,
+      "commission": 588.761328063258,
+      "realized_pnl": 0.0,
+      "tpv": 719653.8644701565
+    },
+    {
+      "bar": 963,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1082.529,
+      "price": 1358.330495,
+      "commission": 588.172860968742,
+      "realized_pnl": 0.0,
+      "tpv": 802354.8021651487
+    },
+    {
+      "bar": 998,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1370.709,
+      "price": 1352.83608,
+      "commission": 741.737836152288,
+      "realized_pnl": 0.0,
+      "tpv": 906639.9297317597
+    },
+    {
+      "bar": 998,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1370.709,
+      "price": 1351.48392,
+      "commission": 740.996468999712,
+      "realized_pnl": 0.0,
+      "tpv": 1010828.86275057
+    },
+    {
+      "bar": 1033,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1740.904,
+      "price": 1341.920625,
+      "commission": 934.461993498,
+      "realized_pnl": 0.0,
+      "tpv": 1142210.149047382
+    },
+    {
+      "bar": 1033,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1740.904,
+      "price": 1340.579375,
+      "commission": 933.527998502,
+      "realized_pnl": 0.0,
+      "tpv": 1273470.269947023
+    },
+    {
+      "bar": 1068,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2178.137,
+      "price": 1351.225275,
+      "commission": 1177.26150672507,
+      "realized_pnl": 0.0,
+      "tpv": 1438988.090988378
+    },
+    {
+      "bar": 1068,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2178.137,
+      "price": 1349.874725,
+      "commission": 1176.08483355493,
+      "realized_pnl": 0.0,
+      "tpv": 1604353.2837714236
+    },
+    {
+      "bar": 1073,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 201.906,
+      "price": 1363.927695,
+      "commission": 110.154074074668,
+      "realized_pnl": 2564.69481252,
+      "tpv": 1588511.5234624394
+    },
+    {
+      "bar": 1088,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2684.355,
+      "price": 1367.6835,
+      "commission": 1468.539216657,
+      "realized_pnl": 0.0,
+      "tpv": 1795022.1983099976
+    },
+    {
+      "bar": 1088,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2684.355,
+      "price": 1366.3165,
+      "commission": 1467.071411343,
+      "realized_pnl": 0.0,
+      "tpv": 2001302.0004480116
+    },
+    {
+      "bar": 1123,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3389.288,
+      "price": 1364.671995,
+      "commission": 1850.106566635824,
+      "realized_pnl": 0.0,
+      "tpv": 2261419.004659853
+    },
+    {
+      "bar": 1123,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3389.288,
+      "price": 1363.308005,
+      "commission": 1848.257384660176,
+      "realized_pnl": 0.0,
+      "tpv": 2521296.039042801
+    },
+    {
+      "bar": 1158,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4301.456,
+      "price": 1354.666995,
+      "commission": 2330.816189457888,
+      "realized_pnl": 0.0,
+      "tpv": 2848998.722683227
+    },
+    {
+      "bar": 1158,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4301.456,
+      "price": 1353.313005,
+      "commission": 2328.486538094112,
+      "realized_pnl": 0.0,
+      "tpv": 3176399.105953858
+    },
+    {
+      "bar": 1193,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5420.175,
+      "price": 1354.39686,
+      "commission": 2936.4272002602,
+      "realized_pnl": 0.0,
+      "tpv": 3589248.009217704
+    },
+    {
+      "bar": 1193,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5420.175,
+      "price": 1353.04314,
+      "commission": 2933.4922405398,
+      "realized_pnl": 0.0,
+      "tpv": 4001716.1374037787
+    },
+    {
+      "bar": 1228,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6863.726,
+      "price": 1347.443385,
+      "commission": 3699.392878061004,
+      "realized_pnl": 0.0,
+      "tpv": 4521834.825800648
+    },
+    {
+      "bar": 1228,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6863.726,
+      "price": 1346.096615,
+      "commission": 3695.695333954996,
+      "realized_pnl": 0.0,
+      "tpv": 5041473.676613469
+    },
+    {
+      "bar": 1263,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8710.888,
+      "price": 1337.578455,
+      "commission": 4660.598445087216,
+      "realized_pnl": 0.0,
+      "tpv": 5696733.559667284
+    },
+    {
+      "bar": 1263,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8710.888,
+      "price": 1336.241545,
+      "commission": 4655.940175776784,
+      "realized_pnl": 0.0,
+      "tpv": 6351389.093678722
+    },
+    {
+      "bar": 1298,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 10930.641,
+      "price": 1342.91112,
+      "commission": 5871.551739051168,
+      "realized_pnl": 0.0,
+      "tpv": 7176903.7816245025
+    },
+    {
+      "bar": 1298,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 10930.641,
+      "price": 1341.56888,
+      "commission": 5865.683121620832,
+      "realized_pnl": 0.0,
+      "tpv": 8001657.05837508
+    },
+    {
+      "bar": 1333,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 13720.332,
+      "price": 1347.843585,
+      "commission": 7397.144588108088,
+      "realized_pnl": 0.0,
+      "tpv": 9041663.399132848
+    },
+    {
+      "bar": 1333,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 13720.332,
+      "price": 1346.496415,
+      "commission": 7389.751140243912,
+      "realized_pnl": 0.0,
+      "tpv": 10080710.572482944
+    },
+    {
+      "bar": 1368,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 17285.899,
+      "price": 1347.79356,
+      "commission": 9319.129340404175,
+      "realized_pnl": 0.0,
+      "tpv": 11390939.60204113
+    },
+    {
+      "bar": 1368,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 17285.899,
+      "price": 1346.44644,
+      "commission": 9309.814868299824,
+      "realized_pnl": 0.0,
+      "tpv": 12699960.249656651
+    },
+    {
+      "bar": 1411,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 21457.259,
+      "price": 1367.893605,
+      "commission": 11740.498946771479,
+      "realized_pnl": 0.0,
+      "tpv": 14350623.30495375
+    },
+    {
+      "bar": 1411,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 21457.259,
+      "price": 1366.526395,
+      "commission": 11728.764315140523,
+      "realized_pnl": 0.0,
+      "tpv": 15999764.010405703
+    },
+    {
+      "bar": 1446,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 27163.582,
+      "price": 1361.290305,
+      "commission": 14791.008330269004,
+      "realized_pnl": 0.0,
+      "tpv": 18079315.67417232
+    },
+    {
+      "bar": 1446,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 27163.582,
+      "price": 1359.929695,
+      "commission": 14776.224713746997,
+      "realized_pnl": 0.0,
+      "tpv": 20156949.173627067
+    },
+    {
+      "bar": 1481,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 34056.487,
+      "price": 1367.8836,
+      "commission": 18634.12401636528,
+      "realized_pnl": 0.0,
+      "tpv": 22776825.22955537
+    },
+    {
+      "bar": 1481,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 34056.487,
+      "price": 1366.5164,
+      "commission": 18615.49920475472,
+      "realized_pnl": 0.0,
+      "tpv": 25394285.745088086
+    },
+    {
+      "bar": 1516,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 43046.997,
+      "price": 1363.38135,
+      "commission": 23475.78915332238,
+      "realized_pnl": 0.0,
+      "tpv": 28694879.698435
+    },
+    {
+      "bar": 1516,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 43046.997,
+      "price": 1362.01865,
+      "commission": 23452.32509619762,
+      "realized_pnl": 0.0,
+      "tpv": 31992429.45853251
+    },
+    {
+      "bar": 1551,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 55000.287,
+      "price": 1344.33183,
+      "commission": 29575.454589294084,
+      "realized_pnl": 0.0,
+      "tpv": 36150610.669608094
+    },
+    {
+      "bar": 1551,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 55000.287,
+      "price": 1342.98817,
+      "commission": 29545.893915041917,
+      "realized_pnl": 0.0,
+      "tpv": 40304955.92074097
+    },
+    {
+      "bar": 1564,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 12024.0,
+      "price": 1311.97566,
+      "commission": 6310.078134336,
+      "realized_pnl": 372894.42024,
+      "tpv": 39367750.59914885
+    },
+    {
+      "bar": 1579,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 68987.522,
+      "price": 1316.8581,
+      "commission": 36338.71085785128,
+      "realized_pnl": 0.0,
+      "tpv": 44417460.70744693
+    },
+    {
+      "bar": 1579,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 68987.522,
+      "price": 1315.5419,
+      "commission": 36302.39030726872,
+      "realized_pnl": 0.0,
+      "tpv": 49521813.38709271
+    },
+    {
+      "bar": 1614,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 86325.4,
+      "price": 1325.812575,
+      "commission": 45780.520344762,
+      "realized_pnl": 0.0,
+      "tpv": 55958354.359119974
+    },
+    {
+      "bar": 1614,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 86325.4,
+      "price": 1324.487425,
+      "commission": 45734.762703238,
+      "realized_pnl": 0.0,
+      "tpv": 62388960.073545724
+    },
+    {
+      "bar": 1649,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 108705.921,
+      "price": 1326.412875,
+      "commission": 57675.57328125315,
+      "realized_pnl": 0.0,
+      "tpv": 70497891.46843605
+    },
+    {
+      "bar": 1649,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 108705.921,
+      "price": 1325.087125,
+      "commission": 57617.92653134685,
+      "realized_pnl": 0.0,
+      "tpv": 78599347.4661428
+    },
+    {
+      "bar": 1684,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 137218.821,
+      "price": 1323.82158,
+      "commission": 72661.29456878288,
+      "realized_pnl": 0.0,
+      "tpv": 88815208.14992762
+    },
+    {
+      "bar": 1684,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 137218.821,
+      "price": 1322.49842,
+      "commission": 72588.66958670513,
+      "realized_pnl": 0.0,
+      "tpv": 99021648.19370157
+    },
+    {
+      "bar": 1719,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 174057.338,
+      "price": 1314.807075,
+      "commission": 91540.72778322654,
+      "realized_pnl": 0.0,
+      "tpv": 111891879.24112642
+    },
+    {
+      "bar": 1719,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 174057.338,
+      "price": 1313.492925,
+      "commission": 91449.23280293346,
+      "realized_pnl": 0.0,
+      "tpv": 124750237.39766188
+    },
+    {
+      "bar": 1754,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 218447.824,
+      "price": 1319.829585,
+      "commission": 115325.56035762922,
+      "realized_pnl": 0.0,
+      "tpv": 140964507.86545444
+    },
+    {
+      "bar": 1754,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 218447.824,
+      "price": 1318.510415,
+      "commission": 115210.29243123479,
+      "realized_pnl": 0.0,
+      "tpv": 157163825.86949226
+    },
+    {
+      "bar": 1789,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 274524.079,
+      "price": 1323.111225,
+      "commission": 145290.3561830747,
+      "realized_pnl": 0.0,
+      "tpv": 177591017.17582977
+    },
+    {
+      "bar": 1789,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 274524.079,
+      "price": 1321.788775,
+      "commission": 145145.1384357653,
+      "realized_pnl": 0.0,
+      "tpv": 197999369.6297951
+    },
+    {
+      "bar": 1824,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 346784.011,
+      "price": 1319.55945,
+      "commission": 183040.84752958157,
+      "realized_pnl": 0.0,
+      "tpv": 223734122.18241006
+    },
+    {
+      "bar": 1824,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 346784.011,
+      "price": 1318.24055,
+      "commission": 182857.89815673843,
+      "realized_pnl": 0.0,
+      "tpv": 249445134.44773337
+    },
+    {
+      "bar": 1859,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 435923.029,
+      "price": 1322.48091,
+      "commission": 230599.95363275055,
+      "realized_pnl": 0.0,
+      "tpv": 281866473.4621478
+    },
+    {
+      "bar": 1859,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 435923.029,
+      "price": 1321.15909,
+      "commission": 230369.46892147345,
+      "realized_pnl": 0.0,
+      "tpv": 314257922.2357691
+    },
+    {
+      "bar": 1894,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 548967.857,
+      "price": 1323.011175,
+      "commission": 290516.2438107208,
+      "realized_pnl": 0.0,
+      "tpv": 355103232.8982106
+    },
+    {
+      "bar": 1894,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 548967.857,
+      "price": 1321.688825,
+      "commission": 290225.87275243923,
+      "realized_pnl": 0.0,
+      "tpv": 395910882.1672403
+    },
+    {
+      "bar": 1929,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 691934.666,
+      "price": 1322.38086,
+      "commission": 366000.4634755571,
+      "realized_pnl": 0.0,
+      "tpv": 447368952.96038646
+    },
+    {
+      "bar": 1929,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 691934.666,
+      "price": 1321.05914,
+      "commission": 365634.6459208589,
+      "realized_pnl": 0.0,
+      "tpv": 498779567.2169299
+    },
+    {
+      "bar": 1964,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 868400.608,
+      "price": 1327.433385,
+      "commission": 461097.58344539924,
+      "realized_pnl": 0.0,
+      "tpv": 563607873.5851138
+    },
+    {
+      "bar": 1964,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 868400.608,
+      "price": 1326.106615,
+      "commission": 460636.71629552875,
+      "realized_pnl": 0.0,
+      "tpv": 628376398.1165556
+    },
+    {
+      "bar": 1999,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1102586.663,
+      "price": 1317.13824,
+      "commission": 580903.6227005173,
+      "realized_pnl": 0.0,
+      "tpv": 710048951.3807881
+    },
+    {
+      "bar": 1999,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1102586.663,
+      "price": 1315.82176,
+      "commission": 580323.0093844747,
+      "realized_pnl": 0.0,
+      "tpv": 791646148.7812755
+    },
+    {
+      "bar": 2034,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1389871.772,
+      "price": 1316.37786,
+      "commission": 731838.5715599072,
+      "realized_pnl": 0.0,
+      "tpv": 894539455.5940745
+    },
+    {
+      "bar": 2034,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1389871.772,
+      "price": 1315.06214,
+      "commission": 731107.0987247649,
+      "realized_pnl": 0.0,
+      "tpv": 997337878.6978168
+    },
+    {
+      "bar": 2069,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1746989.281,
+      "price": 1319.39937,
+      "commission": 921990.6226992612,
+      "realized_pnl": 0.0,
+      "tpv": 1126965729.5204186
+    },
+    {
+      "bar": 2069,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1746989.281,
+      "price": 1318.08063,
+      "commission": 921069.0928414908,
+      "realized_pnl": 0.0,
+      "tpv": 1256474047.0827198
+    },
+    {
+      "bar": 2087,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 162788.139,
+      "price": 1305.69252,
+      "commission": 85020.5021748081,
+      "realized_pnl": 2016637.37262729,
+      "tpv": 1244010319.6745267
+    },
+    {
+      "bar": 2102,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2205033.138,
+      "price": 1303.67151,
+      "commission": 1149855.5522465995,
+      "realized_pnl": 0.0,
+      "tpv": 1405489133.3162436
+    },
+    {
+      "bar": 2102,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2205033.138,
+      "price": 1302.36849,
+      "commission": 1148706.2713348086,
+      "realized_pnl": 0.0,
+      "tpv": 1567004721.8101432
+    },
+    {
+      "bar": 2121,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 198179.611,
+      "price": 1290.60498,
+      "commission": 102308.63715642512,
+      "realized_pnl": 2331287.83579461,
+      "tpv": 1552010709.9880912
+    },
+    {
+      "bar": 2136,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2770863.31,
+      "price": 1295.26731,
+      "commission": 1435603.4663685584,
+      "realized_pnl": 0.0,
+      "tpv": 1754763950.2490106
+    },
+    {
+      "bar": 2136,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2770863.31,
+      "price": 1293.97269,
+      "commission": 1434168.5803452015,
+      "realized_pnl": 0.0,
+      "tpv": 1956417399.9030702
+    },
+    {
+      "bar": 2171,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3458698.345,
+      "price": 1307.29332,
+      "commission": 1808613.2969254223,
+      "realized_pnl": 0.0,
+      "tpv": 2210700578.702206
+    },
+    {
+      "bar": 2171,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3458698.345,
+      "price": 1305.98668,
+      "commission": 1806805.587483218,
+      "realized_pnl": 0.0,
+      "tpv": 2464749220.2381406
+    },
+    {
+      "bar": 2206,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4338934.894,
+      "price": 1312.846095,
+      "commission": 2278541.4928188557,
+      "realized_pnl": 0.0,
+      "tpv": 2785102268.856048
+    },
+    {
+      "bar": 2206,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4338934.894,
+      "price": 1311.533905,
+      "commission": 2276264.0900274324,
+      "realized_pnl": 0.0,
+      "tpv": 3105159835.566375
+    },
+    {
+      "bar": 2241,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5440315.621,
+      "price": 1319.11923,
+      "commission": 2870569.9811721966,
+      "realized_pnl": 0.0,
+      "tpv": 3508749343.014903
+    },
+    {
+      "bar": 2241,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5440315.621,
+      "price": 1317.80077,
+      "commission": 2867700.8457587315,
+      "realized_pnl": 0.0,
+      "tpv": 3911966772.2964168
+    },
+    {
+      "bar": 2276,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6798993.519,
+      "price": 1329.76455,
+      "commission": 3616424.2228983804,
+      "realized_pnl": 0.0,
+      "tpv": 4420420404.541582
+    },
+    {
+      "bar": 2276,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6798993.519,
+      "price": 1328.43545,
+      "commission": 3612809.6059839395,
+      "realized_pnl": 0.0,
+      "tpv": 4928404981.790254
+    },
+    {
+      "bar": 2311,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8602129.379,
+      "price": 1324.111725,
+      "commission": 4556072.148280348,
+      "realized_pnl": 0.0,
+      "tpv": 5568968972.417118
+    },
+    {
+      "bar": 2311,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8602129.379,
+      "price": 1322.788275,
+      "commission": 4551518.353029693,
+      "realized_pnl": 0.0,
+      "tpv": 6208942117.576441
+    },
+    {
+      "bar": 2346,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 10874012.232,
+      "price": 1319.629485,
+      "commission": 5739866.864639144,
+      "realized_pnl": 0.0,
+      "tpv": 7015942556.276659
+    },
+    {
+      "bar": 2346,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 10874012.232,
+      "price": 1318.310515,
+      "commission": 5734129.866273688,
+      "realized_pnl": 0.0,
+      "tpv": 7822198587.921232
+    },
+    {
+      "bar": 2381,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 13555907.822,
+      "price": 1333.596465,
+      "commission": 7231244.30051402,
+      "realized_pnl": 0.0,
+      "tpv": 8838880032.68592
+    },
+    {
+      "bar": 2381,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 13555907.822,
+      "price": 1332.263535,
+      "commission": 7224016.670028748,
+      "realized_pnl": 0.0,
+      "tpv": 9854623859.341982
+    },
+    {
+      "bar": 2416,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 17091189.969,
+      "price": 1332.575955,
+      "commission": 9110123.518010639,
+      "realized_pnl": 0.0,
+      "tpv": 11135467909.985918
+    },
+    {
+      "bar": 2416,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 17091189.969,
+      "price": 1331.244045,
+      "commission": 9101017.947277993,
+      "realized_pnl": 0.0,
+      "tpv": 12415130349.662546
+    },
+    {
+      "bar": 2451,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 21849718.998,
+      "price": 1313.19627,
+      "commission": 11477187.795488695,
+      "realized_pnl": 0.0,
+      "tpv": 14028773171.226717
+    },
+    {
+      "bar": 2451,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 21849718.998,
+      "price": 1311.88373,
+      "commission": 11465716.34341924,
+      "realized_pnl": 0.0,
+      "tpv": 15640927617.427801
+    },
+    {
+      "bar": 2486,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 27531498.466,
+      "price": 1312.97616,
+      "commission": 14459280.453973828,
+      "realized_pnl": 0.0,
+      "tpv": 17673838689.135876
+    },
+    {
+      "bar": 2486,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 27531498.466,
+      "price": 1311.66384,
+      "commission": 14444828.399547068,
+      "realized_pnl": 0.0,
+      "tpv": 19704875706.92389
+    },
+    {
+      "bar": 2521,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 34812813.998,
+      "price": 1308.15375,
+      "commission": 18216205.271814477,
+      "realized_pnl": 0.0,
+      "tpv": 22265995498.909252
+    },
+    {
+      "bar": 2521,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 34812813.998,
+      "price": 1306.84625,
+      "commission": 18197998.17009352,
+      "realized_pnl": 0.0,
+      "tpv": 24824752647.887047
+    },
+    {
+      "bar": 2556,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 43577521.843,
+      "price": 1316.57796,
+      "commission": 22949281.92396495,
+      "realized_pnl": 0.0,
+      "tpv": 28051320261.17814
+    },
+    {
+      "bar": 2556,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 43577521.843,
+      "price": 1315.26204,
+      "commission": 22926344.110947497,
+      "realized_pnl": 0.0,
+      "tpv": 31274913666.64501
+    },
+    {
+      "bar": 2591,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 54165846.192,
+      "price": 1334.42688,
+      "commission": 28912144.454620175,
+      "realized_pnl": 0.0,
+      "tpv": 35339834432.20814
+    },
+    {
+      "bar": 2591,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 54165846.192,
+      "price": 1333.09312,
+      "commission": 28883246.75901336,
+      "realized_pnl": 0.0,
+      "tpv": 39401007174.371086
+    },
+    {
+      "bar": 2626,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 68359573.404,
+      "price": 1332.08571,
+      "commission": 36424324.349265784,
+      "realized_pnl": 0.0,
+      "tpv": 44522107096.384
+    },
+    {
+      "bar": 2626,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 68359573.404,
+      "price": 1330.75429,
+      "commission": 36387918.227977164,
+      "realized_pnl": 0.0,
+      "tpv": 49638485559.11342
+    },
+    {
+      "bar": 2661,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 86079920.767,
+      "price": 1332.72603,
+      "commission": 45888380.426607385,
+      "realized_pnl": 0.0,
+      "tpv": 56090193142.46749
+    },
+    {
+      "bar": 2661,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 86079920.767,
+      "price": 1331.39397,
+      "commission": 45842514.97890463,
+      "realized_pnl": 0.0,
+      "tpv": 62535949529.13224
+    },
+    {
+      "bar": 2696,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 109235597.487,
+      "price": 1323.091215,
+      "commission": 57811463.76013031,
+      "realized_pnl": 0.0,
+      "tpv": 70663992453.33478
+    },
+    {
+      "bar": 2696,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 109235597.487,
+      "price": 1321.768785,
+      "commission": 57753681.18765642,
+      "realized_pnl": 0.0,
+      "tpv": 78784536440.50565
+    },
+    {
+      "bar": 2731,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 138007310.308,
+      "price": 1319.35935,
+      "commission": 72832494.08928446,
+      "realized_pnl": 0.0,
+      "tpv": 89024468122.94524
+    },
+    {
+      "bar": 2731,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 138007310.308,
+      "price": 1318.04065,
+      "commission": 72759697.9932432,
+      "realized_pnl": 0.0,
+      "tpv": 99254955875.36368
+    },
+    {
+      "bar": 2751,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 12718491.942,
+      "price": 1305.802575,
+      "commission": 6643135.81119214,
+      "realized_pnl": 155649858.27309164,
+      "tpv": 98281094223.85347
+    },
+    {
+      "bar": 2766,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 172531186.431,
+      "price": 1316.788065,
+      "commission": 90874802.8530523,
+      "realized_pnl": 0.0,
+      "tpv": 111077906790.89098
+    },
+    {
+      "bar": 2766,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 172531186.431,
+      "price": 1315.471935,
+      "commission": 90783973.46489333,
+      "realized_pnl": 0.0,
+      "tpv": 123842725148.64069
+    },
+    {
+      "bar": 2801,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 215496298.446,
+      "price": 1328.173755,
+      "commission": 114486611.1582498,
+      "realized_pnl": 0.0,
+      "tpv": 139939044969.0996
+    },
+    {
+      "bar": 2801,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 215496298.446,
+      "price": 1326.846245,
+      "commission": 114372181.76178977,
+      "realized_pnl": 0.0,
+      "tpv": 156020519150.5899
+    },
+    {
+      "bar": 2836,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 269416137.583,
+      "price": 1338.38886,
+      "commission": 144233422.8981258,
+      "realized_pnl": 0.0,
+      "tpv": 176299108243.27795
+    },
+    {
+      "bar": 2836,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 269416137.583,
+      "price": 1337.05114,
+      "commission": 144089261.5558988,
+      "realized_pnl": 0.0,
+      "tpv": 196558997526.20953
+    },
+    {
+      "bar": 2871,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 341704131.896,
+      "price": 1329.434385,
+      "commission": 181709288.97564706,
+      "realized_pnl": 0.0,
+      "tpv": 222106533716.19858
+    },
+    {
+      "bar": 2871,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 341704131.896,
+      "price": 1328.105615,
+      "commission": 181527670.49591127,
+      "realized_pnl": 0.0,
+      "tpv": 247630507302.59167
+    },
+    {
+      "bar": 2906,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 432071963.227,
+      "price": 1324.56195,
+      "commission": 228922432.86091337,
+      "realized_pnl": 0.0,
+      "tpv": 279816009072.6168
+    },
+    {
+      "bar": 2906,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 432071963.227,
+      "price": 1323.23805,
+      "commission": 228693624.83206686,
+      "realized_pnl": 0.0,
+      "tpv": 311971823244.87897
+    },
+    {
+      "bar": 2941,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 543158843.599,
+      "price": 1327.433385,
+      "commission": 288402872.94052243,
+      "realized_pnl": 0.0,
+      "tpv": 352520021313.53735
+    },
+    {
+      "bar": 2941,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 543158843.599,
+      "price": 1326.106615,
+      "commission": 288114614.1969537,
+      "realized_pnl": 0.0,
+      "tpv": 393030813869.4443
+    },
+    {
+      "bar": 2976,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 682193928.236,
+      "price": 1331.50542,
+      "commission": 363337965.17493004,
+      "realized_pnl": 0.0,
+      "tpv": 444114532984.6062
+    },
+    {
+      "bar": 2976,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 682193928.236,
+      "price": 1330.17458,
+      "commission": 362974808.78794855,
+      "realized_pnl": 0.0,
+      "tpv": 495151156804.6557
+    },
+    {
+      "bar": 3011,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 867174946.126,
+      "price": 1319.63949,
+      "commission": 457743321.4585968,
+      "realized_pnl": 0.0,
+      "tpv": 559507898764.6161
+    },
+    {
+      "bar": 3011,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 867174946.126,
+      "price": 1318.32051,
+      "commission": 457285806.8944203,
+      "realized_pnl": 0.0,
+      "tpv": 623805263594.5612
+    },
+    {
+      "bar": 3046,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1090952756.473,
+      "price": 1321.50042,
+      "commission": 576677810.3516909,
+      "realized_pnl": 0.0,
+      "tpv": 704883664727.1499
+    },
+    {
+      "bar": 3046,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1090952756.473,
+      "price": 1320.17958,
+      "commission": 576101420.7361469,
+      "realized_pnl": 0.0,
+      "tpv": 785887279249.2906
+    },
+    {
+      "bar": 3081,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1390573147.498,
+      "price": 1306.142745,
+      "commission": 726514811.198531,
+      "realized_pnl": 0.0,
+      "tpv": 888032127131.2382
+    },
+    {
+      "bar": 3081,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1390573147.498,
+      "price": 1304.837255,
+      "commission": 725788659.4632002,
+      "realized_pnl": 0.0,
+      "tpv": 990082743011.6398
+    },
+    {
+      "bar": 3116,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1761028609.332,
+      "price": 1299.359355,
+      "commission": 915283599.1832699,
+      "realized_pnl": 0.0,
+      "tpv": 1118767613519.745
+    },
+    {
+      "bar": 3116,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1761028609.332,
+      "price": 1298.060645,
+      "commission": 914368772.9971796,
+      "realized_pnl": 0.0,
+      "tpv": 1247333822442.3037
+    },
+    {
+      "bar": 3151,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2301217906.918,
+      "price": 1252.70604,
+      "commission": 1153099828.5409346,
+      "realized_pnl": 0.0,
+      "tpv": 1409454670091.187
+    },
+    {
+      "bar": 3151,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2301217906.918,
+      "price": 1251.45396,
+      "commission": 1151947304.974177,
+      "realized_pnl": 0.0,
+      "tpv": 1571425969038.3633
+    },
+    {
+      "bar": 3159,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 230089723.313,
+      "price": 1238.749065,
+      "commission": 114009371.84803498,
+      "realized_pnl": 2923265775.270717,
+      "tpv": 1554709043297.003
+    },
+    {
+      "bar": 3174,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2887313491.135,
+      "price": 1244.171775,
+      "commission": 1436925580.4987519,
+      "realized_pnl": 0.0,
+      "tpv": 1756379994062.9883
+    },
+    {
+      "bar": 3174,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2887313491.135,
+      "price": 1242.928225,
+      "commission": 1435489373.0219915,
+      "realized_pnl": 0.0,
+      "tpv": 1958219155775.7297
+    },
+    {
+      "bar": 3209,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3636319212.927,
+      "price": 1244.58198,
+      "commission": 1810278946.374691,
+      "realized_pnl": 0.0,
+      "tpv": 2212736531548.73
+    },
+    {
+      "bar": 3209,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3636319212.927,
+      "price": 1243.33802,
+      "commission": 1808469572.1154459,
+      "realized_pnl": 0.0,
+      "tpv": 2467019140169.0503
+    },
+    {
+      "bar": 3244,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4601889903.684,
+      "price": 1238.969175,
+      "commission": 2280639894.963278,
+      "realized_pnl": 0.0,
+      "tpv": 2787667183004.054
+    },
+    {
+      "bar": 3244,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4601889903.684,
+      "price": 1237.730825,
+      "commission": 2278360394.818387,
+      "realized_pnl": 0.0,
+      "tpv": 3108019503830.75
+    },
+    {
+      "bar": 3279,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5800071478.445,
+      "price": 1238.43891,
+      "commission": 2873213679.8750057,
+      "realized_pnl": 0.0,
+      "tpv": 3511980783478.6626
+    },
+    {
+      "bar": 3279,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5800071478.445,
+      "price": 1237.20109,
+      "commission": 2870341902.0840263,
+      "realized_pnl": 0.0,
+      "tpv": 3915569562492.7153
+    },
+    {
+      "bar": 3314,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 7270674173.518,
+      "price": 1244.64201,
+      "commission": 3619754606.953013,
+      "realized_pnl": 0.0,
+      "tpv": 4424491192413.217
+    },
+    {
+      "bar": 3314,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 7270674173.518,
+      "price": 1243.39799,
+      "commission": 3616136661.3188767,
+      "realized_pnl": 0.0,
+      "tpv": 4932943575326.21
+    },
+    {
+      "bar": 3349,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 9182976194.157,
+      "price": 1241.50044,
+      "commission": 4560267594.222177,
+      "realized_pnl": 0.0,
+      "tpv": 5574097140984.836
+    },
+    {
+      "bar": 3349,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 9182976194.157,
+      "price": 1240.25956,
+      "commission": 4555709605.622254,
+      "realized_pnl": 0.0,
+      "tpv": 6214659603575.346
+    },
+    {
+      "bar": 3384,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 11571020983.239,
+      "price": 1241.28033,
+      "commission": 5745152297.804732,
+      "realized_pnl": 0.0,
+      "tpv": 7022403035797.614
+    },
+    {
+      "bar": 3384,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 11571020983.239,
+      "price": 1240.03967,
+      "commission": 5739410016.647506,
+      "realized_pnl": 0.0,
+      "tpv": 7829401490998.361
+    },
+    {
+      "bar": 3419,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 14645489688.483,
+      "price": 1235.51745,
+      "commission": 7237903229.566324,
+      "realized_pnl": 0.0,
+      "tpv": 8847019361268.152
+    },
+    {
+      "bar": 3419,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 14645489688.483,
+      "price": 1234.28255,
+      "commission": 7230668943.479801,
+      "realized_pnl": 0.0,
+      "tpv": 9863698540927.914
+    },
+    {
+      "bar": 3454,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 18486574472.672,
+      "price": 1233.126255,
+      "commission": 9118512138.90585,
+      "realized_pnl": 0.0,
+      "tpv": 11145721472114.201
+    },
+    {
+      "bar": 3454,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 18486574472.672,
+      "price": 1231.893745,
+      "commission": 9109398183.744524,
+      "realized_pnl": 0.0,
+      "tpv": 12426562227656.592
+    },
+    {
+      "bar": 3489,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 23500210734.512,
+      "price": 1222.09074,
+      "commission": 11487755970.678286,
+      "realized_pnl": 0.0,
+      "tpv": 14041690841479.672
+    },
+    {
+      "bar": 3489,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 23500210734.512,
+      "price": 1220.86926,
+      "commission": 11476273955.715088,
+      "realized_pnl": 0.0,
+      "tpv": 15655329756779.258
+    },
+    {
+      "bar": 3524,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 29803122240.811,
+      "price": 1214.016705,
+      "commission": 14472595304.600636,
+      "realized_pnl": 0.0,
+      "tpv": 17690113670568.38
+    },
+    {
+      "bar": 3524,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 29803122240.811,
+      "price": 1212.803295,
+      "commission": 14458129941.977346,
+      "realized_pnl": 0.0,
+      "tpv": 19723020971915.477
+    },
+    {
+      "bar": 3527,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 2719954449.358,
+      "price": 1201.66053,
+      "commission": 1307384762.076557,
+      "realized_pnl": 30307813239.900597,
+      "tpv": 19531548951858.242
+    },
+    {
+      "bar": 3542,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 37442299998.439,
+      "price": 1205.4024,
+      "commission": 18053215311.855347,
+      "realized_pnl": 0.0,
+      "tpv": 22066769937555.555
+    },
+    {
+      "bar": 3542,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 37442299998.439,
+      "price": 1204.1976,
+      "commission": 18035171118.6401,
+      "realized_pnl": 0.0,
+      "tpv": 24602632541866.44
+    },
+    {
+      "bar": 3577,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 47141507048.406,
+      "price": 1206.152775,
+      "commission": 22743943817.646782,
+      "realized_pnl": 0.0,
+      "tpv": 27800331798353.61
+    },
+    {
+      "bar": 3577,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 47141507048.406,
+      "price": 1204.947225,
+      "commission": 22721211240.1179,
+      "realized_pnl": 0.0,
+      "tpv": 30995082185219.23
+    },
+    {
+      "bar": 3612,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 59519536655.334,
+      "price": 1203.531465,
+      "commission": 28653454058.766132,
+      "realized_pnl": 0.0,
+      "tpv": 35023632505832.996
+    },
+    {
+      "bar": 3612,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 59519536655.334,
+      "price": 1202.328535,
+      "commission": 28624814924.274612,
+      "realized_pnl": 0.0,
+      "tpv": 39048468047690.695
+    },
+    {
+      "bar": 3647,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 75249605639.277,
+      "price": 1199.289345,
+      "commission": 36098420103.45473,
+      "realized_pnl": 0.0,
+      "tpv": 44123748472054.89
+    },
+    {
+      "bar": 3647,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 75249605639.277,
+      "price": 1198.090655,
+      "commission": 36062339723.54123,
+      "realized_pnl": 0.0,
+      "tpv": 49194348475088.22
+    },
+    {
+      "bar": 3682,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 93427440391.526,
+      "price": 1216.92816,
+      "commission": 45477793251.66776,
+      "realized_pnl": 0.0,
+      "tpv": 55588325049955.88
+    },
+    {
+      "bar": 3682,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 93427440391.526,
+      "price": 1215.71184,
+      "commission": 45432338185.94896,
+      "realized_pnl": 0.0,
+      "tpv": 61976407906185.555
+    },
+    {
+      "bar": 3702,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 10783760328.035,
+      "price": 1201.30035,
+      "commission": 5181814022.553824,
+      "realized_pnl": 155410054129.8731,
+      "tpv": 61214982445460.49
+    },
+    {
+      "bar": 3717,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 116671181888.146,
+      "price": 1214.977185,
+      "commission": 56701129656.433044,
+      "realized_pnl": 0.0,
+      "tpv": 69306811097873.44
+    },
+    {
+      "bar": 3717,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 116671181888.146,
+      "price": 1213.762815,
+      "commission": 56644456863.17324,
+      "realized_pnl": 0.0,
+      "tpv": 77271390915603.14
+    },
+    {
+      "bar": 3752,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 147344759958.45,
+      "price": 1212.015705,
+      "commission": 71433665247.63863,
+      "realized_pnl": 0.0,
+      "tpv": 87314654458301.75
+    },
+    {
+      "bar": 3752,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 147344759958.45,
+      "price": 1210.804295,
+      "commission": 71362267281.37411,
+      "realized_pnl": 0.0,
+      "tpv": 97348654344814.6
+    },
+    {
+      "bar": 3787,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 190103034864.099,
+      "price": 1183.49145,
+      "commission": 89994126552.28523,
+      "realized_pnl": 0.0,
+      "tpv": 110001440300575.92
+    },
+    {
+      "bar": 3787,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 190103034864.099,
+      "price": 1182.30855,
+      "commission": 89904177400.30893,
+      "realized_pnl": 0.0,
+      "tpv": 122642553597535.08
+    },
+    {
+      "bar": 3791,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 18193457994.991,
+      "price": 1170.86514,
+      "commission": 8520834296.955703,
+      "realized_pnl": 208195199154.45996,
+      "tpv": 121393978850171.94
+    },
+    {
+      "bar": 3806,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 244247643602.181,
+      "price": 1148.89416,
+      "commission": 112245876531.32285,
+      "realized_pnl": 0.0,
+      "tpv": 137200154713125.12
+    },
+    {
+      "bar": 3806,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 244247643602.181,
+      "price": 1147.74584,
+      "commission": 112133686749.68234,
+      "realized_pnl": 0.0,
+      "tpv": 152966881906422.34
+    },
+    {
+      "bar": 3814,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 22027688882.747,
+      "price": 1137.338385,
+      "commission": 10021174439.674372,
+      "realized_pnl": 229252180801.18967,
+      "tpv": 151499022276453.25
+    },
+    {
+      "bar": 3829,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 307811897512.866,
+      "price": 1137.818625,
+      "commission": 140093643994.69205,
+      "realized_pnl": 0.0,
+      "tpv": 171238981995329.9
+    },
+    {
+      "bar": 3829,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 307811897512.866,
+      "price": 1136.681375,
+      "commission": 139953620362.51343,
+      "realized_pnl": 0.0,
+      "tpv": 190917373172246.03
+    },
+    {
+      "bar": 3835,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 36670533515.572,
+      "price": 1122.74109,
+      "commission": 16468605908.061935,
+      "realized_pnl": 511197688309.1256,
+      "tpv": 188497878109567.97
+    },
+    {
+      "bar": 3850,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 382632706741.094,
+      "price": 1138.579005,
+      "commission": 174263026608.69263,
+      "realized_pnl": 0.0,
+      "tpv": 213004833231607.9
+    },
+    {
+      "bar": 3850,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 382632706741.094,
+      "price": 1137.440995,
+      "commission": 174088850670.05325,
+      "realized_pnl": 0.0,
+      "tpv": 237482860267646.2
+    },
+    {
+      "bar": 3858,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 43129298492.859,
+      "price": 1151.913755,
+      "commission": 19872492870.97002,
+      "realized_pnl": 575118413077.6515,
+      "tpv": 234631102352818.6
+    },
+    {
+      "bar": 3873,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 476083995534.422,
+      "price": 1139.539485,
+      "commission": 217006604435.21503,
+      "realized_pnl": 0.0,
+      "tpv": 265251077566069.9
+    },
+    {
+      "bar": 3873,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 476083995534.422,
+      "price": 1138.400515,
+      "commission": 216789706279.85748,
+      "realized_pnl": 0.0,
+      "tpv": 295733123205572.7
+    },
+    {
+      "bar": 3908,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 606870432569.805,
+      "price": 1126.232835,
+      "commission": 273390963100.30713,
+      "realized_pnl": 0.0,
+      "tpv": 334170693781033.75
+    },
+    {
+      "bar": 3908,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 606870432569.805,
+      "price": 1125.107165,
+      "commission": 273117708764.3748,
+      "realized_pnl": 0.0,
+      "tpv": 372572823690121.7
+    },
+    {
+      "bar": 3913,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 60325148146.286,
+      "price": 1137.69087,
+      "commission": 27452548110.970802,
+      "realized_pnl": 691207658840.3301,
+      "tpv": 368627790989330.06
+    },
+    {
+      "bar": 3928,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 751297004989.406,
+      "price": 1133.856645,
+      "commission": 340745240590.3345,
+      "realized_pnl": 0.0,
+      "tpv": 416499039175919.94
+    },
+    {
+      "bar": 3928,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 751297004989.406,
+      "price": 1132.723355,
+      "commission": 340404665637.2207,
+      "realized_pnl": 0.0,
+      "tpv": 464362153767064.9
+    },
+    {
+      "bar": 3963,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 945862227970.886,
+      "price": 1134.62703,
+      "commission": 429280340204.7157,
+      "realized_pnl": 0.0,
+      "tpv": 524717084595569.2
+    },
+    {
+      "bar": 3963,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 945862227970.886,
+      "price": 1133.49297,
+      "commission": 428851274397.4147,
+      "realized_pnl": 0.0,
+      "tpv": 585016368833104.8
+    },
+    {
+      "bar": 3975,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 93349785502.823,
+      "price": 1146.076675,
+      "commission": 42794404712.415436,
+      "realized_pnl": 1068821904833.4698,
+      "tpv": 578864064777602.6
+    },
+    {
+      "bar": 3990,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1166893466511.394,
+      "price": 1146.63303,
+      "commission": 535199436477.2653,
+      "realized_pnl": 0.0,
+      "tpv": 654183901949994.9
+    },
+    {
+      "bar": 3990,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1166893466511.394,
+      "price": 1145.48697,
+      "commission": 534664504506.77325,
+      "realized_pnl": 0.0,
+      "tpv": 729361215983340.8
+    },
+    {
+      "bar": 4025,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1469469431664.484,
+      "price": 1147.11327,
+      "commission": 674259153968.6752,
+      "realized_pnl": 0.0,
+      "tpv": 824159096975183.8
+    },
+    {
+      "bar": 4025,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1469469431664.484,
+      "price": 1145.96673,
+      "commission": 673585231775.8029,
+      "realized_pnl": 0.0,
+      "tpv": 918869570684575.4
+    },
+    {
+      "bar": 4060,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1828237080127.756,
+      "price": 1161.570495,
+      "commission": 849450500056.5409,
+      "realized_pnl": 0.0,
+      "tpv": 1038298631810999.1
+    },
+    {
+      "bar": 4060,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1828237080127.756,
+      "price": 1160.409505,
+      "commission": 848601474069.4779,
+      "realized_pnl": 0.0,
+      "tpv": 1157617529863026.2
+    },
+    {
+      "bar": 4095,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2275898094997.788,
+      "price": 1175.537475,
+      "commission": 1070161399980.4039,
+      "realized_pnl": 0.0,
+      "tpv": 1308077536410463.8
+    },
+    {
+      "bar": 4095,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2275898094997.788,
+      "price": 1174.362525,
+      "commission": 1069091773393.7169,
+      "realized_pnl": 0.0,
+      "tpv": 1458398807602813.5
+    },
+    {
+      "bar": 4130,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2863998026073.133,
+      "price": 1176.86814,
+      "commission": 1348219211963.3438,
+      "realized_pnl": 0.0,
+      "tpv": 1647952603559202.0
+    },
+    {
+      "bar": 4130,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2863998026073.133,
+      "price": 1175.69186,
+      "commission": 1346871666524.1,
+      "realized_pnl": 0.0,
+      "tpv": 1837331538168494.2
+    },
+    {
+      "bar": 4165,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3604895990653.312,
+      "price": 1177.92867,
+      "commission": 1698524135903.4353,
+      "realized_pnl": 0.0,
+      "tpv": 2076136615716994.8
+    },
+    {
+      "bar": 4165,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3604895990653.312,
+      "price": 1176.75133,
+      "commission": 1696826460605.181,
+      "realized_pnl": 0.0,
+      "tpv": 2314721475220026.5
+    },
+    {
+      "bar": 4200,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4496746608806.453,
+      "price": 1189.664535,
+      "commission": 2139847985351.4224,
+      "realized_pnl": 0.0,
+      "tpv": 2615574698379737.5
+    },
+    {
+      "bar": 4200,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4496746608806.452,
+      "price": 1188.475465,
+      "commission": 2137709206755.3684,
+      "realized_pnl": 0.0,
+      "tpv": 2916150545464396.5
+    },
+    {
+      "bar": 4235,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5675293162851.749,
+      "price": 1187.53347,
+      "commission": 2695840233179.445,
+      "realized_pnl": 0.0,
+      "tpv": 3295174027803797.0
+    },
+    {
+      "bar": 4235,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5675293162851.749,
+      "price": 1186.34653,
+      "commission": 2693145740192.759,
+      "realized_pnl": 0.0,
+      "tpv": 3673847871572068.5
+    },
+    {
+      "bar": 4270,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 7149049347226.127,
+      "price": 1187.67354,
+      "commission": 3396294698341.8975,
+      "realized_pnl": 0.0,
+      "tpv": 4151352125027437.5
+    },
+    {
+      "bar": 4270,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 7149049347226.127,
+      "price": 1186.48646,
+      "commission": 3392900100942.2554,
+      "realized_pnl": 0.0,
+      "tpv": 4628415992597265.0
+    },
+    {
+      "bar": 4305,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 9003310211554.715,
+      "price": 1188.103755,
+      "commission": 4278746667911.2007,
+      "realized_pnl": 0.0,
+      "tpv": 5229989046874845.0
+    },
+    {
+      "bar": 4305,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 9003310211554.715,
+      "price": 1186.916245,
+      "commission": 4274470059547.4707,
+      "realized_pnl": 0.0,
+      "tpv": 5831007396295987.0
+    },
+    {
+      "bar": 4340,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 11370580766471.158,
+      "price": 1185.182295,
+      "commission": 5390484403315.658,
+      "realized_pnl": 0.0,
+      "tpv": 6588886086227076.0
+    },
+    {
+      "bar": 4340,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 11370580766471.158,
+      "price": 1183.997705,
+      "commission": 5385096612807.597,
+      "realized_pnl": 0.0,
+      "tpv": 7346065767594564.0
+    },
+    {
+      "bar": 4375,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 14282533770726.914,
+      "price": 1188.704055,
+      "commission": 6791082323575.01,
+      "realized_pnl": 0.0,
+      "tpv": 8300862127474706.0
+    },
+    {
+      "bar": 4375,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 14282533770726.914,
+      "price": 1187.515945,
+      "commission": 6784294635095.675,
+      "realized_pnl": 0.0,
+      "tpv": 9254778170111254.0
+    },
+    {
+      "bar": 4410,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 17982939624145.344,
+      "price": 1189.404405,
+      "commission": 8555595041523.007,
+      "realized_pnl": 0.0,
+      "tpv": 1.0457657774468336e+16
+    },
+    {
+      "bar": 4410,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 17982939624145.344,
+      "price": 1188.215595,
+      "commission": 8547043722141.175,
+      "realized_pnl": 0.0,
+      "tpv": 1.1659427827539072e+16
+    },
+    {
+      "bar": 4445,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 22450507947369.848,
+      "price": 1200.25983,
+      "commission": 10778577140929.512,
+      "realized_pnl": 0.0,
+      "tpv": 1.3174848796429578e+16
+    },
+    {
+      "bar": 4445,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 22450507947369.848,
+      "price": 1199.06017,
+      "commission": 10767803950383.855,
+      "realized_pnl": 0.0,
+      "tpv": 1.4688872211494814e+16
+    },
+    {
+      "bar": 4480,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 28102695738200.168,
+      "price": 1207.993695,
+      "commission": 13579151705699.67,
+      "realized_pnl": 0.0,
+      "tpv": 1.6598041482397728e+16
+    },
+    {
+      "bar": 4480,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 28102695738200.164,
+      "price": 1206.786305,
+      "commission": 13565579340176.73,
+      "realized_pnl": 0.0,
+      "tpv": 1.8505450351893412e+16
+    },
+    {
+      "bar": 4492,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 3135034776046.614,
+      "price": 1221.978705,
+      "commission": 1532378294305.3625,
+      "realized_pnl": 43843492693359.66,
+      "tpv": 1.828548235618402e+16
+    },
+    {
+      "bar": 4507,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 34635934380318.78,
+      "price": 1220.319855,
+      "commission": 16906767368312.05,
+      "realized_pnl": 0.0,
+      "tpv": 2.0665445986195548e+16
+    },
+    {
+      "bar": 4507,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 34635934380318.78,
+      "price": 1219.100145,
+      "commission": 16889869050102.844,
+      "realized_pnl": 0.0,
+      "tpv": 2.3040271655112916e+16
+    },
+    {
+      "bar": 4542,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 43655717017384.14,
+      "price": 1219.74957,
+      "commission": 21299616823998.395,
+      "realized_pnl": 0.0,
+      "tpv": 2.603490492381137e+16
+    },
+    {
+      "bar": 4542,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 43655717017384.14,
+      "price": 1218.53043,
+      "commission": 21278327851660.566,
+      "realized_pnl": 0.0,
+      "tpv": 2.9026776502203212e+16
+    },
+    {
+      "bar": 4577,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 55050619073090.984,
+      "price": 1218.598995,
+      "commission": 26833851630638.6,
+      "realized_pnl": 0.0,
+      "tpv": 3.2799499714764876e+16
+    },
+    {
+      "bar": 4577,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 55050619073090.98,
+      "price": 1217.381005,
+      "commission": 26807031189228.664,
+      "realized_pnl": 0.0,
+      "tpv": 3.656874301598875e+16
+    },
+    {
+      "bar": 4612,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 69334378640552.93,
+      "price": 1218.94917,
+      "commission": 33806033318547.09,
+      "realized_pnl": 0.0,
+      "tpv": 4.132172285408992e+16
+    },
+    {
+      "bar": 4612,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 69334378640552.93,
+      "price": 1217.73083,
+      "commission": 33772244179797.918,
+      "realized_pnl": 0.0,
+      "tpv": 4.607032049787336e+16
+    },
+    {
+      "bar": 4647,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 87083487717060.72,
+      "price": 1222.67103,
+      "commission": 42589783049204.39,
+      "realized_pnl": 0.0,
+      "tpv": 5.205825821065826e+16
+    },
+    {
+      "bar": 4647,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 87083487717060.72,
+      "price": 1221.44897,
+      "commission": 42547214550404.586,
+      "realized_pnl": 0.0,
+      "tpv": 5.804067387980875e+16
+    },
+    {
+      "bar": 4682,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 110085849565201.34,
+      "price": 1218.498945,
+      "commission": 53655796621850.62,
+      "realized_pnl": 0.0,
+      "tpv": 6.558444572990246e+16
+    },
+    {
+      "bar": 4682,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 110085849565201.34,
+      "price": 1217.281055,
+      "commission": 53602167639719.836,
+      "realized_pnl": 0.0,
+      "tpv": 7.312125985455922e+16
+    },
+    {
+      "bar": 4717,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 138290662455224.4,
+      "price": 1222.0107,
+      "commission": 67597067692149.0,
+      "realized_pnl": 0.0,
+      "tpv": 8.262511222787213e+16
+    },
+    {
+      "bar": 4717,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 138290662455224.4,
+      "price": 1220.7893,
+      "commission": 67529504406099.875,
+      "realized_pnl": 0.0,
+      "tpv": 9.212020067391885e+16
+    },
+    {
+      "bar": 4752,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 173194381238905.9,
+      "price": 1229.264325,
+      "commission": 85160669658974.53,
+      "realized_pnl": 0.0,
+      "tpv": 1.040934189633606e+17
+    },
+    {
+      "bar": 4752,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 173194381238905.9,
+      "price": 1228.035675,
+      "commission": 85075551548370.86,
+      "realized_pnl": 0.0,
+      "tpv": 1.160555959947535e+17
+    },
+    {
+      "bar": 4787,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 218629295809559.3,
+      "price": 1226.823105,
+      "commission": 107287788611618.83,
+      "realized_pnl": 0.0,
+      "tpv": 1.311397946296538e+17
+    },
+    {
+      "bar": 4787,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 218629295809559.3,
+      "price": 1225.596895,
+      "commission": 107180554440092.95,
+      "realized_pnl": 0.0,
+      "tpv": 1.462100791379625e+17
+    },
+    {
+      "bar": 4822,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 275424049988363.9,
+      "price": 1226.87313,
+      "commission": 135164146514600.2,
+      "realized_pnl": 0.0,
+      "tpv": 1.6521356852067245e+17
+    },
+    {
+      "bar": 4822,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 275424049988363.9,
+      "price": 1225.64687,
+      "commission": 135029049916384.7,
+      "realized_pnl": 0.0,
+      "tpv": 1.8419953299675594e+17
+    },
+    {
+      "bar": 4857,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 346526286743084.4,
+      "price": 1228.503945,
+      "commission": 170283564124032.16,
+      "realized_pnl": 0.0,
+      "tpv": 2.0814066462744397e+17
+    },
+    {
+      "bar": 4857,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 346526286743084.4,
+      "price": 1227.276055,
+      "commission": 170113365659140.56,
+      "realized_pnl": 0.0,
+      "tpv": 2.3205971256054755e+17
+    },
+    {
+      "bar": 4892,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 438233772329782.3,
+      "price": 1223.821605,
+      "commission": 214527983447135.5,
+      "realized_pnl": 0.0,
+      "tpv": 2.62221414530343e+17
+    },
+    {
+      "bar": 4892,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 438233772329782.3,
+      "price": 1222.598395,
+      "commission": 214313562674074.9,
+      "realized_pnl": 0.0,
+      "tpv": 2.923552982404968e+17
+    },
+    {
+      "bar": 4927,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 549511508612514.44,
+      "price": 1229.584485,
+      "commission": 270268330127556.66,
+      "realized_pnl": 0.0,
+      "tpv": 3.303538433076523e+17
+    },
+    {
+      "bar": 4927,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 549511508612514.44,
+      "price": 1228.355515,
+      "commission": 269998196864060.84,
+      "realized_pnl": 0.0,
+      "tpv": 3.683173495119985e+17
+    },
+    {
+      "bar": 4962,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 695839986843167.4,
+      "price": 1223.31135,
+      "commission": 340491581475638.94,
+      "realized_pnl": 0.0,
+      "tpv": 4.161889870755123e+17
+    },
+    {
+      "bar": 4962,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 695839986843167.4,
+      "price": 1222.08865,
+      "commission": 340151260054873.6,
+      "realized_pnl": 0.0,
+      "tpv": 4.6401647119019706e+17
+    },
+    {
+      "bar": 4997,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 875729033735405.6,
+      "price": 1224.581985,
+      "commission": 428960799381534.0,
+      "realized_pnl": 0.0,
+      "tpv": 5.243265040973583e+17
+    },
+    {
+      "bar": 4997,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 875729033735405.6,
+      "price": 1223.358015,
+      "commission": 428532052955365.56,
+      "realized_pnl": 0.0,
+      "tpv": 5.845809037196018e+17
+    },
+    {
+      "bar": 5018,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 103510865126347.83,
+      "price": 1239.69984,
+      "commission": 51328961174157.99,
+      "realized_pnl": 1564862249904683.0,
+      "tpv": 5.772158264682141e+17
+    },
+    {
+      "bar": 5032,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1076425206558534.6,
+      "price": 1239.31935,
+      "commission": 533613834926295.5,
+      "realized_pnl": 0.0,
+      "tpv": 6.522457926418482e+17
+    },
+    {
+      "bar": 5032,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1076425206558534.6,
+      "price": 1238.08065,
+      "commission": 533080487764949.94,
+      "realized_pnl": 0.0,
+      "tpv": 7.272003835973943e+17
+    },
+    {
+      "bar": 5067,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1369890164373422.2,
+      "price": 1226.85312,
+      "commission": 672261608887538.4,
+      "realized_pnl": 0.0,
+      "tpv": 8.217174616773211e+17
+    },
+    {
+      "bar": 5067,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1369890164373422.2,
+      "price": 1225.62688,
+      "commission": 671589683241473.9,
+      "realized_pnl": 0.0,
+      "tpv": 9.161473482567096e+17
+    },
+    {
+      "bar": 5102,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1722678991756229.8,
+      "price": 1229.09424,
+      "commission": 846933930454635.9,
+      "realized_pnl": 0.0,
+      "tpv": 1.0352225835017198e+18
+    },
+    {
+      "bar": 5102,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1722678991756229.8,
+      "price": 1227.86576,
+      "commission": 846087419779518.8,
+      "realized_pnl": 0.0,
+      "tpv": 1.1541879891351178e+18
+    },
+    {
+      "bar": 5137,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2203698304266051.8,
+      "price": 1210.454925,
+      "commission": 1066990986245196.2,
+      "realized_pnl": 0.0,
+      "tpv": 1.304202282651331e+18
+    },
+    {
+      "bar": 5137,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2203698304266051.8,
+      "price": 1209.245075,
+      "commission": 1065924528487829.8,
+      "realized_pnl": 0.0,
+      "tpv": 1.454078218567254e+18
+    },
+    {
+      "bar": 5172,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2772110332055400.0,
+      "price": 1212.275835,
+      "commission": 1344224947001835.0,
+      "realized_pnl": 0.0,
+      "tpv": 1.643070341621221e+18
+    },
+    {
+      "bar": 5172,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2772110332055400.0,
+      "price": 1211.064165,
+      "commission": 1342881393831418.2,
+      "realized_pnl": 0.0,
+      "tpv": 1.831888217883143e+18
+    },
+    {
+      "bar": 5187,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 256906595090112.2,
+      "price": 1223.66786,
+      "commission": 125747337373521.64,
+      "realized_pnl": 2926686353931435.5,
+      "tpv": 1.8137944865855002e+18
+    },
+    {
+      "bar": 5202,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3452311601006047.0,
+      "price": 1214.596995,
+      "commission": 1677266918554233.5,
+      "realized_pnl": 0.0,
+      "tpv": 2.050153536434192e+18
+    },
+    {
+      "bar": 5202,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3452311601006047.0,
+      "price": 1213.383005,
+      "commission": 1675590489850031.2,
+      "realized_pnl": 0.0,
+      "tpv": 2.285752480042665e+18
+    },
+    {
+      "bar": 5237,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4334251737229431.0,
+      "price": 1218.819105,
+      "commission": 2113067529285868.0,
+      "realized_pnl": 0.0,
+      "tpv": 2.5828404650250107e+18
+    },
+    {
+      "bar": 5237,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4334251737229429.5,
+      "price": 1217.600895,
+      "commission": 2110955517762343.2,
+      "realized_pnl": 0.0,
+      "tpv": 2.879654569068892e+18
+    },
+    {
+      "bar": 5272,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5453874942788247.0,
+      "price": 1220.279835,
+      "commission": 2662101446118510.5,
+      "realized_pnl": 0.0,
+      "tpv": 3.2539345012604626e+18
+    },
+    {
+      "bar": 5272,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5453874942788247.0,
+      "price": 1219.060165,
+      "commission": 2659440675057922.5,
+      "realized_pnl": 0.0,
+      "tpv": 3.627869193196516e+18
+    },
+    {
+      "bar": 5307,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6897182841495311.0,
+      "price": 1215.637515,
+      "commission": 3353789683974399.5,
+      "realized_pnl": 0.0,
+      "tpv": 4.0993974811018153e+18
+    },
+    {
+      "bar": 5307,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6897182841495311.0,
+      "price": 1214.422485,
+      "commission": 3350437570347239.0,
+      "realized_pnl": 0.0,
+      "tpv": 4.5704908401185516e+18
+    },
+    {
+      "bar": 5342,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8639984547646641.0,
+      "price": 1222.57098,
+      "commission": 4225197750240484.0,
+      "realized_pnl": 0.0,
+      "tpv": 5.164535241210167e+18
+    },
+    {
+      "bar": 5342,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8639984547646639.0,
+      "price": 1221.34902,
+      "commission": 4220974664033346.5,
+      "realized_pnl": 0.0,
+      "tpv": 5.758031789363405e+18
+    },
+    {
+      "bar": 5354,
+      "side": "BUY",
+      "leg": "BASE_SHORT",
+      "qty": 969426591973904.6,
+      "price": 1207.30335,
+      "commission": 468156788827671.25,
+      "realized_pnl": 1.3616246000090112e+16,
+      "tpv": 5.689285994274023e+18
+    },
+    {
+      "bar": 5369,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.0806147438604442e+16,
+      "price": 1217.48844,
+      "commission": 5262543834974607.0,
+      "realized_pnl": 0.0,
+      "tpv": 6.432502027293928e+18
+    },
+    {
+      "bar": 5369,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.0806147438604442e+16,
+      "price": 1216.27156,
+      "commission": 5257283921096571.0,
+      "realized_pnl": 0.0,
+      "tpv": 7.17171041118194e+18
+    },
+    {
+      "bar": 5404,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.3597348418577198e+16,
+      "price": 1218.96918,
+      "commission": 6629899460786938.0,
+      "realized_pnl": 0.0,
+      "tpv": 8.103845413854433e+18
+    },
+    {
+      "bar": 5404,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.3597348418577198e+16,
+      "price": 1217.75082,
+      "commission": 6623272874619234.0,
+      "realized_pnl": 0.0,
+      "tpv": 9.035120747501505e+18
+    },
+    {
+      "bar": 5439,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.728996959933871e+16,
+      "price": 1207.713555,
+      "commission": 8352532260263712.0,
+      "realized_pnl": 0.0,
+      "tpv": 1.0209450482884862e+19
+    },
+    {
+      "bar": 5439,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.7289969599338708e+16,
+      "price": 1206.506445,
+      "commission": 8344183902182488.0,
+      "realized_pnl": 0.0,
+      "tpv": 1.1382697123121506e+19
+    },
+    {
+      "bar": 5474,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.17312572611422e+16,
+      "price": 1210.554975,
+      "commission": 1.0522752636192226e+16,
+      "realized_pnl": 0.0,
+      "tpv": 1.28621499008085e+19
+    },
+    {
+      "bar": 5474,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.17312572611422e+16,
+      "price": 1209.345025,
+      "commission": 1.0512235142302978e+16,
+      "realized_pnl": 0.0,
+      "tpv": 1.4340238675776492e+19
+    },
+    {
+      "bar": 5509,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.7589246553957424e+16,
+      "price": 1201.270335,
+      "commission": 1.3256857380108012e+16,
+      "realized_pnl": 0.0,
+      "tpv": 1.6204095328643043e+19
+    },
+    {
+      "bar": 5509,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.7589246553957424e+16,
+      "price": 1200.069665,
+      "commission": 1.3243607147844036e+16,
+      "realized_pnl": 0.0,
+      "tpv": 1.8066232809428662e+19
+    },
+    {
+      "bar": 5544,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.451308316880547e+16,
+      "price": 1209.78459,
+      "commission": 1.6701358468403692e+16,
+      "realized_pnl": 0.0,
+      "tpv": 2.041437099156966e+19
+    },
+    {
+      "bar": 5544,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.4513083168805468e+16,
+      "price": 1208.57541,
+      "commission": 1.6684665456441268e+16,
+      "realized_pnl": 0.0,
+      "tpv": 2.276034369779465e+19
+    },
+    {
+      "bar": 5579,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.344282176398632e+16,
+      "price": 1210.835115,
+      "commission": 2.1040837634608348e+16,
+      "realized_pnl": 0.0,
+      "tpv": 2.571859446397061e+19
+    },
+    {
+      "bar": 5579,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.344282176398631e+16,
+      "price": 1209.624885,
+      "commission": 2.1019807312134976e+16,
+      "realized_pnl": 0.0,
+      "tpv": 2.867411636958604e+19
+    },
+    {
+      "bar": 5614,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.465731464788619e+16,
+      "price": 1212.455925,
+      "commission": 2.650783399576756e+16,
+      "realized_pnl": 0.0,
+      "tpv": 3.240100249307823e+19
+    },
+    {
+      "bar": 5614,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.4657314647886184e+16,
+      "price": 1211.244075,
+      "commission": 2.648133940906514e+16,
+      "realized_pnl": 0.0,
+      "tpv": 3.6124451407300452e+19
+    },
+    {
+      "bar": 5649,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6.9065116985292904e+16,
+      "price": 1208.834115,
+      "commission": 3.339530782731521e+16,
+      "realized_pnl": 0.0,
+      "tpv": 4.081968569528245e+19
+    },
+    {
+      "bar": 5649,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6.906511698529289e+16,
+      "price": 1207.625885,
+      "commission": 3.3361929208797144e+16,
+      "realized_pnl": 0.0,
+      "tpv": 4.5510590379897094e+19
+    },
+    {
+      "bar": 5684,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.664300054507776e+16,
+      "price": 1213.956675,
+      "commission": 4.207233954149031e+16,
+      "realized_pnl": 0.0,
+      "tpv": 5.142577769994781e+19
+    },
+    {
+      "bar": 5684,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.664300054507776e+16,
+      "price": 1212.743325,
+      "commission": 4.203028822760577e+16,
+      "realized_pnl": 0.0,
+      "tpv": 5.733551015902248e+19
+    },
+    {
+      "bar": 5719,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.091417767663427e+17,
+      "price": 1214.10675,
+      "commission": 5.3003907151603944e+16,
+      "realized_pnl": 0.0,
+      "tpv": 6.478762949987602e+19
+    },
+    {
+      "bar": 5719,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.091417767663427e+17,
+      "price": 1212.89325,
+      "commission": 5.295092973316155e+16,
+      "realized_pnl": 0.0,
+      "tpv": 7.223287533039869e+19
+    },
+    {
+      "bar": 5754,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.3805274991045011e+17,
+      "price": 1209.24432,
+      "commission": 6.677580147583692e+16,
+      "realized_pnl": 0.0,
+      "tpv": 8.162126375324921e+19
+    },
+    {
+      "bar": 5754,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.380527499104501e+17,
+      "price": 1208.03568,
+      "commission": 6.670905904557621e+16,
+      "realized_pnl": 0.0,
+      "tpv": 9.100099223431719e+19
+    },
+    {
+      "bar": 5789,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.7337045283259776e+17,
+      "price": 1213.096245,
+      "commission": 8.412601813006958e+16,
+      "realized_pnl": 0.0,
+      "tpv": 1.0282874578135455e+20
+    },
+    {
+      "bar": 5789,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.7337045283259776e+17,
+      "price": 1211.883755,
+      "commission": 8.404193415392758e+16,
+      "realized_pnl": 0.0,
+      "tpv": 1.1464558947044136e+20
+    },
+    {
+      "bar": 5824,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.1854490610787347e+17,
+      "price": 1212.38589,
+      "commission": 1.0598430419862424e+17,
+      "realized_pnl": 0.0,
+      "tpv": 1.295465221758626e+20
+    },
+    {
+      "bar": 5824,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.1854490610787347e+17,
+      "price": 1211.17411,
+      "commission": 1.0587837286009488e+17,
+      "realized_pnl": 0.0,
+      "tpv": 1.444337114669972e+20
+    },
+    {
+      "bar": 5859,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.7411872639802992e+17,
+      "price": 1217.738565,
+      "commission": 1.3352197780942582e+17,
+      "realized_pnl": 0.0,
+      "tpv": 1.632063161620336e+20
+    },
+    {
+      "bar": 5859,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.7411872639802992e+17,
+      "price": 1216.521435,
+      "commission": 1.333885225592415e+17,
+      "realized_pnl": 0.0,
+      "tpv": 1.8196161179949276e+20
+    },
+    {
+      "bar": 5894,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.455212470520591e+17,
+      "price": 1217.10825,
+      "commission": 1.682147041349397e+17,
+      "realized_pnl": 0.0,
+      "tpv": 2.0561185983429804e+20
+    },
+    {
+      "bar": 5894,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.455212470520591e+17,
+      "price": 1215.89175,
+      "commission": 1.680465734961242e+17,
+      "realized_pnl": 0.0,
+      "tpv": 2.2924030331887167e+20
+    },
+    {
+      "bar": 5929,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.362907561015482e+17,
+      "price": 1214.336865,
+      "commission": 2.1192157959713347e+17,
+      "realized_pnl": 0.0,
+      "tpv": 2.5903556020307634e+20
+    },
+    {
+      "bar": 5929,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.362907561015482e+17,
+      "price": 1213.123135,
+      "commission": 2.1170976392537222e+17,
+      "realized_pnl": 0.0,
+      "tpv": 2.888033328387883e+20
+    },
+    {
+      "bar": 5964,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.4990952134987584e+17,
+      "price": 1213.76658,
+      "commission": 2.6698471961531034e+17,
+      "realized_pnl": 0.0,
+      "tpv": 3.263402270910057e+20
+    },
+    {
+      "bar": 5964,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.499095213498758e+17,
+      "price": 1212.55342,
+      "commission": 2.6671786832134195e+17,
+      "realized_pnl": 0.0,
+      "tpv": 3.6384249772255845e+20
+    },
+    {
+      "bar": 5999,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6.919301188948335e+17,
+      "price": 1215.277335,
+      "commission": 3.363547963586986e+17,
+      "realized_pnl": 0.0,
+      "tpv": 4.111325201869422e+20
+    },
+    {
+      "bar": 5999,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6.919301188948335e+17,
+      "price": 1214.062665,
+      "commission": 3.360186096556914e+17,
+      "realized_pnl": 0.0,
+      "tpv": 4.58378926720769e+20
+    },
+    {
+      "bar": 6034,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.680111561967951e+17,
+      "price": 1220.459925,
+      "commission": 4.237491322364416e+17,
+      "realized_pnl": 0.0,
+      "tpv": 5.179561895636171e+20
+    },
+    {
+      "bar": 6034,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.680111561967951e+17,
+      "price": 1219.240075,
+      "commission": 4.233255948728869e+17,
+      "realized_pnl": 0.0,
+      "tpv": 5.774785272461419e+20
+    },
+    {
+      "bar": 6069,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.0899527324200946e+18,
+      "price": 1224.481935,
+      "commission": 5.338509723409179e+17,
+      "realized_pnl": 0.0,
+      "tpv": 6.525356499709533e+20
+    },
+    {
+      "bar": 6069,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.0899527324200945e+18,
+      "price": 1223.258065,
+      "commission": 5.33317388160667e+17,
+      "realized_pnl": 0.0,
+      "tpv": 7.275235506661459e+20
+    },
+    {
+      "bar": 6104,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.3690921034655951e+18,
+      "price": 1228.11375,
+      "commission": 6.72560334913008e+17,
+      "realized_pnl": 0.0,
+      "tpv": 8.220825998737324e+20
+    },
+    {
+      "bar": 6104,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.3690921034655951e+18,
+      "price": 1226.88625,
+      "commission": 6.718881106902063e+17,
+      "realized_pnl": 0.0,
+      "tpv": 9.165544472974269e+20
+    },
+    {
+      "bar": 6139,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.727282952666087e+18,
+      "price": 1226.362875,
+      "commission": 8.473102751080285e+17,
+      "realized_pnl": 0.0,
+      "tpv": 1.035682596343764e+21
+    },
+    {
+      "bar": 6139,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.727282952666087e+18,
+      "price": 1225.137125,
+      "commission": 8.464633882763363e+17,
+      "realized_pnl": 0.0,
+      "tpv": 1.1547008655982061e+21
+    },
+    {
+      "bar": 6174,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.1812398397060099e+18,
+      "price": 1223.461425,
+      "commission": 1.0674651210213946e+18,
+      "realized_pnl": 0.0,
+      "tpv": 1.3047818261201832e+21
+    },
+    {
+      "bar": 6174,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.1812398397060099e+18,
+      "price": 1222.238575,
+      "commission": 1.0663981893662007e+18,
+      "realized_pnl": 0.0,
+      "tpv": 1.454724361842711e+21
+    },
+    {
+      "bar": 6209,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.7333015064230385e+18,
+      "price": 1230.03471,
+      "commission": 1.3448222903182502e+18,
+      "realized_pnl": 0.0,
+      "tpv": 1.6438004851058787e+21
+    },
+    {
+      "bar": 6209,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.7333015064230385e+18,
+      "price": 1228.80529,
+      "commission": 1.3434781401030395e+18,
+      "realized_pnl": 0.0,
+      "tpv": 1.8327022677829107e+21
+    },
+    {
+      "bar": 6244,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.432294368024759e+18,
+      "price": 1234.046715,
+      "commission": 1.6942446359095818e+18,
+      "realized_pnl": 0.0,
+      "tpv": 2.070905705866265e+21
+    },
+    {
+      "bar": 6244,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.4322943680247583e+18,
+      "price": 1232.813285,
+      "commission": 1.6925512379726405e+18,
+      "realized_pnl": 0.0,
+      "tpv": 2.3088894412032073e+21
+    },
+    {
+      "bar": 6279,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.35503036369558e+18,
+      "price": 1225.282335,
+      "commission": 2.134456709209928e+18,
+      "realized_pnl": 0.0,
+      "tpv": 2.608984844537687e+21
+    },
+    {
+      "bar": 6279,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.35503036369558e+18,
+      "price": 1224.057665,
+      "commission": 2.132323319195725e+18,
+      "realized_pnl": 0.0,
+      "tpv": 2.908803400728698e+21
+    },
+    {
+      "bar": 6314,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.483275408447775e+18,
+      "price": 1226.022705,
+      "commission": 2.689048059410048e+18,
+      "realized_pnl": 0.0,
+      "tpv": 3.286871831582454e+21
+    },
+    {
+      "bar": 6314,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.483275408447774e+18,
+      "price": 1224.797295,
+      "commission": 2.686360355202741e+18,
+      "realized_pnl": 0.0,
+      "tpv": 3.664591605997081e+21
+    },
+    {
+      "bar": 6349,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6.91831500591208e+18,
+      "price": 1224.19179,
+      "commission": 3.387737772348548e+18,
+      "realized_pnl": 0.0,
+      "tpv": 4.140892840406601e+21
+    },
+    {
+      "bar": 6349,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6.91831500591208e+18,
+      "price": 1222.96821,
+      "commission": 3.3843517275985746e+18,
+      "realized_pnl": 0.0,
+      "tpv": 4.6167547509699044e+21
+    },
+    {
+      "bar": 6384,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.733873802626669e+18,
+      "price": 1221.67053,
+      "commission": 4.267966494963215e+18,
+      "realized_pnl": 0.0,
+      "tpv": 5.216812247494734e+21
+    },
+    {
+      "bar": 6384,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.733873802626668e+18,
+      "price": 1220.44947,
+      "commission": 4.2637006613850404e+18,
+      "realized_pnl": 0.0,
+      "tpv": 5.816316349344209e+21
+    },
+    {
+      "bar": 6419,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.0968235387387384e+19,
+      "price": 1225.562475,
+      "commission": 5.376903083099626e+18,
+      "realized_pnl": 0.0,
+      "tpv": 6.57228539413548e+21
+    },
+    {
+      "bar": 6419,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.0968235387387384e+19,
+      "price": 1224.337525,
+      "commission": 5.371528867124515e+18,
+      "realized_pnl": 0.0,
+      "tpv": 7.327557362031537e+21
+    },
+    {
+      "bar": 6454,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.3792866694525944e+19,
+      "price": 1227.803595,
+      "commission": 6.773972525157888e+18,
+      "realized_pnl": 0.0,
+      "tpv": 8.279948512984069e+21
+    },
+    {
+      "bar": 6454,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.379286669452594e+19,
+      "price": 1226.576405,
+      "commission": 6.767201937926344e+18,
+      "realized_pnl": 0.0,
+      "tpv": 9.231461210996192e+21
+    },
+    {
+      "bar": 6489,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.7378762096844456e+19,
+      "price": 1227.65352,
+      "commission": 8.534039384573471e+18,
+      "realized_pnl": 0.0,
+      "tpv": 1.0431309907091719e+22
+    },
+    {
+      "bar": 6489,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.7378762096844456e+19,
+      "price": 1226.42648,
+      "commission": 8.525509610076146e+18,
+      "realized_pnl": 0.0,
+      "tpv": 1.1630052123656583e+22
+    },
+    {
+      "bar": 6524,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.1870187375277806e+19,
+      "price": 1229.004195,
+      "commission": 1.0751420811860984e+19,
+      "realized_pnl": 0.0,
+      "tpv": 1.3141655126739601e+22
+    },
+    {
+      "bar": 6524,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.1870187375277806e+19,
+      "price": 1227.775805,
+      "commission": 1.0740674764073017e+19,
+      "realized_pnl": 0.0,
+      "tpv": 1.4651864001393856e+22
+    },
+    {
+      "bar": 6559,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.753922088963612e+19,
+      "price": 1229.604495,
+      "commission": 1.3544939917877789e+19,
+      "realized_pnl": 0.0,
+      "tpv": 1.6556223798512783e+22
+    },
+    {
+      "bar": 6559,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.753922088963612e+19,
+      "price": 1228.375505,
+      "commission": 1.3531401747045327e+19,
+      "realized_pnl": 0.0,
+      "tpv": 1.8458827075660206e+22
+    },
+    {
+      "bar": 6594,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.4593346222064947e+19,
+      "price": 1233.206295,
+      "commission": 1.7064292930465985e+19,
+      "realized_pnl": 0.0,
+      "tpv": 2.0857992315438744e+22
+    },
+    {
+      "bar": 6594,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.4593346222064947e+19,
+      "price": 1231.973705,
+      "commission": 1.7047237165418043e+19,
+      "realized_pnl": 0.0,
+      "tpv": 2.3254944967023126e+22
+    },
+    {
+      "bar": 6629,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.354598073282658e+19,
+      "price": 1234.2168,
+      "commission": 2.149807239717235e+19,
+      "realized_pnl": 0.0,
+      "tpv": 2.6277480742046887e+22
+    },
+    {
+      "bar": 6629,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.354598073282658e+19,
+      "price": 1232.9832,
+      "commission": 2.1476585068439544e+19,
+      "realized_pnl": 0.0,
+      "tpv": 2.929722857726809e+22
+    },
+    {
+      "bar": 6664,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.4645154791528825e+19,
+      "price": 1239.07923,
+      "commission": 2.708387052892734e+19,
+      "realized_pnl": 0.0,
+      "tpv": 3.3105102313153846e+22
+    },
+    {
+      "bar": 6664,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.4645154791528825e+19,
+      "price": 1237.84077,
+      "commission": 2.7056800193566093e+19,
+      "realized_pnl": 0.0,
+      "tpv": 3.6909464764268163e+22
+    },
+    {
+      "bar": 6699,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6.899167400493205e+19,
+      "price": 1236.4179,
+      "commission": 3.412101627626507e+19,
+      "realized_pnl": 0.0,
+      "tpv": 4.170673219132688e+22
+    },
+    {
+      "bar": 6699,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6.899167400493205e+19,
+      "price": 1235.1821,
+      "commission": 3.408691231197095e+19,
+      "realized_pnl": 0.0,
+      "tpv": 4.649957422535739e+22
+    },
+    {
+      "bar": 6734,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.750178343714102e+19,
+      "price": 1228.163775,
+      "commission": 4.298660826615664e+19,
+      "realized_pnl": 0.0,
+      "tpv": 5.25433048140827e+22
+    },
+    {
+      "bar": 6734,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.750178343714102e+19,
+      "price": 1226.936225,
+      "commission": 4.2943643140453335e+19,
+      "realized_pnl": 0.0,
+      "tpv": 5.858146092673501e+22
+    },
+    {
+      "bar": 6769,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.0998541688680038e+20,
+      "price": 1230.97518,
+      "commission": 5.415572733984166e+19,
+      "realized_pnl": 0.0,
+      "tpv": 6.619552004259734e+22
+    },
+    {
+      "bar": 6769,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.0998541688680038e+20,
+      "price": 1229.74482,
+      "commission": 5.410159867683332e+19,
+      "realized_pnl": 0.0,
+      "tpv": 7.3802557426136265e+22
+    },
+    {
+      "bar": 6804,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.3871715775286927e+20,
+      "price": 1229.604495,
+      "commission": 6.822689628262086e+19,
+      "realized_pnl": 0.0,
+      "tpv": 8.339496304757125e+22
+    },
+    {
+      "bar": 6804,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.3871715775286924e+20,
+      "price": 1228.375505,
+      "commission": 6.815870348273817e+19,
+      "realized_pnl": 0.0,
+      "tpv": 9.29785209846263e+22
+    },
+    {
+      "bar": 6839,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.7515452354075895e+20,
+      "price": 1226.83311,
+      "commission": 8.595414753843102e+19,
+      "realized_pnl": 0.0,
+      "tpv": 1.0506330125380261e+23
+    },
+    {
+      "bar": 6839,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.7515452354075895e+20,
+      "price": 1225.60689,
+      "commission": 8.586823634648855e+19,
+      "realized_pnl": 0.0,
+      "tpv": 1.1713693493416927e+23
+    },
+    {
+      "bar": 6874,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.2103227347103003e+20,
+      "price": 1224.79209,
+      "commission": 1.0828743207281377e+20,
+      "realized_pnl": 0.0,
+      "tpv": 1.3236167682053891e+23
+    },
+    {
+      "bar": 6874,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.2103227347103003e+20,
+      "price": 1223.56791,
+      "commission": 1.0817919875739868e+20,
+      "realized_pnl": 0.0,
+      "tpv": 1.4757237722856958e+23
+    },
+    {
+      "bar": 6909,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.782943945300881e+20,
+      "price": 1225.53246,
+      "commission": 1.3642352557306775e+20,
+      "realized_pnl": 0.0,
+      "tpv": 1.6675293020596344e+23
+    },
+    {
+      "bar": 6909,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.782943945300881e+20,
+      "price": 1224.30754,
+      "commission": 1.3628717022516865e+20,
+      "realized_pnl": 0.0,
+      "tpv": 1.85915794597317e+23
+    },
+    {
+      "bar": 6944,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.4964110453338486e+20,
+      "price": 1228.904145,
+      "commission": 1.71870161049382e+20,
+      "realized_pnl": 0.0,
+      "tpv": 2.1007999059960668e+23
+    },
+    {
+      "bar": 6944,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.4964110453338486e+20,
+      "price": 1227.675855,
+      "commission": 1.7169837678046704e+20,
+      "realized_pnl": 0.0,
+      "tpv": 2.342219014267493e+23
+    },
+    {
+      "bar": 6979,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.426209271123662e+20,
+      "price": 1222.981185,
+      "commission": 2.165268263782721e+20,
+      "realized_pnl": 0.0,
+      "tpv": 2.646646362136147e+23
+    },
+    {
+      "bar": 6979,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.426209271123662e+20,
+      "price": 1221.758815,
+      "commission": 2.1631040776120235e+20,
+      "realized_pnl": 0.0,
+      "tpv": 2.9507928935754525e+23
+    },
+    {
+      "bar": 7014,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.557983333413159e+20,
+      "price": 1227.003195,
+      "commission": 2.7278653231418786e+20,
+      "realized_pnl": 0.0,
+      "tpv": 3.3343188715462e+23
+    },
+    {
+      "bar": 7014,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.557983333413158e+20,
+      "price": 1225.776805,
+      "commission": 2.7251388210697722e+20,
+      "realized_pnl": 0.0,
+      "tpv": 3.717491151002107e+23
+    },
+    {
+      "bar": 7049,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6.997708819858842e+20,
+      "price": 1227.77358,
+      "commission": 3.436640803822266e+20,
+      "realized_pnl": 0.0,
+      "tpv": 4.200667895771443e+23
+    },
+    {
+      "bar": 7049,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6.997708819858842e+20,
+      "price": 1226.54642,
+      "commission": 3.433205880480115e+20,
+      "realized_pnl": 0.0,
+      "tpv": 4.683399018639004e+23
+    },
+    {
+      "bar": 7084,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.846908616230601e+20,
+      "price": 1223.47143,
+      "commission": 4.329575974311589e+20,
+      "realized_pnl": 0.0,
+      "tpv": 5.2921186227452605e+23
+    },
+    {
+      "bar": 7084,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.8469086162306e+20,
+      "price": 1222.24857,
+      "commission": 4.3252485620434115e+20,
+      "realized_pnl": 0.0,
+      "tpv": 5.900276760568484e+23
+    },
+    {
+      "bar": 7119,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.1144670827060483e+21,
+      "price": 1223.57148,
+      "commission": 5.4545205511916873e+20,
+      "realized_pnl": 0.0,
+      "tpv": 6.667158622086086e+23
+    },
+    {
+      "bar": 7119,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.1144670827060483e+21,
+      "price": 1222.34852,
+      "commission": 5.4490687565378224e+20,
+      "realized_pnl": 0.0,
+      "tpv": 7.433333203803335e+23
+    },
+    {
+      "bar": 7154,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.4059566149967641e+21,
+      "price": 1221.900645,
+      "commission": 6.871757178826251e+20,
+      "realized_pnl": 0.0,
+      "tpv": 8.399472454766689e+23
+    },
+    {
+      "bar": 7154,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.4059566149967641e+21,
+      "price": 1220.679355,
+      "commission": 6.864888855808933e+20,
+      "realized_pnl": 0.0,
+      "tpv": 9.36472057011194e+23
+    },
+    {
+      "bar": 7189,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.770726896587357e+21,
+      "price": 1222.27083,
+      "commission": 8.657231334380612e+20,
+      "realized_pnl": 0.0,
+      "tpv": 1.0581889644140992e+24
+    },
+    {
+      "bar": 7189,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.770726896587357e+21,
+      "price": 1221.04917,
+      "commission": 8.648578429498673e+20,
+      "realized_pnl": 0.0,
+      "tpv": 1.1797936138823164e+24
+    },
+    {
+      "bar": 7224,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.2361376184432153e+21,
+      "price": 1219.359375,
+      "commission": 1.090662147535563e+21,
+      "realized_pnl": 0.0,
+      "tpv": 1.333135969051574e+24
+    },
+    {
+      "bar": 7224,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.2361376184432153e+21,
+      "price": 1218.140625,
+      "commission": 1.0895720304465719e+21,
+      "realized_pnl": 0.0,
+      "tpv": 1.4863368978665418e+24
+    },
+    {
+      "bar": 7259,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.8073128233451997e+21,
+      "price": 1223.63151,
+      "commission": 1.3740465716288999e+21,
+      "realized_pnl": 0.0,
+      "tpv": 1.6795218500335434e+24
+    },
+    {
+      "bar": 7259,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.807312823345199e+21,
+      "price": 1222.40849,
+      "commission": 1.3726732117372166e+21,
+      "realized_pnl": 0.0,
+      "tpv": 1.8725286500625192e+24
+    },
+    {
+      "bar": 7294,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.5073931947071347e+21,
+      "price": 1233.866625,
+      "commission": 1.731062161480504e+21,
+      "realized_pnl": 0.0,
+      "tpv": 2.1159084298912788e+24
+    },
+    {
+      "bar": 7294,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.5073931947071347e+21,
+      "price": 1232.633375,
+      "commission": 1.729331964417555e+21,
+      "realized_pnl": 0.0,
+      "tpv": 2.3590637750863963e+24
+    },
+    {
+      "bar": 7329,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.4354358362325396e+21,
+      "price": 1229.2143,
+      "commission": 2.1808404626517983e+21,
+      "realized_pnl": 0.0,
+      "tpv": 2.6656805410305924e+24
+    },
+    {
+      "bar": 7329,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.4354358362325396e+21,
+      "price": 1227.9857,
+      "commission": 2.17866071206444e+21,
+      "realized_pnl": 0.0,
+      "tpv": 2.972014436664964e+24
+    },
+    {
+      "bar": 7364,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.558882998775353e+21,
+      "price": 1235.627505,
+      "commission": 2.747483492145483e+21,
+      "realized_pnl": 0.0,
+      "tpv": 3.358298512542024e+24
+    },
+    {
+      "bar": 7364,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.558882998775352e+21,
+      "price": 1234.392495,
+      "commission": 2.744737381708556e+21,
+      "realized_pnl": 0.0,
+      "tpv": 3.7442264773582365e+24
+    },
+    {
+      "bar": 7399,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 7.048781426081164e+21,
+      "price": 1227.643515,
+      "commission": 3.461356322552397e+21,
+      "realized_pnl": 0.0,
+      "tpv": 4.2308781190631893e+24
+    },
+    {
+      "bar": 7399,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 7.048781426081162e+21,
+      "price": 1226.416485,
+      "commission": 3.457896696043098e+21,
+      "realized_pnl": 0.0,
+      "tpv": 4.717080931522395e+24
+    },
+    {
+      "bar": 7434,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.903325615644143e+21,
+      "price": 1224.461925,
+      "commission": 4.3607132888933754e+21,
+      "realized_pnl": 0.0,
+      "tpv": 5.33017832266466e+24
+    },
+    {
+      "bar": 7434,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.903325615644143e+21,
+      "price": 1223.238075,
+      "commission": 4.3563547548714926e+21,
+      "realized_pnl": 0.0,
+      "tpv": 5.942710193935507e+24
+    },
+    {
+      "bar": 7469,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.1225463335566631e+22,
+      "price": 1223.501445,
+      "commission": 5.493748244744117e+21,
+      "realized_pnl": 0.0,
+      "tpv": 6.715107337805104e+24
+    },
+    {
+      "bar": 7469,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.1225463335566631e+22,
+      "price": 1222.278555,
+      "commission": 5.488257242000745e+21,
+      "realized_pnl": 0.0,
+      "tpv": 7.486792075991137e+24
+    },
+    {
+      "bar": 7504,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.4044074744869273e+22,
+      "price": 1232.045715,
+      "commission": 6.921176844222362e+21,
+      "realized_pnl": 0.0,
+      "tpv": 8.459879001071537e+24
+    },
+    {
+      "bar": 7504,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.4044074744869271e+22,
+      "price": 1230.814285,
+      "commission": 6.914259126237132e+21,
+      "realized_pnl": 0.0,
+      "tpv": 9.432068898211921e+24
+    },
+    {
+      "bar": 7539,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.7806629436344613e+22,
+      "price": 1224.19179,
+      "commission": 8.719491825418161e+21,
+      "realized_pnl": 0.0,
+      "tpv": 1.0657991762693942e+25
+    },
+    {
+      "bar": 7539,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.7806629436344613e+22,
+      "price": 1222.96821,
+      "commission": 8.710776691159873e+21,
+      "realized_pnl": 0.0,
+      "tpv": 1.1882783738345618e+25
+    },
+    {
+      "bar": 7574,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.2450168704288795e+22,
+      "price": 1223.27133,
+      "commission": 1.0985059091847892e+22,
+      "realized_pnl": 0.0,
+      "tpv": 1.342723540061422e+25
+    },
+    {
+      "bar": 7574,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.245016870428879e+22,
+      "price": 1222.04867,
+      "commission": 1.0974079522540697e+22,
+      "realized_pnl": 0.0,
+      "tpv": 1.4970262505534924e+25
+    },
+    {
+      "bar": 7609,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.8136757265896105e+22,
+      "price": 1229.644515,
+      "commission": 1.3839283696758216e+22,
+      "realized_pnl": 0.0,
+      "tpv": 1.6916005496061127e+25
+    },
+    {
+      "bar": 7609,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.8136757265896105e+22,
+      "price": 1228.415485,
+      "commission": 1.3825451329245214e+22,
+      "realized_pnl": 0.0,
+      "tpv": 1.885995406094709e+25
+    },
+    {
+      "bar": 7644,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.556640881084666e+22,
+      "price": 1225.53246,
+      "commission": 1.7435115393329033e+22,
+      "realized_pnl": 0.0,
+      "tpv": 2.1311255284628666e+25
+    },
+    {
+      "bar": 7644,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.556640881084665e+22,
+      "price": 1224.30754,
+      "commission": 1.7417688991136794e+22,
+      "realized_pnl": 0.0,
+      "tpv": 2.3760295877345355e+25
+    },
+    {
+      "bar": 7679,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.48167001312197e+22,
+      "price": 1225.282335,
+      "commission": 2.196524439351027e+22,
+      "realized_pnl": 0.0,
+      "tpv": 2.6848513479782386e+25
+    },
+    {
+      "bar": 7679,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.48167001312197e+22,
+      "price": 1224.057665,
+      "commission": 2.194329012625039e+22,
+      "realized_pnl": 0.0,
+      "tpv": 2.993388308790277e+25
+    },
+    {
+      "bar": 7714,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.630592779375363e+22,
+      "price": 1228.664025,
+      "commission": 2.767242714977308e+22,
+      "realized_pnl": 0.0,
+      "tpv": 3.382450566170301e+25
+    },
+    {
+      "bar": 7714,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.630592779375363e+22,
+      "price": 1227.435975,
+      "commission": 2.764476855192223e+22,
+      "realized_pnl": 0.0,
+      "tpv": 3.771154029611214e+25
+    },
+    {
+      "bar": 7749,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 7.064068404517331e+22,
+      "price": 1233.79659,
+      "commission": 3.486249403608089e+22,
+      "realized_pnl": 0.0,
+      "tpv": 4.261305379980649e+25
+    },
+    {
+      "bar": 7749,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 7.064068404517331e+22,
+      "price": 1232.56341,
+      "commission": 3.482764896458056e+22,
+      "realized_pnl": 0.0,
+      "tpv": 4.751004823497799e+25
+    },
+    {
+      "bar": 7784,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.876189146389985e+22,
+      "price": 1237.03821,
+      "commission": 4.3920740533086785e+22,
+      "realized_pnl": 0.0,
+      "tpv": 5.368511149336481e+25
+    },
+    {
+      "bar": 7784,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.876189146389985e+22,
+      "price": 1235.80179,
+      "commission": 4.3876841741949264e+22,
+      "realized_pnl": 0.0,
+      "tpv": 5.985448141155084e+25
+    },
+    {
+      "bar": 7819,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.1177227465485688e+23,
+      "price": 1237.6185,
+      "commission": 5.533257395997279e+22,
+      "realized_pnl": 0.0,
+      "tpv": 6.763400084336469e+25
+    },
+    {
+      "bar": 7819,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.1177227465485688e+23,
+      "price": 1236.3815,
+      "commission": 5.527726903847357e+22,
+      "realized_pnl": 0.0,
+      "tpv": 7.540634514223412e+25
+    },
+    {
+      "bar": 7854,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.4126835789681387e+23,
+      "price": 1233.63651,
+      "commission": 6.9709521603702565e+22,
+      "realized_pnl": 0.0,
+      "tpv": 8.520720265690104e+25
+    },
+    {
+      "bar": 7854,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.4126835789681384e+23,
+      "price": 1232.40349,
+      "commission": 6.963984691944098e+22,
+      "realized_pnl": 0.0,
+      "tpv": 9.499901901457476e+25
+    },
+    {
+      "bar": 7889,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.7772157684133762e+23,
+      "price": 1235.387385,
+      "commission": 8.782199762883866e+22,
+      "realized_pnl": 0.0,
+      "tpv": 1.0734640803067687e+26
+    },
+    {
+      "bar": 7889,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.7772157684133762e+23,
+      "price": 1234.152615,
+      "commission": 8.77342195202641e+22,
+      "realized_pnl": 0.0,
+      "tpv": 1.1968241110690473e+26
+    },
+    {
+      "bar": 7924,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.2324771376986538e+23,
+      "price": 1238.989185,
+      "commission": 1.1064060117473551e+23,
+      "realized_pnl": 0.0,
+      "tpv": 1.352379977583482e+26
+    },
+    {
+      "bar": 7924,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.2324771376986528e+23,
+      "price": 1237.750815,
+      "commission": 1.1053001586621499e+23,
+      "realized_pnl": 0.0,
+      "tpv": 1.5077923837343358e+26
+    },
+    {
+      "bar": 7959,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.8246029422168252e+23,
+      "price": 1233.69654,
+      "commission": 1.3938811506746869e+23,
+      "realized_pnl": 0.0,
+      "tpv": 1.7037660129181578e+26
+    },
+    {
+      "bar": 7959,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.8246029422168252e+23,
+      "price": 1232.46346,
+      "commission": 1.3924879661162915e+23,
+      "realized_pnl": 0.0,
+      "tpv": 1.8995588965563745e+26
+    },
+    {
+      "bar": 7994,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.558225007581516e+23,
+      "price": 1233.79659,
+      "commission": 1.7560503523227193e+23,
+      "realized_pnl": 0.0,
+      "tpv": 2.1464519452122753e+26
+    },
+    {
+      "bar": 7994,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.558225007581516e+23,
+      "price": 1232.56341,
+      "commission": 1.7542951795567796e+23,
+      "realized_pnl": 0.0,
+      "tpv": 2.3931172811548336e+26
+    },
+    {
+      "bar": 8029,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.491236965073389e+23,
+      "price": 1231.465425,
+      "commission": 2.2123212151879245e+23,
+      "realized_pnl": 0.0,
+      "tpv": 2.7041600313416397e+26
+    },
+    {
+      "bar": 8029,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.491236965073389e+23,
+      "price": 1230.234575,
+      "commission": 2.2101099995805402e+23,
+      "realized_pnl": 0.0,
+      "tpv": 3.0149159017729063e+26
+    },
+    {
+      "bar": 8064,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.671779249493671e+23,
+      "price": 1228.51395,
+      "commission": 2.7871439717294017e+23,
+      "realized_pnl": 0.0,
+      "tpv": 3.406776230415178e+26
+    },
+    {
+      "bar": 8064,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.6717792494936694e+23,
+      "price": 1227.28605,
+      "commission": 2.7843582206332198e+23,
+      "realized_pnl": 0.0,
+      "tpv": 3.7982751434147776e+26
+    },
+    {
+      "bar": 8099,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 7.118912215729779e+23,
+      "price": 1233.09624,
+      "commission": 3.511321554442584e+23,
+      "realized_pnl": 0.0,
+      "tpv": 4.291951521111039e+26
+    },
+    {
+      "bar": 8099,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 7.118912215729778e+23,
+      "price": 1231.86376,
+      "commission": 3.507811987671526e+23,
+      "realized_pnl": 0.0,
+      "tpv": 4.7851727488983356e+26
+    },
+    {
+      "bar": 8134,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.964821956437598e+23,
+      "price": 1233.6165,
+      "commission": 4.423660914009481e+23,
+      "realized_pnl": 0.0,
+      "tpv": 5.407120337566594e+26
+    },
+    {
+      "bar": 8134,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.964821956437598e+23,
+      "price": 1232.3835,
+      "commission": 4.419239463820566e+23,
+      "realized_pnl": 0.0,
+      "tpv": 6.0284942087695665e+26
+    },
+    {
+      "bar": 8149,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 1.1722372848942529e+23,
+      "price": 1250.644365,
+      "commission": 5.864207819183587e+22,
+      "realized_pnl": 1.9960698235145876e+24,
+      "tpv": 5.9444943688722945e+26
+    },
+    {
+      "bar": 8164,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.0952240463410703e+24,
+      "price": 1255.64751,
+      "commission": 5.500861386721158e+23,
+      "realized_pnl": 0.0,
+      "tpv": 6.723801859242372e+26
+    },
+    {
+      "bar": 8164,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.0952240463410703e+24,
+      "price": 1254.39249,
+      "commission": 5.495363274390602e+23,
+      "realized_pnl": 0.0,
+      "tpv": 7.4964857518963e+26
+    },
+    {
+      "bar": 8180,
+      "side": "SELL",
+      "leg": "BASE_LONG",
+      "qty": 1.0111417152672465e+23,
+      "price": 1267.395985,
+      "commission": 5.126067800782886e+22,
+      "realized_pnl": 1.1879373163274365e+24,
+      "tpv": 7.422719907109576e+26
+    },
+    {
+      "bar": 8195,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.343078627637448e+24,
+      "price": 1277.79858,
+      "commission": 6.86473585289392e+23,
+      "realized_pnl": 0.0,
+      "tpv": 8.390890161733074e+26
+    },
+    {
+      "bar": 8195,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.343078627637448e+24,
+      "price": 1276.52142,
+      "commission": 6.857874547693627e+23,
+      "realized_pnl": 0.0,
+      "tpv": 9.355152019641245e+26
+    },
+    {
+      "bar": 8230,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 1.6935329747478518e+24,
+      "price": 1276.67802,
+      "commission": 8.648385300023189e+23,
+      "realized_pnl": 0.0,
+      "tpv": 1.0571076977164333e+27
+    },
+    {
+      "bar": 8230,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 1.6935329747478515e+24,
+      "price": 1275.40198,
+      "commission": 8.6397412367548e+23,
+      "realized_pnl": 0.0,
+      "tpv": 1.1785880904949923e+27
+    },
+    {
+      "bar": 8265,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.1113550591851657e+24,
+      "price": 1290.10473,
+      "commission": 1.0895476594256849e+24,
+      "realized_pnl": 0.0,
+      "tpv": 1.3317737101800102e+27
+    },
+    {
+      "bar": 8265,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.1113550591851657e+24,
+      "price": 1288.81527,
+      "commission": 1.0884586562678381e+24,
+      "realized_pnl": 0.0,
+      "tpv": 1.4848180913289823e+27
+    },
+    {
+      "bar": 8300,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 2.673649625604324e+24,
+      "price": 1283.491425,
+      "commission": 1.372642547167044e+24,
+      "realized_pnl": 0.0,
+      "tpv": 1.6778056856688425e+27
+    },
+    {
+      "bar": 8300,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 2.673649625604323e+24,
+      "price": 1282.208575,
+      "commission": 1.371270590598161e+24,
+      "realized_pnl": 0.0,
+      "tpv": 1.870615268024022e+27
+    },
+    {
+      "bar": 8335,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 3.4003045597322997e+24,
+      "price": 1271.425395,
+      "commission": 1.729293427191176e+24,
+      "realized_pnl": 0.0,
+      "tpv": 2.1137464741416216e+27
+    },
+    {
+      "bar": 8335,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 3.400304559732299e+24,
+      "price": 1270.154605,
+      "commission": 1.727564997978591e+24,
+      "realized_pnl": 0.0,
+      "tpv": 2.3566533723391392e+27
+    },
+    {
+      "bar": 8370,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 4.304086394640452e+24,
+      "price": 1265.4324,
+      "commission": 2.178612150470886e+24,
+      "realized_pnl": 0.0,
+      "tpv": 2.662956834954094e+27
+    },
+    {
+      "bar": 8370,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 4.304086394640452e+24,
+      "price": 1264.1676,
+      "commission": 2.1764346270821094e+24,
+      "realized_pnl": 0.0,
+      "tpv": 2.968977728531342e+27
+    },
+    {
+      "bar": 8405,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 5.3829972316328e+24,
+      "price": 1274.69703,
+      "commission": 2.744676233464221e+24,
+      "realized_pnl": 0.0,
+      "tpv": 3.354867149740188e+27
+    },
+    {
+      "bar": 8405,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 5.382997231632799e+24,
+      "price": 1273.42297,
+      "commission": 2.741932928883047e+24,
+      "realized_pnl": 0.0,
+      "tpv": 3.7404007902109884e+27
+    },
+    {
+      "bar": 8440,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 6.79519716116137e+24,
+      "price": 1272.15576,
+      "commission": 3.457819683562834e+24,
+      "realized_pnl": 0.0,
+      "tpv": 4.226555221585551e+27
+    },
+    {
+      "bar": 8440,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 6.79519716116137e+24,
+      "price": 1270.88424,
+      "commission": 3.45436359192509e+24,
+      "realized_pnl": 0.0,
+      "tpv": 4.712261256578603e+27
+    },
+    {
+      "bar": 8479,
+      "side": "BUY",
+      "leg": "BASE_LONG",
+      "qty": 8.703983509157414e+24,
+      "price": 1251.2253,
+      "commission": 4.3562577509762154e+24,
+      "realized_pnl": 0.0,
+      "tpv": 5.324732238492527e+27
+    },
+    {
+      "bar": 8479,
+      "side": "SELL",
+      "leg": "BASE_SHORT",
+      "qty": 8.703983509157414e+24,
+      "price": 1249.9747,
+      "commission": 4.351903670265594e+24,
+      "realized_pnl": 0.0,
+      "tpv": 5.936638258257642e+27
+    }
+  ],
+  "fill_count": 517,
+  "events": [
+    {
+      "bar": 21,
+      "kind": "trailing_stop",
+      "tpv": 1259.723059854404,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 56,
+      "kind": "trailing_stop",
+      "tpv": 1586.941370095985,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 91,
+      "kind": "trailing_stop",
+      "tpv": 1999.2458009792167,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 126,
+      "kind": "trailing_stop",
+      "tpv": 2518.6311815177537,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 161,
+      "kind": "trailing_stop",
+      "tpv": 3172.94442321327,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 196,
+      "kind": "trailing_stop",
+      "tpv": 3997.230551796448,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 231,
+      "kind": "trailing_stop",
+      "tpv": 5035.791972495983,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 266,
+      "kind": "trailing_stop",
+      "tpv": 6344.196670672569,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 301,
+      "kind": "trailing_stop",
+      "tpv": 7992.478206044271,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 336,
+      "kind": "trailing_stop",
+      "tpv": 10069.005087109512,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 371,
+      "kind": "trailing_stop",
+      "tpv": 12685.196601583424,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 406,
+      "kind": "trailing_stop",
+      "tpv": 15981.06931197771,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 441,
+      "kind": "trailing_stop",
+      "tpv": 20133.255472009798,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 476,
+      "kind": "trailing_stop",
+      "tpv": 25364.40876191659,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 511,
+      "kind": "trailing_stop",
+      "tpv": 31954.661961583886,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 546,
+      "kind": "trailing_stop",
+      "tpv": 40257.264420429216,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 564,
+      "kind": "trailing_stop",
+      "tpv": 50191.42207307383,
+      "detail": "DD 1.04% from ATH"
+    },
+    {
+      "bar": 599,
+      "kind": "trailing_stop",
+      "tpv": 63232.417739232704,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 634,
+      "kind": "trailing_stop",
+      "tpv": 79661.91865538391,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 669,
+      "kind": "trailing_stop",
+      "tpv": 100360.29846314294,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 704,
+      "kind": "trailing_stop",
+      "tpv": 126436.59993365327,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 739,
+      "kind": "trailing_stop",
+      "tpv": 159288.26481623924,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 774,
+      "kind": "trailing_stop",
+      "tpv": 200675.72501443152,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 809,
+      "kind": "trailing_stop",
+      "tpv": 252816.80945331877,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 844,
+      "kind": "trailing_stop",
+      "tpv": 318505.61438955256,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 879,
+      "kind": "trailing_stop",
+      "tpv": 401262.1503381275,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 914,
+      "kind": "trailing_stop",
+      "tpv": 505521.1012728567,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 949,
+      "kind": "trailing_stop",
+      "tpv": 636869.4485144707,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 984,
+      "kind": "trailing_stop",
+      "tpv": 802345.8284868766,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1019,
+      "kind": "trailing_stop",
+      "tpv": 1010817.5342861655,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1054,
+      "kind": "trailing_stop",
+      "tpv": 1273455.9787113396,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1074,
+      "kind": "trailing_stop",
+      "tpv": 1588534.177503869,
+      "detail": "DD 0.99% from ATH"
+    },
+    {
+      "bar": 1109,
+      "kind": "trailing_stop",
+      "tpv": 2001279.6506052164,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1144,
+      "kind": "trailing_stop",
+      "tpv": 2521267.8617262784,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1179,
+      "kind": "trailing_stop",
+      "tpv": 3176363.5360312928,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1214,
+      "kind": "trailing_stop",
+      "tpv": 4001671.451945362,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1249,
+      "kind": "trailing_stop",
+      "tpv": 5041417.216880808,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1284,
+      "kind": "trailing_stop",
+      "tpv": 6351317.999572735,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1319,
+      "kind": "trailing_stop",
+      "tpv": 8001567.412392878,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1354,
+      "kind": "trailing_stop",
+      "tpv": 10080597.630025666,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1389,
+      "kind": "trailing_stop",
+      "tpv": 12699817.958186148,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1432,
+      "kind": "trailing_stop",
+      "tpv": 15999585.013116674,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1467,
+      "kind": "trailing_stop",
+      "tpv": 20156722.65146132,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1502,
+      "kind": "trailing_stop",
+      "tpv": 25394001.394233935,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1537,
+      "kind": "trailing_stop",
+      "tpv": 31992072.02568487,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1565,
+      "kind": "trailing_stop",
+      "tpv": 39307955.69826851,
+      "detail": "DD 2.47% from ATH"
+    },
+    {
+      "bar": 1600,
+      "kind": "trailing_stop",
+      "tpv": 49521257.596403725,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1635,
+      "kind": "trailing_stop",
+      "tpv": 62388257.86749259,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1670,
+      "kind": "trailing_stop",
+      "tpv": 78598465.73369601,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1705,
+      "kind": "trailing_stop",
+      "tpv": 99020541.86810075,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1740,
+      "kind": "trailing_stop",
+      "tpv": 124748838.28271519,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1775,
+      "kind": "trailing_stop",
+      "tpv": 157162064.54713893,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1810,
+      "kind": "trailing_stop",
+      "tpv": 197997157.2417676,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1845,
+      "kind": "trailing_stop",
+      "tpv": 249442328.78591263,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1880,
+      "kind": "trailing_stop",
+      "tpv": 314254392.4204847,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1915,
+      "kind": "trailing_stop",
+      "tpv": 395906444.8707266,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1950,
+      "kind": "trailing_stop",
+      "tpv": 498773971.7565545,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 1985,
+      "kind": "trailing_stop",
+      "tpv": 628369389.8341821,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2020,
+      "kind": "trailing_stop",
+      "tpv": 791637267.8438613,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2055,
+      "kind": "trailing_stop",
+      "tpv": 997326686.3654366,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2088,
+      "kind": "trailing_stop",
+      "tpv": 1243810511.1158571,
+      "detail": "DD 1.01% from ATH"
+    },
+    {
+      "bar": 2122,
+      "kind": "trailing_stop",
+      "tpv": 1552906951.7633529,
+      "detail": "DD 0.90% from ATH"
+    },
+    {
+      "bar": 2157,
+      "kind": "trailing_stop",
+      "tpv": 1956395500.669683,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2192,
+      "kind": "trailing_stop",
+      "tpv": 2464721636.292595,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2227,
+      "kind": "trailing_stop",
+      "tpv": 3105124906.3811646,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2262,
+      "kind": "trailing_stop",
+      "tpv": 3911923068.064908,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2297,
+      "kind": "trailing_stop",
+      "tpv": 4928349838.874381,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2332,
+      "kind": "trailing_stop",
+      "tpv": 6208872690.435383,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2367,
+      "kind": "trailing_stop",
+      "tpv": 7822110915.019594,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2402,
+      "kind": "trailing_stop",
+      "tpv": 9854513780.06107,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2437,
+      "kind": "trailing_stop",
+      "tpv": 12414991417.610638,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2472,
+      "kind": "trailing_stop",
+      "tpv": 15640751544.19847,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2507,
+      "kind": "trailing_stop",
+      "tpv": 19704655542.50162,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2542,
+      "kind": "trailing_stop",
+      "tpv": 24824472963.093216,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2577,
+      "kind": "trailing_stop",
+      "tpv": 31274562345.511257,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2612,
+      "kind": "trailing_stop",
+      "tpv": 39400564165.306076,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2647,
+      "kind": "trailing_stop",
+      "tpv": 49637930414.43578,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2682,
+      "kind": "trailing_stop",
+      "tpv": 62535251595.52578,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2717,
+      "kind": "trailing_stop",
+      "tpv": 78783653724.33115,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2752,
+      "kind": "trailing_stop",
+      "tpv": 98300203635.64954,
+      "detail": "DD 0.96% from ATH"
+    },
+    {
+      "bar": 2787,
+      "kind": "trailing_stop",
+      "tpv": 123841338160.36865,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2822,
+      "kind": "trailing_stop",
+      "tpv": 156018768644.22757,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2857,
+      "kind": "trailing_stop",
+      "tpv": 196556796251.1801,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2892,
+      "kind": "trailing_stop",
+      "tpv": 247627736847.1196,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2927,
+      "kind": "trailing_stop",
+      "tpv": 311968337195.8642,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2962,
+      "kind": "trailing_stop",
+      "tpv": 393026392837.0894,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 2997,
+      "kind": "trailing_stop",
+      "tpv": 495145632225.7814,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3032,
+      "kind": "trailing_stop",
+      "tpv": 623798285220.9758,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3067,
+      "kind": "trailing_stop",
+      "tpv": 785878501440.3817,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3102,
+      "kind": "trailing_stop",
+      "tpv": 990071629968.2169,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3137,
+      "kind": "trailing_stop",
+      "tpv": 1247319877443.756,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3160,
+      "kind": "trailing_stop",
+      "tpv": 1554337096061.0447,
+      "detail": "DD 1.09% from ATH"
+    },
+    {
+      "bar": 3195,
+      "kind": "trailing_stop",
+      "tpv": 1958197250265.6335,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3230,
+      "kind": "trailing_stop",
+      "tpv": 2466991498799.663,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3265,
+      "kind": "trailing_stop",
+      "tpv": 3107984622272.2617,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3300,
+      "kind": "trailing_stop",
+      "tpv": 3915525578069.5527,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3335,
+      "kind": "trailing_stop",
+      "tpv": 4932888095154.364,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3370,
+      "kind": "trailing_stop",
+      "tpv": 6214589996998.418,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3405,
+      "kind": "trailing_stop",
+      "tpv": 7829313946453.538,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3440,
+      "kind": "trailing_stop",
+      "tpv": 9863587836932.498,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3475,
+      "kind": "trailing_stop",
+      "tpv": 12426423120343.164,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3510,
+      "kind": "trailing_stop",
+      "tpv": 15655154354209.143,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3528,
+      "kind": "trailing_stop",
+      "tpv": 19528347635549.99,
+      "detail": "DD 0.99% from ATH"
+    },
+    {
+      "bar": 3563,
+      "kind": "trailing_stop",
+      "tpv": 24602356632989.965,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3598,
+      "kind": "trailing_stop",
+      "tpv": 30994734298182.426,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3633,
+      "kind": "trailing_stop",
+      "tpv": 39048030209413.82,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3668,
+      "kind": "trailing_stop",
+      "tpv": 49193794067974.945,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3703,
+      "kind": "trailing_stop",
+      "tpv": 61334191839614.21,
+      "detail": "DD 1.04% from ATH"
+    },
+    {
+      "bar": 3738,
+      "kind": "trailing_stop",
+      "tpv": 77270526260288.77,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3773,
+      "kind": "trailing_stop",
+      "tpv": 97347567073914.95,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3792,
+      "kind": "trailing_stop",
+      "tpv": 121417512597946.7,
+      "detail": "DD 1.00% from ATH"
+    },
+    {
+      "bar": 3815,
+      "kind": "trailing_stop",
+      "tpv": 151540727466020.44,
+      "detail": "DD 0.93% from ATH"
+    },
+    {
+      "bar": 3836,
+      "kind": "trailing_stop",
+      "tpv": 188502098094559.75,
+      "detail": "DD 1.27% from ATH"
+    },
+    {
+      "bar": 3859,
+      "kind": "trailing_stop",
+      "tpv": 234738263373957.0,
+      "detail": "DD 1.16% from ATH"
+    },
+    {
+      "bar": 3894,
+      "kind": "trailing_stop",
+      "tpv": 295729800792577.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3914,
+      "kind": "trailing_stop",
+      "tpv": 368587611594997.6,
+      "detail": "DD 1.07% from ATH"
+    },
+    {
+      "bar": 3949,
+      "kind": "trailing_stop",
+      "tpv": 464356934308512.4,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 3976,
+      "kind": "trailing_stop",
+      "tpv": 578930703995692.1,
+      "detail": "DD 1.04% from ATH"
+    },
+    {
+      "bar": 4011,
+      "kind": "trailing_stop",
+      "tpv": 729353022589003.5,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4046,
+      "kind": "trailing_stop",
+      "tpv": 918859293358235.5,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4081,
+      "kind": "trailing_stop",
+      "tpv": 1157604531046602.5,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4116,
+      "kind": "trailing_stop",
+      "tpv": 1458382510004028.2,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4151,
+      "kind": "trailing_stop",
+      "tpv": 1837310928846654.2,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4186,
+      "kind": "trailing_stop",
+      "tpv": 2314695450274238.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4221,
+      "kind": "trailing_stop",
+      "tpv": 2916117950958985.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4256,
+      "kind": "trailing_stop",
+      "tpv": 3673806709569347.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4291,
+      "kind": "trailing_stop",
+      "tpv": 4628364030010104.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4326,
+      "kind": "trailing_stop",
+      "tpv": 5830942108291805.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4361,
+      "kind": "trailing_stop",
+      "tpv": 7345983202743878.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4396,
+      "kind": "trailing_stop",
+      "tpv": 9254674655662436.0,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4431,
+      "kind": "trailing_stop",
+      "tpv": 1.1659297127334074e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4466,
+      "kind": "trailing_stop",
+      "tpv": 1.4688707275907142e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4493,
+      "kind": "trailing_stop",
+      "tpv": 1.8288223170137932e+16,
+      "detail": "DD 1.17% from ATH"
+    },
+    {
+      "bar": 4528,
+      "kind": "trailing_stop",
+      "tpv": 2.3040013352629308e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4563,
+      "kind": "trailing_stop",
+      "tpv": 2.902645174235242e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4598,
+      "kind": "trailing_stop",
+      "tpv": 3.656833197962393e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4633,
+      "kind": "trailing_stop",
+      "tpv": 4.606980389589231e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4668,
+      "kind": "trailing_stop",
+      "tpv": 5.8040023951066264e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4703,
+      "kind": "trailing_stop",
+      "tpv": 7.312043944710438e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4738,
+      "kind": "trailing_stop",
+      "tpv": 9.21191673199921e+16,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4773,
+      "kind": "trailing_stop",
+      "tpv": 1.1605429818815573e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4808,
+      "kind": "trailing_stop",
+      "tpv": 1.4620843962715635e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4843,
+      "kind": "trailing_stop",
+      "tpv": 1.8419747282639216e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4878,
+      "kind": "trailing_stop",
+      "tpv": 2.320571137019537e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4913,
+      "kind": "trailing_stop",
+      "tpv": 2.9235201677035584e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4948,
+      "kind": "trailing_stop",
+      "tpv": 3.683132259364246e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 4983,
+      "kind": "trailing_stop",
+      "tpv": 4.640112837320884e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5018,
+      "kind": "trailing_stop",
+      "tpv": 5.772155425818428e+17,
+      "detail": "DD 1.26% from ATH"
+    },
+    {
+      "bar": 5053,
+      "kind": "trailing_stop",
+      "tpv": 7.271922576455694e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5088,
+      "kind": "trailing_stop",
+      "tpv": 9.161370942825513e+17,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5123,
+      "kind": "trailing_stop",
+      "tpv": 1.1541750620849708e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5158,
+      "kind": "trailing_stop",
+      "tpv": 1.454061872745267e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5188,
+      "kind": "trailing_stop",
+      "tpv": 1.8143167794395372e+18,
+      "detail": "DD 0.96% from ATH"
+    },
+    {
+      "bar": 5223,
+      "kind": "trailing_stop",
+      "tpv": 2.2857267570607206e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5258,
+      "kind": "trailing_stop",
+      "tpv": 2.8796223599439575e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5293,
+      "kind": "trailing_stop",
+      "tpv": 3.627828600823398e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5328,
+      "kind": "trailing_stop",
+      "tpv": 4.5704396181135447e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5355,
+      "kind": "trailing_stop",
+      "tpv": 5.692547487051504e+18,
+      "detail": "DD 1.14% from ATH"
+    },
+    {
+      "bar": 5390,
+      "kind": "trailing_stop",
+      "tpv": 7.171630051626717e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5425,
+      "kind": "trailing_stop",
+      "tpv": 9.035019568423269e+18,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5460,
+      "kind": "trailing_stop",
+      "tpv": 1.1382569144207362e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5495,
+      "kind": "trailing_stop",
+      "tpv": 1.434007820776626e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5530,
+      "kind": "trailing_stop",
+      "tpv": 1.8066030262361991e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5565,
+      "kind": "trailing_stop",
+      "tpv": 2.276008925689574e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5600,
+      "kind": "trailing_stop",
+      "tpv": 2.8673795132485226e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5635,
+      "kind": "trailing_stop",
+      "tpv": 3.6124046015212315e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5670,
+      "kind": "trailing_stop",
+      "tpv": 4.551007996163208e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5705,
+      "kind": "trailing_stop",
+      "tpv": 5.733486844413717e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5740,
+      "kind": "trailing_stop",
+      "tpv": 7.2232067381717066e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5775,
+      "kind": "trailing_stop",
+      "tpv": 9.099997417965216e+19,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5810,
+      "kind": "trailing_stop",
+      "tpv": 1.1464430576770517e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5845,
+      "kind": "trailing_stop",
+      "tpv": 1.4443208894408406e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5880,
+      "kind": "trailing_stop",
+      "tpv": 1.819595658176753e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5915,
+      "kind": "trailing_stop",
+      "tpv": 2.2923774000135592e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5950,
+      "kind": "trailing_stop",
+      "tpv": 2.8880010169732268e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 5985,
+      "kind": "trailing_stop",
+      "tpv": 3.6383842316796e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6020,
+      "kind": "trailing_stop",
+      "tpv": 4.5837377008080545e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6055,
+      "kind": "trailing_stop",
+      "tpv": 5.774720565484767e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6090,
+      "kind": "trailing_stop",
+      "tpv": 7.27515392642432e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6125,
+      "kind": "trailing_stop",
+      "tpv": 9.165441901430545e+20,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6160,
+      "kind": "trailing_stop",
+      "tpv": 1.1546879385214262e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6195,
+      "kind": "trailing_stop",
+      "tpv": 1.4547080251197455e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6230,
+      "kind": "trailing_stop",
+      "tpv": 1.8326817499362676e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6265,
+      "kind": "trailing_stop",
+      "tpv": 2.3088636517346606e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6300,
+      "kind": "trailing_stop",
+      "tpv": 2.9087707871281325e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6335,
+      "kind": "trailing_stop",
+      "tpv": 3.664550595209482e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6370,
+      "kind": "trailing_stop",
+      "tpv": 4.6167030066819566e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6405,
+      "kind": "trailing_stop",
+      "tpv": 5.816251055316094e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6440,
+      "kind": "trailing_stop",
+      "tpv": 7.327475358811814e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6475,
+      "kind": "trailing_stop",
+      "tpv": 9.231357681087454e+21,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6510,
+      "kind": "trailing_stop",
+      "tpv": 1.1629921848449135e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6545,
+      "kind": "trailing_stop",
+      "tpv": 1.4651700035131556e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6580,
+      "kind": "trailing_stop",
+      "tpv": 1.8458620181755428e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6615,
+      "kind": "trailing_stop",
+      "tpv": 2.3254684775764015e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6650,
+      "kind": "trailing_stop",
+      "tpv": 2.9296899741609e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6685,
+      "kind": "trailing_stop",
+      "tpv": 3.6909052266361488e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6720,
+      "kind": "trailing_stop",
+      "tpv": 4.649905379145561e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6755,
+      "kind": "trailing_stop",
+      "tpv": 5.858080412157737e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6790,
+      "kind": "trailing_stop",
+      "tpv": 7.380173147476138e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6825,
+      "kind": "trailing_stop",
+      "tpv": 9.297748045720755e+22,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6860,
+      "kind": "trailing_stop",
+      "tpv": 1.1713562274362147e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6895,
+      "kind": "trailing_stop",
+      "tpv": 1.4757072283454351e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6930,
+      "kind": "trailing_stop",
+      "tpv": 1.8591371094688802e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 6965,
+      "kind": "trailing_stop",
+      "tpv": 2.3421928254300564e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7000,
+      "kind": "trailing_stop",
+      "tpv": 2.950759818296348e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7035,
+      "kind": "trailing_stop",
+      "tpv": 3.71744950449263e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7070,
+      "kind": "trailing_stop",
+      "tpv": 4.683346610581711e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7105,
+      "kind": "trailing_stop",
+      "tpv": 5.900210664355796e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7140,
+      "kind": "trailing_stop",
+      "tpv": 7.433250018741984e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7175,
+      "kind": "trailing_stop",
+      "tpv": 9.364615673094851e+23,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7210,
+      "kind": "trailing_stop",
+      "tpv": 1.179780399340982e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7245,
+      "kind": "trailing_stop",
+      "tpv": 1.486320229094219e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7280,
+      "kind": "trailing_stop",
+      "tpv": 1.872507643884231e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7315,
+      "kind": "trailing_stop",
+      "tpv": 2.3590374322057568e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7350,
+      "kind": "trailing_stop",
+      "tpv": 2.971980992345259e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7385,
+      "kind": "trailing_stop",
+      "tpv": 3.7441845338720216e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7420,
+      "kind": "trailing_stop",
+      "tpv": 4.717028162210426e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7455,
+      "kind": "trailing_stop",
+      "tpv": 5.942643661658475e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7490,
+      "kind": "trailing_stop",
+      "tpv": 7.486707776222671e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7525,
+      "kind": "trailing_stop",
+      "tpv": 9.431963482996773e+24,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7560,
+      "kind": "trailing_stop",
+      "tpv": 1.188265076536179e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7595,
+      "kind": "trailing_stop",
+      "tpv": 1.497009471104082e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7630,
+      "kind": "trailing_stop",
+      "tpv": 1.8859742632286705e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7665,
+      "kind": "trailing_stop",
+      "tpv": 2.3760029502034993e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7700,
+      "kind": "trailing_stop",
+      "tpv": 2.9933547457627334e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7735,
+      "kind": "trailing_stop",
+      "tpv": 3.7711116342349277e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7770,
+      "kind": "trailing_stop",
+      "tpv": 4.7509514218093095e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7805,
+      "kind": "trailing_stop",
+      "tpv": 5.9853811146345435e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7840,
+      "kind": "trailing_stop",
+      "tpv": 7.54055024475885e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7875,
+      "kind": "trailing_stop",
+      "tpv": 9.499795300276124e+25,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7910,
+      "kind": "trailing_stop",
+      "tpv": 1.1968106982735417e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7945,
+      "kind": "trailing_stop",
+      "tpv": 1.5077754960990144e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 7980,
+      "kind": "trailing_stop",
+      "tpv": 1.8995376254759197e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8015,
+      "kind": "trailing_stop",
+      "tpv": 2.3930904841820695e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8050,
+      "kind": "trailing_stop",
+      "tpv": 3.0148821387243622e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8085,
+      "kind": "trailing_stop",
+      "tpv": 3.798232436208934e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8120,
+      "kind": "trailing_stop",
+      "tpv": 4.785119252072536e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8150,
+      "kind": "trailing_stop",
+      "tpv": 5.950338020082122e+26,
+      "detail": "DD 1.30% from ATH"
+    },
+    {
+      "bar": 8181,
+      "kind": "trailing_stop",
+      "tpv": 7.425654978672916e+26,
+      "detail": "DD 0.94% from ATH"
+    },
+    {
+      "bar": 8216,
+      "kind": "trailing_stop",
+      "tpv": 9.355046827260817e+26,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8251,
+      "kind": "trailing_stop",
+      "tpv": 1.1785748461545037e+27,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8286,
+      "kind": "trailing_stop",
+      "tpv": 1.4848014814746782e+27,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8321,
+      "kind": "trailing_stop",
+      "tpv": 1.870594385914376e+27,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8356,
+      "kind": "trailing_stop",
+      "tpv": 2.3566270441304085e+27,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8391,
+      "kind": "trailing_stop",
+      "tpv": 2.968944351919517e+27,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8426,
+      "kind": "trailing_stop",
+      "tpv": 3.7403589153073185e+27,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8461,
+      "kind": "trailing_stop",
+      "tpv": 4.7122085612780354e+27,
+      "detail": "DD 0.00% from ATH"
+    },
+    {
+      "bar": 8500,
+      "kind": "trailing_stop",
+      "tpv": 5.936571679239252e+27,
+      "detail": "DD 0.00% from ATH"
+    }
+  ],
+  "initial_capital": 1000.0,
+  "data_window": {
+    "feather": "ZECUSDT_live.feather",
+    "offset": 505440,
+    "bars": 20160,
+    "since_utc": null,
+    "until_utc": null,
+    "bars_per_day": 1440
+  }
+}
