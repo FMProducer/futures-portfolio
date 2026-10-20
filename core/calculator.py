@@ -51,6 +51,10 @@ class PortfolioCalculator:
         self.virt_value = self.virt_debt
         self.pnl_v = Decimal('0')
 
+        # Store entry prices for FUSE profitability gate
+        self.long_entry_price = Decimal(str(long_entry_price))
+        self.short_entry_price = Decimal(str(short_entry_price))
+
         # [SSOT] TPV = Доступный баланс (кэш) + PnL фьючерсов + Рыночная стоимость виртуальной ноги
         # real_equity должен передаваться как "Чистый кэш" (Wallet Balance - virt_debt)
         self.tpv = self.real_equity + mtm_pnl_l + mtm_pnl_s + self.virt_value
@@ -234,9 +238,15 @@ class PortfolioCalculator:
                 if not is_inverse:
                     limit_price = last_reb * (1 + dec_threshold_surplus)
                     is_valid = self.price >= limit_price
+                    # only reduce long at a profit (price > avg entry)
+                    if is_valid and self.long_entry_price > 0:
+                        is_valid = self.price > self.long_entry_price
                 else:
                     limit_price = last_reb * (1 - dec_threshold_surplus)
                     is_valid = self.price <= limit_price
+                    # only reduce short at a profit (price < avg entry)
+                    if is_valid and self.short_entry_price > 0:
+                        is_valid = self.price < self.short_entry_price
 
             if is_valid:
                 final_actions.append(act)
