@@ -1,6 +1,32 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
-CHANGELOG — Prosperous BOT Futures Portfolio
+[20 Oct 2026 — 15:58] — ZECUSDT Paper Trade: запуск и bugfix сборщика стакана
+
+### paper-zec: запуск
+- `.venv` пересоздан (старый был удалён) — системный Python 3.11 + `pip install -r requirements.txt`
+- `paper-zec` запущен через PM2 с `--ticker ZECUSDT --paper --config config.json`
+- VIRTUAL работает как чистый USDT-кэш (правки из сессии [[2026-10-20-zec-paper-virtual-cash]])
+
+### collect-zec-depth: bugfix
+- **Баг**: Binance WebSocket depth stream (`@depth20@100ms`) использует ключи `b`/`a`/`u`, код искал `bids`/`asks`/`lastUpdateId`
+- Все снапшоты были пустые (0 bids, N/A spread) несмотря на успешный WebSocket handshake
+- **Фикс** (`scripts/collect_depth_zec.py`): `data.get("bids")` → `data.get("b")`, `data.get("asks")` → `data.get("a")`, `data.get("lastUpdateId")` → `data.get("u")`
+- Добавлен None-guard для `best_bid`/`best_ask` (первый снапшот может быть до получения данных)
+
+### Команды запуска (зафиксированы)
+```powershell
+$env:PYTHONPATH = "C:\Python\Prosperous_Bot\futures_portfolio"
+# paper-zec
+pm2 start core/main.py --name paper-zec --cwd "..." --update-env --interpreter ".venv\Scripts\python.exe" --instances 1 -- --config config.json --ticker ZECUSDT --paper
+# collect-zec-depth
+pm2 start scripts/collect_depth_zec.py --name collect-zec-depth --no-autorestart --update-env --interpreter ".venv\Scripts\python.exe" --instances 1
+```
+
+### Состояние PM2
+| id | name | status | uptime | restarts |
+|----|------|--------|--------|----------|
+| 0 | paper-zec | online | ~25m | 0 |
+| 1 | collect-zec-depth | online | ~5m | 2 |
 
 [16 Jul 2026 — 20:30] — Telemetry Pipeline: Bug Fixes & Cleanup (Session 2)
 Продолжение отладки pm2_log_parser.py и очистка дубликатов.
