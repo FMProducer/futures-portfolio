@@ -8,6 +8,11 @@ logger = logging.getLogger(__name__)
 getcontext().prec = 28
 getcontext().rounding = ROUND_HALF_EVEN
 
+
+def initial_notional_after_fee(target_notional: float, leverage: float, fee_rate: float) -> float:
+    return float(Decimal(str(target_notional)) / (Decimal('1') + Decimal(str(leverage)) * Decimal(str(fee_rate))))
+
+
 class PortfolioCalculator:
     def __init__(self, positions: Dict[str, float], spot_price: float, real_equity: float, 
                  virt_qty: float, 
@@ -81,7 +86,6 @@ class PortfolioCalculator:
         
         # 5. Cash is the remaining liquidity (Free Wallet Balance)
         self.val_cash = self.tpv - (self.val_long + self.val_short + self.val_virt)
-        if self.val_cash < 0 and abs(self.val_cash) < 0.1: self.val_cash = Decimal('0') # Rounding protection
 
         # 6. Shares calculation (Capital weights against true TPV)
         self.share_long_raw = (self.val_long / self.tpv)

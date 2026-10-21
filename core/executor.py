@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 getcontext().prec = 28
 getcontext().rounding = ROUND_HALF_EVEN
 
+PAPER_COMMISSION_RATE = Decimal('0.0004')
+
 class PortfolioExecutor:
     def __init__(self, connector: 'BinanceConnector', base_ticker: str = "BTCUSDT", max_orders_per_second: int = 10):
         self.connector = connector
@@ -406,7 +408,7 @@ class PortfolioExecutor:
                     "status": "SKIPPED",
                     "message": "Округлено до нуля"
                 }
-            commission = order_value * Decimal('0.0004')
+            commission = order_value * PAPER_COMMISSION_RATE
 
             trade_pnl = Decimal('0.0')
             if paper_state:

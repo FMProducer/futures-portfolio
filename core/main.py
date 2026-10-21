@@ -16,8 +16,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 load_dotenv()
 
 from core.connector import BinanceConnector
-from core.calculator import PortfolioCalculator
-from core.executor import PortfolioExecutor
+from core.calculator import PortfolioCalculator, initial_notional_after_fee
+from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
 
@@ -324,6 +324,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "trailing_stop_paper_timeout_end": 0.0,
         "rebalance_cycles": 0,
         "last_rebalance_price": 0.0,
+        "cash_invariant_violation": None,
         "started_at": time.time()
     })
 
@@ -917,10 +918,22 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 allow_surplus_sell = True
 
                 calc_res = calc.calculate_rebalance(targets, threshold_surplus, threshold_deficit, calc.tpv, ignore_limits, allow_surplus_sell)
-                
+
                 tpv_total = calc_res["total_tpv"]
                 tpv_active = calc_res["tpv"]
                 actions = calc_res["actions"]
+
+                if ignore_limits and paper_mode:
+                    # initial sizing must reserve the taker fee or CASH ends below zero
+                    for action in actions:
+                        if action.get("key") in ("BASE_LONG", "BASE_SHORT"):
+                            lev = Decimal(str(action.get("leverage", 1)))
+                            adjusted = initial_notional_after_fee(
+                                abs(float(action["diff_usdt"])), float(lev), float(PAPER_COMMISSION_RATE)
+                            )
+                            action["diff_usdt"] = adjusted
+                            action["approved_usdt"] = adjusted
+                            action["diff_equity"] = adjusted / float(lev)
 
                 now = time.time()
 
@@ -1137,7 +1150,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     valid_actions = [a for a in actions if abs(a.get("diff_usdt", 0)) >= min_notional]
                     
                     fused_actions = valid_actions
-                    
+                    if state.get("cash_invariant_violation"):
+                        blocked_increases = [a for a in fused_actions if not a.get("is_reduction")]
+                        fused_actions = [a for a in fused_actions if a.get("is_reduction")]
+                        if blocked_increases:
+                            logger.error(
+                                f"Cash invariant violation active: blocked {len(blocked_increases)} increase action(s)."
+                            )
+
                     if fused_actions:
                         # Log specific trigger reasons
                         for action in fused_actions:
@@ -1285,6 +1305,53 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 # asyncio.create_task(notifier.send_message(f"<b>{trade_log}</b>"))
                             else:
                                 logger.warning(f"❌ {side} {key} execution status: {status}. Message: {res.get('message')}")
+
+                        if any_success and ignore_limits:
+                            post_virt = Decimal(str(state.get("virt_debt", 0.0)))
+                            post_calc = PortfolioCalculator(
+                                positions=paper_state["positions"],
+                                spot_price=price,
+                                real_equity=float(Decimal(str(paper_state["balance"])) - post_virt),
+                                virt_qty=virt_qty,
+                                virt_debt=float(post_virt),
+                                base_ticker=base_ticker,
+                                siphoning_reserve=siphoning_reserve,
+                                targets=targets,
+                                initial_capital=initial_tpv,
+                                long_entry_price=paper_state.get("long_entry_price", 0.0),
+                                short_entry_price=paper_state.get("short_entry_price", 0.0),
+                                last_rebalance_price=price,
+                                min_notional=active_min_notional
+                            )
+                            residual = post_calc.val_cash
+                            if residual > 0:
+                                state["virt_debt"] = float(post_virt + residual)
+                                state_dirty = True
+                                logger.info(f"Initial residual {float(residual):.8f} USDT moved to VIRTUAL")
+                            elif residual < 0:
+                                state["cash_invariant_violation"] = {
+                                    "cash": float(residual),
+                                    "balance": paper_state["balance"],
+                                    "virt_debt": float(post_virt),
+                                    "positions": dict(paper_state["positions"]),
+                                    "executions": [
+                                        {
+                                            "symbol": r.get("symbol"),
+                                            "qty": r.get("qty"),
+                                            "price": r.get("price"),
+                                            "commission": r.get("commission"),
+                                        }
+                                        for r in exec_results if r.get("qty")
+                                    ],
+                                    "at": time.time(),
+                                }
+                                state_dirty = True
+                                await save_json(state_file_path, state)
+                                await save_json(paper_state_file_path, paper_state)
+                                logger.critical(
+                                    f"Cash invariant violated after initial formation: CASH={float(residual):.8f}. "
+                                    "Executions saved; further increases blocked."
+                                )
 
                         if any_success:
                             state["last_rebalance_price"] = price

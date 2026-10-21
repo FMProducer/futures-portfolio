@@ -117,6 +117,8 @@ class BacktestState:
     liquidation_loss_total: Decimal = Decimal('0')
     ledger_base: Optional[Decimal] = None
     accounting_error: Optional[Dict[str, Any]] = None
+    cash_invariant_violation: Optional[Dict[str, Any]] = None
+    initial_formation: Optional[Dict[str, Any]] = None
 
     # Leverage values from config (added to fix hardcoded 5x in TPV calc)
     l_lev: Decimal = Decimal('5')
@@ -646,7 +648,15 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_event(i, "velocity_guard_block", float(state.get_tpv_fast(float(mid_price))),
                                         f"velocity {vg_move*100:.2f}%", keys=blocked)
 
+            if state.cash_invariant_violation:
+                actions = [a for a in actions if a.get("is_reduction", False)]
+
             if actions:
+                is_initial_formation = (
+                    state.cycles == 0
+                    and state.pos_long == 0
+                    and state.pos_short == 0
+                )
                 fills_before = len(state.fills)
                 tpv_before = state.get_tpv(mid_price)
                 reductions = [a for a in actions if a.get("is_reduction", False)]
@@ -827,6 +837,39 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                    leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
                     state.check_accounting(mid_price, i, f"expand_{key}")
+
+                if is_initial_formation:
+                    residual = state.val_cash
+                    if residual > 0:
+                        moved = state.designate_virtual(residual)
+                        state.log_event(i, "initial_residual_to_virtual",
+                                        float(state.get_tpv(mid_price)),
+                                        f"moved {float(moved):.8f} to VIRTUAL",
+                                        amount=float(moved))
+                    elif residual < 0:
+                        state.cash_invariant_violation = {
+                            "bar": int(i),
+                            "cash": float(residual),
+                            "virtual": float(state.virt_debt),
+                            "positions": {"long": float(state.pos_long), "short": float(state.pos_short)},
+                            "fills": list(state.fills),
+                        }
+                        state.log_event(i, "cash_invariant_violation",
+                                        float(state.get_tpv(mid_price)),
+                                        f"CASH={float(residual):.8f} after initial formation")
+                    state.initial_formation = {
+                        "bar": int(i),
+                        "cash": float(state.val_cash),
+                        "virtual": float(state.virt_debt),
+                        "long_position": float(state.pos_long),
+                        "short_position": float(state.pos_short),
+                        "long_margin": float(state.margin_long()),
+                        "short_margin": float(state.margin_short()),
+                        "tpv": float(state.get_tpv(mid_price)),
+                        "commission_paid": float(state.commission_paid),
+                        "fills": list(state.fills),
+                    }
+                    state.check_accounting(mid_price, i, "initial_formation")
 
                 state.cycles += 1
                 state.last_rebalance_price = mid_price
@@ -1139,6 +1182,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             },
             "accounting_ok": bool(abs(residual) <= tolerance),
             "accounting_residual": float(residual),
+            "cash_invariant_violation": state.cash_invariant_violation,
+            "initial_formation": state.initial_formation,
             "events": state.events,
             "rebalances": state.rebalance_log,
             "siphoning_log": state.siphoning_log,
