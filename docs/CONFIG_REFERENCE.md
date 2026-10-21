@@ -227,13 +227,12 @@
 
 ### `portfolios[].paper_account_free_margin`
 - **Текущее значение:** `1000.0` | **Тип:** float, USDT
-- **Назначение:** имитация свободной маржи всего аккаунта (кросс-маржа) для расчёта цены ликвидации и проверки достаточности обеспечения в paper.
-- **Чтение:** `core/main.py:751` — участвует в cross-margin формуле ликвидационной цены (`_cross = _iso ∓ free_margin/qty`, `main.py:755-770`); `main.py:810-827` — проверка `margin_ratio = free_margin / (initial_tpv)` (нужно 2×half-capital) против `paper_min_free_margin_pct`; `main.py:1252` — то же при пересчёте liq после сделок; `backtest_rebalance.py:325` (default 0.0) — инъекция в `BacktestState.account_free_margin` (`:365`).
-- **Поведение:** 0 → изолированная маржа (liq ближе, подушка нулевая); увеличение отдаляет ликвидацию и улучшает margin_ratio. Диапазон в коде не проверяется. Default 0.0. Режимы: paper, backtest.
+- **Статус:** legacy, **игнорируется** после A2a. `core/main.py` и `backtest/backtest_rebalance.py` не читают параметр; он не входит в collateral, liquidation price, write-offs или сохраняемый капитал. Оставлен в `config.json` только для обратной совместимости.
+- **Поведение:** изменения значения не должны менять paper/backtest guard. Не использовать для новых конфигураций.
 
 ### `portfolios[].paper_min_free_margin_pct`
 - **Текущее значение:** `15.0` | **Тип:** float, %
-- **Чтение:** `core/main.py:811` (default 15.0): `min_ratio = pct/100`; если `account_free_margin / total_margin_needed < min_ratio` — цикл ребаланса **пропускается** (`continue`, `main.py:816-827`). Работает только при `paper_account_free_margin > 0` (`:812`). Только paper. Увеличение — чаще блокировка ребалансов; уменьшение — рискованнее. Диапазон в коде не проверяется.
+- **Статус:** legacy, **игнорируется** после A2a; old free-margin skip удалён. Параметр не влияет на guard или исполнения.
 
 ### `portfolios[].margin_ratio_warning`
 - **Текущее значение:** `3.0` | **Тип:** float, отношение (x)
@@ -387,13 +386,13 @@
 1. **`max_bots=10` и `paper_mode_bots=10` → `max_real_slots=0`** (`swarm_manager.py:853`): боевые REAL-боты не запускаются вообще, несмотря на наличие механизмов. Пока это не изменено, все real-параметры (`margin_ratio_*`, spread-guard, testnet-live) практического эффекта не имеют.
 2. **`equity_trailing_stop_activation_pct=9000`** — trailing stop недостижим (нужен рост TPV в 91 раз). Вместе с **`max_drawdown_limit=200`** (порог отрицательный) и **`siphoning_threshold_pct=1000`** и **`trend_min_move_pct≈999991`** — четыре «страховки» одновременно фактически отключены экстремальными значениями.
 3. **Несогласованные defaults одного ключа в разных модулях:** `testnet` (True/False), `min_cycles_for_rank` (10/20), `initial_capital` (60/80/86/115/1000/39000), `min_notional_usdt` (5.5/6.0), `max_drawdown_limit` (0.5 в live vs 100.0 в backtest — live-default 0.5% был бы катастрофически чувствительным), `trend_eff_threshold` (0.35 vs 0.85), `use_real_whitelist` (True при отсутствии vs `false` в конфиге).
-4. **Hot-reload неполный:** `equity_trailing_stop_activation_pct`, `max_orders_per_second`, `paper_min_free_margin_pct`, `liquidation_distance_*`, `safety_guards.trend_*` не входят в блок перезагрузки `main.py:535-580` (частично: guards читаются через `guards_cfg` на месте — trend-параметры обновляются, activation — нет).
+4. **Hot-reload неполный:** `equity_trailing_stop_activation_pct`, `max_orders_per_second`, `liquidation_distance_*`, `safety_guards.trend_*` не входят в блок перезагрузки `main.py:535-580` (частично: guards читаются через `guards_cfg` на месте — trend-параметры обновляются, activation — нет). `paper_min_free_margin_pct` теперь legacy и не читается.
 5. **`net_move_block_pct/net_move_window` инициализируются только в ветке hot-reload** (`main.py:575-576`) — до первого изменения mtime конфига NMG не работает (NameError глушится except `main.py:582`).
 6. **`equity_trailing_stop_timeout_sec` не читается при старте** (только `main.py:568`) — см. раздел параметра.
 7. **`limit_*` параметры мертвы** из-за принудительного `portfolio_cfg["limit_order_enabled"]=False` (`executor.py:508`).
 8. **`max_replace_per_cycle` в `selective_merge_incubator`** присваивается, но не применяется (`swarm_manager.py:439`); работает только вариант для REAL-ротации (`:886`).
 9. **`replacement_threshold` (`:803`) — мёртвая переменная;** живёт только score-cushion из `:934`.
-10. **`liquidation_distance_warn_pct` принимается, но не используется** ни в `_handle_liquidation_guard`, ни в бэктесте.
+10. **`liquidation_distance_warn_pct` используется** в paper canonical guard и backtest для warning-порога; critical-порог управляет закрытием/остановкой.
 11. **Супервайзер перезаписывает `config.json` целиком** (`swarm_manager.py:1053`) — ручные значения `tickers/base_ticker/live_swarm/black_list/toxic_blacklist_*/probation_*` не являются SSOT для пользователя.
 12. **`portfolios[1..]` игнорируются** всеми потребителями.
 
@@ -403,8 +402,9 @@
 
 - **Не используются вообще (в исследованном коде использования не найдено):** `use_v2_scoring`, `scoring_drawdown_weight`, `toxic_blacklist`, `portfolios[].post_factum_liquidation_check`, `portfolios[].name`, `portfolios[].safety_guards.trend_lookback_bars` (в рантайме; используется лишь Optuna-патчером).
 - **Используются, но эффект подавлен кодом:** `limit_order_enabled`, `limit_offset_pct`, `limit_timeout_sec` (market-only доктрина).
-- **Используются частично/неявно:** `max_replace_per_cycle` (только REAL-ротация), `liquidation_distance_warn_pct` (параметр передаётся, не применяется), `max_capital_usdt` (не найден потребитель, если добавить).
-- **Работают только в части режимов:** `backtest_period_days` (только optimization), `min_cycles_for_rotation`, `paper_mode_bots`, `use_real_whitelist`, `real_whitelist`, `live_swarm`, `probation_*` (только supervisor); `margin_ratio_*`, spread-guard, `post-factum` ликвидационная проверка (только real); `paper_account_free_margin`, `paper_min_free_margin_pct` (только paper/backtest); `telegram_summary_interval_min` (только aggregator); `scanner_period_days` (scanner + fallback supervisor); `min_notional_usdt` (live/paper/backtest/supervisor-dust).
+- **Используются частично/неявно:** `max_replace_per_cycle` (только REAL-ротация), `max_capital_usdt` (не найден потребитель, если добавить).
+- **Работают только в части режимов:** `backtest_period_days` (только optimization), `min_cycles_for_rotation`, `paper_mode_bots`, `use_real_whitelist`, `real_whitelist`, `live_swarm`, `probation_*` (только supervisor); `margin_ratio_*`, spread-guard, `post-factum` ликвидационная проверка (только real); `telegram_summary_interval_min` (только aggregator); `scanner_period_days` (scanner + fallback supervisor); `min_notional_usdt` (live/paper/backtest/supervisor-dust).
+- **Legacy/игнорируются:** `paper_account_free_margin`, `paper_min_free_margin_pct` (A2a; сохранены в конфиге для совместимости).
 
 ---
 

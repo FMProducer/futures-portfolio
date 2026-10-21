@@ -19,7 +19,7 @@ class ZombieExit(BaseException):
     pass
 
 
-from futures_portfolio.core.main import rebalance_loop
+from futures_portfolio.core.main import rebalance_loop, _paper_collateral, _paper_guard_metrics
 
 
 M = "futures_portfolio.core.main"
@@ -92,12 +92,13 @@ def _make_paper_state(**overrides):
 
 async def _run_rebalance(config, state, paper_state, connector=None,
                          loop_limit=5, real_mode=False, calc_return=None,
-                         calc_val_cash=None, calculator_class=None):
+                         calc_val_cash=None, calculator_class=None,
+                         calc_tpv=100.0, price=60000.0):
     """Helper: run rebalance_loop with mocks. Returns saves list."""
     if connector is None:
         connector = MagicMock()
-        connector.get_futures_prices = AsyncMock(return_value={"BTCUSDT": 60000.0})
-        connector.get_mark_prices = AsyncMock(return_value={"BTCUSDT": 60000.0})
+        connector.get_futures_prices = AsyncMock(return_value={"BTCUSDT": price})
+        connector.get_mark_prices = AsyncMock(return_value={"BTCUSDT": price})
         connector.get_exchange_info = AsyncMock(return_value={
             "symbols": [{"symbol": "BTCUSDT", "filters": [
                 {"filterType": "LOT_SIZE", "stepSize": "0.001"},
@@ -148,7 +149,7 @@ async def _run_rebalance(config, state, paper_state, connector=None,
             "total_tpv": 100.0, "tpv": 100.0, "actions": [],
             "total_pnl_pct": 0.0
         }
-    calc_mock.tpv = 100.0
+    calc_mock.tpv = calc_tpv
     calc_mock.val_cash = Decimal(str(calc_val_cash)) if calc_val_cash is not None else Decimal('0')
 
     with patch(f"{M}.safe_load_json_sync", return_value=config), \
@@ -1531,3 +1532,174 @@ async def test_coverage_handle_liquidation_recovery_closes_positions():
     assert executor_mock.execute_market_order.call_count >= 1
     # Should emit stop signal (SSOT)
     mock_emit.assert_called_once_with("stop", "BTCUSDT", is_paper=False)
+
+
+# =====================================================================
+# A2a: canonical paper collateral guard
+# =====================================================================
+
+def _paper_state_for_distance(distance_pct: float) -> dict:
+    maintenance = Decimal("10") * Decimal("100") * Decimal("0.004")
+    collateral = maintenance / (Decimal("1") - Decimal(str(distance_pct)) / Decimal("100"))
+    return _make_paper_state(
+        balance=float(collateral),
+        positions={"BTCUSDT_LONG": 10.0, "BTCUSDT_SHORT": 0.0},
+        long_entry_price=100.0,
+    )
+
+
+def test_a2_paper_collateral_uses_wallet_plus_upnl_without_double_count():
+    paper_state = _make_paper_state(
+        balance=1000.0,
+        positions={"BTCUSDT_LONG": 10.0, "BTCUSDT_SHORT": 0.0},
+        long_entry_price=100.0,
+    )
+    collateral = _paper_collateral(
+        paper_state, "BTCUSDT", 110.0, Decimal("1100"), MagicMock()
+    )
+    assert collateral == Decimal("1100")
+    assert collateral != Decimal("1300")
+
+
+def test_a2_paper_collateral_keeps_virtual_inside_wallet_once():
+    paper_state = _make_paper_state(balance=1000.0)
+    collateral = _paper_collateral(
+        paper_state, "BTCUSDT", 60000.0, Decimal("1000"), MagicMock()
+    )
+    assert collateral == Decimal("1000")
+    assert collateral != Decimal("1300")
+
+
+@pytest.mark.parametrize("distance_pct", [8.0, 15.0])
+def test_a2_paper_guard_boundaries_are_exact(distance_pct):
+    paper_state = _paper_state_for_distance(distance_pct)
+    collateral, maintenance, distance = _paper_guard_metrics(
+        paper_state, "BTCUSDT", 100.0, Decimal(str(paper_state["balance"])), MagicMock()
+    )
+    assert maintenance == Decimal("4.000")
+    assert distance == pytest.approx(distance_pct, abs=1e-9)
+    assert collateral > maintenance
+
+
+@pytest.mark.parametrize("balance", [0.0, -10.0])
+def test_a2_paper_guard_zero_or_negative_collateral_has_no_division(balance):
+    paper_state = _make_paper_state(
+        balance=balance,
+        positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": 0.0},
+        long_entry_price=100.0,
+    )
+    collateral, maintenance, distance = _paper_guard_metrics(
+        paper_state, "BTCUSDT", 100.0, Decimal("1e-9"), MagicMock()
+    )
+    assert collateral == Decimal(str(balance))
+    assert maintenance == Decimal("0.400")
+    assert distance == -100.0
+
+
+@pytest.mark.asyncio
+async def test_a2_paper_liquidation_price_is_diagnostic_only():
+    config = _make_config()
+    state = _make_state()
+    paper_state = _make_paper_state(
+        balance=100.0,
+        positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": 0.0},
+        long_entry_price=100.0,
+    )
+    with patch(f"{M}.emit_signal") as emit:
+        saves, _, _ = await _run_rebalance(
+            config, state, paper_state, loop_limit=2, calc_tpv=10.0, price=10.0,
+        )
+    final_paper = [value for path, value in saves if path == "paper_state.json"][-1]
+    assert final_paper["positions"]["BTCUSDT_LONG"] == 1.0
+    assert final_paper["long_liquidation_price"] == pytest.approx(
+        100 * (1 - 1 / 7 + 0.004), abs=1e-7
+    )
+    emit.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_free_margin", [0.0, 1000.0])
+async def test_a2_canonical_guard_closes_critical_paper_position_and_ignores_legacy_margin(
+    legacy_free_margin,
+):
+    collateral = 4.0 / 0.93
+    config = _make_config()
+    config["portfolios"][0].update(
+        initial_capital=collateral,
+        paper_initial_capital=collateral,
+        paper_account_free_margin=legacy_free_margin,
+    )
+    state = _make_state(initial_tpv=collateral, reference_tpv=collateral, tpv_ath=collateral)
+    paper_state = _make_paper_state(
+        balance=collateral,
+        positions={"BTCUSDT_LONG": 10.0, "BTCUSDT_SHORT": 0.0},
+        long_entry_price=100.0,
+    )
+    with patch(f"{M}.emit_signal") as emit:
+        saves, notifier, _ = await _run_rebalance(
+            config, state, paper_state, loop_limit=3, calc_tpv=collateral, price=100.0,
+            calc_return={
+                "total_tpv": collateral, "tpv": collateral, "actions": [],
+                "total_pnl_pct": 0.0, "total_pnl": 0.0,
+                "share_long_pct": 0.0, "share_short_pct": 0.0,
+                "share_virt_pct": 100.0, "share_cash_pct": 0.0,
+                "val_long": 0.0, "val_short": 0.0,
+                "val_virt": 0.0, "val_cash": 0.0,
+            },
+        )
+    final_state = [value for path, value in saves if path == "state.json"][-1]
+    final_paper = [value for path, value in saves if path == "paper_state.json"][-1]
+    assert final_paper["positions"]["BTCUSDT_LONG"] == 0.0
+    assert final_paper["long_liquidation_price"] == 0.0
+    assert final_state["initial_build_pending"] is None
+    emit.assert_called_once_with("stop", "BTCUSDT", is_paper=True)
+    notifier.send_alert.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a2_critical_guard_halts_before_supervisor_can_reopen():
+    collateral = 4.0 / 0.93
+    config = _make_config(
+        equity_trailing_stop_activation_pct=9000.0,
+        max_drawdown_limit=200.0,
+    )
+    config["portfolios"][0].update(
+        initial_capital=collateral,
+        paper_initial_capital=collateral,
+    )
+    state = _make_state(
+        initial_tpv=collateral, reference_tpv=collateral, tpv_ath=collateral
+    )
+    paper_state = _make_paper_state(
+        balance=collateral,
+        positions={"BTCUSDT_LONG": 10.0, "BTCUSDT_SHORT": 0.0},
+        long_entry_price=100.0,
+    )
+    result = {
+        "total_tpv": collateral, "tpv": collateral, "total_pnl_pct": 0.0,
+        "total_pnl": 0.0, "share_long_pct": 0.0, "share_short_pct": 0.0,
+        "share_virt_pct": 100.0, "share_cash_pct": 0.0,
+        "val_long": 0.0, "val_short": 0.0, "val_virt": 0.0, "val_cash": 0.0,
+        "actions": [{
+            "type": "ORDER", "position_side": "LONG", "symbol": "BTCUSDT_LONG",
+            "side": "BUY", "key": "BASE_LONG", "diff_usdt": 100.0,
+            "leverage": 7, "is_reduction": False,
+        }],
+    }
+    executor = MagicMock()
+    executor.execute_actions = AsyncMock(return_value=[])
+    with patch(f"{M}.self_kill_pm2", AsyncMock()), \
+         patch(f"{M}.emit_signal") as emit, \
+         patch(f"{M}.PortfolioExecutor", return_value=executor):
+        saves, _, _ = await _run_rebalance(
+            config, state, paper_state, loop_limit=3,
+            calc_tpv=collateral, price=100.0, calc_return=result,
+        )
+
+    emit.assert_called_once_with("stop", "BTCUSDT", is_paper=True)
+    executor.execute_actions.assert_not_awaited()
+    final_state = [value for path, value in saves if path == "state.json"][-1]
+    final_paper = [value for path, value in saves if path == "paper_state.json"][-1]
+    assert final_state["trailing_stop_triggered"] is True
+    assert final_paper["positions"]["BTCUSDT_LONG"] == 0.0
+    assert final_paper["long_entry_price"] == 0.0

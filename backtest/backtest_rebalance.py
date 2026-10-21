@@ -83,7 +83,7 @@ class BacktestState:
     initial_capital: Decimal
     base_ticker: str
     val_cash: Decimal
-    account_free_margin: Decimal = Decimal('0')  # Внешняя кросс-маржинальная подушка
+    account_free_margin: Decimal = Decimal('0')  # legacy zero; external collateral is excluded from A2a guard
     pos_long: Decimal = Decimal('0')
     pos_short: Decimal = Decimal('0')
     virt_qty: Decimal = Decimal('0')
@@ -213,17 +213,17 @@ class BacktestState:
         self.funding_paid += amount
         return amount
 
-    def cross_margin_distance_pct(self, price: Decimal, mmr: Decimal,
-                                  free_margin: Decimal = Decimal('0')) -> Decimal:
-        long_notional = self.pos_long * price
-        short_notional = self.pos_short * price
-        upnl_l = self.pos_long * (price - self.long_entry_price) if self.pos_long > 0 else Decimal('0')
-        upnl_s = self.pos_short * (self.short_entry_price - price) if self.pos_short > 0 else Decimal('0')
-        total_margin_balance = (self.val_cash + self.margin_long() + upnl_l
-                                + self.margin_short() + upnl_s + free_margin)
+    def maintenance_margin(self, price: Decimal, mmr: Decimal) -> Decimal:
+        return (abs(self.pos_long) + abs(self.pos_short)) * price * mmr
+
+    def hard_liquidation_triggered(self, price: Decimal, mmr: Decimal) -> bool:
+        return (self.pos_long > 0 or self.pos_short > 0) and self.get_tpv(price) <= self.maintenance_margin(price, mmr)
+
+    def cross_margin_distance_pct(self, price: Decimal, mmr: Decimal) -> Decimal:
+        total_margin_balance = self.get_tpv(price)
         if total_margin_balance <= 0:
             return Decimal('-100')
-        total_mm = (long_notional + short_notional) * mmr
+        total_mm = self.maintenance_margin(price, mmr)
         return ((total_margin_balance - total_mm) / total_margin_balance) * Decimal('100')
 
     # cap per-run fill log so a runaway run cannot grow the JSON unboundedly
@@ -446,7 +446,6 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         
         # Инъекция параметров Кросс-Маржи из конфигурации
         paper_initial_capital: float = portfolio_cfg.get("paper_initial_capital", initial_capital)
-        paper_account_free_margin: float = portfolio_cfg.get("paper_account_free_margin", 0.0)
         
         targets: Dict[str, Any] = portfolio_cfg["targets"]
         ticker_thresholds = portfolio_cfg.get("ticker_thresholds", {})
@@ -489,11 +488,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         l_lev = Decimal(str(targets["BASE_LONG"]["leverage"]))
         s_lev = Decimal(str(targets["BASE_SHORT"]["leverage"]))
 
-        # Инициализация состояния с учетом внешней кросс-маржи
         state = BacktestState(
             initial_capital=Decimal(str(initial_capital)),
             val_cash=Decimal(str(initial_capital)),
-            account_free_margin=Decimal(str(paper_account_free_margin)),
             base_ticker=base_ticker,
             l_lev=l_lev,
             s_lev=s_lev,
@@ -940,8 +937,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             m_short = state.margin_short()
 
             if state.pos_long > 0 or state.pos_short > 0:
-                cross_liq_dist_pct = state.cross_margin_distance_pct(
-                    mid_price, mmr, state.account_free_margin)
+                cross_liq_dist_pct = state.cross_margin_distance_pct(mid_price, mmr)
 
                 liq_distance_warn_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)))
                 liq_distance_crit_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)))
@@ -992,20 +988,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             if state.pos_long > 0 or state.pos_short > 0:
                 upnl_l = state.pos_long * (mid_price - state.long_entry_price) if state.pos_long > 0 else Decimal('0')
                 upnl_s = state.pos_short * (state.short_entry_price - mid_price) if state.pos_short > 0 else Decimal('0')
-                m_long = (state.pos_long * state.long_entry_price) / l_lev if state.pos_long > 0 else Decimal('0')
-                m_short = (state.pos_short * state.short_entry_price) / s_lev if state.pos_short > 0 else Decimal('0')
-                
-                futures_margin_balance = state.val_cash + m_long + upnl_l + m_short + upnl_s
-                total_margin_balance = futures_margin_balance + state.account_free_margin
-                total_mm = (state.pos_long * mid_price + state.pos_short * mid_price) * mmr
-
-                if total_margin_balance <= total_mm:
+                if state.hard_liquidation_triggered(mid_price, mmr):
                     logger.warning(f"Bar {i}: HARD CROSS LIQUIDATION! Весь баланс суб-аккаунта уничтожен.")
-                    # Если баланс суб-аккаунта отрицательный, списываем убыток из внешней кросс-маржи аккаунта
-                    if futures_margin_balance < 0:
-                        state.account_free_margin += futures_margin_balance
-                        if state.account_free_margin < 0:
-                            state.account_free_margin = Decimal('0')
 
                     # The whole futures account (including the VIRTUAL cash bucket) is wiped.
                     wiped_tpv = state.get_tpv(mid_price)
@@ -1019,7 +1003,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.liquidation_loss_total += wiped_tpv
                     state.liquidations_counter += 1
                     state.check_accounting(mid_price, i, "hard_liquidation")
-                    state.dormant_capital = Decimal(str(state.account_free_margin + float(state.siphoning_reserve)))
+                    state.dormant_capital = Decimal(str(state.siphoning_reserve))
                     state.cooldown_until_bar = i + cooldown_bars_duration
                     state.log_event(i, "liquidation", float(state.dormant_capital), "HARD CROSS LIQUIDATION")
                     state.log_event(i, "cooldown_start", float(state.dormant_capital),
@@ -1154,7 +1138,6 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             logger.info(f"Refactored Cross-Margin Backtest for {base_ticker}:")
             logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% | Cycles: {state.cycles}")
             logger.info(f"Sortino: {sortino_ratio:.4f} | Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
-            logger.info(f"Remained Account Free Margin: {state.account_free_margin:.2f} USDT")
             logger.info(f"Skipped Expansions: {state.skipped_expansions_counter} | Stops: {state.stops_counter} | Liqs: {state.liquidations_counter}")
             logger.info(f"Trend Guard blocks: {tg_blocked_count} | Velocity Guard blocks: {vg_blocked_count}")
             if sim:
@@ -1242,7 +1225,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "max_drawdown_limit_pct": float(max_drawdown_limit_pct),
                 "cooldown_bars": int(cooldown_bars_duration),
                 "min_notional_usdt": float(min_notional_usdt),
-                "account_free_margin": float(paper_account_free_margin),
+                "account_free_margin": 0.0,
             },
             "data_window": data_window
         }

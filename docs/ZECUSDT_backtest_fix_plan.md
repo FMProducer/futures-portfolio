@@ -6,7 +6,7 @@
 
 **Первый этап — устранение ошибок учёта и воспроизводимая база — завершён в пределах проверенного десятидневного сценария. Сейчас выполняется второй этап: соответствие согласованной торговой логике во всех режимах.**
 
-A1 (initial CASH) закрыт авторски для paper/backtest, включая успешное продолжение после отказа одной ноги; live fee-aware sizing явно не принят. A2 (обеспечение guard) остаётся исследованием до утверждения точной формулы. B (funding/transfers) отделён от A1/A2. Clean Slate не изменять. Оптимизация не разрешена и не начата.
+A1 (initial CASH) принят независимо для paper/backtest, включая успешное продолжение после отказа одной ноги; live fee-aware sizing явно не принят. A2a (канонический collateral guard, external=0) принят независимо для paper/backtest; P1 post-critical halt закрыт. Live/real не принят. A2b, B (funding/transfers), live и Clean Slate не трогать. Оптимизация не разрешена и не начата.
 
 Проверенный при обновлении основной checkout: `C:\Python\Prosperous_Bot\futures_portfolio`, HEAD `f714455` (`docs: initial_cash_policy fix`).
 Текущий worktree добавляет end-to-end тест успешного pending-продолжения после restart и обновление плана; код A1 в HEAD не менялся. В evidence отражены 108 авторских PASS и два одинаковых прогона после pending-fix. Независимый повтор этой версии не выполнен; прежние 103/105/107 PASS относятся к предыдущим состояниям.
@@ -108,34 +108,27 @@ End-to-end тест: первая нога LONG SUCCESS, SHORT ERROR; состо
 6. Отдельно сохранить новый evidence без перезаписи baseline/candidate. Показать HEAD+diff+config/data hashes.
 7. Приёмка A1 — отдельное заключение после review. До неё не начинать реализацию A2/B автоматически.
 
-## 5. A2 — состав обеспечения, исследование до утверждения формулы
+## 5. A2a — канонический collateral guard (принято для paper/backtest)
 
-Уже определено пользователем: весь V должен учитываться в guard; нельзя ограничиваться только свободной частью V. Пока не доказано, что `paper_account_free_margin=1000` — действительно дополнительные доступные средства, а не повторно учтённый капитал.
-
-Предлагаемая формула для утверждения, ещё не реализована:
+Утверждённая формула:
 
 ```text
-collateral = val_cash
-           + (margin_long + upnl_long)
-           + (margin_short + upnl_short)
-           + virt_debt
+collateral = CASH
+           + margin_long + upnl_long
+           + margin_short + upnl_short
+           + VIRTUAL
            + external_collateral
 
-external_collateral = 0  # paper_account_free_margin исключён до доказательства происхождения
-total_mm = (long_notional + short_notional) * mmr
+external_collateral = 0  # paper_account_free_margin не входит
+total_mm = (abs(q_long) + abs(q_short)) * price * mmr
 distance_pct = (collateral - total_mm) / collateral * 100
 ```
 
-`paper_state["balance"]`/wallet balance не прибавлять отдельно: CASH уже представлен `val_cash`; V учитывается один раз как `virt_debt`. Если внешняя подушка будет доказана, она входит ровно один раз как `external_collateral`, без дублирования в liquidation price или другом компоненте. `paper_account_free_margin` не входит в collateral по умолчанию.
+Backtest использует `state.get_tpv(price)`. Core paper использует `calc.tpv` после проверки identity `paper_state["balance"] + unrealized`; `paper_state["balance"]` уже содержит posted margin и VIRTUAL, поэтому их нельзя прибавлять повторно. При `collateral <= 0` guard возвращает critical без деления. `paper_account_free_margin`/`paper_min_free_margin_pct` — legacy, игнорируются.
 
-Следующая работа:
-1. Таблица источников: CASH, margin LONG/SHORT, unrealized, V, external collateral. Для каждой суммы — происхождение, аккаунт, доступность, принадлежность боту и место в TPV.
-2. Сопоставить paper/backtest/live состав collateral; не объявлять одинаковыми разные формулы ликвидации.
-3. Представить точную формулу без дублирования и числовые состояния sufficient/insufficient.
-4. Получить утверждение формулы и применения внешней подушки.
-5. Только затем минимальный patch A2, целевые тесты и контрольный бэктест.
+Paper liquidation price — только диагностическое isolated-приближение с `external=0`; close/stop/blacklist выполняет только canonical collateral guard. P1 fix: после critical guard ставит `trailing_stop_triggered=True`, немедленно сохраняет state и paper_state и пропускает остаток цикла; следующий цикл входит в Zombie Mode до обработки stop supervisor. A2b, live, funding/transfers и Clean Slate не входят в A2a.
 
-Положительный config-параметр сам по себе не доказывает наличие внешних денег. Guard «distance» нельзя объявлять точной ценой ликвидации Binance без соответствующей модели mark price, maintenance tiers и режима аккаунта.
+Приёмка A2a: полный pytest, A1 restart, два одинаковых контрольных бэктеста, accounting comparison и объяснение каждого изменения исполнений относительно принятой A1-базы. P1 независимо принят: 3 targeted tests, halt переживает modeled restart, A1 pending-restart сохранён. Статус — accepted for paper/backtest; live/real не принят. Коммит не делался.
 
 ## 6. B — funding и transfers, отдельный этап
 

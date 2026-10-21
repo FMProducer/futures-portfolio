@@ -87,7 +87,7 @@ def test_negative_funding_credits_cash_without_virtual_transfer():
     assert state.get_tpv(Decimal('100')) == before + Decimal('1.00')
 
 
-def test_cross_margin_guard_distinguishes_collateral_after_funding_exhaustion():
+def test_cross_margin_guard_uses_tpv_and_ignores_legacy_external_margin():
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('0.50'), base_ticker="BTCUSDT",
                           l_lev=Decimal('5'), s_lev=Decimal('5'))
@@ -98,7 +98,37 @@ def test_cross_margin_guard_distinguishes_collateral_after_funding_exhaustion():
     assert state.virt_debt == Decimal('0')
     assert state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004')) > Decimal('8')
     assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004')) <= Decimal('8')
-    assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004'), Decimal('4')) > Decimal('8')
+
+    state.virt_debt = Decimal('4')
+    state.account_free_margin = Decimal('1000')
+    assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004')) > Decimal('8')
+
+
+def test_cross_margin_guard_zero_collateral_has_no_division():
+    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('-30'),
+                          base_ticker="BTCUSDT", l_lev=Decimal('5'), s_lev=Decimal('5'))
+    state.pos_long = Decimal('1')
+    state.long_entry_price = Decimal('100')
+    assert state.get_tpv(Decimal('100')) == Decimal('-10')
+    assert state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004')) == Decimal('-100')
+    assert state.hard_liquidation_triggered(Decimal('100'), Decimal('0.004')) is True
+
+
+def test_virtual_transfer_is_guard_neutral_and_credits_collateral_once():
+    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('1000'),
+                          base_ticker="BTCUSDT", l_lev=Decimal('5'), s_lev=Decimal('5'))
+    state.pos_long = Decimal('1')
+    state.long_entry_price = Decimal('100')
+    before = state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004'))
+    state.designate_virtual(Decimal('100'))
+    after_designation = state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004'))
+    state.release_virtual(Decimal('100'))
+    after_release = state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004'))
+    assert before == after_designation == after_release
+
+    collateral_before = state.get_tpv(Decimal('100'))
+    state.virt_debt += Decimal('10')
+    assert state.get_tpv(Decimal('100')) == collateral_before + Decimal('10')
 
 
 def test_leverage_does_not_create_capital():
@@ -432,3 +462,48 @@ def test_cli_execution(tmp_path):
                 assert args.config == str(config_file)
                 assert args.ticker == "BTCUSDT"
                 assert args.days == 0.01
+
+
+def test_hard_guard_and_predictive_distance_share_tpv_formula():
+    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('-195.65217391304348'),
+                          base_ticker="BTCUSDT", l_lev=Decimal('5'), s_lev=Decimal('5'))
+    state.pos_long = Decimal('10')
+    state.long_entry_price = Decimal('100')
+    assert state.maintenance_margin(Decimal('100'), Decimal('0.004')) == Decimal('4.000')
+    assert state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004')) == pytest.approx(
+        Decimal('8'), abs=Decimal('1e-12'))
+    assert state.hard_liquidation_triggered(Decimal('100'), Decimal('0.004')) is False
+
+    state.val_cash = Decimal('-196')
+    assert state.get_tpv(Decimal('100')) == Decimal('4')
+    assert state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004')) == Decimal('0')
+    assert state.hard_liquidation_triggered(Decimal('100'), Decimal('0.004')) is True
+
+
+@pytest.mark.asyncio
+async def test_backtest_legacy_free_margin_does_not_change_results(tmp_path):
+    prices = [100.0] * 20
+    pd.DataFrame({
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(prices),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    results = []
+    for free_margin in (0.0, 1000.0):
+        config = _flat_config()
+        config["portfolios"][0]["paper_account_free_margin"] = free_margin
+        config_file = tmp_path / f"config_{int(free_margin)}.json"
+        config_file.write_text(json.dumps(config), encoding="utf-8")
+        results.append(await run_backtest(
+            str(config_file), str(tmp_path), live_mode=False, days=0.1,
+            commission=0.0, slippage=0.0, quiet=True,
+        ))
+
+    a, b = results
+    assert a is not None and b is not None
+    assert a["accounting_ok"] is True and b["accounting_ok"] is True
+    assert a["fill_count"] == b["fill_count"] > 0
+    assert a["final_tpv"] == b["final_tpv"]
+    assert a["profit_pct"] == b["profit_pct"]
+    assert a["settings"]["account_free_margin"] == 0.0
+    assert b["settings"]["account_free_margin"] == 0.0

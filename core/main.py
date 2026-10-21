@@ -57,6 +57,38 @@ async def self_kill_pm2(ticker: str, is_paper: bool) -> None:
     except Exception as e:
         logging.warning(f"PM2 self-kill failed for {proc_name}: {e}")
 
+def _paper_collateral(paper_state: dict, base_ticker: str, price: float,
+                      calc_tpv: Decimal, logger: logging.Logger) -> Decimal:
+    calc_tpv = Decimal(str(calc_tpv))
+    long_qty = abs(Decimal(str(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))))
+    short_qty = abs(Decimal(str(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))))
+    long_entry = Decimal(str(paper_state.get("long_entry_price", 0.0)))
+    short_entry = Decimal(str(paper_state.get("short_entry_price", 0.0)))
+    upnl = long_qty * (Decimal(str(price)) - long_entry)
+    upnl += short_qty * (short_entry - Decimal(str(price)))
+    expected = Decimal(str(paper_state.get("balance", 0.0))) + upnl
+    # Calculator clamps non-positive TPV; keep the raw identity for the critical branch.
+    if expected <= 0:
+        return expected
+    tolerance = max(Decimal('1e-8'), abs(expected) * Decimal('1e-12'))
+    if abs(calc_tpv - expected) > tolerance:
+        logger.error(f"Paper collateral identity mismatch: calc_tpv={calc_tpv} expected={expected}")
+        return expected
+    return calc_tpv
+
+
+def _paper_guard_metrics(paper_state: dict, base_ticker: str, price: float,
+                         calc_tpv: Decimal, logger: logging.Logger) -> tuple:
+    collateral = _paper_collateral(paper_state, base_ticker, price, calc_tpv, logger)
+    long_qty = abs(Decimal(str(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))))
+    short_qty = abs(Decimal(str(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))))
+    maintenance = (long_qty + short_qty) * Decimal(str(price)) * Decimal('0.004')
+    if collateral <= 0:
+        return collateral, maintenance, -100.0
+    distance = float((collateral - maintenance) / collateral * Decimal('100'))
+    return collateral, maintenance, distance
+
+
 def _apply_clean_slate(state: dict, paper_state: dict, base_ticker: str, target_cap: float, logger: logging.Logger) -> None:
     """Enforces clean slate: resets phantom balances and state to target_initial_cap."""
     paper_state['balance'] = target_cap
@@ -176,7 +208,8 @@ async def _handle_liquidation_guard(
     pos_key: str, dist: float, liq_price: float,
     liquidation_distance_warn: float, liquidation_distance_crit: float,
     is_paper: bool, raw_positions, paper_state, connector,
-    base_ticker: str, step_sizes: dict, notifier, logger
+    base_ticker: str, step_sizes: dict, notifier, logger,
+    reason: str = "LIQUIDATION", price_label: str = "liq_price",
 ):
     """
     Shared liquidation guard handler for both paper and real modes.
@@ -185,13 +218,13 @@ async def _handle_liquidation_guard(
     """
     if dist <= liquidation_distance_crit:
         logger.critical(
-            f"🚨 LIQUIDATION CRITICAL [{'PAPER' if is_paper else 'REAL'}]: "
-            f"{pos_key} distance {dist:.1f}% (liq_price={liq_price:.8f}). Emergency close!"
+            f"🚨 {reason} CRITICAL [{'PAPER' if is_paper else 'REAL'}]: "
+            f"{pos_key} distance {dist:.1f}% ({price_label}={liq_price:.8f}). Emergency close!"
         )
         try:
             await notifier.send_alert(
-                "🚨 LIQUIDATION IMMINENT",
-                f"{pos_key}: distance {dist:.1f}% to liq @ {liq_price:.8f}. Closing!"
+                f"🚨 {reason} IMMINENT",
+                f"{pos_key}: distance {dist:.1f}% ({price_label}={liq_price:.8f}). Closing!"
             )
         except Exception:
             pass
@@ -239,7 +272,7 @@ async def _handle_liquidation_guard(
 
         logger.info(
             f"✅ [{'PAPER' if is_paper else 'REAL'}] Emergency closed {pos_key} "
-            f"(dist={dist:.1f}%, liq={liq_price:.8f})"
+            f"(dist={dist:.1f}%, {price_label}={liq_price:.8f})"
         )
 
         # [SSOT] Delegate config mutation to supervisor via signal
@@ -251,8 +284,8 @@ async def _handle_liquidation_guard(
 
     elif dist <= liquidation_distance_warn:
         logger.warning(
-            f"⚠️ LIQUIDATION WARNING [{'PAPER' if is_paper else 'REAL'}]: "
-            f"{pos_key} distance {dist:.1f}% (liq_price={liq_price:.8f})"
+            f"⚠️ {reason} WARNING [{'PAPER' if is_paper else 'REAL'}]: "
+            f"{pos_key} distance {dist:.1f}% ({price_label}={liq_price:.8f})"
         )
 
 
@@ -747,88 +780,33 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     pass
 
                 elif paper_mode:
-                    # PAPER mode: use simulated liquidation price from shadow_state
-                    # Recalculate liq_price every cycle (cross-margin aware)
+                    # PAPER mode: diagnostic isolated approximation only; external collateral is zero.
+                    # The canonical collateral guard below owns close/stop/blacklist decisions.
                     try:
-                        _free_margin_val = Decimal(str(portfolio_cfg.get("paper_account_free_margin", 0.0)))
                         _mmr_val = Decimal('0.004')
                         _lv_l = Decimal(str(targets.get("BASE_LONG", {}).get("leverage", 7)))
                         _lv_s = Decimal(str(targets.get("BASE_SHORT", {}).get("leverage", 7)))
-                        
+
                         for pos_side in ("LONG", "SHORT"):
                             pos_key = f"{base_ticker}_{pos_side}"
                             qty = abs(paper_state["positions"].get(pos_key, 0.0))
                             if qty == 0:
                                 continue
-                            
-                            # Recalculate liq price using cross-margin formula
+
                             entry_key = f"{pos_side.lower()}_entry_price"
                             entry = Decimal(str(paper_state.get(entry_key, price)))
                             _lv = _lv_l if pos_side == "LONG" else _lv_s
-                            _qty = Decimal(str(qty)) + Decimal('1e-10')
-                            
+
                             liq_price_key = f"{pos_side.lower()}_liquidation_price"
                             if pos_side == "LONG":
                                 _iso = entry * (Decimal('1') - Decimal('1') / _lv + _mmr_val)
-                                _cross = max(_iso - _free_margin_val / _qty, Decimal('0'))
                             else:
                                 _iso = entry * (Decimal('1') + Decimal('1') / _lv - _mmr_val)
-                                _cross = _iso + _free_margin_val / _qty
-                            
-                            liq_price = float(_cross.quantize(Decimal('1e-8')))
-                            paper_state[liq_price_key] = liq_price
+
+                            paper_state[liq_price_key] = float(_iso.quantize(Decimal('1e-8')))
                             paper_state_dirty = True
-                            
-                            if liq_price <= 0:
-                                continue
-                            # Calculate distance from current price to simulated liq price
-                            if pos_side == "LONG":
-                                dist = (price - liq_price) / price * 100.0 if price > 0 else 100.0
-                            else:
-                                dist = (liq_price - price) / price * 100.0 if price > 0 else 100.0
-                            dist = max(dist, 0.0)
-
-                            await _handle_liquidation_guard(
-                                pos_key=pos_key, dist=dist, liq_price=liq_price,
-                                liquidation_distance_warn=liquidation_distance_warn,
-                                liquidation_distance_crit=liquidation_distance_crit,
-                                is_paper=True, raw_positions=None,
-                                paper_state=paper_state, connector=None,
-                                base_ticker=base_ticker, step_sizes=step_sizes,
-                                notifier=notifier, logger=logger
-                            )
-                            if dist <= liquidation_distance_crit:
-                                paper_state_dirty = True
-                                # Stop bot after liquidation critical — ticker is blacklisted
-                                emit_signal("stop", base_ticker, is_paper=True)
-                                logger.critical(f"🛑 Stopping {base_ticker} after liquidation critical (PAPER). Ticker blacklisted.")
                     except Exception as e:
-                        logger.error(f"Paper liquidation guard check failed: {e}")
-
-                # Cross-margin free margin check for paper mode
-                # Paper bots share a real account — ensure enough free margin exists
-                if paper_mode:
-                    try:
-                        account_free_margin = portfolio_cfg.get("paper_account_free_margin", 0.0)
-                        min_free_pct = portfolio_cfg.get("paper_min_free_margin_pct", 15.0)
-                        if account_free_margin > 0:
-                            # Each paper bot needs: notional / leverage margin per side
-                            side_margin = initial_tpv / 2  # half_capital as margin needed per side
-                            total_margin_needed = side_margin * 2  # both sides
-                            # margin_ratio = free margin / margin needed for this bot
-                            margin_ratio = account_free_margin / total_margin_needed if total_margin_needed > 0 else 999
-                            min_ratio = min_free_pct / 100.0
-                            if margin_ratio < min_ratio:
-                                logger.warning(
-                                    f"⚠️ CROSS MARGIN [PAPER]: Free margin ${account_free_margin:.2f} "
-                                    f"insufficient for {base_ticker} (need ${total_margin_needed:.2f}, "
-                                    f"ratio={margin_ratio:.2f}x < min {min_ratio:.2f}x). "
-                                    f"Skipping rebalance."
-                                )
-                                # Skip this cycle — don't rebalance when margin is thin
-                                continue
-                    except Exception as e:
-                        logger.error(f"Paper cross-margin check failed: {e}")
+                        logger.error(f"Paper liquidation diagnostic update failed: {e}")
 
                 # Calculate isolated PnL and Equity
                 # [SSOT] TPV = Cash + Virtual Value. Cash is paper_state["balance"].
@@ -934,6 +912,43 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         action for action in actions
                         if action.get("key") in missing and not action.get("is_reduction", False)
                     ]
+
+                if paper_mode:
+                    collateral, maintenance, distance = _paper_guard_metrics(
+                        paper_state, base_ticker, price, calc.tpv, logger
+                    )
+                    if distance <= liquidation_distance_crit:
+                        logger.critical(
+                            f"🚨 PAPER COLLATERAL CRITICAL: distance={distance:.2f}% "
+                            f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
+                        )
+                        await _handle_liquidation_guard(
+                            pos_key="PORTFOLIO", dist=distance, liq_price=price,
+                            liquidation_distance_warn=liquidation_distance_warn,
+                            liquidation_distance_crit=liquidation_distance_crit,
+                            is_paper=True, raw_positions=None,
+                            paper_state=paper_state, connector=None,
+                            base_ticker=base_ticker, step_sizes=step_sizes,
+                            notifier=notifier, logger=logger,
+                            reason="PAPER COLLATERAL", price_label="price",
+                        )
+                        state["initial_build_pending"] = None
+                        state["trailing_stop_triggered"] = True
+                        actions = []
+                        paper_state_dirty = True
+                        state_dirty = True
+                        await save_json(state_file_path, state)
+                        await save_json(paper_state_file_path, paper_state)
+                        logger.critical(
+                            "PAPER COLLATERAL CRITICAL: trading halted pending supervisor stop"
+                        )
+                        # Skipping the rest of the cycle prevents any opening before Zombie Mode.
+                        continue
+                    elif distance <= liquidation_distance_warn:
+                        logger.warning(
+                            f"⚠️ PAPER COLLATERAL WARNING: distance={distance:.2f}% "
+                            f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
+                        )
 
                 if ignore_limits and paper_mode:
                     # initial sizing must reserve the taker fee or CASH ends below zero
@@ -1277,25 +1292,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     # [LIQUIDATION GUARD] Calculate simulated liquidation price
                                     # For LONG: liq_price < entry (price must drop to liq)
                                     # For SHORT: liq_price > entry (price must rise to liq)
-                                    # Isolated margin formula: liq = entry × (1 ± 1/leverage ∓ mmr)
-                                    # Cross-margin: free margin pushes liq further away (safer)
+                                    # Diagnostic isolated approximation; external collateral is zero.
                                     _leverage = Decimal(str(targets.get(f"BASE_{pos_side}", {}).get("leverage", 7)))
                                     _mmr = Decimal('0.004')
-                                    _free_margin = Decimal(str(portfolio_cfg.get("paper_account_free_margin", 0.0)))
-                                    _pos_qty = Decimal(str(abs(paper_state["positions"].get(pos_key, 0.0)))) + Decimal('1e-10')
-                                    
                                     if pos_side == "LONG":
-                                        # LONG liq = entry × (1 - 1/leverage + mmr) — below entry
                                         _iso_liq = new_entry * (Decimal('1') - Decimal('1') / _leverage + _mmr)
-                                        # Free margin pushes liq DOWN (further from current price = safer)
-                                        _cross_liq = max(_iso_liq - _free_margin / _pos_qty, Decimal('0'))
-                                        paper_state["long_liquidation_price"] = float(_cross_liq.quantize(Decimal('1e-8')))
+                                        paper_state["long_liquidation_price"] = float(_iso_liq.quantize(Decimal('1e-8')))
                                     else:
-                                        # SHORT liq = entry × (1 + 1/leverage - mmr) — above entry
                                         _iso_liq = new_entry * (Decimal('1') + Decimal('1') / _leverage - _mmr)
-                                        # Free margin pushes liq UP (further from current price = safer)
-                                        _cross_liq = _iso_liq + _free_margin / _pos_qty
-                                        paper_state["short_liquidation_price"] = float(_cross_liq.quantize(Decimal('1e-8')))
+                                        paper_state["short_liquidation_price"] = float(_iso_liq.quantize(Decimal('1e-8')))
 
                                 elif reduce_only and new_qty == 0:
                                     # Если позиция закрыта полностью, сбрасываем цену входа
