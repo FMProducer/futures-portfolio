@@ -325,6 +325,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "rebalance_cycles": 0,
         "last_rebalance_price": 0.0,
         "cash_invariant_violation": None,
+        "initial_build_pending": None,
         "started_at": time.time()
     })
 
@@ -889,7 +890,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     wallet_balance = float(m_info.get("total_wallet_balance", 0.0))
 
                 # Direct synchronous call to PortfolioCalculator to reduce latency
-                ignore_limits = (abs(positions.get(f"{base_ticker}_LONG", 0)) + abs(positions.get(f"{base_ticker}_SHORT", 0)) == 0)
+                initial_build_pending = state.get("initial_build_pending")
+                ignore_limits = (
+                    abs(positions.get(f"{base_ticker}_LONG", 0)) + abs(positions.get(f"{base_ticker}_SHORT", 0)) == 0
+                    or bool(initial_build_pending)
+                )
                 
                 # Fetch min_notional once to reuse
                 config_min = portfolio_cfg.get("min_notional_usdt", current_config.get("min_notional_usdt"))
@@ -922,6 +927,13 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 tpv_total = calc_res["total_tpv"]
                 tpv_active = calc_res["tpv"]
                 actions = calc_res["actions"]
+
+                if initial_build_pending:
+                    missing = set(initial_build_pending.get("missing", []))
+                    actions = [
+                        action for action in actions
+                        if action.get("key") in missing and not action.get("is_reduction", False)
+                    ]
 
                 if ignore_limits and paper_mode:
                     # initial sizing must reserve the taker fee or CASH ends below zero
@@ -1324,11 +1336,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 min_notional=active_min_notional
                             )
                             residual = post_calc.val_cash
-                            if residual > 0:
-                                state["virt_debt"] = float(post_virt + residual)
-                                state_dirty = True
-                                logger.info(f"Initial residual {float(residual):.8f} USDT moved to VIRTUAL")
-                            elif residual < 0:
+                            missing = [
+                                key for key in ("BASE_LONG", "BASE_SHORT")
+                                if float(targets.get(key, {}).get("share", 0)) > 0
+                                and abs(float(paper_state["positions"].get(
+                                    f"{base_ticker}_{key.split('_')[-1]}", 0
+                                ))) <= 1e-12
+                            ]
+                            if residual < 0:
+                                state["initial_build_pending"] = None
                                 state["cash_invariant_violation"] = {
                                     "cash": float(residual),
                                     "balance": paper_state["balance"],
@@ -1352,6 +1368,23 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     f"Cash invariant violated after initial formation: CASH={float(residual):.8f}. "
                                     "Executions saved; further increases blocked."
                                 )
+                            elif missing:
+                                state["initial_build_pending"] = {
+                                    "missing": missing,
+                                    "attempts": int((state.get("initial_build_pending") or {}).get("attempts", 0)) + 1,
+                                }
+                                state_dirty = True
+                                await save_json(state_file_path, state)
+                                await save_json(paper_state_file_path, paper_state)
+                                logger.warning(
+                                    f"Initial build incomplete: missing {','.join(missing)}; "
+                                    f"residual CASH={float(residual):.8f} kept for continuation."
+                                )
+                            else:
+                                state["initial_build_pending"] = None
+                                state["virt_debt"] = float(post_virt + residual)
+                                state_dirty = True
+                                logger.info(f"Initial residual {float(residual):.8f} USDT moved to VIRTUAL")
 
                         if any_success:
                             state["last_rebalance_price"] = price

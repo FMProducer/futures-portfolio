@@ -91,7 +91,8 @@ def _make_paper_state(**overrides):
 
 
 async def _run_rebalance(config, state, paper_state, connector=None,
-                         loop_limit=5, real_mode=False, calc_return=None):
+                         loop_limit=5, real_mode=False, calc_return=None,
+                         calc_val_cash=None):
     """Helper: run rebalance_loop with mocks. Returns saves list."""
     if connector is None:
         connector = MagicMock()
@@ -148,6 +149,7 @@ async def _run_rebalance(config, state, paper_state, connector=None,
             "total_pnl_pct": 0.0
         }
     calc_mock.tpv = 100.0
+    calc_mock.val_cash = Decimal(str(calc_val_cash)) if calc_val_cash is not None else Decimal('0')
 
     with patch(f"{M}.safe_load_json_sync", return_value=config), \
          patch("builtins.open", mock_open(read_data=config_file)), \
@@ -416,6 +418,142 @@ async def test_coverage_virtual_order_processing():
     virt_debt_found = any("virt_debt" in s and s.get("virt_debt", 0) != 0 for s in state_saves)
     # virt_debt should be updated if VIRTUAL_ORDER was processed
     assert len(state_saves) > 0
+
+
+@pytest.mark.asyncio
+async def test_initial_cash_violation_saves_facts_and_blocks_increases():
+    config = _make_config()
+    state = _make_state(virt_qty=0.0, rebalance_cycles=0)
+    paper_state = _make_paper_state()
+
+    action = {
+        "type": "ORDER",
+        "position_side": "LONG",
+        "diff_usdt": 10.0,
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "key": "BASE_LONG",
+    }
+    calc_return = {
+        "total_tpv": 100.0,
+        "tpv": 100.0,
+        "actions": [action],
+        "total_pnl_pct": 0.0,
+        "share_long_pct": 0.0,
+        "share_short_pct": 0.0,
+        "share_virt_pct": 0.0,
+        "share_cash_pct": 100.0,
+    }
+
+    executor_mock = MagicMock()
+    executor_mock.execute_actions = AsyncMock(return_value=[{
+        "status": "SUCCESS",
+        "type": "LONG",
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "qty": 0.0002,
+        "price": 60000.0,
+        "commission": 0.02,
+    }])
+
+    with patch(f"{M}.PortfolioExecutor", return_value=executor_mock):
+        saves, _, _ = await _run_rebalance(
+            config, state, paper_state, loop_limit=3,
+            calc_return=calc_return, calc_val_cash=Decimal("-0.02"),
+        )
+
+    violation_saves = [
+        saved for path, saved in saves
+        if "state.json" in path and saved.get("cash_invariant_violation")
+    ]
+    assert violation_saves
+    violation = violation_saves[0]["cash_invariant_violation"]
+    assert violation["cash"] == pytest.approx(-0.02)
+    assert violation["executions"]
+    assert violation["executions"][0]["commission"] == pytest.approx(0.02)
+
+    paper_saves = [saved for path, saved in saves if "paper_state.json" in path]
+    assert paper_saves
+    assert paper_saves[-1]["positions"]["BTCUSDT_LONG"] > 0
+
+    assert executor_mock.execute_actions.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_failed_initial_leg_stays_pending_and_is_not_reopened():
+    config = _make_config()
+    state = _make_state(virt_qty=0.0, rebalance_cycles=0)
+    paper_state = _make_paper_state()
+
+    long_action = {
+        "type": "ORDER",
+        "position_side": "LONG",
+        "diff_usdt": 10.0,
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "key": "BASE_LONG",
+    }
+    short_action = {
+        "type": "ORDER",
+        "position_side": "SHORT",
+        "diff_usdt": 10.0,
+        "symbol": "BTCUSDT",
+        "side": "SELL",
+        "key": "BASE_SHORT",
+    }
+    calc_return = {
+        "total_tpv": 100.0,
+        "tpv": 100.0,
+        "actions": [long_action, short_action],
+        "total_pnl_pct": 0.0,
+        "share_long_pct": 0.0,
+        "share_short_pct": 0.0,
+        "share_virt_pct": 0.0,
+        "share_cash_pct": 100.0,
+    }
+
+    long_result = {
+        "status": "SUCCESS",
+        "type": "LONG",
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "qty": 0.0002,
+        "price": 60000.0,
+        "commission": 0.02,
+    }
+    short_error = {"status": "ERROR", "message": "rejected"}
+
+    executor_mock = MagicMock()
+    executor_mock.execute_actions = AsyncMock(side_effect=[
+        [long_result, short_error],
+        [short_error],
+        [short_error],
+    ])
+
+    with patch(f"{M}.PortfolioExecutor", return_value=executor_mock):
+        saves, _, _ = await _run_rebalance(
+            config, state, paper_state, loop_limit=3,
+            calc_return=calc_return, calc_val_cash=Decimal("10"),
+        )
+
+    state_saves = [saved for path, saved in saves if "state.json" in path]
+    pending_states = [saved for saved in state_saves if saved.get("initial_build_pending")]
+    assert pending_states
+    pending = pending_states[0]["initial_build_pending"]
+    assert pending["missing"] == ["BASE_SHORT"]
+    assert pending_states[0]["virt_debt"] == pytest.approx(20.0)
+    assert not any(saved.get("cash_invariant_violation") for saved in state_saves)
+
+    paper_saves = [saved for path, saved in saves if "paper_state.json" in path]
+    assert paper_saves
+    assert paper_saves[-1]["positions"]["BTCUSDT_LONG"] > 0
+    assert paper_saves[-1]["positions"]["BTCUSDT_SHORT"] == 0
+
+    calls = executor_mock.execute_actions.call_args_list
+    assert calls
+    assert [action["key"] for action in calls[0].args[0]] == ["BASE_LONG", "BASE_SHORT"]
+    for call in calls[1:]:
+        assert [action["key"] for action in call.args[0]] == ["BASE_SHORT"]
 
 
 # =====================================================================

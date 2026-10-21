@@ -119,6 +119,7 @@ class BacktestState:
     accounting_error: Optional[Dict[str, Any]] = None
     cash_invariant_violation: Optional[Dict[str, Any]] = None
     initial_formation: Optional[Dict[str, Any]] = None
+    initial_build_pending: Optional[Dict[str, Any]] = None
 
     # Leverage values from config (added to fix hardcoded 5x in TPV calc)
     l_lev: Decimal = Decimal('5')
@@ -651,12 +652,20 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             if state.cash_invariant_violation:
                 actions = [a for a in actions if a.get("is_reduction", False)]
 
+            if state.initial_build_pending:
+                missing = set(state.initial_build_pending.get("missing", []))
+                actions = [
+                    a for a in actions
+                    if a.get("key") in missing and not a.get("is_reduction", False)
+                ]
+
             if actions:
                 is_initial_formation = (
                     state.cycles == 0
                     and state.pos_long == 0
                     and state.pos_short == 0
                 )
+                was_initial_pending = bool(state.initial_build_pending)
                 fills_before = len(state.fills)
                 tpv_before = state.get_tpv(mid_price)
                 reductions = [a for a in actions if a.get("is_reduction", False)]
@@ -838,15 +847,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
                     state.check_accounting(mid_price, i, f"expand_{key}")
 
-                if is_initial_formation:
+                if is_initial_formation or was_initial_pending:
+                    missing = [
+                        key for key, pos in (("BASE_LONG", state.pos_long), ("BASE_SHORT", state.pos_short))
+                        if Decimal(str(targets.get(key, {}).get("share", 0))) > 0 and pos == 0
+                    ]
                     residual = state.val_cash
-                    if residual > 0:
-                        moved = state.designate_virtual(residual)
-                        state.log_event(i, "initial_residual_to_virtual",
-                                        float(state.get_tpv(mid_price)),
-                                        f"moved {float(moved):.8f} to VIRTUAL",
-                                        amount=float(moved))
-                    elif residual < 0:
+                    if residual < 0:
+                        state.initial_build_pending = None
                         state.cash_invariant_violation = {
                             "bar": int(i),
                             "cash": float(residual),
@@ -857,8 +865,26 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_event(i, "cash_invariant_violation",
                                         float(state.get_tpv(mid_price)),
                                         f"CASH={float(residual):.8f} after initial formation")
+                    elif missing:
+                        state.initial_build_pending = {
+                            "missing": missing,
+                            "attempts": int((state.initial_build_pending or {}).get("attempts", 0)) + 1,
+                        }
+                        state.log_event(i, "initial_build_pending",
+                                        float(state.get_tpv(mid_price)),
+                                        f"missing {','.join(missing)}; residual CASH={float(residual):.8f}",
+                                        missing=missing)
+                    else:
+                        state.initial_build_pending = None
+                        if residual > 0:
+                            moved = state.designate_virtual(residual)
+                            state.log_event(i, "initial_residual_to_virtual",
+                                            float(state.get_tpv(mid_price)),
+                                            f"moved {float(moved):.8f} to VIRTUAL",
+                                            amount=float(moved))
                     state.initial_formation = {
                         "bar": int(i),
+                        "complete": not missing,
                         "cash": float(state.val_cash),
                         "virtual": float(state.virt_debt),
                         "long_position": float(state.pos_long),
@@ -1184,6 +1210,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "accounting_residual": float(residual),
             "cash_invariant_violation": state.cash_invariant_violation,
             "initial_formation": state.initial_formation,
+            "initial_build_pending": state.initial_build_pending,
             "events": state.events,
             "rebalances": state.rebalance_log,
             "siphoning_log": state.siphoning_log,
