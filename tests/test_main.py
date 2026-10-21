@@ -166,15 +166,19 @@ async def test_rebalance_loop_trailing_stop(mock_config, mock_connector, mock_no
             with patch("futures_portfolio.core.main.save_json", AsyncMock(side_effect=save_side_effect)):
                 with patch("futures_portfolio.core.main.sys.exit", side_effect=BaseException("ProcessExit")):
                     with patch("futures_portfolio.core.main.TelegramNotifier", return_value=mock_notifier):
-                            with patch("asyncio.sleep", side_effect=bounded_sleep):
-                                try:
-                                        await rebalance_loop(mock_connector, "config.json", "state.json", "paper_state.json", MagicMock())
-                                except (Exception, BaseException) as e:
-                                    if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
+                            with patch("futures_portfolio.core.main.self_kill_pm2", AsyncMock()):
+                                with patch("asyncio.sleep", side_effect=bounded_sleep):
+                                    try:
+                                            await rebalance_loop(mock_connector, "config.json", "state.json", "paper_state.json", MagicMock())
+                                    except (Exception, BaseException) as e:
+                                        if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
 
-    # Check if any paper_state save has 0 positions
-    reset_save = next((s[1] for s in saves if "paper_state" in s[0] and s[1]["positions"].get("BTCUSDT_LONG") == 0.0), None)
-    assert reset_save is not None
+    # State preserved (not wiped), trading blocked — positions and balance survive.
+    preserved = next((s[1] for s in saves if "paper_state" in s[0] and s[1]["positions"].get("BTCUSDT_LONG") == 0.1), None)
+    assert preserved is not None, "Positions preserved, not wiped by Clean Slate"
+    assert preserved["balance"] == 18000.0
+    blocked = next((s[1] for s in saves if "state" in s[0] and s[1].get("startup_blocked")), None)
+    assert blocked is not None, "startup_blocked flag set"
 
 @pytest.mark.asyncio
 async def test_rebalance_loop_margin_warning(mock_config, mock_connector, mock_notifier):

@@ -1600,14 +1600,17 @@ def test_a2_paper_guard_zero_or_negative_collateral_has_no_division(balance):
 async def test_a2_paper_liquidation_price_is_diagnostic_only():
     config = _make_config()
     state = _make_state()
+    # Both legs with non-zero entries → legitimate startup, no diagnostic block.
+    # Price = entry → zero MTM; TPV = balance = 100.
     paper_state = _make_paper_state(
         balance=100.0,
-        positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": 0.0},
+        positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": 1.0},
         long_entry_price=100.0,
+        short_entry_price=100.0,
     )
     with patch(f"{M}.emit_signal") as emit:
         saves, _, _ = await _run_rebalance(
-            config, state, paper_state, loop_limit=2, calc_tpv=10.0, price=10.0,
+            config, state, paper_state, loop_limit=2, calc_tpv=100.0, price=100.0,
         )
     final_paper = [value for path, value in saves if path == "paper_state.json"][-1]
     assert final_paper["positions"]["BTCUSDT_LONG"] == 1.0
@@ -1630,10 +1633,12 @@ async def test_a2_canonical_guard_closes_critical_paper_position_and_ignores_leg
         paper_account_free_margin=legacy_free_margin,
     )
     state = _make_state(initial_tpv=collateral, reference_tpv=collateral, tpv_ath=collateral)
+    # Q=5 each leg → maintenance = (5+5)*100*0.004 = 4.0, distance ≈ 7% (same as original Q=10 single leg)
     paper_state = _make_paper_state(
         balance=collateral,
-        positions={"BTCUSDT_LONG": 10.0, "BTCUSDT_SHORT": 0.0},
+        positions={"BTCUSDT_LONG": 5.0, "BTCUSDT_SHORT": 5.0},
         long_entry_price=100.0,
+        short_entry_price=100.0,
     )
     with patch(f"{M}.emit_signal") as emit:
         saves, notifier, _ = await _run_rebalance(
@@ -1650,7 +1655,11 @@ async def test_a2_canonical_guard_closes_critical_paper_position_and_ignores_leg
     final_state = [value for path, value in saves if path == "state.json"][-1]
     final_paper = [value for path, value in saves if path == "paper_state.json"][-1]
     assert final_paper["positions"]["BTCUSDT_LONG"] == 0.0
+    assert final_paper["positions"]["BTCUSDT_SHORT"] == 0.0
+    assert final_paper["long_entry_price"] == 0.0
+    assert final_paper["short_entry_price"] == 0.0
     assert final_paper["long_liquidation_price"] == 0.0
+    assert final_paper["short_liquidation_price"] == 0.0
     assert final_state["initial_build_pending"] is None
     emit.assert_called_once_with("stop", "BTCUSDT", is_paper=True)
     notifier.send_alert.assert_awaited()
@@ -1672,8 +1681,10 @@ async def test_a2_critical_guard_halts_before_supervisor_can_reopen():
     )
     paper_state = _make_paper_state(
         balance=collateral,
-        positions={"BTCUSDT_LONG": 10.0, "BTCUSDT_SHORT": 0.0},
+        # Q=5 each → maintenance=4.0, distance≈7% (same as original Q=10 single leg)
+        positions={"BTCUSDT_LONG": 5.0, "BTCUSDT_SHORT": 5.0},
         long_entry_price=100.0,
+        short_entry_price=100.0,
     )
     result = {
         "total_tpv": collateral, "tpv": collateral, "total_pnl_pct": 0.0,

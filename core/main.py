@@ -362,6 +362,20 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "started_at": time.time()
     })
 
+    # Persisted startup block — checked immediately after strategy state load,
+    # before any migration, ticker-change reset, wallet fallback or Clean Slate.
+    # Preserves all accounting facts on disk; blocks trading unconditionally.
+    if state.get("startup_blocked"):
+        _state_ticker = state.get("base_ticker", "?")
+        logger.critical(
+            f"🚨 [PAPER] Persisted startup_blocked for {base_ticker} "
+            f"(state ticker={_state_ticker}). "
+            f"Operator must verify state integrity and remove startup_blocked flag."
+        )
+        await self_kill_pm2(base_ticker, paper_mode)
+        while True:
+            await asyncio.sleep(86400)
+
     # Initialize paper_state for shadow balance tracking (Used in both PAPER and REAL modes for isolation)
     default_paper_state = {
         "balance": target_initial_cap,
@@ -449,20 +463,23 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 await save_json(paper_state_file_path, paper_state)
                 await save_json(state_file_path, state)
         else:
-            # [FIX] Shadow positions exist but balance is out of sync with target_initial_cap.
-            # This happens when supervisor restarts bot after stop: shadow positions are
-            # non-zero from previous session, but balance doesn't match target_initial_cap.
-            # Force clean slate when balance desync detected.
-            _clean_balance = float(paper_state.get('balance', target_initial_cap))
-            if abs(_clean_balance - target_initial_cap) > 0.1:
-                logger.warning(
-                    f"🧹 [PAPER] Balance desync detected for {base_ticker} "
-                    f"(balance={_clean_balance:.2f}, target={target_initial_cap:.2f}). "
-                    f"Enforcing Clean Slate!"
+            # Both legs non-zero AND both entries > 0 → legitimate hedged session.
+            # Balance drift from initial_cap is normal (realized PnL, commissions).
+            _both_legs = _p_l > 1e-10 and _p_s > 1e-10
+            _le = float(paper_state.get("long_entry_price", 0.0))
+            _se = float(paper_state.get("short_entry_price", 0.0))
+            if not (_both_legs and _le > 0 and _se > 0):
+                logger.critical(
+                    f"🚨 [PAPER] Ambiguous startup state for {base_ticker}: "
+                    f"L={_p_l:.4f} S={_p_s:.4f} Le={_le:.4f} Se={_se:.4f}. "
+                    f"All accounting facts preserved; trading blocked pending operator diagnosis."
                 )
-                _apply_clean_slate(state, paper_state, base_ticker, target_initial_cap, logger)
+                state["startup_blocked"] = True
                 await save_json(paper_state_file_path, paper_state)
                 await save_json(state_file_path, state)
+                await self_kill_pm2(base_ticker, paper_mode)
+                while True:
+                    await asyncio.sleep(86400)
 
     virt_qty = float(state.get("virt_qty", 0.0))
     siphoning_reserve = float(state.get("siphoning_reserve", 0.0))
