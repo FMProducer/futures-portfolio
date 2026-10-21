@@ -496,7 +496,7 @@ class PortfolioExecutor:
                     "commission": float(commission)
                 }
 
-    async def execute_actions(self, actions: List[Dict[str, Any]], price: float, paper_mode: bool = True, portfolio_cfg: Optional[Dict[str, Any]] = None, step_sizes: Optional[Dict[str, float]] = None, paper_state: Optional[Dict] = None) -> List[Dict[str, Any]]:
+    async def execute_actions(self, actions: List[Dict[str, Any]], price: float, paper_mode: bool = True, portfolio_cfg: Optional[Dict[str, Any]] = None, step_sizes: Optional[Dict[str, float]] = None, paper_state: Optional[Dict] = None, cash_budget: Optional[Decimal] = None) -> List[Dict[str, Any]]:
         """
         Векторизованное (конкурентное) выполнение действий по ребалансировке с принудительным Market-only исполнением.
         SURPLUS-FIRST: Reductions (SELLs) are executed before Expansions (BUYs).
@@ -535,6 +535,50 @@ class PortfolioExecutor:
 
         # Mapping for result tracking to maintain original order
         results_map = {}
+
+        if paper_mode and cash_budget is not None:
+            budget = Decimal(str(cash_budget))
+            wallet = Decimal(str(paper_state["balance"]))
+            for action in reductions + expansions:
+                approved = dict(action)
+                virtual = action.get("type") == "VIRTUAL_ORDER"
+                leg = action.get("position_side", "LONG")
+                symbol = action.get("base_symbol") or action.get("symbol", "").split("_")[0]
+                lev = Decimal(str((portfolio_cfg or {}).get("targets", {}).get(f"BASE_{leg}", {}).get("leverage", action.get("leverage", 1))))
+                if not action.get("is_reduction"):
+                    # Wallet persistence rounds to 1e-4; reserve one unit against rounding up the debit.
+                    spendable = max(Decimal('0'), budget - Decimal('0.0001'))
+                    limit = spendable if virtual else spendable / (Decimal('1') / lev + PAPER_COMMISSION_RATE)
+                    approved["diff_usdt"] = float(min(abs(Decimal(str(action["diff_usdt"]))), limit))
+                    approved["approved_usdt"] = approved["diff_usdt"]
+                    if approved["diff_usdt"] <= 0:
+                        results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient strategy CASH including commission"}
+                        continue
+                try:
+                    result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, paper_state, mid_prices)
+                except Exception as exc:
+                    result = {"status": "ERROR", "message": str(exc)}
+                results_map[id(action)] = result
+                if result.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
+                    continue
+                if virtual:
+                    budget -= Decimal(str(result["diff_usdt"]))
+                    continue
+                qty = Decimal(str(result.get("qty", 0)))
+                fill_price = Decimal(str(result.get("price", mid_prices.get(symbol, price))))
+                commission = Decimal(str(result.get("commission", 0)))
+                pnl = Decimal(str(result.get("trade_pnl", 0)))
+                next_wallet = (wallet + pnl - commission).quantize(Decimal('0.0001'))
+                budget += next_wallet - wallet
+                wallet = next_wallet
+                if result.get("reduce_only"):
+                    entry = Decimal(str(paper_state.get(f"{leg.lower()}_entry_price", price)))
+                    budget += qty * entry / lev
+                else:
+                    budget -= qty * fill_price / lev
+                if budget < 0:
+                    logger.error("Paper execution exhausted CASH; blocking remaining increases")
+            return [results_map[id(action)] for action in actions]
 
         for group in [reductions, expansions]:
             if not group:

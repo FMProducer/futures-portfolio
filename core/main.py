@@ -1215,8 +1215,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         asyncio.create_task(notifier.send_message(rebalance_msg))
 
                         # 1. Execute actions concurrently
+                        budget_args = {"cash_budget": calc.val_cash} if paper_mode and not ignore_limits else {}
                         exec_results = await executor.execute_actions(
-                            fused_actions, price, paper_mode, portfolio_cfg, step_sizes, paper_state
+                            fused_actions, price, paper_mode, portfolio_cfg, step_sizes, paper_state, **budget_args
                         )
 
                         any_success = False
@@ -1316,14 +1317,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 paper_state_dirty = True
 
                                 mode_tag = "PAPER" if paper_mode else "REAL"
-                                trade_log = f"📝 {mode_tag}: {side} {float(qty)} {pos_key} @ {price:.6g}"
+                                trade_log = f"📝 {mode_tag}: {side} {float(qty)} {pos_key} @ {float(res.get('price', price)):.8g}"
                                 if trade_pnl != 0: trade_log += f" | PnL: {float(trade_pnl):+.4f}"
                                 logger.info(trade_log)
                                 # asyncio.create_task(notifier.send_message(f"<b>{trade_log}</b>"))
                             else:
                                 logger.warning(f"❌ {side} {key} execution status: {status}. Message: {res.get('message')}")
 
-                        if any_success and ignore_limits:
+                        if any_success and (ignore_limits or paper_mode):
                             post_virt = Decimal(str(state.get("virt_debt", 0.0)))
                             post_calc = PortfolioCalculator(
                                 positions=paper_state["positions"],
@@ -1370,10 +1371,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 await save_json(state_file_path, state)
                                 await save_json(paper_state_file_path, paper_state)
                                 logger.critical(
-                                    f"Cash invariant violated after initial formation: CASH={float(residual):.8f}. "
+                                    f"Cash invariant violated after execution: CASH={float(residual):.8f}. "
                                     "Executions saved; further increases blocked."
                                 )
-                            elif missing:
+                            elif ignore_limits and missing:
                                 state["initial_build_pending"] = {
                                     "missing": missing,
                                     "attempts": int((state.get("initial_build_pending") or {}).get("attempts", 0)) + 1,
@@ -1385,7 +1386,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     f"Initial build incomplete: missing {','.join(missing)}; "
                                     f"residual CASH={float(residual):.8f} kept for continuation."
                                 )
-                            else:
+                            elif ignore_limits:
                                 state["initial_build_pending"] = None
                                 state["virt_debt"] = float(post_virt + residual)
                                 state_dirty = True
