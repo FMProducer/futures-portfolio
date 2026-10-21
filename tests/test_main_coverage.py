@@ -92,7 +92,7 @@ def _make_paper_state(**overrides):
 
 async def _run_rebalance(config, state, paper_state, connector=None,
                          loop_limit=5, real_mode=False, calc_return=None,
-                         calc_val_cash=None):
+                         calc_val_cash=None, calculator_class=None):
     """Helper: run rebalance_loop with mocks. Returns saves list."""
     if connector is None:
         connector = MagicMock()
@@ -159,7 +159,7 @@ async def _run_rebalance(config, state, paper_state, connector=None,
          patch(f"{M}.sys.exit", side_effect=BaseException("ProcessExit")), \
          patch(f"{M}.TelegramNotifier", return_value=notifier), \
          patch("asyncio.sleep", side_effect=bounded_sleep), \
-         patch(f"{M}.PortfolioCalculator", return_value=calc_mock), \
+         patch(f"{M}.PortfolioCalculator", side_effect=calculator_class, return_value=calc_mock), \
          patch(f"{M}.BinanceConnector", return_value=connector):
         try:
             await rebalance_loop(connector, "config.json", "state.json", "paper_state.json", MagicMock())
@@ -554,6 +554,93 @@ async def test_failed_initial_leg_stays_pending_and_is_not_reopened():
     assert [action["key"] for action in calls[0].args[0]] == ["BASE_LONG", "BASE_SHORT"]
     for call in calls[1:]:
         assert [action["key"] for action in call.args[0]] == ["BASE_SHORT"]
+
+
+@pytest.mark.asyncio
+async def test_pending_initial_build_restart_completes_only_missing_leg():
+    config = _make_config()
+    state = _make_state(virt_qty=0.0, rebalance_cycles=0)
+    paper_state = _make_paper_state()
+
+    long_action = {
+        "type": "ORDER", "position_side": "LONG", "diff_usdt": 10.0,
+        "symbol": "BTCUSDT", "side": "BUY", "key": "BASE_LONG",
+    }
+    short_action = {
+        "type": "ORDER", "position_side": "SHORT", "diff_usdt": 10.0,
+        "symbol": "BTCUSDT", "side": "SELL", "key": "BASE_SHORT",
+    }
+    calc_return = {
+        "total_tpv": 100.0, "tpv": 100.0,
+        "actions": [long_action, short_action],
+        "total_pnl_pct": 0.0, "share_long_pct": 0.0,
+        "share_short_pct": 0.0, "share_virt_pct": 0.0,
+        "share_cash_pct": 100.0,
+    }
+    long_result = {
+        "status": "SUCCESS", "type": "LONG", "symbol": "BTCUSDT",
+        "side": "BUY", "qty": 0.0002, "price": 60000.0, "commission": 0.02,
+    }
+    short_result = {
+        "status": "SUCCESS", "type": "SHORT", "symbol": "BTCUSDT",
+        "side": "SELL", "qty": 0.0002, "price": 60000.0, "commission": 0.02,
+    }
+
+    first_calls = []
+
+    async def execute_first(actions, price, paper_mode, portfolio_cfg, step_sizes, ps):
+        first_calls.append([action["key"] for action in actions])
+        results = []
+        for action in actions:
+            if action["key"] == "BASE_LONG":
+                results.append(long_result)
+            else:
+                results.append({"status": "ERROR", "message": "rejected"})
+        return results
+
+    first_executor = MagicMock()
+    first_executor.execute_actions = AsyncMock(side_effect=execute_first)
+    with patch(f"{M}.PortfolioExecutor", return_value=first_executor):
+        first_saves, _, _ = await _run_rebalance(
+            config, state, paper_state, loop_limit=2,
+            calc_return=calc_return, calc_val_cash=Decimal("10"),
+        )
+
+    state_after = [saved for path, saved in first_saves if path == "state.json"][-1]
+    paper_after = [saved for path, saved in first_saves if path == "paper_state.json"][-1]
+    assert first_calls == [["BASE_LONG", "BASE_SHORT"]]
+    assert state_after["initial_build_pending"]["missing"] == ["BASE_SHORT"]
+    assert paper_after["positions"]["BTCUSDT_LONG"] > 0
+    assert paper_after["positions"]["BTCUSDT_SHORT"] == 0
+
+    second_calls = []
+
+    async def execute_second(actions, price, paper_mode, portfolio_cfg, step_sizes, ps):
+        second_calls.append([action["key"] for action in actions])
+        results = []
+        for action in actions:
+            if action["key"] == "BASE_SHORT":
+                results.append(short_result)
+            else:
+                results.append({"status": "ERROR", "message": "unexpected leg"})
+        return results
+
+    second_executor = MagicMock()
+    second_executor.execute_actions = AsyncMock(side_effect=execute_second)
+    with patch(f"{M}.PortfolioExecutor", return_value=second_executor):
+        second_saves, _, _ = await _run_rebalance(
+            config, state_after, paper_after, loop_limit=2,
+            calc_return=calc_return, calc_val_cash=Decimal("10"),
+        )
+
+    state_final = [saved for path, saved in second_saves if path == "state.json"][-1]
+    paper_final = [saved for path, saved in second_saves if path == "paper_state.json"][-1]
+    assert second_calls == [["BASE_SHORT"]]
+    assert state_final["initial_build_pending"] is None
+    assert state_final["virt_debt"] == pytest.approx(30.0)
+    assert state_final.get("cash_invariant_violation") is None
+    assert paper_final["positions"]["BTCUSDT_LONG"] == pytest.approx(0.0002)
+    assert paper_final["positions"]["BTCUSDT_SHORT"] == pytest.approx(0.0002)
 
 
 # =====================================================================

@@ -6,10 +6,10 @@
 
 **Первый этап — устранение ошибок учёта и воспроизводимая база — завершён в пределах проверенного десятидневного сценария. Сейчас выполняется второй этап: соответствие согласованной торговой логике во всех режимах.**
 
-A1 (initial CASH) реализован частично; нужны завершение сценария отказа одной ноги и проверка live fee-aware sizing. A2 (обеспечение guard) остаётся исследованием до утверждения точной формулы. B (funding/transfers) отделён от A1/A2. Clean Slate не изменять. Оптимизация не разрешена и не начата.
+A1 (initial CASH) закрыт авторски для paper/backtest, включая успешное продолжение после отказа одной ноги; live fee-aware sizing явно не принят. A2 (обеспечение guard) остаётся исследованием до утверждения точной формулы. B (funding/transfers) отделён от A1/A2. Clean Slate не изменять. Оптимизация не разрешена и не начата.
 
-Проверенный при обновлении основной checkout: `C:\Python\Prosperous_Bot\futures_portfolio`, HEAD `bdd6cd157c76a7092c301ca3a301d10392dd6127`.
-На момент чтения изменены `backtest/backtest_rebalance.py`, `core/main.py`, `tests/test_initial_cash_policy.py`, `tests/test_main_coverage.py`; diff затрагивает `initial_build_pending` и follow-up тесты. Это работа агента, она не изменялась при обновлении плана. В evidence уже отражены 107 авторских PASS и два одинаковых прогона после pending-fix. Независимый повтор этой версии не выполнен; прежние 103/105 PASS относятся к предыдущим состояниям.
+Проверенный при обновлении основной checkout: `C:\Python\Prosperous_Bot\futures_portfolio`, HEAD `f714455` (`docs: initial_cash_policy fix`).
+Текущий worktree добавляет end-to-end тест успешного pending-продолжения после restart и обновление плана; код A1 в HEAD не менялся. В evidence отражены 108 авторских PASS и два одинаковых прогона после pending-fix. Независимый повтор этой версии не выполнен; прежние 103/105/107 PASS относятся к предыдущим состояниям.
 
 ## 1. Согласованные правила — не ставить повторно на согласование
 
@@ -53,7 +53,7 @@ Feather SHA256: `b810424abff7fdf8d00bc53a039683dc2a2fca7847e947eaefb66e0b77d09bd
 | Original | +89.6362% | 1896.3619 | 12.3273% | 161 / 183 | Ошибочный учёт: residual +256.1749; не рабочий baseline |
 | Baseline `77cf00d` | +61.648898% | 1616.488981 | 18.897551% | 140 / 172 | Независимо воспроизведён, 164 exchange + 8 internal, 26 partial |
 | Старый waterfall `a928866` | +61.257043% | 1612.570435 | 18.906101% | 141 / 174 | Независимо проверенная техническая модель; 166 exchange + 8 internal, 26 partial; окончательная funding-политика не реализована |
-| A1 `bdd6cd1` и сохранённый evidence | +61.257043% | 1612.570435 | 18.906101% | 141 / 174 | Авторские run1/run2 byte-identical; не выдавать за независимую повторную проверку A1 |
+| A1 `f714455` + end-to-end test и сохранённый evidence | +61.257043% | 1612.570435 | 18.906101% | 141 / 174 | Авторские run1/run2 byte-identical; 108 PASS; live fee-aware не принят; не выдавать за независимую проверку A1 |
 
 A1 initial snapshot: CASH0, total VIRTUAL340.156348, перенесённый стартовый остаток0.156348, TPV995.854595, комиссии1.842403. Accounting residual1e-24 — это другая величина, не остаток в V. CASH0 относится к завершению initial build, не к финалу десятидневной торговли.
 
@@ -75,10 +75,10 @@ A1 initial snapshot: CASH0, total VIRTUAL340.156348, перенесённый с
 - Предварительный sizing с резервом комиссии; окончательная affordability по qty, execution price и фактической комиссии.
 - Положительный стартовый остаток → VIRTUAL с сохранением TPV; CASH0.
 - Отрицательный CASH не скрывается; факты исполнений сохраняются, увеличения блокируются.
-- Paper fee-aware sizing есть. Live fee-aware sizing заранее не реализован; post-fill detection/block — защита, но не полное выполнение initial CASH0.
-- Автор сообщил 103 целевых PASS, затем 105 и 107 после pending-fix. Последний evidence прочитан при обновлении плана; независимого повторения этой A1-версии пока нет.
+- Paper fee-aware sizing есть. Live fee-aware sizing явно не принят: комиссия не резервируется заранее; post-fill detection/block — защита, но не выполнение initial CASH0.
+- Автор сообщил 103 целевых PASS, затем 105, 107 и 108 после pending-fix и end-to-end restart-теста. Последний evidence прочитан при обновлении плана; независимого повторения этой A1-версии пока нет.
 
-### A1.2. Отказ одной ноги — исправлен автором; успешное продолжение и независимая приёмка открыты
+### A1.2. Отказ одной ноги — исправлен и успешно продолжен автором; live и независимая приёмка открыты
 
 Отличать оба сценария:
 1. Обе ноги существуют, одна исполнена частично.
@@ -92,16 +92,16 @@ A1 initial snapshot: CASH0, total VIRTUAL340.156348, перенесённый с
 - остаток не превращается в свободный бюджет обычной торговли;
 - результат, события и snapshot честно показывают incomplete/pending.
 
-Текущий незакоммиченный diff содержит `initial_build_pending`. По обновлённому evidence автор проверил полный отказ одной ноги: pending разрешает только отсутствующую ногу, не переносит остаток в V и не открывает первую ногу повторно. Suite: 107 passed; run1/run2 побайтово одинаковы, final TPV1612.570435, profit61.257043%, fills174, violation=null. Патч: `one_leg_failure_fix.diff`; текущие run1/run2 SHA256 `91f7a43f610de6efcaf5cd6bb3e141c350052eca7245636f08eb5dab7ef11694`. Это author-side evidence.
+Код A1 в `f714455` содержит `initial_build_pending`. Автор проверил полный отказ одной ноги и успешное продолжение после restart: pending допускает только отсутствующую ногу, первая нога не открывается повторно, residual переносится в V только после обеих ног. Suite: 108 passed; run1/run2 побайтово одинаковы, final TPV1612.570435, profit61.257043%, fills174, violation=null. Текущий final diff: `a1_final_vs_2c1d1f1.diff`; run1/run2 SHA256 `91f7a43f610de6efcaf5cd6bb3e141c350052eca7245636f08eb5dab7ef11694`. Это author-side evidence.
 
-Остаётся end-to-end сценарий: отказ второй ноги → restart/повтор → успешное открытие только недостающей ноги → завершение initial → перенос остатка в V → CASH0. Пока initial незавершён, удерживаемый стартовый остаток не является разрешением обычных deficit-покупок и не должен называться surplus-бюджетом. Не считать успешное продолжение доказанным по одному факту повторной отправки заявки.
+End-to-end тест: первая нога LONG SUCCESS, SHORT ERROR; состояние pending сохранено; после restart исполняется только SHORT; initial завершается, residual уходит в V, pending очищается. Удерживаемый остаток до завершения не является разрешением обычных deficit-покупок или surplus-бюджетом. Live-путь этим тестом не покрыт и остаётся непринятым.
 
 Если выбранное поведение при отказе требует нового доменного решения (например, ждать, повторить или закрыть единственную ногу), представить вопрос до реализации зависимой ветви. Не выбирать таймаут/повторы/аварийное закрытие самовольно.
 
 ### A1.3. Проверки и приёмка
 
-1. Зафиксировать 107 author-side PASS для successful/partial/failed initial и unexpected commission; дополнительно проверить успешное end-to-end завершение pending, включая restart и отсутствие повторной первой ноги.
-2. Разделить paper/backtest и незавершённый live-путь; не объявлять all-mode PASS по offline-тестам.
+1. Зафиксировать 108 author-side PASS для successful/partial/failed initial, successful restart-continuation и unexpected commission.
+2. Разделить paper/backtest PASS и live-путь: live fee-aware sizing явно не принят; не объявлять all-mode PASS по offline-тестам.
 3. Выполнить только затронутую suite на финальном diff без старого кэша.
 4. Два одинаковых бэктеста точного окна на сохранённом config; сравнить bytes result/equity.
 5. Независимо проверить initial/actual CASH, expenses, TPV identity, partials и сохранение исполнений.
@@ -111,6 +111,22 @@ A1 initial snapshot: CASH0, total VIRTUAL340.156348, перенесённый с
 ## 5. A2 — состав обеспечения, исследование до утверждения формулы
 
 Уже определено пользователем: весь V должен учитываться в guard; нельзя ограничиваться только свободной частью V. Пока не доказано, что `paper_account_free_margin=1000` — действительно дополнительные доступные средства, а не повторно учтённый капитал.
+
+Предлагаемая формула для утверждения, ещё не реализована:
+
+```text
+collateral = val_cash
+           + (margin_long + upnl_long)
+           + (margin_short + upnl_short)
+           + virt_debt
+           + external_collateral
+
+external_collateral = 0  # paper_account_free_margin исключён до доказательства происхождения
+total_mm = (long_notional + short_notional) * mmr
+distance_pct = (collateral - total_mm) / collateral * 100
+```
+
+`paper_state["balance"]`/wallet balance не прибавлять отдельно: CASH уже представлен `val_cash`; V учитывается один раз как `virt_debt`. Если внешняя подушка будет доказана, она входит ровно один раз как `external_collateral`, без дублирования в liquidation price или другом компоненте. `paper_account_free_margin` не входит в collateral по умолчанию.
 
 Следующая работа:
 1. Таблица источников: CASH, margin LONG/SHORT, unrealized, V, external collateral. Для каждой суммы — происхождение, аккаунт, доступность, принадлежность боту и место в TPV.

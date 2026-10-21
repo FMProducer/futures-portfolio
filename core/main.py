@@ -404,8 +404,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 _apply_clean_slate(state, paper_state, base_ticker, target_initial_cap, logger)
                 await save_json(paper_state_file_path, paper_state)
                 await save_json(state_file_path, state)
-    else:
-        # Paper mode: check shadow positions for clean slate detection
+    elif not state.get("initial_build_pending"):
+        # Pending initial fills and their fees must survive a paper restart.
         _p_l = abs(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))
         _p_s = abs(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))
         if _p_l < 1e-10 and _p_s < 1e-10:
