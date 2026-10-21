@@ -1,0 +1,42 @@
+{
+  "checked_utc": "2026-10-21T23:13:13.497573+00:00",
+  "passed": true,
+  "checks": {
+    "state.started_at": true,
+    "state.base_ticker": true,
+    "state.initial_tpv": true,
+    "state.reference_tpv": true,
+    "state.virt_debt": true,
+    "state.virt_qty": true,
+    "state.rebalance_cycles": true,
+    "state.last_rebalance_price": true,
+    "state.cash_invariant_violation": true,
+    "state.initial_build_pending": true,
+    "state.trailing_stop_triggered": true,
+    "state.startup_blocked": true,
+    "state.siphoning_reserve": true,
+    "state.tpv_ath": true,
+    "wallet.balance": true,
+    "wallet.positions": true,
+    "wallet.long_entry_price": true,
+    "wallet.short_entry_price": true,
+    "wallet.base_ticker": true,
+    "log.absent.Enforcing Clean Slate": true,
+    "log.absent.Initialized Virtual": true,
+    "log.absent.Initial Capital changed": true,
+    "log.absent.Ambiguous startup": true,
+    "log.absent.Rebalance needed": true,
+    "log.absent.PAPER: BUY": true,
+    "log.absent.PAPER: SELL": true,
+    "log.heartbeat_present": true,
+    "cash.nonnegative": true,
+    "tpv_matches_last_price": true
+  },
+  "cash": "0.1834200005457142857142858",
+  "tpv_at_snapshot_price": "997.50797000424",
+  "cycles": 2,
+  "source_hashes": {
+    "state": "5651b366b9343bfef29326df219768018e8b346b29421a3dc6c70baeca1fa948",
+    "wallet": "813e26179d5925e29641dbdde30d62673b4c1db49f83750f9f619ee3ca5006cc"
+  }
+}

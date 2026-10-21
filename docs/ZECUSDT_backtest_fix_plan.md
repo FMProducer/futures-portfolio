@@ -4,12 +4,22 @@
 
 ## Где мы находимся
 
-**Первый этап — устранение ошибок учёта и воспроизводимая база — завершён в пределах проверенного десятидневного сценария. A1 и A2a приняты для paper/backtest; B (funding/transfers) остаётся проектированием: уточнения по recovery закрытий, знаку funding и Clean Slate внесены, документы ждут повторного review, код B не начат.**
+**A1 и A2a приняты для paper/backtest. Отдельный дефект обычных paper-докупок CASH исправлен; resume V4 принят в проверенных сценариях. Код на диске готов. Подготовка к применению завершена, но запуск paper-zec пользователь выполняет самостоятельно; проверка после запуска ещё не зафиксирована.**
 
-A1 (initial CASH) принят независимо для paper/backtest, включая успешное продолжение после отказа одной ноги; live fee-aware sizing явно не принят. A2a (канонический collateral guard, external=0) принят независимо для paper/backtest; P1 post-critical halt закрыт. Live/real не принят. B (funding/transfers) не реализован; A2b и live не трогать; общую семантику Clean Slate не менять. Оптимизация не разрешена и не начата.
+Проверенный при этом обновлении checkout: `C:\Python\Prosperous_Bot\futures_portfolio`, HEAD `990b9bc` (`docs: MANIFEST`), рабочее дерево до правки плана чистое. Это версия документации; точные версии исполняемого кода определяются хешами ниже.
 
-Проверенный при обновлении основной checkout: `C:\Python\Prosperous_Bot\futures_portfolio`, HEAD `aa8185d` (`docs: backtest_rebalance.py fix`).
-В worktree изменён этот ZEC-план и добавлены untracked документы `docs/FUNDING_TRANSFERS_SPEC.md` и `docs/FUNDING_TRANSFERS_PLAN.md`; исполняемый код, конфиг и тесты не менялись. Исторические evidence A1 (108 author-side PASS и два одинаковых прогона) сохранены; независимый повтор именно этой версии не выдаётся за текущий результат.
+| Компонент | Текущий статус | Граница доказательств |
+|---|---|---|
+| A1 initial/pending | Принят для paper/backtest | Live fee-aware sizing не принят |
+| A2a collateral/P1 halt | Принят для paper/backtest | External=0; A2b/live вне scope |
+| CASH-fix обычных докупок | Принят для paper | Codex: 129 targeted PASS; Claude: независимый review и выбранный набор |
+| Resume V4 | Принят в проверенных paper-сценариях | Claude: 300 PASS с исключением трёх файлов; Codex: 16 independent targeted PASS |
+| Применение к процессу | Подготовлено, запуск не выполнялся агентом | Финальный snapshot и manifest сохранены; пользователь запускает сам |
+| Supervisor resume | Не реализован | Автоматический reset/relaunch может уничтожить сессию |
+| B1 funding | Документация прошла review; proposed, pending approval | Реализация не разрешена и не начата |
+| B2/B3, live, оптимизация | Не начинать автоматически | Отдельные решения и приёмки |
+
+300 авторских тестов — выбранный набор без `test_connector.py`, `test_notifier.py`, `test_telegram_sender.py`, а не полный pytest. Независимые 16 тестов включают 8 resume, 6 CASH, A1 restart и reviewer-регрессию несовпадения тикера. Эти числа не складываются в единый независимый full-suite PASS.
 
 ## 1. Согласованные правила — не ставить повторно на согласование
 
@@ -22,8 +32,8 @@ A1 (initial CASH) принят независимо для paper/backtest, вк�
 - CASH неотрицателен. Нарушение не маскируется clamp; фактически исполненные сделки и расходы сохраняются, дальнейшие увеличения блокируются.
 - Funding paid/received относится на VIRTUAL и изменяет TPV один раз. Нынешний технически проверенный waterfall `CASH → V` не является реализацией этого окончательного требования. При превышении funding над V применяется полный debit, сохраняется отрицательный shortfall, новые увеличения блокируются, позиции закрываются с комиссиями, затем stable funding halt до действий оператора; автоматический Spot top-up для покрытия funding запрещён.
 - Spot↔Futures перевод меняет VIRTUAL, TPV и доли, но не CASH. Это внешний денежный поток, а не торговый PnL. Подтверждённый top-up увеличивает V, TPV, initial_capital и external_net_flow; CASH и absolute PnL не меняются. В симуляции нужен явный исходный Spot-баланс; недостаточный Spot — OPEN-5.
-- Guard должен учитывать весь VIRTUAL без двойного включения денег. `paper_account_free_margin` нельзя механически прибавлять до выяснения происхождения.
-- Общую семантику Clean Slate не менять. Существующие startup/reset-пути активны; в B1 защитить funding-halt и журнал от них, не переписывая Clean Slate.
+- A2a guard учитывает весь VIRTUAL ровно один раз; `external_collateral=0`, `paper_account_free_margin` и `paper_min_free_margin_pct` — legacy/ignored в принятом paper/backtest-контуре.
+- Принятый resume V4 сохраняет paper-сессию с обеими ногами и положительными entries; неоднозначные непending-состояния блокируются с сохранением фактов. Persisted `startup_blocked` проверяется сразу после загрузки strategy state, до миграций/reset. Остальные startup/supervisor reset-пути сохраняются; в B1 отдельно защитить funding-halt и журнал.
 - Описание live-поведения не является командой сейчас выполнять ордера, переводы или перезапуск.
 
 ## 2. Статусы исходных 11 пунктов
@@ -34,11 +44,11 @@ A1 (initial CASH) принят независимо для paper/backtest, вк�
 | 2. Бухгалтерское равенство TPV | Выполнен для базы | В baseline и старом waterfall есть invariant и независимый replay; transfers и новая политика потребуют своих проверок |
 | 3. Плечо из конфига | Выполнен | Устранено 7 против 5, старт больше не создаёт phantom equity |
 | 4. Нейтральность VIRTUAL-перераспределений | Выполнен для базы, parity частично | USDT-оценка без ценового PnL; проверять разрешённое происхождение CASH во всех ветвях |
-| 5. Порядок исполнения и affordability | Выполнен для базы, крайние ветви открыты | Reductions-first, requested/approved/executed, частичные исполнения; failed initial и actual proceeds требуют завершения |
+| 5. Порядок исполнения и affordability | Выполнен для базы, крайние ветви открыты | A1 failed/pending принят; обычный paper executor ограничивает общий бюджет фактическими proceeds, маржой и комиссией; operational parity после запуска ещё проверить |
 | 6. Сверка после операций | Выполнен для базы | Replay всех 14400 свечей и accounting residual около нуля; не заменяет проверку бюджета CASH |
 | 7. Отчётность/Attribution | Выполнен для базы | Mid/exec bridge равен slippage, повторного вычитания нет, exchange/internal разделены |
 | 8. Точный повтор периода | Выполнен для базы | Детерминированные result/equity; A1 авторские прогоны сохранены отдельно |
-| 9. Реалистичность и защиты | В работе | A1 принят для paper/backtest, A2a принят, P1 закрыт; B спроектирован в docs, но не реализован; parity и live не завершены |
+| 9. Реалистичность и защиты | В работе | A1/A2a, CASH-fix и resume V4 приняты в своих границах; post-start проверка, supervisor-resume и B остаются; live не принят |
 | 10. Браузер и dashboard | Частично | Авторская Chrome-проверка и независимый static payload; новые изменения требуют проверки, mobile/time/notional/PnL не закрыты |
 | 11. Исследование surplus/deficit | Не начат, отдельный gate | Сначала закрыть требования и проверки, затем согласовать диапазоны, критерий и OOS |
 
@@ -70,7 +80,7 @@ A1 initial snapshot: CASH0, total VIRTUAL340.156348, перенесённый с
 
 ## 4. A1 — принято для paper/backtest (история проверки)
 
-Статус раздела: A1 принят; ниже сохранены исторические детали и evidence. Это не список ближайших задач. Следующий этап — review обновлённых документов B; реализация B без отдельного согласования не начинается.
+Статус раздела: A1 принят; ниже сохранены исторические детали и evidence. Это не список ближайших задач. Ближайший этап — проверка пользовательского запуска paper-zec; B1 остаётся proposed и требует отдельного разрешения.
 
 ### A1.1. Успешное первоначальное формирование — реализовано, авторски проверено
 
@@ -132,9 +142,61 @@ Paper liquidation price — только диагностическое isolated
 
 Приёмка A2a: полный pytest, A1 restart, два одинаковых контрольных бэктеста, accounting comparison и объяснение каждого изменения исполнений относительно принятой A1-базы. P1 независимо принят: 3 targeted tests, halt переживает modeled restart, A1 pending-restart сохранён. Статус — accepted for paper/backtest; live/real не принят. Коммит не делался.
 
+## 5.1. CASH-fix и resume V4 — принятые изменения
+
+Инцидент 21.10.2026: после ordinary deficit BUY 0.248 ZEC CASH стал -0.1286145802 USDT. Причина — отсутствие резерва комиссии у обычных докупок и post-fill проверки вне initial. Дефект не относится к funding.
+
+- `core/executor.py`: ordinary paper `cash_budget`, reductions-first по фактическим fills/entry margin/realized PnL/fee; общий последовательный бюджет expansions, fee-aware sizing и округление qty. Failed/skipped reductions не создают бюджет. Учитывается precision wallet 1e-4.
+- `core/main.py`: CASH проверяется после обычного paper execution batch; факты violation сохраняются, увеличения блокируются. Положительный обычный CASH не переносится в V. Лог использует execution price.
+- Resume V4 не подменяет wallet, entries или V. Обе ноги и валидные entries допускают продолжение; неоднозначное состояние устанавливает startup block. A1 pending остаётся отдельным путём.
+- Независимо проверено: V4 ранее падавшая reviewer-регрессия теперь PASS; итого 16 targeted PASS. Реальный PM2 restart этим не доказан.
+
+Принятые хеши:
+
+```text
+core/main.py     436fba209eb42a7f8d779b6a024274cc7cf8ecb558fab8e43f46d32e311f6f2b
+core/executor.py 2f7e0603f540b9995b9bf44e32c850a5eb03e7c970693bbda4f7205a0021c73e
+```
+
+Evidence: `reports/paper_cash_fix_2026-10-21/`; независимый V4 log: `C:\Users\svsma\.codex\worktrees\a008\futures_portfolio\reports\cash_fix\futures_portfolio\reports\resume_v4_review.txt`.
+
+## 5.2. Операционная подготовка — завершена; post-start проверка открыта
+
+Пользователь разрешил подготовку/остановку supervisor и оставил запуск paper-zec за собой. Агент paper-zec остановил, но НЕ запускал. На момент подготовки supervisor отсутствовал в PM2 и среди проверенных отдельных процессов. Config и учётные файлы вручную не редактировались.
+
+Финальная точка отсчёта: `backups/apply_20261021_213907_441_UTC/MANIFEST.json`, создан 2026-10-21 21:39:12 UTC; HEAD подготовки `daad24f`. Копии после остановки — подкаталог `final/`; предварительные копии не использовать как финальное состояние. Хеши файлов были стабильны при повторном чтении через 3 секунды.
+
+| Поле финального snapshot | Значение |
+|---|---:|
+| Wallet | 999.5975 USDT |
+| CASH, рассчитанный с плечами из config | 23.78678214285757 USDT |
+| LONG | 1.693 @ 1360.245 |
+| SHORT | 1.578 @ 1360.245 |
+| VIRTUAL | 340.1876614285714 USDT |
+| Cycles / initial_tpv | 2 / 1000 USDT |
+| pending / cash violation / startup block / trailing halt | Отсутствуют или неактивны |
+
+Это сохранённый исторический snapshot, не заявление о текущем online-статусе. Рабочая PM2 запись при подготовке: id=5, `paper-zec`, cwd основного checkout, args `--config config.json --ticker ZECUSDT --paper`; лог `C:\Users\svsma\.pm2\logs\paper-zec-out-5.log`.
+
+### Ближайший порядок действий
+
+1. **Пользователь запускает paper-zec.** Агент не повторяет start/restart без нового поручения. Supervisor пока не возвращать: он может reset/relaunch сессию или остановить её как orphan.
+2. **Read-only post-start приёмка по отдельному поручению.** Проверить cwd/args/PAPER/ZECUSDT и версию кода; отсутствие Clean Slate/initial rebuild; сохранность session identity, wallet, qty, entries, V, cycles. TPV сравнивать при одной цене либо с явной MTM-поправкой. Если уже были fills — объяснить ими все изменения, а не требовать неизменного wallet.
+3. **Проверить обычный surplus→deficit цикл.** Для каждого fill сверить qty, execution price, entry margin release, realized PnL, commission, CASH before/after. Увеличение не превышает доступный общий CASH; минус не скрывается clamp или переносом из V. Зафиксировать evidence новой версии отдельно от прежней сессии и baseline.
+4. **Supervisor-resume — отдельная изолированная задача.** Сначала исследовать `start_bot`, `reset_bot_state_files`, orphan reconciliation и halt handling. Предложить различение intentional fresh start и resume без нового автоматического обнуления. До реализации согласовать затрагиваемую семантику; тестировать отсутствие reset, повторного initial и стирания halt/violation. Не запускать supervisor на принятую сессию до отдельной приёмки.
+5. **После стабилизации paper — отдельно утвердить B1.** Выполнить только funding/replay scope раздела 6. Не совмещать его с supervisor-патчем, transfers, индексом или оптимизацией.
+
+При проблеме: остановить затронутый процесс с разрешения пользователя, сохранить актуальные факты, диагностировать. Старый `core/main.py` автоматически не запускать: он содержит опасный startup reset. Snapshot до новых сделок не восстанавливать поверх текущей истории.
+
 ## 6. B — funding и transfers, отдельный этап
 
-Unit/sim-контур можно подготовить отдельно от live-интеграции; источник реальных событий и права не выдумывать.
+Спецификация `docs/FUNDING_TRANSFERS_SPEC.md` и план `docs/FUNDING_TRANSFERS_PLAN.md` прошли документальный review после уточнений. **B1 proposed, pending approval**: отдельного разрешения реализации пока нет.
+
+Предлагаемый B1: один portfolio_id, ordered scenario journal, только funding/replay, isolated paper/backtest, SAFE=0. Funding paid/received — через V, `funding_paid += -signed_amount`; CASH не меняется. На shortfall — полный debit и durable halt до первого закрытия, close intents по ногам, фактические fills/fees и recovery только незавершённых reductions. Ledger, strategy state и paper wallet имеют согласованную durable commit/recovery boundary. Дубли — no-op, конфликт payload/late event — quarantine; funding-halt не снимается ordinary restart/reset.
+
+Transfers/capital basis — B2; transfer-neutral index — B3. OPEN-3/4/5, SAFE-reporting, перевод trailing stop на индекс и live остаются за пределами B1. Новая funding-модель закономерно может изменить метрики; legacy baseline сохраняется отдельно, не требовать прежней доходности от новой экономики.
+
+Unit/sim-контур готовится отдельно от live-интеграции; источник реальных событий и права не выдумывать.
 
 - Funding paid → V/TPV уменьшаются один раз; received → увеличиваются; CASH не пополняется.
 - Перевод Spot↔Futures → V/TPV/доли меняются, CASH прежний; внешний поток отделён от PnL.
@@ -144,7 +206,7 @@ Unit/sim-контур можно подготовить отдельно от li
 - При недостаточном Spot не пополнять бесконечно: точное дальнейшее поведение предъявить пользователю, если не определено guard-политикой.
 - Реальные переводы и включение live не входят в эту задачу.
 
-Критерий завершения: одинаковая последовательность событий даёт согласованные состояния backtest/paper; live read-only reconciliation не удваивает поток; execution интеграция имеет отдельное разрешение.
+Критерий B1: одинаковый funding-only журнал даёт согласованный учёт paper/backtest; сбои до/после commit и между закрытиями не дублируют события/fills; halt сохраняется; A1/A2a/CASH/resume регрессии проходят. После author evidence — независимая приёмка и STOP. Live/read-only reconciliation не является условием или разрешением реализации B1.
 
 ## 7. Обязательная parity и dashboard после A1/A2/B
 
@@ -170,7 +232,7 @@ Unit/sim-контур можно подготовить отдельно от li
 
 ## 9. Границы текущего поручения
 
-Этим обновлением изменены только документы. Код, config, семантика Clean Slate, процессы, evidence и manifests не изменяются. Новые проверки не запускались: отображены реально выполненные проверки с указанием автора и версии. Коммит/push/live/переводы/оптимизация не выполняются.
+Этим обновлением изменён только данный план. Ранее разрешённая операционная подготовка описана как выполненное событие, а не выполнена повторно. Код, config, семантика Clean Slate, процессы, evidence и manifests не изменяются. Новые проверки не запускались: отображены реально выполненные проверки с указанием автора и версии. Коммит/push/live/переводы/оптимизация не выполняются.
 
 ---
 

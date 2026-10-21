@@ -1,0 +1,125 @@
+{
+  "pm2": {
+    "args": [
+      "--config",
+      "config.json",
+      "--ticker",
+      "ZECUSDT",
+      "--paper"
+    ],
+    "cwd": "C:\\Python\\Prosperous_Bot\\futures_portfolio",
+    "interpreter": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\.venv\\Scripts\\python.exe",
+    "id": 6,
+    "log": "C:\\Users\\svsma\\.pm2\\logs\\paper-zec-out-6.log",
+    "script": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\main.py"
+  },
+  "session": {
+    "long_entry": 1358.21286361,
+    "virtual": 340.0,
+    "short_entry": 1359.97348723,
+    "cash": "0.18342000054571428571428572",
+    "long_qty": 1.877,
+    "trailing_stop_triggered": null,
+    "wallet": 1001.047,
+    "cycles": 2,
+    "cash_invariant_violation": null,
+    "initial_build_pending": null,
+    "short_qty": 1.527,
+    "started_at": 1792618994.9068725,
+    "startup_blocked": null,
+    "initial_tpv": 1000.0
+  },
+  "config_modified": false,
+  "backup": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC",
+  "manual_restart_checks_pass": true,
+  "files": [
+    {
+      "sha256": "EC7C8AB63D503D56BB8558EAD17D0C37932F42ADB72CD549B086AA98626B48FD",
+      "phase": "preliminary",
+      "copy_mtime_utc": "2026-10-21T23:12:04.3958225Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\preliminary\\paper_state_ZECUSDT.json",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\paper_state_ZECUSDT.json",
+      "source_mtime_utc": "2026-10-21T23:12:04.3958225Z"
+    },
+    {
+      "sha256": "849ADA8A2B9AAD93AF79DBE707DE2F9056D8E2537CE23CE1F8CCEC670DE80B1C",
+      "phase": "preliminary",
+      "copy_mtime_utc": "2026-10-21T23:12:04.3973224Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\preliminary\\paper_shadow_ZECUSDT.json",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\paper_shadow_ZECUSDT.json",
+      "source_mtime_utc": "2026-10-21T23:12:04.3973224Z"
+    },
+    {
+      "sha256": "7CCA1F8CA75E98DAED6C6357E87A146C294EC370C7E0523E983D62C21ECCD3A8",
+      "phase": "preliminary",
+      "copy_mtime_utc": "2026-10-21T23:09:36.3126239Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\preliminary\\config.json",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\config.json",
+      "source_mtime_utc": "2026-10-21T23:09:36.3126239Z"
+    },
+    {
+      "sha256": "436FBA209EB42A7F8D779B6A024274CC7CF8ECB558FAB8E43F46D32E311F6F2B",
+      "phase": "preliminary",
+      "copy_mtime_utc": "2026-10-21T21:20:27.2858656Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\preliminary\\main.py",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\main.py",
+      "source_mtime_utc": "2026-10-21T21:20:27.2858656Z"
+    },
+    {
+      "sha256": "2F7E0603F540B9995B9BF44E32C850A5EB03E7C970693BBDA4F7205A0021C73E",
+      "phase": "preliminary",
+      "copy_mtime_utc": "2026-10-21T19:31:11.0335698Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\preliminary\\executor.py",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\executor.py",
+      "source_mtime_utc": "2026-10-21T19:31:11.0335698Z"
+    },
+    {
+      "sha256": "EC7C8AB63D503D56BB8558EAD17D0C37932F42ADB72CD549B086AA98626B48FD",
+      "phase": "final",
+      "copy_mtime_utc": "2026-10-21T23:12:04.3958225Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\final\\paper_state_ZECUSDT.json",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\paper_state_ZECUSDT.json",
+      "source_mtime_utc": "2026-10-21T23:12:04.3958225Z"
+    },
+    {
+      "sha256": "849ADA8A2B9AAD93AF79DBE707DE2F9056D8E2537CE23CE1F8CCEC670DE80B1C",
+      "phase": "final",
+      "copy_mtime_utc": "2026-10-21T23:12:04.3973224Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\final\\paper_shadow_ZECUSDT.json",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\paper_shadow_ZECUSDT.json",
+      "source_mtime_utc": "2026-10-21T23:12:04.3973224Z"
+    },
+    {
+      "sha256": "7CCA1F8CA75E98DAED6C6357E87A146C294EC370C7E0523E983D62C21ECCD3A8",
+      "phase": "final",
+      "copy_mtime_utc": "2026-10-21T23:09:36.3126239Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\final\\config.json",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\config.json",
+      "source_mtime_utc": "2026-10-21T23:09:36.3126239Z"
+    },
+    {
+      "sha256": "436FBA209EB42A7F8D779B6A024274CC7CF8ECB558FAB8E43F46D32E311F6F2B",
+      "phase": "final",
+      "copy_mtime_utc": "2026-10-21T21:20:27.2858656Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\final\\main.py",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\main.py",
+      "source_mtime_utc": "2026-10-21T21:20:27.2858656Z"
+    },
+    {
+      "sha256": "2F7E0603F540B9995B9BF44E32C850A5EB03E7C970693BBDA4F7205A0021C73E",
+      "phase": "final",
+      "copy_mtime_utc": "2026-10-21T19:31:11.0335698Z",
+      "copy": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\backups\\apply_20261021_231215_853_UTC\\final\\executor.py",
+      "source": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\executor.py",
+      "source_mtime_utc": "2026-10-21T19:31:11.0335698Z"
+    }
+  ],
+  "head": "990b9bce583ee5c30392234e88420b7e5595c912",
+  "paper_restarted": false,
+  "created_utc": "2026-10-21T23:12:20.3443740Z",
+  "paper_status": "stopped",
+  "supervisor_registered": false,
+  "hash_stability_seconds": 3,
+  "paper_pid_before": 101276,
+  "state_modified_by_operator": false
+}
