@@ -239,7 +239,7 @@ class PortfolioCalculator:
             act["priority"] = 0
             is_valid = True
 
-            if not bypass_fuse:
+            if not bypass_fuse and act["key"] != "VIRTUAL":
                 is_inverse = (act["position_side"] == "SHORT")
                 if not is_inverse:
                     limit_price = last_reb * (1 + dec_threshold_surplus)
@@ -269,8 +269,8 @@ class PortfolioCalculator:
         else:
             available_funds = max(Decimal('0'), self.val_cash) + total_proceeds
         
-        # 4. Process Deficits with Priority (VIRTUAL first, Priority 2)
-        deficit_actions.sort(key=lambda x: 0 if x["key"] == "VIRTUAL" else 1)
+        # Futures deficits have first claim on limited CASH.
+        deficit_actions.sort(key=lambda x: x["key"] == "VIRTUAL")
         
         for act in deficit_actions:
             lev = Decimal(str(act["leverage"]))

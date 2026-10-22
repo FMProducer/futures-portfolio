@@ -608,7 +608,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         tg_nmg_pct = trend_guard_cfg.get("net_move_block_pct", guards_cfg.get("net_move_block_pct", 1.5)) / 100.0
         tg_nmg_window = trend_guard_cfg.get("net_move_window_sec", guards_cfg.get("net_move_window_sec", 30))
         tg_nmg_bars = max(1, tg_nmg_window // 60)
-        tg_trend_bars = 30
+        tg_trend_bars = int(guards_cfg.get("trend_lookback_bars", 30))
+        if tg_trend_bars <= 0:
+            raise ValueError("trend_lookback_bars must be positive")
         tg_blocked_count = 0
 
         # --- Velocity Guard / Net Move Guard (из safety_guards) ---
@@ -920,7 +922,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
                     state.check_accounting(mid_price, i, f"reduce_{key}")
 
-                expansions.sort(key=lambda x: 0 if x["key"] == "VIRTUAL" else 1)
+                expansions.sort(key=lambda x: x["key"] == "VIRTUAL")
                 remaining_funds = max(Decimal('0'), state.val_cash)
 
                 for act in expansions:
