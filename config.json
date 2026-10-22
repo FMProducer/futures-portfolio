@@ -41,11 +41,11 @@
       "targets": {
         "BASE_LONG": {
           "share": 0.35,
-          "leverage": 7
+          "leverage": 1
         },
         "BASE_SHORT": {
           "share": 0.35,
-          "leverage": 7
+          "leverage": 1
         },
         "VIRTUAL": {
           "share": 0.30,

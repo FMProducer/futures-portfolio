@@ -1132,7 +1132,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     long_entry_price=l_entry,
                     short_entry_price=s_entry,
                     last_rebalance_price=state.get("last_rebalance_price", 0.0),
-                    min_notional=active_min_notional
+                    min_notional=active_min_notional,
+                    commission_pct=float(PAPER_COMMISSION_RATE) if paper_mode else 0.0,
                 )
                 # PnL Guard removed — in 50/50 hedge, one leg is always negative when price moves
                 # Blocking surplus sell prevents profit-taking during normal hedge operation

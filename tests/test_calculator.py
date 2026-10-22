@@ -43,7 +43,8 @@ def test_calculator_initialization(sample_params):
 def test_calculate_deviations(sample_params, targets):
     calc = PortfolioCalculator(**sample_params)
     threshold = 0.05
-    res = calc.calculate_deviations(targets, threshold_surplus=threshold, threshold_deficit=threshold, current_equity=calc.tpv)
+    # Isolate sizing from the profitability gate at an unchanged entry price.
+    res = calc.calculate_deviations(targets, threshold_surplus=threshold, threshold_deficit=threshold, current_equity=calc.tpv, fuse_enabled=False)
     actions = res["actions"]
 
     # [NEW MODEL] Shares: L:50%, S:0%, V:16.7% (V = virt_debt=2000, fixed USDT).
@@ -131,7 +132,7 @@ def test_limits_deviation(sample_params, targets):
     # diff_share = 1.1765 - 0.4 = 0.7765
     # diff_usdt = -0.7765 * 102000 * 5 = -396030 ≈ -396000
     calc = PortfolioCalculator(**params)
-    res = calc.calculate_rebalance(targets, threshold_surplus=0.01, threshold_deficit=0.01, current_equity=calc.tpv, ignore_limits=False)
+    res = calc.calculate_rebalance(targets, threshold_surplus=0.01, threshold_deficit=0.01, current_equity=calc.tpv, ignore_limits=False, fuse_enabled=False)
     actions = res["actions"]
     long_action = next(a for a in actions if a["symbol"] == "BTCUSDT_LONG")
     assert long_action["diff_usdt"] == pytest.approx(-396000.0, abs=5000)

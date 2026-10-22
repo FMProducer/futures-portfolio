@@ -21,7 +21,8 @@ class PortfolioCalculator:
                  base_ticker: str = "BTCUSDT", siphoning_reserve: float = 0.0,
                  targets: Dict[str, Dict] = None, initial_capital: float = 10000.0,
                  last_rebalance_price: float = 0.0,
-                 min_notional: float = 6.0) -> None:
+                 min_notional: float = 6.0, commission_pct: float = 0.0,
+                 slippage_pct: float = 0.0) -> None:
         
         # Convert all inputs to Decimal for precision
         self.positions = {k: Decimal(str(v)) for k, v in positions.items()}
@@ -35,6 +36,11 @@ class PortfolioCalculator:
         self.targets = targets or {}
         self.last_rebalance_price = Decimal(str(last_rebalance_price)) if last_rebalance_price > 0 else self.price
         self.min_notional = Decimal(str(min_notional))
+        self.commission_pct = Decimal(str(commission_pct))
+        self.slippage_pct = Decimal(str(slippage_pct))
+        for rate in (self.commission_pct, self.slippage_pct):
+            if not rate.is_finite() or not Decimal('0') <= rate < Decimal('1'):
+                raise ValueError("Execution cost rates must be finite and in [0, 1)")
 
         # 1. PnL contributions for Heartbeat (RELATIVE to last rebalance)
         # This ensures the sign of $ PnL always matches the sign of % deviation.
@@ -241,20 +247,22 @@ class PortfolioCalculator:
             act["priority"] = 0
             is_valid = True
 
-            if fuse_enabled and not bypass_fuse and act["key"] != "VIRTUAL":
+            if fuse_enabled and not ignore_limits and act["key"] != "VIRTUAL":
                 is_inverse = (act["position_side"] == "SHORT")
                 if not is_inverse:
                     limit_price = last_reb * (1 + dec_threshold_surplus)
-                    is_valid = self.price >= limit_price
-                    # only reduce long at a profit (price > avg entry)
+                    is_valid = bypass_fuse or self.price >= limit_price
+                    # Closing proceeds must exceed entry after execution costs.
                     if is_valid and self.long_entry_price > 0:
-                        is_valid = self.price > self.long_entry_price
+                        sell_price = self.price * (1 - self.slippage_pct)
+                        is_valid = sell_price * (1 - self.commission_pct) > self.long_entry_price
                 else:
                     limit_price = last_reb * (1 - dec_threshold_surplus)
-                    is_valid = self.price <= limit_price
-                    # only reduce short at a profit (price < avg entry)
+                    is_valid = bypass_fuse or self.price <= limit_price
+                    # Closing cost includes the buy-side execution costs.
                     if is_valid and self.short_entry_price > 0:
-                        is_valid = self.price < self.short_entry_price
+                        buy_price = self.price * (1 + self.slippage_pct)
+                        is_valid = buy_price * (1 + self.commission_pct) < self.short_entry_price
 
             if is_valid:
                 final_actions.append(act)

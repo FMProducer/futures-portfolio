@@ -753,7 +753,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 base_ticker=base_ticker,
                 targets=targets,
                 initial_capital=float(state.initial_capital),
-                last_rebalance_price=float(state.last_rebalance_price)
+                last_rebalance_price=float(state.last_rebalance_price),
+                commission_pct=float(sim.commission_pct),
+                slippage_pct=float(sim.slippage_pct),
             )
 
             calc_res = calculator.calculate_rebalance(

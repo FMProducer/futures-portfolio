@@ -7,6 +7,45 @@ from core.calculator import PortfolioCalculator
 from backtest.backtest_rebalance import run_backtest
 
 
+@pytest.mark.parametrize("leg", ["LONG", "SHORT"])
+@pytest.mark.parametrize("edge,allowed", [(0.0003, False), (0.0007, False), (0.002, True)])
+@pytest.mark.parametrize("same_rebalance_price", [False, True])
+def test_fuse_requires_positive_net_close(leg, edge, allowed, same_rebalance_price):
+    price = 100 * (1 + edge if leg == "LONG" else 1 - edge)
+    targets = {
+        "BASE_LONG": {"share": .35, "leverage": 1},
+        "BASE_SHORT": {"share": .35, "leverage": 1},
+        "VIRTUAL": {"share": .30, "leverage": 1},
+    }
+    calc = PortfolioCalculator(
+        positions={f"BTCUSDT_{leg}": 8}, spot_price=price,
+        real_equity=800, virt_qty=0, virt_debt=200,
+        long_entry_price=100, short_entry_price=100, targets=targets,
+        last_rebalance_price=price if same_rebalance_price else (90 if leg == "LONG" else 110),
+        commission_pct=.0004, slippage_pct=.0005,
+    )
+    actions = calc.calculate_rebalance(targets, .02, .04, calc.tpv)["actions"]
+    assert any(a["key"] == f"BASE_{leg}" and a["is_reduction"] for a in actions) is allowed
+    disabled = calc.calculate_rebalance(targets, .02, .04, calc.tpv, fuse_enabled=False)["actions"]
+    assert any(a["key"] == f"BASE_{leg}" and a["is_reduction"] for a in disabled)
+
+
+@pytest.mark.parametrize("leg", ["LONG", "SHORT"])
+def test_fuse_rejects_exact_net_breakeven(leg):
+    targets = {"BASE_LONG": {"share": .35, "leverage": 1},
+               "BASE_SHORT": {"share": .35, "leverage": 1},
+               "VIRTUAL": {"share": .30, "leverage": 1}}
+    calc = PortfolioCalculator(
+        positions={f"BTCUSDT_{leg}": 8}, spot_price=100,
+        real_equity=800, virt_qty=0, virt_debt=200, targets=targets,
+        long_entry_price=99.9, short_entry_price=100.1,
+        last_rebalance_price=90 if leg == "LONG" else 110,
+        commission_pct=.001,
+    )
+    assert not any(a["key"] == f"BASE_{leg}" and a["is_reduction"]
+                   for a in calc.calculate_rebalance(targets, .02, .04, calc.tpv)["actions"])
+
+
 @pytest.mark.parametrize("leg,price", [("LONG", 101), ("SHORT", 99)])
 def test_fuse_switch_preserves_thresholds_and_other_guards(leg, price):
     targets = {
