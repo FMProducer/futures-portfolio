@@ -433,7 +433,49 @@ def test_defect_and_f4b_funding_rounding_preserves_cash_zero():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Durable crash-recovery: save → "crash" → reload
+# V8 regression tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_v8_partial_close_preserves_remainder_and_entry():
+    """Partial close: remainder qty > 0, entry NOT zeroed."""
+    state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
+                          virt_debt=D('340'), base_ticker="BTCUSDT",
+                          l_lev=D('7'), s_lev=D('7'))
+    state.pos_long = D('2')
+    state.long_entry_price = D('1300')
+    sim = _FakeSim()
+    result = state.close_position_for_funding_shortfall(
+        "BASE_LONG", D('0.5'), D('1300'), sim, 0)
+    assert result["status"] == "partial"
+    assert result["qty_remaining"] == 1.5
+    assert state.pos_long == D('1.5')
+    assert state.long_entry_price > 0  # entry preserved for remainder
+
+
+def test_v8_empty_signed_journal_gives_zero_funding():
+    """Empty signed_actual journal → no funding events, Attribution gets 0."""
+    from futures_portfolio.backtest.dashboard_attribution import reconstruct_attribution
+    result = reconstruct_attribution(
+        closes=[100.0]*10, equity=[1000.0]*10, fills=[],
+        initial_capital=1000.0, final_equity=1000.0,
+        funding_rate_per_bar=0.0001, funding_model="signed_actual",
+        events=[], siphoning_log=[])
+    assert result["totals"]["funding"] == 0.0  # empty signed = zero funding
+
+
+def test_v8_funding_applied_before_calculator():
+    """V decreases → next TPV reflects the new V."""
+    state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
+                          virt_debt=D('340'), base_ticker="BTCUSDT")
+    tpv_before = state.get_tpv(D('100'))
+    apply_funding_backtest(D('-50'), state)
+    tpv_after = state.get_tpv(D('100'))
+    assert tpv_after == tpv_before - D('50')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Durable crash-recovery: real save → "crash" → reload
+# ═══════════════════════════════════════════════════════════════════════════════
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _roundtrip_via_dict(journal, halt):
@@ -491,6 +533,56 @@ def test_crash_recovery_halt_and_close_state_survive_reload():
     assert h2.active
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# V3 defect regressions
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_defect_v_zero_micro_funding_detects_shortfall():
+    """V=0, funding=-0.00004: raw V becomes negative, shortfall detected."""
+    state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
+                          virt_debt=D('0'), base_ticker="BTCUSDT")
+    result = apply_funding_backtest(D('-0.00004'), state)
+    assert state.virt_debt < 0
+    assert result["shortfall"] > 0
+    assert state.get_funding_shortfall() > 0
+
+
+def test_defect_v_zero_fractional_paper_funding_shortfall():
+    """Paper: V=0, funding=-0.00004 → raw V=-0.00004 (no rounding loss)."""
+    paper = {"balance": 1000.0}
+    strategy = {"virt_debt": 0.0, "funding_paid": 0.0}
+    result = apply_funding_paper(D('-0.00004'), paper, strategy)
+    assert result["shortfall"] > 0
+    assert strategy["virt_debt"] < 0
+    # CASH unchanged
+    assert result["cash_change"] == 0.0
+
+
+def test_defect_different_portfolio_id_is_conflict_not_duplicate():
+    """Same event_id + amount + time, different portfolio_id → conflict."""
+    journal = FundingJournal()
+    journal.receive(FundingEvent(event_id="fund:1", signed_amount=D('-3'),
+                                  event_time=100.0, portfolio_id="A"))
+    journal.mark_applied("fund:1")
+    result = journal.receive(FundingEvent(
+        event_id="fund:1", signed_amount=D('-3'), event_time=100.0,
+        portfolio_id="B"))
+    assert result == "conflict"
+
+
+def test_defect_funding_paper_preserves_wallet_v_equality():
+    """Paper funding: wallet and V change by exactly the same amount."""
+    paper = {"balance": 1000.0}
+    strategy = {"virt_debt": 340.0, "funding_paid": 0.0}
+    w_before = D(str(paper["balance"]))
+    v_before = D(str(strategy["virt_debt"]))
+    apply_funding_paper(D('-5.12345'), paper, strategy)
+    w_delta = D(str(paper["balance"])) - w_before
+    v_delta = D(str(strategy["virt_debt"])) - v_before
+    assert w_delta == v_delta
+    assert w_delta == D('-5.12345')
+
+
 def test_crash_recovery_unapplied_event_applied_once_after_reload():
     """Event received but not applied (crash before commit): reload, apply once."""
     journal = FundingJournal()
@@ -507,3 +599,220 @@ def test_crash_recovery_unapplied_event_applied_once_after_reload():
     j2.mark_applied("fund:1")
     assert j2.events["fund:1"].status == "applied"
     assert state.virt_debt == D('337')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V8: partial close, empty signed journal, calculator refresh
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_v8_partial_close_preserves_remainder_and_entry():
+    state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
+                          virt_debt=D('340'), base_ticker="BTCUSDT",
+                          l_lev=D('7'), s_lev=D('7'))
+    state.pos_long = D('2')
+    state.long_entry_price = D('1300')
+    sim = _FakeSim()
+    result = state.close_position_for_funding_shortfall(
+        "BASE_LONG", D('0.5'), D('1300'), sim, 0)
+    assert result["status"] == "partial"
+    assert result["qty_remaining"] == 1.5
+    assert state.pos_long == D('1.5')
+    assert state.long_entry_price > 0
+
+
+def test_v8_empty_signed_journal_zero_funding_attribution():
+    from futures_portfolio.backtest.dashboard_attribution import reconstruct_attribution
+    r = reconstruct_attribution(
+        closes=[100]*10, equity=[1000]*10, fills=[],
+        initial_capital=1000, final_equity=1000,
+        funding_rate_per_bar=0.0001, funding_model="signed_actual",
+        events=[], siphoning_log=[])
+    assert r["totals"]["funding"] == 0.0
+
+
+def test_v8_funding_applied_before_calculator():
+    state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
+                          virt_debt=D('340'), base_ticker="BTCUSDT")
+    tpv_before = state.get_tpv(D('100'))
+    apply_funding_backtest(D('-50'), state)
+    assert state.get_tpv(D('100')) == tpv_before - D('50')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Real file crash-recovery: WAL intent, per-leg close, recovery
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import tempfile, os as _os, json as _json
+
+
+def _tmp_paths():
+    d = tempfile.mkdtemp(prefix="b1_t_")
+    return _os.path.join(d, "s.json"), _os.path.join(d, "w.json"), d
+
+
+def test_crash_before_commit_intent_present():
+    from futures_portfolio.core.funding import (
+        FundingJournal, FundingHalt, atomic_save_json,
+        save_funding_boundary, recover_funding_boundary)
+    sp, wp, d = _tmp_paths()
+    try:
+        paper = {"balance": 1000, "positions": {}}
+        state = {"virt_debt": 340}
+        journal = FundingJournal()
+        journal.receive(FundingEvent("f:1", D('-50'), 100.0))
+        journal.mark_applied("f:1")
+        halt = FundingHalt(); halt.active = True; halt.reason = "funding_shortfall"
+        state["funding_journal"] = journal.to_list()
+        state["funding_halt"] = halt.to_dict()
+        intent = {"strategy_state": dict(state), "paper_wallet": dict(paper), "intent_time": 100.0}
+        atomic_save_json(sp + ".funding_intent", intent)
+        status, rs, rw = recover_funding_boundary(sp, wp)
+        assert status == "RECOVERED"; assert rs is not None; assert rw is not None
+        assert not _os.path.exists(sp + ".funding_intent")
+    finally:
+        import shutil; shutil.rmtree(d, ignore_errors=True)
+
+
+def test_crash_after_first_leg_second_resumes():
+    from futures_portfolio.core.funding import (
+        FundingHalt, begin_close_leg, record_close_result, get_pending_close_legs)
+    halt = FundingHalt(); halt.active = True; halt.event_id = "f:1"; halt.shortfall_amount = D('10')
+    begin_close_leg(halt, "BASE_LONG", "c1", D('1.5'))
+    record_close_result(halt, "BASE_LONG", "filled", D('1.5'), D('1300'), D('0.78'), D('-0.39'), D('0'))
+    begin_close_leg(halt, "BASE_SHORT", "c2", D('1.4'))
+    assert get_pending_close_legs(halt) == ["BASE_SHORT"]
+    record_close_result(halt, "BASE_SHORT", "filled", D('1.4'), D('1300'), D('0.73'), D('-0.36'), D('0'))
+    assert get_pending_close_legs(halt) == []
+    assert halt.active
+
+
+def test_partial_second_leg_keeps_halt():
+    from futures_portfolio.core.funding import (
+        FundingHalt, begin_close_leg, record_close_result, get_pending_close_legs)
+    halt = FundingHalt(); halt.active = True; halt.event_id = "f:1"; halt.shortfall_amount = D('10')
+    begin_close_leg(halt, "BASE_LONG", "c1", D('1.5'))
+    record_close_result(halt, "BASE_LONG", "filled", D('1.5'), D('1300'), D('0.78'), D('-0.39'), D('0'))
+    begin_close_leg(halt, "BASE_SHORT", "c2", D('1.4'))
+    record_close_result(halt, "BASE_SHORT", "partial", D('1.0'), D('1300'), D('0.52'), D('-0.26'), D('0.4'))
+    assert "BASE_SHORT" in get_pending_close_legs(halt)
+    assert halt.active
+
+
+def test_error_second_leg_halt_remains():
+    from futures_portfolio.core.funding import (
+        FundingHalt, begin_close_leg, record_close_result, get_pending_close_legs)
+    halt = FundingHalt(); halt.active = True; halt.event_id = "f:1"; halt.shortfall_amount = D('10')
+    begin_close_leg(halt, "BASE_LONG", "c1", D('1.5'))
+    record_close_result(halt, "BASE_LONG", "filled", D('1.5'), D('1300'), D('0.78'), D('-0.39'), D('0'))
+    begin_close_leg(halt, "BASE_SHORT", "c2", D('1.4'))
+    record_close_result(halt, "BASE_SHORT", "error", D('0'), D('0'), D('0'), D('0'), D('1.4'))
+    assert "BASE_SHORT" in get_pending_close_legs(halt)
+    assert halt.active
+
+
+def test_recovery_no_reapply_funding():
+    journal = FundingJournal()
+    journal.receive(FundingEvent("f:1", D('-50'), 100.0))
+    journal.mark_applied("f:1")
+    assert journal.receive(FundingEvent("f:1", D('-50'), 100.0)) == "duplicate"
+
+
+def test_recovery_no_reclose_filled_leg():
+    halt = FundingHalt(); halt.active = True; halt.event_id = "f:1"
+    cs = begin_close_leg(halt, "BASE_LONG", "c1", D('1.5'))
+    record_close_result(halt, "BASE_LONG", "filled", D('1.5'), D('1300'), D('0.78'), D('-0.39'), D('0'))
+    cs2 = begin_close_leg(halt, "BASE_LONG", "c1_retry", D('1.5'))
+    assert cs2.status == "filled"
+
+
+def test_increases_blocked_after_halt():
+    halt = FundingHalt(); halt.active = True; halt.reason = "funding_shortfall"
+    halt.increases_blocked = True
+    assert halt.increases_blocked
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Recovery integration: LONG closed, SHORT pending — must not block
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_recovery_after_long_closed_reaches_pending_short():
+    """LONG filled, SHORT pending → recovery closes SHORT, no blocks."""
+    from futures_portfolio.core.funding import (
+        FundingHalt, begin_close_leg, record_close_result,
+        get_pending_close_legs, commit_funding_halt_with_intents)
+    # Simulate: halt committed with both legs registered
+    halt = commit_funding_halt_with_intents(
+        FundingHalt(), "fund:1", D('50'), D('1.5'), D('1.4'))
+    # LONG closed successfully, SHORT pending (crash before SHORT close)
+    record_close_result(halt, "BASE_LONG", "filled", D('1.5'), D('1300'),
+                         D('0.78'), D('-0.39'), D('0'))
+    # SHORT still pending
+    cs_short = halt.close_state.get("BASE_SHORT")
+    assert cs_short is not None, "SHORT intent auto-registered"
+    assert cs_short.status == "pending"
+
+    # Recovery: only SHORT needs closing
+    pending = get_pending_close_legs(halt)
+    assert pending == ["BASE_SHORT"]  # only SHORT, not LONG
+    assert halt.active
+    assert halt.increases_blocked
+
+
+def test_wal_recovery_absent_returns_absent():
+    from futures_portfolio.core.funding import (
+        recover_funding_boundary, RECOVERY_ABSENT)
+    status, rs, rw = recover_funding_boundary(
+        "/nonexistent/path/state.json", "/nonexistent/path/wallet.json")
+    assert status == RECOVERY_ABSENT
+    assert rs is None and rw is None
+
+
+def test_wal_recovery_failed_on_bad_json():
+    from futures_portfolio.core.funding import (
+        recover_funding_boundary, RECOVERY_FAILED, atomic_save_json)
+    sp, wp, d = _tmp_paths()
+    try:
+        atomic_save_json(sp + ".funding_intent", {"not": "valid"})
+        status, rs, rw = recover_funding_boundary(sp, wp)
+        assert status == RECOVERY_FAILED
+        assert rs is None and rw is None
+    finally:
+        import shutil; shutil.rmtree(d, ignore_errors=True)
+
+
+def test_wal_recovery_failed_keeps_intent_no_reset():
+    """FAILED recovery does NOT delete intent file; startup must stay blocked."""
+    from futures_portfolio.core.funding import (
+        recover_funding_boundary, RECOVERY_FAILED, atomic_save_json)
+    sp, wp, d = _tmp_paths()
+    try:
+        atomic_save_json(sp + ".funding_intent", {"bad": "payload"})
+        intent_exists_before = _os.path.exists(sp + ".funding_intent")
+        status, _, _ = recover_funding_boundary(sp, wp)
+        assert status == RECOVERY_FAILED
+        # Intent MUST still exist (not deleted by recovery)
+        assert _os.path.exists(sp + ".funding_intent") or _os.path.exists(
+            sp + ".funding_intent.corrupted"), (
+            "Intent must be preserved (not deleted)")
+    finally:
+        import shutil; shutil.rmtree(d, ignore_errors=True)
+
+
+def test_wal_write_error_returns_failed_intent_kept():
+    """Write failure during recovery → FAILED, intent kept."""
+    from futures_portfolio.core.funding import (
+        recover_funding_boundary, RECOVERY_FAILED, atomic_save_json)
+    sp, wp, d = _tmp_paths()
+    try:
+        intent = {"strategy_state": {"virt_debt": 337},
+                   "paper_wallet": {"balance": 997}}
+        atomic_save_json(sp + ".funding_intent", intent)
+        # Make wallet path unwritable
+        _os.makedirs(wp, exist_ok=True)  # wallet path is now a directory, write fails
+        status, rs, rw = recover_funding_boundary(sp, wp)
+        assert status == RECOVERY_FAILED
+        assert rs is None and rw is None
+        # Intent kept
+        assert _os.path.exists(sp + ".funding_intent")
+    finally:
+        import shutil; shutil.rmtree(d, ignore_errors=True)

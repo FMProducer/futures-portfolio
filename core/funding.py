@@ -5,18 +5,18 @@ the full debit is applied once, V becomes negative, a stable halt is
 committed before any close, and positions are closed with tracked per-leg
 status for crash-safe recovery.
 
-Durable state: journal + halt + close intents survive JSON save/reload.
+All amounts are kept at full Decimal precision; rounding to wallet
+granularity is the caller's responsibility at persistence time.
 """
 import json
 import logging
-import os
 import time
 from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_EVEN
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass  # BacktestState is referenced by string name in signatures only.
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +38,10 @@ class FundingEvent:
     kind: str = "FUNDING_FEE"
 
     @property
-    def payload_key(self) -> str:
+    def payload_key(self) -> Tuple:
         """Stable payload fingerprint for duplicate detection."""
-        return f"{self.signed_amount}:{self.event_time}:{self.source_ref}"
+        return (self.signed_amount, self.event_time, self.source_ref,
+                self.portfolio_id, self.symbol)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -74,11 +75,11 @@ class FundingEvent:
 
 @dataclass
 class CloseLegState:
-    leg: str                    # "BASE_LONG" | "BASE_SHORT"
+    leg: str
     close_event_id: str
     status: str = "pending"     # pending | filled | partial | error | skipped | quarantined
     qty_closed: Decimal = Decimal("0")
-    qty_remaining: Decimal = Decimal("0")  # not yet closed
+    qty_remaining: Decimal = Decimal("0")
     fill_price: Decimal = Decimal("0")
     commission: Decimal = Decimal("0")
     realized_pnl: Decimal = Decimal("0")
@@ -115,7 +116,7 @@ class CloseLegState:
 @dataclass
 class FundingHalt:
     active: bool = False
-    reason: str = ""                     # "funding_shortfall"
+    reason: str = ""
     event_id: str = ""
     halted_at: float = 0.0
     shortfall_amount: Decimal = Decimal("0")
@@ -157,8 +158,8 @@ class FundingJournal:
     """Ordered journal of funding events with duplicate/conflict detection."""
 
     def __init__(self):
-        self.events: Dict[str, FundingEvent] = {}       # event_id → event
-        self._order: List[str] = []                     # insertion order
+        self.events: Dict[str, FundingEvent] = {}
+        self._order: List[str] = []
 
     def __len__(self) -> int:
         return len(self._order)
@@ -177,40 +178,30 @@ class FundingJournal:
             journal._order.append(event.event_id)
         return journal
 
-    # ── idempotent receive ────────────────────────────────────────────────
+    def _payload_match(self, a: FundingEvent, b: FundingEvent) -> bool:
+        return (a.signed_amount == b.signed_amount
+                and a.event_time == b.event_time
+                and a.source_ref == b.source_ref
+                and a.portfolio_id == b.portfolio_id
+                and a.symbol == b.symbol)
 
     def receive(self, event: FundingEvent) -> str:
-        """Register a new event.  Returns 'new' | 'duplicate' | 'conflict'.
-
-        - 'new': persisted as received, no accounting effect yet.
-        - 'duplicate': same id + same payload (amount + time + source_ref)
-          AND already applied → no-op.
-        - 'conflict': same id but different payload → quarantined.
-        """
         existing = self.events.get(event.event_id)
         if existing is not None:
-            # Same payload already applied → harmless duplicate.
             if existing.status == "applied":
-                if (existing.signed_amount == event.signed_amount
-                        and existing.event_time == event.event_time
-                        and existing.source_ref == event.source_ref):
+                if self._payload_match(existing, event):
                     return "duplicate"
                 existing.status = "conflict"
                 logger.error(
-                    f"Funding conflict: {event.event_id} — "
-                    f"applied payload differs from incoming"
+                    f"Funding conflict: {event.event_id} — applied payload differs"
                 )
                 return "conflict"
-            # Same event still received → resume application.
             if existing.status == "received":
-                if (existing.signed_amount == event.signed_amount
-                        and existing.event_time == event.event_time
-                        and existing.source_ref == event.source_ref):
+                if self._payload_match(existing, event):
                     return "duplicate"
                 existing.status = "conflict"
                 logger.error(f"Funding conflict: {event.event_id} — received payload differs")
                 return "conflict"
-            # Already quarantined or conflict.
             return existing.status
 
         event.status = "received"
@@ -231,7 +222,6 @@ class FundingJournal:
             logger.warning(f"Funding event {event_id} quarantined: {reason}")
 
     def get_received(self) -> List[FundingEvent]:
-        """Return un-applied received events in insertion order."""
         return [self.events[eid] for eid in self._order
                 if self.events[eid].status == "received"]
 
@@ -244,18 +234,18 @@ class FundingJournal:
         return latest
 
 
-# ── save / reload (durable boundary) ─────────────────────────────────────────
+# ── save / reload ────────────────────────────────────────────────────────────
 
 def save_funding_state(journal: FundingJournal, halt: FundingHalt,
                         state: Dict, wallet: Optional[Dict] = None) -> Dict:
-    """Serialize funding state into a dict suitable for JSON persistence."""
+    """Persist funding journal + halt into the state dict for atomic JSON save."""
     state["funding_journal"] = journal.to_list()
     state["funding_halt"] = halt.to_dict()
     return state
 
 
 def load_funding_state(state: Dict) -> Tuple[FundingJournal, FundingHalt]:
-    """Restore journal + halt from persisted state dict (idempotent)."""
+    """Restore journal + halt from persisted state dict."""
     journal = FundingJournal.from_list(state.get("funding_journal"))
     halt = FundingHalt.from_dict(state.get("funding_halt"))
     return journal, halt
@@ -263,34 +253,20 @@ def load_funding_state(state: Dict) -> Tuple[FundingJournal, FundingHalt]:
 
 # ── funding application ──────────────────────────────────────────────────────
 
-WALLET_PRECISION = Decimal("0.0001")
-
-
 def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
                          strategy_state: Dict) -> Dict:
     """Apply one funding event to paper wallet + strategy state.
 
-    Both wallet and V are quantised to WALLET_PRECISION together to avoid
-    rounding a CASH drift.  The remainder is tracked in a rounding buffer.
+    All amounts kept at full Decimal precision.  Caller quantises at
+    persistence time.  Shortfall is detected on raw (unrounded) V.
     """
     amount = Decimal(str(signed_amount))
 
-    # Accumulate raw values first, then quantise both in lock-step.
-    wallet_raw = Decimal(str(paper_wallet.get("balance", 0)))
-    v_raw = Decimal(str(strategy_state.get("virt_debt", 0)))
-    buf_raw = Decimal(str(strategy_state.get("funding_rounding_buf", 0)))
+    wallet_val = Decimal(str(paper_wallet.get("balance", 0)))
+    v_val = Decimal(str(strategy_state.get("virt_debt", 0)))
 
-    wallet_raw += amount
-    v_raw += amount
-
-    wallet_q = wallet_raw.quantize(WALLET_PRECISION)
-    v_q = v_raw.quantize(WALLET_PRECISION)
-    # Rounding remainder: must conserve total TPV.
-    rounding = (wallet_raw - wallet_q) + (v_raw - v_q)
-
-    paper_wallet["balance"] = float(wallet_q)
-    strategy_state["virt_debt"] = float(v_q)
-    strategy_state["funding_rounding_buf"] = float(buf_raw + rounding)
+    paper_wallet["balance"] = float(wallet_val + amount)
+    strategy_state["virt_debt"] = float(v_val + amount)
 
     prev_paid = Decimal(str(strategy_state.get("funding_paid", 0)))
     strategy_state["funding_paid"] = float(prev_paid - amount)
@@ -299,7 +275,7 @@ def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
     shortfall = max(Decimal("0"), -v_after)
 
     return {
-        "v_before": float(Decimal(str(strategy_state.get("virt_debt", 0)))),
+        "v_before": float(v_val),
         "v_after": float(v_after),
         "shortfall": float(shortfall),
         "cash_change": 0.0,
@@ -307,30 +283,23 @@ def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
 
 
 def apply_funding_backtest(signed_amount: Decimal, state) -> Dict:
-    """Apply one funding event to BacktestState (V-only).
-
-    Backtest val_cash is separate from virt_debt — only virt_debt changes.
-    """
+    """Apply one funding event to BacktestState (V-only, full precision)."""
     amount = Decimal(str(signed_amount))
     v_before = state.virt_debt
     state.virt_debt += amount
+    state.funding_paid -= amount
     v_after = state.virt_debt
     shortfall = max(Decimal("0"), -v_after)
-    state.funding_paid -= amount
     return {
         "v_before": float(v_before), "v_after": float(v_after),
-        "shortfall": float(shortfall),
-        "cash_change": 0.0,
+        "shortfall": float(shortfall), "cash_change": 0.0,
     }
 
 
-# ── legacy CASH-first funding (baseline reproduction only) ──────────────────
+# ── legacy CASH-first (baseline reproduction only) ───────────────────────────
 
 def pay_funding_legacy(state, amount: Decimal) -> Decimal:
-    """Old CASH-first waterfall — for legacy_constant compatibility only.
-
-    Do NOT mix with signed_actual events.
-    """
+    """Old CASH-first waterfall.  Do NOT mix with signed_actual events."""
     amount = Decimal(str(amount))
     if amount > 0 and amount > state.val_cash:
         state.funding_from_virtual += state.release_virtual(amount - state.val_cash)
@@ -339,15 +308,12 @@ def pay_funding_legacy(state, amount: Decimal) -> Decimal:
     return amount
 
 
-# ── funding halt + close intents ─────────────────────────────────────────────
+# ── halt + close intents ─────────────────────────────────────────────────────
 
 def commit_funding_halt(
-    halt: FundingHalt,
-    event_id: str,
-    shortfall: Decimal,
+    halt: FundingHalt, event_id: str, shortfall: Decimal,
     strategy_state: Optional[Dict] = None,
 ) -> FundingHalt:
-    """Atomically commit a funding shortfall halt before any close actions."""
     halt.active = True
     halt.reason = "funding_shortfall"
     halt.event_id = event_id
@@ -355,7 +321,6 @@ def commit_funding_halt(
     halt.shortfall_amount = shortfall
     halt.increases_blocked = True
     halt.close_state = {}
-
     if strategy_state is not None:
         strategy_state["funding_halt"] = halt.to_dict()
         strategy_state["funding_shortfall"] = float(shortfall)
@@ -364,34 +329,26 @@ def commit_funding_halt(
 
 def begin_close_leg(halt: FundingHalt, leg: str, close_event_id: str,
                      qty_total: Decimal = Decimal("0")) -> CloseLegState:
-    """Record a durable close intent for one leg.
-
-    Returns existing filled/partial state (idempotent) or creates a new pending intent.
-    """
     existing = halt.close_state.get(leg)
     if existing and existing.status in ("filled", "partial"):
         return existing
-    intent = CloseLegState(
-        leg=leg, close_event_id=close_event_id,
-        status="pending", qty_remaining=qty_total,
-    )
+    intent = CloseLegState(leg=leg, close_event_id=close_event_id,
+                            status="pending", qty_remaining=qty_total)
     halt.close_state[leg] = intent
     return intent
 
 
 def record_close_result(
-    halt: FundingHalt, leg: str,
-    status: str, qty: Decimal, price: Decimal,
-    commission: Decimal, realized_pnl: Decimal,
+    halt: FundingHalt, leg: str, status: str, qty: Decimal,
+    price: Decimal, commission: Decimal, realized_pnl: Decimal,
     qty_remaining: Decimal = Decimal("0"),
 ) -> None:
-    """Persist the result of one leg close action (may be partial)."""
     cs = halt.close_state.get(leg)
     if cs is None:
         cs = CloseLegState(leg=leg, close_event_id=f"close_{leg}_{int(time.time())}")
         halt.close_state[leg] = cs
     cs.status = status
-    cs.qty_closed += qty  # accumulate across partial fills
+    cs.qty_closed += qty
     cs.qty_remaining = qty_remaining
     cs.fill_price = price
     cs.commission += commission
@@ -400,27 +357,157 @@ def record_close_result(
 
 
 def all_legs_closed(halt: FundingHalt) -> bool:
-    """True when all expected legs (default 2: LONG + SHORT) are durably filled."""
-    expected = 2  # hedged portfolio always has exactly two legs
+    expected = 2
     if not halt.close_state:
         return False
     if len(halt.close_state) < expected:
-        return False  # not all legs registered yet
+        return False
     return all(cs.status == "filled" for cs in halt.close_state.values())
 
 
-# ── aggregate: compute funding from rates ────────────────────────────────────
+# ── durable save (WAL pattern) ──────────────────────────────────────────────
+
+import os as _os
+import json as _json
+
+
+def atomic_save_json(path: str, data: Dict) -> None:
+    """Write data to path atomically via temp+rename."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        _json.dump(data, f, indent=2, default=str)
+    _os.replace(tmp, path)
+
+
+def save_funding_boundary(strategy_path: str, wallet_path: str,
+                           state: Dict, paper_state: Dict,
+                           journal: FundingJournal, halt: FundingHalt) -> None:
+    """Atomic funding+wallet save via WAL intent.
+
+    Intent contains FULL wallet + strategy snapshots for recovery.
+    Writes: intent → strategy state → wallet → clear intent.
+    Crash between strategy+wallet: replay intent to restore both.
+    """
+    state["funding_journal"] = journal.to_list()
+    state["funding_halt"] = halt.to_dict()
+    intent = {
+        "strategy_state": dict(state),
+        "paper_wallet": dict(paper_state),
+        "intent_time": time.time(),
+    }
+    intent_path = strategy_path + ".funding_intent"
+    atomic_save_json(intent_path, intent)
+    atomic_save_json(strategy_path, state)
+    atomic_save_json(wallet_path, paper_state)
+    if _os.path.exists(intent_path):
+        _os.remove(intent_path)
+
+
+# Recovery result enum
+RECOVERY_ABSENT = "ABSENT"
+RECOVERY_RECOVERED = "RECOVERED"
+RECOVERY_FAILED = "FAILED"
+
+
+def recover_funding_boundary(strategy_path: str, wallet_path: str
+                              ) -> Tuple[str, Optional[Dict], Optional[Dict]]:
+    """Check for uncommitted funding intent.
+
+    Returns (status, recovered_state, recovered_wallet):
+      ABSENT   — no intent or quarantined file found.
+      RECOVERED — intent applied, files restored, intent cleared.
+      FAILED    — intent exists but cannot be resolved; startup MUST block.
+
+    Payload corruption → quarantined as .corrupted (never deleted).
+    Write failure → intent kept for retry; still FAILED (unsafe to proceed).
+    Existing .corrupted file → FAILED until operator manually resolves it.
+    """
+    intent_path = strategy_path + ".funding_intent"
+    corrupted_path = intent_path + ".corrupted"
+    if _os.path.exists(corrupted_path):
+        logger.critical(
+            f"Unresolved corrupted funding intent at {corrupted_path}. "
+            f"Startup blocked until operator resolves."
+        )
+        return RECOVERY_FAILED, None, None
+    if not _os.path.exists(intent_path):
+        return RECOVERY_ABSENT, None, None
+    # Read payload
+    try:
+        with open(intent_path, "r", encoding="utf-8") as f:
+            intent = _json.load(f)
+    except Exception as e:
+        logger.critical(f"Funding intent unreadable at {intent_path}: {e}")
+        try:
+            _os.replace(intent_path, intent_path + ".corrupted")
+        except Exception:
+            pass
+        return RECOVERY_FAILED, None, None
+
+    recovered_state = intent.get("strategy_state")
+    recovered_wallet = intent.get("paper_wallet")
+    if not recovered_state or not recovered_wallet:
+        logger.critical(f"Funding intent missing snapshots at {intent_path}")
+        try:
+            _os.replace(intent_path, intent_path + ".corrupted")
+        except Exception:
+            pass
+        return RECOVERY_FAILED, None, None
+
+    # Restore both files
+    try:
+        logger.warning("Funding recovery: restoring from WAL intent")
+        atomic_save_json(strategy_path, recovered_state)
+        atomic_save_json(wallet_path, recovered_wallet)
+    except Exception as e:
+        logger.critical(f"Funding recovery write failed: {e}. Intent kept for retry.")
+        return RECOVERY_FAILED, None, None
+
+    _os.remove(intent_path)
+    return RECOVERY_RECOVERED, recovered_state, recovered_wallet
+
+
+def commit_funding_halt_with_intents(
+    halt: FundingHalt, event_id: str, shortfall: Decimal,
+    long_qty: Decimal = Decimal("0"), short_qty: Decimal = Decimal("0"),
+) -> FundingHalt:
+    """Commit halt AND auto-register close intents for both legs.
+
+    This ensures recovery always knows which positions to close, even if
+    a crash occurs before explicit begin_close_leg calls.
+    """
+    halt.active = True
+    halt.reason = "funding_shortfall"
+    halt.event_id = event_id
+    halt.halted_at = time.time()
+    halt.shortfall_amount = shortfall
+    halt.increases_blocked = True
+    halt.close_state = {}
+    if long_qty > 0:
+        begin_close_leg(halt, "BASE_LONG",
+                         f"close_{event_id}_LONG", long_qty)
+    if short_qty > 0:
+        begin_close_leg(halt, "BASE_SHORT",
+                         f"close_{event_id}_SHORT", short_qty)
+    return halt
+
+
+# ── close recovery ──────────────────────────────────────────────────────────
+
+def get_pending_close_legs(halt: FundingHalt) -> List[str]:
+    """Return legs that need closing (pending/error/skipped/partial).
+
+    Excludes filled (done) and quarantined (terminal — operator must resolve)."""
+    return [leg for leg, cs in halt.close_state.items()
+            if cs.status not in ("filled", "quarantined")]
+
+
+# ── compute funding from rates ───────────────────────────────────────────────
 
 def compute_funding_from_rates(
     qty_long: Decimal, qty_short: Decimal,
     mark_price: Decimal, funding_rate: Decimal,
 ) -> Decimal:
-    """Compute net signed funding from positions and rate.
-
-    long_funding  = -q_long  * p * r
-    short_funding = +q_short * p * r
-    funding       = long_funding + short_funding
-    """
     long_funding = -qty_long * mark_price * funding_rate
     short_funding = qty_short * mark_price * funding_rate
     return long_funding + short_funding

@@ -621,6 +621,65 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         for i in range(len(df)):
             mid_price = Decimal(str(close_prices[i]))
 
+            # --- 1.0 B1: Funding (EVERY bar, even during cooldown/halt) ---
+            # Funding accounting continues regardless of trading state.
+            if state.funding_model == "legacy_constant":
+                long_notional = state.pos_long * mid_price
+                short_notional = state.pos_short * mid_price
+                total_drag = (long_notional + short_notional) * funding_drag_step
+                state.pay_funding_legacy(total_drag)
+            elif state.funding_model == "signed_actual" and funding_journal is not None:
+                if time_window is None:
+                    logger.error("funding_model=signed_actual requires a real time axis (feather with 'time' column)")
+                    return None
+                bar_ts = float(time_window[i]) / 1000.0
+                for event in funding_journal.get_received():
+                    if event.event_time > bar_ts:
+                        continue
+                    apply_funding_backtest(event.signed_amount, state)
+                    funding_journal.mark_applied(event.event_id)
+                    state.log_event(i, "funding", float(state.get_tpv_fast(float(mid_price))),
+                                    f"{event.event_id} amount={float(event.signed_amount):.4f}")
+                    # Check shortfall after EACH event (subsequent credit must not hide it).
+                    if state.get_funding_shortfall() > 0 and (state.pos_long > 0 or state.pos_short > 0):
+                        state.funding_halt_active = True
+                        state.funding_halt_at = float(i)
+                        state.funding_shortfall = state.get_funding_shortfall()
+                        logger.warning(f"Bar {i}: Funding shortfall after {event.event_id}. Halt; closing.")
+                        if state.pos_long > 0:
+                            state.close_position_for_funding_shortfall(
+                                "BASE_LONG", state.pos_long, mid_price, sim, i)
+                        if state.pos_short > 0:
+                            state.close_position_for_funding_shortfall(
+                                "BASE_SHORT", state.pos_short, mid_price, sim, i)
+                        state.check_accounting(mid_price, i, "funding_shortfall_close")
+                        state.dormant_capital = Decimal(str(
+                            state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
+                        state.cooldown_until_bar = i + cooldown_bars_duration
+                        state.log_event(i, "funding_shortfall", float(state.dormant_capital),
+                                        f"event={event.event_id}")
+                        break  # stop processing events this bar
+                # Legacy shortfall check (CASH-first may leave V < 0)
+                if state.get_funding_shortfall() > 0 and (state.pos_long > 0 or state.pos_short > 0):
+                    state.funding_halt_active = True
+                    state.funding_halt_at = float(i)
+                    state.funding_shortfall = state.get_funding_shortfall()
+                    if state.pos_long > 0:
+                        state.close_position_for_funding_shortfall(
+                            "BASE_LONG", state.pos_long, mid_price, sim, i)
+                    if state.pos_short > 0:
+                        state.close_position_for_funding_shortfall(
+                            "BASE_SHORT", state.pos_short, mid_price, sim, i)
+                    state.check_accounting(mid_price, i, "funding_shortfall_close")
+                    state.dormant_capital = Decimal(str(
+                        state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
+                    state.cooldown_until_bar = i + cooldown_bars_duration
+                    state.log_event(i, "funding_shortfall", float(state.dormant_capital),
+                                    f"shortfall={float(state.get_funding_shortfall()):.4f}")
+                    logger.warning(f"Bar {i}: Funding halt — positions closed.")
+                    state.history.append(float(state.dormant_capital))
+                    continue
+
             # --- 1.5 Cooldown & Rebase Logic ---
             if i < state.cooldown_until_bar:
                 state.history.append(float(state.dormant_capital))
@@ -1022,50 +1081,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             Decimal('0'))),
                     })
 
-            # B1: funding.  legacy_constant: old CASH-first waterfall (baseline repr).
-            # signed_actual: V-only from scenario journal (apply_funding_backtest).
-            if state.funding_model == "legacy_constant":
-                long_notional = state.pos_long * mid_price
-                short_notional = state.pos_short * mid_price
-                total_drag = (long_notional + short_notional) * funding_drag_step
-                state.pay_funding_legacy(total_drag)  # CASH-first, pre-B1 behavior
-            elif state.funding_model == "signed_actual" and funding_journal is not None:
-                # Apply received events from scenario journal in insertion order.
-                for event in funding_journal.get_received():
-                    if event.event_time > float(i):  # future event, skip
-                        continue
-                    apply_funding_backtest(event.signed_amount, state)
-                    funding_journal.mark_applied(event.event_id)
-                    state.log_event(i, "funding", float(state.get_tpv_fast(float(mid_price))),
-                                    f"{event.event_id} amount={float(event.signed_amount):.4f}")
-
-            # --- B1: Funding shortfall close/halt ---
-            shortfall = state.get_funding_shortfall()
-            if shortfall > 0 and (state.pos_long > 0 or state.pos_short > 0):
-                state.funding_halt_active = True
-                state.funding_halt_at = float(i)  # bar index as timestamp proxy
-                state.funding_shortfall = shortfall
-                logger.warning(
-                    f"Bar {i}: Funding shortfall {float(shortfall):.6f}. "
-                    f"Halt active; closing positions."
-                )
-                if state.pos_long > 0:
-                    state.close_position_for_funding_shortfall(
-                        "BASE_LONG", state.pos_long, mid_price, sim, i)
-                if state.pos_short > 0:
-                    state.close_position_for_funding_shortfall(
-                        "BASE_SHORT", state.pos_short, mid_price, sim, i)
-                state.check_accounting(mid_price, i, "funding_shortfall_close")
-                state.dormant_capital = Decimal(str(
-                    state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
-                state.cooldown_until_bar = i + cooldown_bars_duration
-                state.log_event(i, "funding_shortfall", float(state.dormant_capital),
-                                f"shortfall={float(shortfall):.4f}")
-                logger.warning(
-                    f"Bar {i}: Funding halt active — positions closed, trading blocked."
-                )
-                state.history.append(float(state.dormant_capital))
-                continue
+            # Funding is applied BEFORE rebalance each bar so that a mid-bar
+            # funding shortfall is detected before any position increase.
+            # The shortfall block below handles the close/halt path.
+            # (Moved to the top of the bar — see funding block after cooldown/halt guard.)
 
             # --- 2.5 Unified Predictive Cross-Margin Liquidation Guard ---
             # Расчет метрик Кросс-Маржи согласно спецификации Binance Futures

@@ -18,6 +18,7 @@ def reconstruct_attribution(
     initial_capital: float,
     final_equity: Optional[float] = None,
     funding_rate_per_bar: float = 0.0,
+    funding_model: str = "legacy_constant",
     events: Optional[Iterable[Dict[str, Any]]] = None,
     siphoning_log: Optional[Iterable[Dict[str, Any]]] = None,
     sample_indices: Optional[Set[int]] = None,
@@ -47,6 +48,22 @@ def reconstruct_attribution(
     for entry in siphoning_log or []:
         bar = int(entry.get("bar", -1))
         siphon_bars[bar] = siphon_bars.get(bar, 0.0) + float(entry.get("amount", 0.0))
+
+    # B1: use actual funding events from fills (trigger="funding_shortfall").
+    # Also consume "funding" log-events for per-bar breakdown.
+    funding_by_bar: Dict[int, float] = {}
+    for event in events or []:
+        if event.get("kind") == "funding":
+            bar = int(event.get("bar", -1))
+            detail = event.get("detail", "")
+            if "amount=" in detail:
+                try:
+                    amt = float(detail.split("amount=")[1].split()[0])
+                    # signed_amount: negative = debit (paid).  funding_paid = -signed_amount.
+                    # Attribution tracks cost: cost = funding_paid = -signed_amount.
+                    funding_by_bar[bar] = funding_by_bar.get(bar, 0.0) + (-amt)
+                except (ValueError, IndexError):
+                    pass
 
     pos_long = pos_short = 0.0
     entry_mid_long = entry_mid_short = 0.0
@@ -136,7 +153,10 @@ def reconstruct_attribution(
 
         reserve += siphon_bars.get(i, 0.0)
 
-        if not in_cooldown and funding_rate_per_bar > 0 and (pos_long > 0 or pos_short > 0):
+        if funding_model == "signed_actual":
+            if i in funding_by_bar:
+                funding += funding_by_bar[i]
+        elif not in_cooldown and funding_rate_per_bar > 0 and (pos_long > 0 or pos_short > 0):
             funding += (pos_long + pos_short) * closes[i] * funding_rate_per_bar
 
         if i in cooldown_starts:

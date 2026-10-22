@@ -484,7 +484,8 @@ def build_payload(prefix: str) -> Dict[str, Any]:
     attr = reconstruct_attribution(
         closes.tolist(), equity.tolist(), fills_raw,
         initial_capital=initial, final_equity=final,
-        funding_rate_per_bar=rate, events=events_raw,
+        funding_rate_per_bar=rate, funding_model=result.get("funding_model", "legacy_constant"),
+        events=events_raw,
         siphoning_log=siphoning_raw, sample_indices=attr_sample,
     )
     attr_totals = attr["totals"]

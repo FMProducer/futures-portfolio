@@ -359,7 +359,12 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "last_rebalance_price": 0.0,
         "cash_invariant_violation": None,
         "initial_build_pending": None,
-        "started_at": time.time()
+        "started_at": time.time(),
+        # B1 funding state
+        "funding_model": "legacy_constant",
+        "funding_journal": [],
+        "funding_halt": {},
+        "funding_paid": 0.0,
     })
 
     # Persisted startup block — checked immediately after strategy state load,
@@ -386,6 +391,31 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "short_entry_price": 0.0
     }
     paper_state = await load_json(paper_state_file_path, default_paper_state)
+
+    # ── B1 Phase 0: WAL file recovery BEFORE any migration/reset ───────
+    from core.funding import recover_funding_boundary, \
+        RECOVERY_ABSENT, RECOVERY_RECOVERED, RECOVERY_FAILED
+    _recovery_status, _rs, _rw = recover_funding_boundary(
+        state_file_path, paper_state_file_path)
+    if _recovery_status == RECOVERY_RECOVERED:
+        state.update(_rs)
+        paper_state.update(_rw)
+        logger.critical("Funding recovery: state restored from WAL intent.")
+    elif _recovery_status == RECOVERY_FAILED:
+        logger.critical(
+            f"🚨 Funding intent FAILED at {state_file_path}. "
+            f"Startup blocked — operator must resolve."
+        )
+        await self_kill_pm2(base_ticker, paper_mode)
+        while True:
+            await asyncio.sleep(86400)
+
+    # Detect active funding halt BEFORE startup validation so that
+    # Phase 2 recovery can complete reductions uninterrupted.
+    _funding_halt_active = (
+        isinstance(state.get("funding_halt"), dict)
+        and state.get("funding_halt", {}).get("active", False)
+    )
 
     # Ensure balance exists (Shadow Balance Migration Guard)
     if "balance" not in paper_state:
@@ -456,12 +486,19 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         _p_l = abs(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))
         _p_s = abs(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))
         if _p_l < 1e-10 and _p_s < 1e-10:
-            _clean_balance = float(paper_state.get('balance', target_initial_cap))
-            if abs(_clean_balance - target_initial_cap) > 0.1 or float(state.get('virt_qty', 0)) > 0:
-                logger.warning(f"🧹 [PAPER] Phantom Buffer detected for {base_ticker}. Enforcing Clean Slate!")
-                _apply_clean_slate(state, paper_state, base_ticker, target_initial_cap, logger)
-                await save_json(paper_state_file_path, paper_state)
-                await save_json(state_file_path, state)
+            if _funding_halt_active:
+                logger.info(
+                    f"Funding halt active, both legs closed — preserving "
+                    f"wallet={paper_state.get('balance', 0):.4f}, "
+                    f"V={state.get('virt_debt', 0):.4f}. Clean Slate suppressed."
+                )
+            else:
+                _clean_balance = float(paper_state.get('balance', target_initial_cap))
+                if abs(_clean_balance - target_initial_cap) > 0.1 or float(state.get('virt_qty', 0)) > 0:
+                    logger.warning(f"🧹 [PAPER] Phantom Buffer detected for {base_ticker}. Enforcing Clean Slate!")
+                    _apply_clean_slate(state, paper_state, base_ticker, target_initial_cap, logger)
+                    await save_json(paper_state_file_path, paper_state)
+                    await save_json(state_file_path, state)
         else:
             # Both legs non-zero AND both entries > 0 → legitimate hedged session.
             # Balance drift from initial_cap is normal (realized PnL, commissions).
@@ -469,17 +506,24 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             _le = float(paper_state.get("long_entry_price", 0.0))
             _se = float(paper_state.get("short_entry_price", 0.0))
             if not (_both_legs and _le > 0 and _se > 0):
-                logger.critical(
-                    f"🚨 [PAPER] Ambiguous startup state for {base_ticker}: "
-                    f"L={_p_l:.4f} S={_p_s:.4f} Le={_le:.4f} Se={_se:.4f}. "
-                    f"All accounting facts preserved; trading blocked pending operator diagnosis."
-                )
-                state["startup_blocked"] = True
-                await save_json(paper_state_file_path, paper_state)
-                await save_json(state_file_path, state)
-                await self_kill_pm2(base_ticker, paper_mode)
-                while True:
-                    await asyncio.sleep(86400)
+                if _funding_halt_active:
+                    logger.info(
+                        f"Funding halt active — trusting Phase 2 recovery; "
+                        f"bypassing normal startup validation "
+                        f"(L={_p_l:.4f} S={_p_s:.4f})."
+                    )
+                else:
+                    logger.critical(
+                        f"🚨 [PAPER] Ambiguous startup state for {base_ticker}: "
+                        f"L={_p_l:.4f} S={_p_s:.4f} Le={_le:.4f} Se={_se:.4f}. "
+                        f"All accounting facts preserved; trading blocked pending operator diagnosis."
+                    )
+                    state["startup_blocked"] = True
+                    await save_json(paper_state_file_path, paper_state)
+                    await save_json(state_file_path, state)
+                    await self_kill_pm2(base_ticker, paper_mode)
+                    while True:
+                        await asyncio.sleep(86400)
 
     virt_qty = float(state.get("virt_qty", 0.0))
     siphoning_reserve = float(state.get("siphoning_reserve", 0.0))
@@ -506,6 +550,87 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     # Инициализация экзекутора
     max_ops = config.get("max_orders_per_second", 10)
     executor = PortfolioExecutor(connector, base_ticker=base_ticker, max_orders_per_second=max_ops)
+
+    # ── B1 Phase 2: Funding-halt close recovery (executor ready) ────────
+    # Phase 1 (WAL file restore) runs before Clean Slate above.
+    _halt_dict = state.get("funding_halt")
+    if isinstance(_halt_dict, dict) and _halt_dict.get("active"):
+        from core.funding import (
+            FundingHalt, get_pending_close_legs, record_close_result,
+            save_funding_boundary, FundingJournal)
+        halt_obj = FundingHalt.from_dict(_halt_dict)
+
+        # Quarantined legs are terminal — operator must resolve before trading resumes.
+        _quarantined = [leg for leg, cs in halt_obj.close_state.items()
+                        if cs.status == "quarantined"]
+        if _quarantined:
+            logger.critical(
+                f"🚨 Quarantined close legs for {base_ticker}: {_quarantined}. "
+                f"Operator must resolve before trading can resume."
+            )
+            state["startup_blocked"] = True
+            await save_json(paper_state_file_path, paper_state)
+            await save_json(state_file_path, state)
+            await self_kill_pm2(base_ticker, paper_mode)
+            while True:
+                await asyncio.sleep(86400)
+
+        pending = get_pending_close_legs(halt_obj)
+        if pending:
+            logger.critical(f"🚨 Funding halt: {len(pending)} legs pending close.")
+            for leg in pending:
+                side = leg.split("_")[-1]
+                pos_key = f"{base_ticker}_{side}"
+                qty = abs(paper_state["positions"].get(pos_key, 0.0))
+                if qty <= 1e-10:
+                    record_close_result(halt_obj, leg, "filled",
+                                         Decimal('0'), Decimal('0'),
+                                         Decimal('0'), Decimal('0'))
+                    continue
+                price_val = paper_state.get("last_price", 0) or 0
+                close_acts = [{"type": "ORDER", "key": leg, "symbol": pos_key,
+                    "base_symbol": base_ticker, "position_side": side,
+                    "leverage": 7, "diff_usdt": -abs(qty * price_val),
+                    "is_reduction": True}]
+                cr = (await executor.execute_actions(
+                    close_acts, price_val, True, portfolio_cfg,
+                    step_sizes, paper_state))[0]
+                cr_status = cr.get("status", "ERROR")
+                if cr_status in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK") and cr.get("qty"):
+                    cq = Decimal(str(cr.get("qty", 0)))
+                    cp = Decimal(str(cr.get("trade_pnl", 0)))
+                    cc = Decimal(str(cr.get("commission", 0)))
+                    old_q = Decimal(str(paper_state["positions"].get(pos_key, 0.0)))
+                    is_reduce = ((cr.get("side") == "SELL" and side == "LONG")
+                                 or (cr.get("side") == "BUY" and side == "SHORT"))
+                    new_q = old_q - cq if is_reduce else old_q + cq
+                    entry_key = f"{side.lower()}_entry_price"
+                    if new_q <= 0:
+                        new_q = Decimal('0')
+                        paper_state[entry_key] = 0.0
+                    paper_state["positions"][pos_key] = float(new_q)
+                    paper_state["balance"] = float(
+                        (Decimal(str(paper_state["balance"])) + cp - cc)
+                        .quantize(Decimal('0.0001')))
+                    leg_status = "filled" if new_q <= 0 else "partial"
+                    record_close_result(halt_obj, leg, leg_status, cq,
+                                         Decimal(str(cr.get("price", 0))),
+                                         cc, cp, qty_remaining=new_q)
+                else:
+                    # Recovery close failure is terminal — quarantine, don't retry.
+                    record_close_result(halt_obj, leg, "quarantined",
+                                         Decimal('0'), Decimal('0'),
+                                         Decimal('0'), Decimal('0'))
+                # Per-leg durable save
+                state["funding_halt"] = halt_obj.to_dict()
+                state["funding_journal"] = state.get("funding_journal", [])
+                journal = FundingJournal.from_list(state.get("funding_journal"))
+                save_funding_boundary(state_file_path, paper_state_file_path,
+                                       state, paper_state, journal, halt_obj)
+        logger.critical(f"🚨 Funding halt for {base_ticker}. Trading blocked.")
+        await self_kill_pm2(base_ticker, paper_mode)
+        while True:
+            await asyncio.sleep(86400)
 
     # Hedge Mode, Leverage and Margin Type Guard
     if not paper_mode:
@@ -884,6 +1009,102 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     # but we NO LONGER overwrite paper_state["balance"] with it.
                     wallet_balance = float(m_info.get("total_wallet_balance", 0.0))
 
+                # --- B1: Funding BEFORE calculator (per canonical order §3) ---
+                funding_model = state.get("funding_model", "legacy_constant")
+                if funding_model == "signed_actual":
+                    from core.funding import FundingJournal, apply_funding_paper
+                    journal = FundingJournal.from_list(state.get("funding_journal"))
+                    for event in journal.get_received():
+                        if event.event_time > time.time():
+                            continue
+                        apply_funding_paper(event.signed_amount, paper_state, state)
+                        journal.mark_applied(event.event_id)
+                        state["funding_journal"] = journal.to_list()
+                        state_dirty = True
+                        paper_state_dirty = True
+                        v_now = Decimal(str(state.get("virt_debt", 0)))
+                        if v_now < 0:
+                            from core.funding import (
+                                FundingHalt, commit_funding_halt_with_intents,
+                                begin_close_leg, record_close_result,
+                                save_funding_boundary)
+                            lq = Decimal(str(abs(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))))
+                            sq = Decimal(str(abs(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))))
+                            halt_obj = commit_funding_halt_with_intents(
+                                FundingHalt(), event.event_id, -v_now, lq, sq)
+                            state["funding_halt"] = halt_obj.to_dict()
+                            state["funding_journal"] = journal.to_list()
+                            state_dirty = True
+                            logger.critical(f"🚨 Funding shortfall: V={float(v_now):.4f}. Closing.")
+                            # Commit halt BEFORE any close (durable boundary)
+                            save_funding_boundary(
+                                state_file_path, paper_state_file_path,
+                                state, paper_state, journal, halt_obj)
+                            for side in ("LONG", "SHORT"):
+                                pos_key = f"{base_ticker}_{side}"
+                                qty = abs(paper_state["positions"].get(pos_key, 0.0))
+                                if qty <= 1e-10:
+                                    continue
+                                # Execute close (intent already registered by commit_funding_halt_with_intents)
+                                close_acts = [{"type": "ORDER", "key": f"BASE_{side}",
+                                    "symbol": pos_key, "base_symbol": base_ticker,
+                                    "position_side": side, "leverage": 7,
+                                    "diff_usdt": -abs(qty * price), "is_reduction": True}]
+                                cr = (await executor.execute_actions(
+                                    close_acts, price, True, portfolio_cfg,
+                                    step_sizes, paper_state))[0]
+                                cr_status = cr.get("status", "ERROR")
+                                if cr_status in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK") and cr.get("qty"):
+                                    cq = Decimal(str(cr.get("qty", 0)))
+                                    cp = Decimal(str(cr.get("trade_pnl", 0)))
+                                    cc = Decimal(str(cr.get("commission", 0)))
+                                    old_q = Decimal(str(paper_state["positions"].get(pos_key, 0.0)))
+                                    new_q = (old_q - cq) if (cr.get("side") == "SELL" and side == "LONG") or (cr.get("side") == "BUY" and side == "SHORT") else (old_q + cq)
+                                    entry_key = f"{side.lower()}_entry_price"
+                                    if new_q <= 0:
+                                        new_q = Decimal('0')
+                                        paper_state[entry_key] = 0.0
+                                        paper_state[f"{side.lower()}_liquidation_price"] = 0.0
+                                    paper_state["positions"][pos_key] = float(new_q.quantize(Decimal('1e-8')))
+                                    paper_state["balance"] = float(
+                                        (Decimal(str(paper_state["balance"])) + cp - cc)
+                                        .quantize(Decimal('0.0001')))
+                                    paper_state_dirty = True
+                                    leg_status = "filled" if new_q <= 0 else "partial"
+                                    record_close_result(halt_obj, f"BASE_{side}", leg_status,
+                                                         cq, Decimal(str(cr.get("price", price))),
+                                                         cc, cp,
+                                                         qty_remaining=new_q)
+                                    logger.info(f"📝 Funding close: {cr.get('side')} {float(cq)} {pos_key}"
+                                                f" @ {cr.get('price', price):.8g}"
+                                                f" PnL={float(cp):+.4f} comm={float(cc):.4f}"
+                                                f" remain={float(new_q)}")
+                                else:
+                                    record_close_result(halt_obj, f"BASE_{side}",
+                                                         cr_status.lower(), Decimal('0'),
+                                                         Decimal('0'), Decimal('0'), Decimal('0'),
+                                                         qty_remaining=Decimal(str(qty)))
+                                    logger.error(f"Funding close {side}: {cr_status}")
+                                # Save after each leg fill
+                                state["funding_halt"] = halt_obj.to_dict()
+                                save_funding_boundary(
+                                    state_file_path, paper_state_file_path,
+                                    state, paper_state, journal, halt_obj)
+                            await self_kill_pm2(base_ticker, paper_mode)
+                            while True:
+                                await asyncio.sleep(86400)
+                if isinstance(state.get("funding_halt"), dict) and state["funding_halt"].get("active"):
+                    logger.critical(f"🚨 Funding halt active for {base_ticker}.")
+                    await self_kill_pm2(base_ticker, paper_mode)
+                    while True:
+                        await asyncio.sleep(86400)
+
+                # Re-fetch funding-sensitive values AFTER funding block (V/wallet may have changed).
+                virt_debt = Decimal(str(state.get("virt_debt", 0.0)))
+                real_equity = float(Decimal(str(paper_state["balance"])) - virt_debt)
+                if real_equity < 0:
+                    real_equity = 0.0
+
                 # Direct synchronous call to PortfolioCalculator to reduce latency
                 initial_build_pending = state.get("initial_build_pending")
                 ignore_limits = (
@@ -1183,7 +1404,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         f"C:{c_p:.1f}% {{{v_c:.2f}$}}"
                     )
                     logger.info(h_msg)
-                
+
                 # Логика ребалансировки
                 valid_actions = []
                 fused_actions = []
