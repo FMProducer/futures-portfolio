@@ -1138,7 +1138,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # Blocking surplus sell prevents profit-taking during normal hedge operation
                 allow_surplus_sell = True
 
-                calc_res = calc.calculate_rebalance(targets, threshold_surplus, threshold_deficit, calc.tpv, ignore_limits, allow_surplus_sell)
+                calc_res = calc.calculate_rebalance(targets, threshold_surplus, threshold_deficit, calc.tpv, ignore_limits, allow_surplus_sell,
+                                                    fuse_enabled=portfolio_cfg.get("fuse_enabled", True))
 
                 tpv_total = calc_res["total_tpv"]
                 tpv_active = calc_res["tpv"]

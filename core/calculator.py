@@ -105,7 +105,7 @@ class PortfolioCalculator:
             diff = Decimal('100.00') - total_pct
             self.share_cash_pct += diff # Adjust cash by the sub-penny difference
 
-    def calculate_rebalance(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False) -> Dict:
+    def calculate_rebalance(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True) -> Dict:
         """
         Calculate rebalance actions and return a summary of the current state.
         allow_surplus_sell: if False, surplus (profit-taking) actions are blocked.
@@ -114,7 +114,7 @@ class PortfolioCalculator:
             Used during fast unidirectional price movements (pump/dump) to prevent
             closing positions at fake profit/loss.
         """
-        dev_res = self.calculate_deviations(targets, threshold_surplus, threshold_deficit, current_equity, ignore_limits, allow_surplus_sell, force_block)
+        dev_res = self.calculate_deviations(targets, threshold_surplus, threshold_deficit, current_equity, ignore_limits, allow_surplus_sell, force_block, fuse_enabled)
         # calculate_deviations возвращает dict с actions, available_funds, tpv, share_*
         actions = dev_res["actions"]
 
@@ -140,13 +140,15 @@ class PortfolioCalculator:
             "total_pnl_pct": float(self.total_pnl_pct)
         }
 
-    def calculate_deviations(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False) -> List[Dict]:
+    def calculate_deviations(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True) -> List[Dict]:
         """
         Rebalance based on CAPITAL (Equity) deviations. 
         This allows the portfolio to harvest volatility profit.
         allow_surplus_sell: if False, surplus actions are excluded (PnL protection mode).
         force_block: if True, ALL actions are blocked (Net Move Guard).
         """
+        if not isinstance(fuse_enabled, bool):
+            raise ValueError("fuse_enabled must be a boolean")
         if force_block:
             # Net Move Guard active — block ALL actions during fast price movement
             return {
@@ -239,7 +241,7 @@ class PortfolioCalculator:
             act["priority"] = 0
             is_valid = True
 
-            if not bypass_fuse and act["key"] != "VIRTUAL":
+            if fuse_enabled and not bypass_fuse and act["key"] != "VIRTUAL":
                 is_inverse = (act["position_side"] == "SHORT")
                 if not is_inverse:
                     limit_price = last_reb * (1 + dec_threshold_surplus)

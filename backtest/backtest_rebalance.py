@@ -432,6 +432,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         FULL_FILE_LEN = len(df)  # anchor for --until index math (pre-trim)
 
         portfolio_cfg: Dict[str, Any] = config["portfolios"][0]
+        fuse_enabled = portfolio_cfg.get("fuse_enabled", True)
+        if not isinstance(fuse_enabled, bool):
+            raise ValueError("fuse_enabled must be a boolean")
         
         bars_per_day = 1440
         max_bars = int(days * bars_per_day)
@@ -757,7 +760,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 targets,
                 threshold_surplus=threshold_surplus,
                 threshold_deficit=threshold_deficit,
-                current_equity=state.get_tpv(mid_price)
+                current_equity=state.get_tpv(mid_price),
+                fuse_enabled=fuse_enabled,
             )
             actions = calc_res["actions"]
 
@@ -1377,6 +1381,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "open_positions": {"long": float(state.pos_long), "short": float(state.pos_short)},
             "ticker": base_ticker,
             "settings": {
+                "fuse_enabled": fuse_enabled,
                 "commission_pct": float(sim.commission_pct),
                 "slippage_pct": float(slippage),
                 "targets": {k: {"share": float(v.get("share", 0.0)), "leverage": float(v.get("leverage", 1))}

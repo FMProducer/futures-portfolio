@@ -62,6 +62,7 @@
         "net_move_window_sec": 72,
         "trend_lookback_bars": 30
       },
+      "fuse_enabled": true,
       "rebalance_threshold_surplus": 0.01,
       "rebalance_threshold_deficit": 0.04,
       "ticker_thresholds": {
