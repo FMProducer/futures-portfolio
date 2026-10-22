@@ -639,7 +639,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     apply_funding_backtest(event.signed_amount, state)
                     funding_journal.mark_applied(event.event_id)
                     state.log_event(i, "funding", float(state.get_tpv_fast(float(mid_price))),
-                                    f"{event.event_id} amount={float(event.signed_amount):.4f}")
+                                    f"{event.event_id} amount={float(event.signed_amount)}",
+                                    funding_amount=float(event.signed_amount))
                     # Check shortfall after EACH event (subsequent credit must not hide it).
                     if state.get_funding_shortfall() > 0 and (state.pos_long > 0 or state.pos_short > 0):
                         state.funding_halt_active = True
@@ -685,7 +686,11 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 state.history.append(float(state.dormant_capital))
                 continue
             # B1: funding halt — persistent block; no timer, no auto-clear.
+            # Funding events (credits/debits) are still processed above;
+            # reflect them in the equity curve while preserving the trading ban.
             if state.funding_halt_active:
+                state.dormant_capital = Decimal(str(
+                    state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
                 state.history.append(float(state.dormant_capital))
                 continue
 

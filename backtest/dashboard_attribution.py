@@ -55,15 +55,21 @@ def reconstruct_attribution(
     for event in events or []:
         if event.get("kind") == "funding":
             bar = int(event.get("bar", -1))
-            detail = event.get("detail", "")
-            if "amount=" in detail:
-                try:
-                    amt = float(detail.split("amount=")[1].split()[0])
-                    # signed_amount: negative = debit (paid).  funding_paid = -signed_amount.
-                    # Attribution tracks cost: cost = funding_paid = -signed_amount.
-                    funding_by_bar[bar] = funding_by_bar.get(bar, 0.0) + (-amt)
-                except (ValueError, IndexError):
-                    pass
+            # Prefer numeric funding_amount (full precision); fall back to detail text.
+            if "funding_amount" in event:
+                amt = float(event["funding_amount"])
+            else:
+                detail = event.get("detail", "")
+                if "amount=" in detail:
+                    try:
+                        amt = float(detail.split("amount=")[1].split()[0])
+                    except (ValueError, IndexError):
+                        continue
+                else:
+                    continue
+            # signed_amount: negative = debit (paid).  funding_paid = -signed_amount.
+            # Attribution tracks cost: cost = funding_paid = -signed_amount.
+            funding_by_bar[bar] = funding_by_bar.get(bar, 0.0) + (-amt)
 
     pos_long = pos_short = 0.0
     entry_mid_long = entry_mid_short = 0.0
