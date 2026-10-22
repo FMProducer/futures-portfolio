@@ -17,10 +17,12 @@ from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation, getcontext
 
 try:
     from core.calculator import PortfolioCalculator
+    from core.funding import FundingJournal, apply_funding_backtest
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from core.calculator import PortfolioCalculator
+    from core.funding import FundingJournal, apply_funding_backtest
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("Backtest")
@@ -125,6 +127,13 @@ class BacktestState:
     l_lev: Decimal = Decimal('5')
     s_lev: Decimal = Decimal('5')
 
+    # B1: funding model and halt state
+    funding_model: str = "legacy_constant"  # signed_actual | legacy_constant
+    funding_shortfall: Decimal = Decimal('0')
+    funding_halt_active: bool = False
+    funding_halt_event_id: str = ""
+    funding_halt_at: float = 0.0
+
     def margin_long(self) -> Decimal:
         return (self.pos_long * self.long_entry_price) / self.l_lev if self.pos_long > 0 else Decimal('0')
 
@@ -205,13 +214,81 @@ class BacktestState:
         self.val_cash += amount
         return amount
 
+    # B1: V-only funding (spec §4).  CASH-first legacy kept for baseline reproduction.
     def pay_funding(self, amount: Decimal) -> Decimal:
+        """Apply signed funding to V (virt_debt) only.  CASH unchanged.
+
+        Returns the signed amount applied.  If V becomes negative, the caller
+        must handle the shortfall via the funding-shortfall close/halt path.
+        """
+        amount = Decimal(str(amount))
+        self.virt_debt += amount
+        self.funding_paid -= amount  # opposite sign
+        return amount
+
+    # Legacy CASH-first funding — for baseline reproduction only (legacy_constant mode).
+    def pay_funding_legacy(self, amount: Decimal) -> Decimal:
+        """Old CASH-first waterfall.  val_cash decreases; V only absorbs remainder."""
         amount = Decimal(str(amount))
         if amount > 0 and amount > self.val_cash:
             self.funding_from_virtual += self.release_virtual(amount - self.val_cash)
         self.val_cash -= amount
         self.funding_paid += amount
         return amount
+
+    def get_funding_shortfall(self) -> Decimal:
+        """Non-negative shortfall from negative V.  0 when V >= 0."""
+        return max(Decimal('0'), -self.virt_debt)
+
+    def close_position_for_funding_shortfall(
+        self, leg: str, qty: Decimal, mid_price: Decimal,
+        sim, bar: int, trigger: str = "funding_shortfall",
+    ) -> Dict:
+        """Close a leg (possibly partial); returns fill dict.  Preserves remainder."""
+        if leg == "BASE_LONG":
+            side = "SELL"
+            entry_price = self.long_entry_price
+            lev = self.l_lev
+            current_qty = self.pos_long
+        else:
+            side = "BUY"
+            entry_price = self.short_entry_price
+            lev = self.s_lev
+            current_qty = self.pos_short
+
+        close_qty = min(abs(qty), abs(current_qty))
+        if close_qty <= 0:
+            return {"status": "skipped", "leg": leg, "qty": 0, "qty_remaining": float(abs(current_qty))}
+
+        exec_p, comm = sim.simulate_market_execution(side, close_qty, mid_price)
+        if leg == "BASE_LONG":
+            realized_pnl = close_qty * (exec_p - entry_price)
+            released_margin = close_qty * entry_price / lev
+            self.val_cash += released_margin + realized_pnl - comm
+            self.pos_long -= close_qty
+            if self.pos_long <= 0:
+                self.pos_long = Decimal('0')
+                self.long_entry_price = Decimal('0')
+            remaining = self.pos_long
+        else:
+            realized_pnl = close_qty * (entry_price - exec_p)
+            released_margin = close_qty * entry_price / lev
+            self.val_cash += released_margin + realized_pnl - comm
+            self.pos_short -= close_qty
+            if self.pos_short <= 0:
+                self.pos_short = Decimal('0')
+                self.short_entry_price = Decimal('0')
+            remaining = self.pos_short
+
+        self.log_fill(bar, side, leg, close_qty, exec_p, comm, realized_pnl,
+                      float(self.get_tpv_fast(float(mid_price))),
+                      mid_price=mid_price, leverage=lev,
+                      trigger=trigger, cycle_id=self.cycles)
+        status = "filled" if remaining <= 0 else "partial"
+        return {"status": status, "leg": leg, "qty": float(close_qty),
+                "qty_remaining": float(remaining),
+                "price": float(exec_p), "commission": float(comm),
+                "realized_pnl": float(realized_pnl)}
 
     def maintenance_margin(self, price: Decimal, mmr: Decimal) -> Decimal:
         return (abs(self.pos_long) + abs(self.pos_short)) * price * mmr
@@ -488,12 +565,29 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         l_lev = Decimal(str(targets["BASE_LONG"]["leverage"]))
         s_lev = Decimal(str(targets["BASE_SHORT"]["leverage"]))
 
+        # B1: funding model — legacy_constant (default) or signed_actual.
+        funding_model = config.get("funding_model", "legacy_constant")
+        funding_journal = None
+        if funding_model == "signed_actual":
+            scenario_path = config.get("funding_scenario")
+            if not scenario_path or not os.path.exists(scenario_path):
+                logger.error(
+                    f"funding_model=signed_actual but funding_scenario is missing "
+                    f"or not found: {scenario_path}.  Provide an explicit scenario "
+                    f"journal or use funding_model=legacy_constant."
+                )
+                return None
+            with open(scenario_path, "r", encoding="utf-8") as fj:
+                funding_journal = FundingJournal.from_list(json.load(fj))
+            logger.info(f"Loaded funding scenario: {len(funding_journal)} events from {scenario_path}")
+
         state = BacktestState(
             initial_capital=Decimal(str(initial_capital)),
             val_cash=Decimal(str(initial_capital)),
             base_ticker=base_ticker,
             l_lev=l_lev,
             s_lev=s_lev,
+            funding_model=funding_model,
             ledger_base=Decimal(str(initial_capital)),
         )
 
@@ -529,6 +623,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
             # --- 1.5 Cooldown & Rebase Logic ---
             if i < state.cooldown_until_bar:
+                state.history.append(float(state.dormant_capital))
+                continue
+            # B1: funding halt — persistent block; no timer, no auto-clear.
+            if state.funding_halt_active:
                 state.history.append(float(state.dormant_capital))
                 continue
 
@@ -924,10 +1022,50 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             Decimal('0'))),
                     })
 
-            long_notional = state.pos_long * mid_price
-            short_notional = state.pos_short * mid_price
-            total_drag = (long_notional + short_notional) * funding_drag_step
-            state.pay_funding(total_drag)
+            # B1: funding.  legacy_constant: old CASH-first waterfall (baseline repr).
+            # signed_actual: V-only from scenario journal (apply_funding_backtest).
+            if state.funding_model == "legacy_constant":
+                long_notional = state.pos_long * mid_price
+                short_notional = state.pos_short * mid_price
+                total_drag = (long_notional + short_notional) * funding_drag_step
+                state.pay_funding_legacy(total_drag)  # CASH-first, pre-B1 behavior
+            elif state.funding_model == "signed_actual" and funding_journal is not None:
+                # Apply received events from scenario journal in insertion order.
+                for event in funding_journal.get_received():
+                    if event.event_time > float(i):  # future event, skip
+                        continue
+                    apply_funding_backtest(event.signed_amount, state)
+                    funding_journal.mark_applied(event.event_id)
+                    state.log_event(i, "funding", float(state.get_tpv_fast(float(mid_price))),
+                                    f"{event.event_id} amount={float(event.signed_amount):.4f}")
+
+            # --- B1: Funding shortfall close/halt ---
+            shortfall = state.get_funding_shortfall()
+            if shortfall > 0 and (state.pos_long > 0 or state.pos_short > 0):
+                state.funding_halt_active = True
+                state.funding_halt_at = float(i)  # bar index as timestamp proxy
+                state.funding_shortfall = shortfall
+                logger.warning(
+                    f"Bar {i}: Funding shortfall {float(shortfall):.6f}. "
+                    f"Halt active; closing positions."
+                )
+                if state.pos_long > 0:
+                    state.close_position_for_funding_shortfall(
+                        "BASE_LONG", state.pos_long, mid_price, sim, i)
+                if state.pos_short > 0:
+                    state.close_position_for_funding_shortfall(
+                        "BASE_SHORT", state.pos_short, mid_price, sim, i)
+                state.check_accounting(mid_price, i, "funding_shortfall_close")
+                state.dormant_capital = Decimal(str(
+                    state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
+                state.cooldown_until_bar = i + cooldown_bars_duration
+                state.log_event(i, "funding_shortfall", float(state.dormant_capital),
+                                f"shortfall={float(shortfall):.4f}")
+                logger.warning(
+                    f"Bar {i}: Funding halt active — positions closed, trading blocked."
+                )
+                state.history.append(float(state.dormant_capital))
+                continue
 
             # --- 2.5 Unified Predictive Cross-Margin Liquidation Guard ---
             # Расчет метрик Кросс-Маржи согласно спецификации Binance Futures
@@ -1203,8 +1341,11 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "final_unrealized_pnl": float(final_unrealized),
             "realized_pnl_total": float(state.realized_total),
             "commission_paid": float(state.commission_paid),
+            "funding_model": state.funding_model,
             "funding_paid": float(state.funding_paid),
             "funding_from_virtual": float(state.funding_from_virtual),
+            "funding_events": [f for f in state.fills if f.get("trigger") == "funding_shortfall"],
+            "funding_halt_active": state.funding_halt_active,
             "slippage_paid": float(state.slippage_paid),
             "liquidation_loss_total": float(state.liquidation_loss_total),
             "open_positions": {"long": float(state.pos_long), "short": float(state.pos_short)},

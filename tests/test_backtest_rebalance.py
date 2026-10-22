@@ -51,39 +51,39 @@ def test_backtest_state():
 
 
 def test_funding_waterfall_preserves_tpv_on_virtual_transfer():
+    """B1 V-only: funding debits V, CASH unchanged."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('300'), base_ticker="BTCUSDT")
     before = state.get_tpv(Decimal('100'))
-    state.pay_funding(Decimal('1.00'))
-    assert state.val_cash == Decimal('0')
-    assert state.virt_debt == Decimal('299.20')
-    assert state.funding_from_virtual == Decimal('0.80')
-    assert state.funding_paid == Decimal('1.00')
+    state.pay_funding(Decimal('-1.00'))  # signed: negative = debit
+    assert state.val_cash == Decimal('0.20')  # CASH unchanged
+    assert state.virt_debt == Decimal('299.00')
+    assert state.funding_paid == Decimal('1.00')  # opposite sign
     assert state.get_tpv(Decimal('100')) == before - Decimal('1.00')
 
 
 def test_funding_waterfall_exhausts_virtual_before_negative_cash():
+    """B1 V-only: V goes negative on excess debit; CASH untouched."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('0.50'), base_ticker="BTCUSDT")
     before = state.get_tpv(Decimal('100'))
-    state.pay_funding(Decimal('1.00'))
-    assert state.virt_debt == Decimal('0')
-    assert state.val_cash == Decimal('-0.30')
-    assert state.funding_from_virtual == Decimal('0.50')
+    state.pay_funding(Decimal('-1.00'))  # debit 1.0 > V 0.5 → V = -0.50
+    assert state.virt_debt == Decimal('-0.50')  # negative V (shortfall)
+    assert state.val_cash == Decimal('0.20')  # CASH unchanged
     assert state.funding_paid == Decimal('1.00')
-    assert state.account_free_margin == Decimal('0')
+    assert state.get_funding_shortfall() == Decimal('0.50')
     assert state.get_tpv(Decimal('100')) == before - Decimal('1.00')
 
 
 def test_negative_funding_credits_cash_without_virtual_transfer():
+    """B1 V-only: funding credit increases V, CASH unchanged."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('300'), base_ticker="BTCUSDT")
     before = state.get_tpv(Decimal('100'))
-    state.pay_funding(Decimal('-1.00'))
-    assert state.val_cash == Decimal('1.20')
-    assert state.virt_debt == Decimal('300')
-    assert state.funding_from_virtual == Decimal('0')
-    assert state.funding_paid == Decimal('-1.00')
+    state.pay_funding(Decimal('1.00'))  # signed: positive = credit
+    assert state.val_cash == Decimal('0.20')  # CASH unchanged
+    assert state.virt_debt == Decimal('301.00')  # V increased
+    assert state.funding_paid == Decimal('-1.00')  # opposite sign
     assert state.get_tpv(Decimal('100')) == before + Decimal('1.00')
 
 
@@ -93,9 +93,9 @@ def test_cross_margin_guard_uses_tpv_and_ignores_legacy_external_margin():
                           l_lev=Decimal('5'), s_lev=Decimal('5'))
     state.pos_long = Decimal('10')
     state.long_entry_price = Decimal('100')
-    state.pay_funding(Decimal('1.00'))
-    assert state.val_cash == Decimal('-0.30')
-    assert state.virt_debt == Decimal('0')
+    state.pay_funding(Decimal('-1.00'))  # V goes -0.50, CASH 0.20 unchanged
+    assert state.val_cash == Decimal('0.20')  # CASH unchanged
+    assert state.virt_debt == Decimal('-0.50')  # negative V
     assert state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004')) > Decimal('8')
     assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004')) <= Decimal('8')
 
