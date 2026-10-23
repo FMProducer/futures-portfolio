@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+import time
 from typing import Dict, List, Callable, Any
 
 from binance.client import Client
@@ -20,6 +21,10 @@ class BinanceConnectorMock:
     async def set_margin_type(self, *args): pass
     async def get_mark_prices(self, tickers): return {t: 60000.0 for t in tickers}
     async def get_positions(self): return {}
+    async def get_order_book(self, symbol, limit=20):
+        return {"bids": [["60000", "1"]], "asks": [["60001", "1"]], "_fetched_at": time.time()}
+    async def get_commission_rates(self, symbol):
+        return {"makerCommissionRate": "0.0002", "takerCommissionRate": "0.0004"}
     async def get_margin_ratio(self): return {"margin_ratio": 10.0}
     async def verify_connection(self): pass
 
@@ -280,10 +285,21 @@ class BinanceConnector:
     @retry_on_network_error(retries=3, delay=2.0)
     async def get_order_book(self, symbol: str, limit: int = 20) -> Dict:
         """Получение стакана ордеров (глубина 5-1000 уровней)."""
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             self.futures_client.futures_order_book,
             symbol=symbol,
             limit=limit
+        )
+        # snapshot age is checkable only client-side: stamp every fetch
+        result["_fetched_at"] = time.time()
+        return result
+
+    @retry_on_network_error(retries=3, delay=2.0)
+    async def get_commission_rates(self, symbol: str) -> Dict:
+        """Фактические maker/taker-ставки аккаунта по символу (GET /fapi/v1/commissionRate)."""
+        return await asyncio.to_thread(
+            self.futures_client.futures_commission_rate,
+            symbol=symbol
         )
 
     @retry_on_network_error(retries=3, delay=2.0)

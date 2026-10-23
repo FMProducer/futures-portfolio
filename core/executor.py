@@ -8,6 +8,8 @@ from decimal import Decimal, ROUND_HALF_EVEN, getcontext
 if TYPE_CHECKING:
     from core.connector import BinanceConnector
 
+from core.calculator import book_vwap
+
 logger = logging.getLogger(__name__)
 
 # Set decimal precision and rounding mode globally for financial calculations
@@ -156,7 +158,8 @@ class PortfolioExecutor:
                                            offset_pct: Any = Decimal('0.2'),
                                            timeout_sec: int = 30,
                                            min_notional: Any = Decimal('6.0'),
-                                           price: Any = Decimal('0')) -> Dict:
+                                           price: Any = Decimal('0'),
+                                           fuse_gate: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Limit + Fallback с проверкой минимальной стоимости с использованием Decimal.
         """
@@ -240,7 +243,9 @@ class PortfolioExecutor:
                         "avg_price": avg_fill_price,
                         "realized_pnl": real_pnl,
                         "commission": real_commission,
-                        "order_type": "LIMIT_MAKER"
+                        "order_type": "LIMIT_MAKER",
+                        # orderId: stable execution identity for the fill-receipt journal
+                        "result": order
                     }
 
             # 5. Timeout — отменяем и добиваем market
@@ -249,6 +254,30 @@ class PortfolioExecutor:
 
             # Добиваем остаток market-ордером
             remaining_qty = qty - filled_qty
+            if remaining_qty > 0 and fuse_gate and reduce_only:
+                # Mandatory live re-confirmation before crossing the spread: a reduction reaches
+                # the market fallback only when closing is confirmed profitable at taker prices;
+                # missing rate/book/depth => unconfirmed => remainder skipped, filled limit part kept
+                entry = Decimal(str(fuse_gate.get("entry_price", 0)))
+                raw_fee = fuse_gate.get("taker_fee")
+                taker_fee = Decimal(str(raw_fee)) if raw_fee is not None else None
+                px = None
+                try:
+                    fresh = await self.connector.get_order_book(symbol, limit=5)
+                    book_side = "bids" if side == "SELL" else "asks"
+                    px = book_vwap([(Decimal(str(p)), Decimal(str(q))) for p, q in fresh.get(book_side, [])],
+                                   remaining_qty)
+                except Exception:
+                    px = None
+                # shortcut: book re-fetched inside this call, so snapshot age is structurally ~0
+                confirmed = entry > 0 and taker_fee is not None and Decimal('0') <= taker_fee < 1 and px is not None
+                if side == "SELL":
+                    profitable = confirmed and px * (Decimal('1') - taker_fee) > entry
+                else:
+                    profitable = confirmed and px * (Decimal('1') + taker_fee) < entry
+                if not profitable:
+                    logger.warning(f"FUSE pre-fallback gate: {side} {symbol} close unconfirmed or unprofitable; market remainder skipped")
+                    remaining_qty = Decimal('0')
             market_pnl = Decimal('0.0')
             market_comm = Decimal('0.0')
             total_executed = filled_qty
@@ -279,7 +308,9 @@ class PortfolioExecutor:
                 "status": "SUCCESS_FALLBACK",
                 "executed_qty": total_executed,
                 "realized_pnl": limit_pnl + market_pnl,
-                "commission": limit_comm + market_comm
+                "commission": limit_comm + market_comm,
+                # orderId: stable execution identity for the fill-receipt journal
+                "result": order
             }
 
         except Exception as e:
@@ -446,7 +477,8 @@ class PortfolioExecutor:
                     res = await self.execute_limit_with_fallback(
                         symbol=base_symbol, qty=order_qty, side=side, step_size=step_size,
                         reduce_only=reduce_only, position_side=pos_side, offset_pct=limit_offset,
-                        timeout_sec=limit_timeout, min_notional=min_notional, price=qty_price
+                        timeout_sec=limit_timeout, min_notional=min_notional, price=qty_price,
+                        fuse_gate=portfolio_cfg.get("fuse_gate", {}).get(pos_side)
                     )
                 else:
                     # Передаем Decimal напрямую без кастинга во float!

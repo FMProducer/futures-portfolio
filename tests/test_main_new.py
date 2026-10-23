@@ -4,6 +4,7 @@ class ZombieExit(BaseException):
 import pytest
 import json
 import os
+import time
 import asyncio
 import copy
 import logging
@@ -51,7 +52,10 @@ def mock_connector():
     connector.get_positions = AsyncMock(return_value={"BTCUSDT_LONG": {"qty": 1.0, "entry_price": 60000.0}})
     connector.get_margin_ratio = AsyncMock(return_value={"margin_ratio": 10.0, "total_wallet_balance": 10000.0})
     connector.get_bnb_balance = AsyncMock(return_value=1.0)
-    connector.get_order_book = AsyncMock(return_value={"bids": [["60000", "1"]], "asks": [["60001", "1"]]})
+    def _stamped_book(*args, **kwargs):
+        return {"bids": [["60000", "1"]], "asks": [["60001", "1"]], "_fetched_at": time.time()}
+    connector.get_order_book = AsyncMock(side_effect=_stamped_book)
+    connector.get_commission_rates = AsyncMock(return_value={"makerCommissionRate": "0.0002", "takerCommissionRate": "0.0004"})
     connector.set_leverage = AsyncMock()
     connector.set_margin_type = AsyncMock()
     return connector
@@ -81,6 +85,30 @@ def make_bounded_sleep(max_loops=10):
             raise Exception("StopLoop")
         return None
     return bounded_sleep
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", ["ok", "no_rates", "no_book", "stale_book"])
+async def test_live_fuse_fill_paths(case):
+    from decimal import Decimal
+    from futures_portfolio.core.main import _live_fuse_fill
+    fresh = {"bids": [["100", "1"]], "asks": [["101", "1"]], "_fetched_at": time.time()}
+    connector = MagicMock()
+    connector.get_commission_rates = AsyncMock(return_value={"makerCommissionRate": "0.0002", "takerCommissionRate": "0.0004"})
+    connector.get_order_book = AsyncMock(return_value=fresh)
+    if case == "no_rates":
+        connector.get_commission_rates = AsyncMock(side_effect=Exception("down"))
+    elif case == "no_book":
+        connector.get_order_book = AsyncMock(side_effect=Exception("down"))
+    elif case == "stale_book":
+        stale = dict(fresh)
+        stale["_fetched_at"] = time.time() - 60
+        connector.get_order_book = AsyncMock(return_value=stale)
+    fill = await _live_fuse_fill(connector, "BTCUSDT", MagicMock())
+    assert fill["taker"] == (None if case == "no_rates" else Decimal("0.0004"))
+    assert bool(fill["bids"]) is (case == "ok")
+    if case == "ok":
+        assert fill["bids"] == [(Decimal("100"), Decimal("1"))]
+
 
 @pytest.mark.asyncio
 async def test_rebalance_loop_siphoning(mock_config, mock_connector, mock_notifier):

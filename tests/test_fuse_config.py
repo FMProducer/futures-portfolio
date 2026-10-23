@@ -2,9 +2,52 @@ import json
 
 import pandas as pd
 import pytest
+from decimal import Decimal
 
-from core.calculator import PortfolioCalculator
+from core.calculator import PortfolioCalculator, book_vwap
 from backtest.backtest_rebalance import run_backtest
+
+
+def test_book_vwap():
+    assert book_vwap([(Decimal("10"), Decimal("1")), (Decimal("9"), Decimal("1"))], Decimal("2")) == Decimal("9.5")
+    assert book_vwap([(Decimal("10"), Decimal("1"))], Decimal("2")) is None
+    assert book_vwap([], Decimal("1")) is None
+    assert book_vwap([(Decimal("10"), Decimal("5"))], Decimal("0")) is None
+
+
+@pytest.mark.parametrize("fill,allowed", [
+    ({"bids": [(Decimal("100.2"), Decimal("8"))], "taker": None}, False),
+    ({"bids": [(Decimal("99.9"), Decimal("8"))], "taker": Decimal(".0004")}, False),
+    ({"bids": [(Decimal("100.2"), Decimal("8"))], "taker": Decimal(".0004")}, True),
+    ({"bids": [(Decimal("100.2"), Decimal("1"))], "taker": Decimal(".0004")}, False),
+])
+def test_fuse_live_fill_gate_blocks_unconfirmed_or_unprofitable(fill, allowed):
+    targets = {
+        "BASE_LONG": {"share": .35, "leverage": 1},
+        "BASE_SHORT": {"share": .35, "leverage": 1},
+        "VIRTUAL": {"share": .30, "leverage": 1},
+    }
+    calc = PortfolioCalculator(
+        positions={"BTCUSDT_LONG": 8}, spot_price=102,
+        real_equity=800, virt_qty=0, virt_debt=200,
+        long_entry_price=100, short_entry_price=100, targets=targets,
+        last_rebalance_price=90,
+        fuse_fill={**fill, "asks": []},
+    )
+    actions = calc.calculate_rebalance(targets, .02, .04, calc.tpv)["actions"]
+    assert any(a["key"] == "BASE_LONG" and a["is_reduction"] for a in actions) is allowed
+
+
+def test_fuse_fill_validation():
+    targets = {"BASE_LONG": {"share": .35, "leverage": 1},
+               "BASE_SHORT": {"share": .35, "leverage": 1},
+               "VIRTUAL": {"share": .30, "leverage": 1}}
+    for bad in ({"bids": [(Decimal("-1"), Decimal("1"))]},
+                {"bids": [], "taker": Decimal("1.0")},
+                {"asks": [(Decimal("1"), Decimal("-5"))]}):
+        with pytest.raises(ValueError):
+            PortfolioCalculator(positions={}, spot_price=100, real_equity=100, virt_qty=0,
+                                targets=targets, fuse_fill=bad)
 
 
 @pytest.mark.parametrize("leg", ["LONG", "SHORT"])

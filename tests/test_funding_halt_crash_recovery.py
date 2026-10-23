@@ -398,6 +398,7 @@ async def test_crash_before_executor():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Not implemented: crash-after-fill recovery")
 async def test_crash_after_full_fill():
     """Crash after full fill returned, before durable commit."""
     # TODO: Implement
@@ -405,6 +406,7 @@ async def test_crash_after_full_fill():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Not implemented: crash-after-fill recovery")
 async def test_crash_after_partial_fill():
     """Crash after partial fill returned, before durable commit."""
     # TODO: Implement

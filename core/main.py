@@ -91,6 +91,36 @@ def _paper_guard_metrics(paper_state: dict, base_ticker: str, price: float,
     return collateral, maintenance, distance
 
 
+# A FUSE verdict must not rest on a book snapshot older than this
+FUSE_BOOK_MAX_AGE_SEC = 5.0
+
+
+async def _live_fuse_fill(connector, base_ticker: str, logger: logging.Logger):
+    """Live FUSE verdict inputs: account taker rate plus a fresh stamped order book.
+    Any unverified input => unconfirmed levels, so dependent reductions are blocked."""
+    unconfirmed = {"bids": [], "asks": [], "taker": None}
+    try:
+        rates = await connector.get_commission_rates(base_ticker)
+        taker = Decimal(str(rates["takerCommissionRate"]))
+        if not Decimal('0') <= taker < 1:
+            raise ValueError(f"taker rate {taker} out of [0, 1)")
+    except Exception as e:
+        logger.warning(f"FUSE commission rates unavailable for {base_ticker}: {e}. Live reductions unconfirmed.")
+        return dict(unconfirmed)
+    try:
+        book = await connector.get_order_book(base_ticker, limit=20)
+        stamp = book.get("_fetched_at")
+        if stamp is None or time.time() - stamp > FUSE_BOOK_MAX_AGE_SEC:
+            raise ValueError("order book snapshot is unstamped or stale")
+    except Exception as e:
+        logger.warning(f"FUSE order book unavailable for {base_ticker}: {e}. Live reductions unconfirmed.")
+        return {**unconfirmed, "taker": taker}
+
+    def _levels(key):
+        return [(Decimal(str(p)), Decimal(str(q))) for p, q in book.get(key, [])]
+    return {"bids": _levels("bids"), "asks": _levels("asks"), "taker": taker}
+
+
 def _apply_clean_slate(state: dict, paper_state: dict, base_ticker: str, target_cap: float, logger: logging.Logger) -> None:
     """Enforces clean slate: resets phantom balances and state to target_initial_cap."""
     paper_state['balance'] = target_cap
@@ -1166,6 +1196,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 exchange_min = min_notionals.get(base_ticker, config_min)
                 active_min_notional = max(config_min, exchange_min * 1.02)  # 2% buffer for dynamic Binance minimums
 
+                fuse_fill = None
+                if not paper_mode:
+                    fuse_fill = await _live_fuse_fill(connector, base_ticker, logger)
+
                 calc = PortfolioCalculator(
                     positions=positions,
                     spot_price=price,
@@ -1180,8 +1214,18 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     short_entry_price=s_entry,
                     last_rebalance_price=state.get("last_rebalance_price", 0.0),
                     min_notional=active_min_notional,
-                    commission_pct=float(PAPER_COMMISSION_RATE) if paper_mode else 0.0,
+                    # live FUSE gate must price real closing costs, not zero
+                    commission_pct=float(PAPER_COMMISSION_RATE),
+                    fuse_fill=fuse_fill,
                 )
+                if not paper_mode:
+                    # mandatory live re-gate for the limit path: a missing rate stays None so the
+                    # executor may not fall back to market without a confirmed closing
+                    _gate_fee = float(fuse_fill["taker"]) if fuse_fill.get("taker") is not None else None
+                    portfolio_cfg["fuse_gate"] = {
+                        "LONG": {"entry_price": l_entry, "taker_fee": _gate_fee},
+                        "SHORT": {"entry_price": s_entry, "taker_fee": _gate_fee},
+                    }
                 # PnL Guard removed — in 50/50 hedge, one leg is always negative when price moves
                 # Blocking surplus sell prevents profit-taking during normal hedge operation
                 allow_surplus_sell = True

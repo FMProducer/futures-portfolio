@@ -78,6 +78,7 @@ async def test_execute_limit_with_fallback_success(mock_connector, executor):
     result = await executor.execute_limit_with_fallback("BTCUSDT", Decimal("0.1"), "BUY", offset_pct=Decimal("0.0"))
     assert result["status"] == "SUCCESS_LIMIT"
     assert result["executed_qty"] == Decimal("0.1")
+    assert result["result"]["orderId"] == 123
 
 @pytest.mark.asyncio
 async def test_execute_limit_with_fallback_too_small(mock_connector, executor):
@@ -110,6 +111,110 @@ async def test_execute_limit_with_fallback_timeout(mock_connector, executor):
     with patch("asyncio.sleep", return_value=None):
         result = await executor.execute_limit_with_fallback("BTCUSDT", Decimal("0.1"), "BUY", timeout_sec=2)
     assert result["status"] == "SUCCESS_FALLBACK"
+    assert result["result"]["orderId"] == 123
+
+@pytest.mark.asyncio
+async def test_limit_fallback_fuse_gate_blocks_unprofitable(mock_connector, executor):
+    mock_connector.get_order_book.return_value = {
+        "bids": [["99.9", "1"]],
+        "asks": [["100.1", "1"]]
+    }
+    mock_connector.place_limit_maker_order.return_value = {"orderId": 123}
+    mock_connector.get_order_status.return_value = {"status": "NEW", "executedQty": "0"}
+    with patch("asyncio.sleep", return_value=None):
+        result = await executor.execute_limit_with_fallback(
+            "BTCUSDT", Decimal("0.1"), "SELL", reduce_only=True, timeout_sec=2,
+            fuse_gate={"entry_price": "100", "taker_fee": ".0004"})
+    assert result["status"] == "SUCCESS_FALLBACK"
+    assert result["executed_qty"] == 0
+    assert not mock_connector.futures_client.futures_create_order.called
+
+@pytest.mark.asyncio
+async def test_limit_fallback_fuse_gate_allows_profitable(mock_connector, executor):
+    mock_connector.get_order_book.return_value = {
+        "bids": [["100.2", "1"]],
+        "asks": [["100.3", "1"]]
+    }
+    mock_connector.place_limit_maker_order.return_value = {"orderId": 123}
+    mock_connector.get_order_status.return_value = {"status": "NEW", "executedQty": "0"}
+    mock_connector.get_futures_prices.return_value = {"BTCUSDT": 100.0}
+    mock_connector.futures_client.futures_create_order = Mock(return_value={"status": "FILLED", "executedQty": "0.1", "avgPrice": "100.2"})
+    with patch("asyncio.sleep", return_value=None):
+        result = await executor.execute_limit_with_fallback(
+            "BTCUSDT", Decimal("0.1"), "SELL", reduce_only=True, timeout_sec=2,
+            fuse_gate={"entry_price": "100", "taker_fee": ".0004"})
+    assert result["status"] == "SUCCESS_FALLBACK"
+    assert result["executed_qty"] == Decimal("0.1")
+
+@pytest.mark.asyncio
+async def test_limit_fallback_fuse_gate_mandatory_without_rate(mock_connector, executor):
+    # missing rate => unconfirmed => market remainder must not bypass the check
+    mock_connector.get_order_book.return_value = {
+        "bids": [["100.2", "1"]],
+        "asks": [["100.3", "1"]]
+    }
+    mock_connector.place_limit_maker_order.return_value = {"orderId": 123}
+    mock_connector.get_order_status.return_value = {"status": "PARTIALLY_FILLED", "executedQty": "0.05", "avgPrice": "99.9"}
+    mock_connector.get_order_trades = AsyncMock(return_value=[{"realizedPnl": "0.5", "commission": "0.02"}])
+    mock_connector.get_futures_prices.return_value = {"BTCUSDT": 100.0}
+    mock_connector.futures_client.futures_create_order = Mock(return_value={"status": "FILLED", "executedQty": "0.05", "avgPrice": "100.2"})
+    with patch("asyncio.sleep", return_value=None):
+        result = await executor.execute_limit_with_fallback(
+            "BTCUSDT", Decimal("0.1"), "SELL", reduce_only=True, timeout_sec=2,
+            fuse_gate={"entry_price": "100", "taker_fee": None})
+    # the filled limit part is kept and accounted, the remainder is not sent to market
+    assert result["status"] == "SUCCESS_FALLBACK"
+    assert result["executed_qty"] == Decimal("0.05")
+    assert result["realized_pnl"] == Decimal("0.5")
+    assert result["commission"] == Decimal("0.02")
+    assert result["result"]["orderId"] == 123
+    assert not mock_connector.futures_client.futures_create_order.called
+
+@pytest.mark.asyncio
+async def test_limit_fallback_gate_ignores_add_orders(mock_connector, executor):
+    # only reductions are profit-gated; ADDs keep the plain market fallback
+    mock_connector.get_order_book.return_value = {
+        "bids": [["59990", "1"]],
+        "asks": [["60010", "1"]]
+    }
+    mock_connector.place_limit_maker_order.return_value = {"orderId": 123}
+    mock_connector.get_order_status.return_value = {"status": "NEW", "executedQty": "0"}
+    mock_connector.get_futures_prices.return_value = {"BTCUSDT": 60000.0}
+    mock_connector.futures_client.futures_create_order = Mock(return_value={"status": "FILLED", "executedQty": "0.1", "avgPrice": "60000.0"})
+    with patch("asyncio.sleep", return_value=None):
+        result = await executor.execute_limit_with_fallback(
+            "BTCUSDT", Decimal("0.1"), "BUY", reduce_only=False, timeout_sec=2,
+            fuse_gate={"entry_price": "0", "taker_fee": ".0004"})
+    assert result["status"] == "SUCCESS_FALLBACK"
+    assert result["executed_qty"] == Decimal("0.1")
+    assert mock_connector.futures_client.futures_create_order.called
+
+@pytest.mark.asyncio
+async def test_execute_single_action_partial_limit_blocked_fallback(executor, mock_connector):
+    """E2E: partial limit fill + blocked market remainder => SUCCESS with the filled part,
+    its commission/pnl and a registerable receipt identity."""
+    action = {"symbol": "BTCUSDT_LONG", "diff_usdt": -100.0, "type": "ORDER", "is_reduction": True}
+    mock_connector.client = MagicMock()
+    mock_connector.get_order_book.return_value = {"bids": [["99.9", "1"]], "asks": [["100.1", "1"]]}
+    mock_connector.place_limit_maker_order.return_value = {"orderId": 123}
+    mock_connector.get_order_status.return_value = {"status": "PARTIALLY_FILLED", "executedQty": "0.05", "avgPrice": "99.9"}
+    mock_connector.get_order_trades = AsyncMock(return_value=[{"realizedPnl": "0.5", "commission": "0.02"}])
+    with patch.object(executor, "get_limit_order_params", return_value=(True, Decimal("0.2"), 2)), \
+         patch("asyncio.sleep", return_value=None):
+        res = await executor._execute_single_action(
+            action, 100.0, False,
+            {"min_notional_usdt": 6.0, "limit_order_enabled": True,
+             "fuse_gate": {"LONG": {"entry_price": "100", "taker_fee": "0.0004"},
+                           "SHORT": {"entry_price": "100", "taker_fee": "0.0004"}}},
+            {"BTCUSDT": 0.001}
+        )
+    assert res["status"] == "SUCCESS"
+    assert res["qty"] == 0.05
+    assert res["execution_id"] == "binance:BTCUSDT:123"
+    assert res["commission"] == 0.02
+    assert res["trade_pnl"] == 0.5
+    assert res["reduce_only"] is True
+    assert not mock_connector.futures_client.futures_create_order.called
 
 def test_get_limit_order_params(executor):
     config = {"limit_order_enabled": True, "limit_offset_pct": 0.5, "limit_timeout_sec": 60}
@@ -274,9 +379,10 @@ async def test_execute_single_action_real_limit(executor, mock_connector):
     mock_connector.client = MagicMock()
     
     with patch.object(executor, "get_limit_order_params", return_value=(True, Decimal("0.2"), 30)), \
-         patch.object(executor, "execute_limit_with_fallback", AsyncMock(return_value={"status": "SUCCESS_LIMIT", "executed_qty": Decimal("0.001"), "avg_price": Decimal("60000.0"), "realized_pnl": Decimal("0"), "commission": Decimal("0.02")})):
+          patch.object(executor, "execute_limit_with_fallback", AsyncMock(return_value={"status": "SUCCESS_LIMIT", "executed_qty": Decimal("0.001"), "avg_price": Decimal("60000.0"), "realized_pnl": Decimal("0"), "commission": Decimal("0.02"), "result": {"orderId": 123}})):
         res = await executor._execute_single_action(
             action, 60000.0, False, {}, {"BTCUSDT": 0.001}
         )
     assert res["status"] == "SUCCESS"
     assert res["commission"] == 0.02
+    assert res["execution_id"] == "binance:BTCUSDT:123"

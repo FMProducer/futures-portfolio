@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from decimal import Decimal, ROUND_HALF_EVEN, getcontext
 
 from core.share_trail import FUTURES_LEGS, step as trail_step
@@ -15,6 +15,23 @@ def initial_notional_after_fee(target_notional: float, leverage: float, fee_rate
     return float(Decimal(str(target_notional)) / (Decimal('1') + Decimal(str(leverage)) * Decimal(str(fee_rate))))
 
 
+def book_vwap(levels: List[Any], qty: Any) -> Optional[Decimal]:
+    """Volume-weighted average over available depth; None when qty is zero or depth is insufficient."""
+    need = Decimal(str(qty))
+    if need <= 0:
+        return None
+    total, taken = Decimal('0'), Decimal('0')
+    for px, q in levels:
+        take = min(Decimal(str(q)), need - taken)
+        if take <= 0:
+            break
+        total += Decimal(str(px)) * take
+        taken += take
+        if taken >= need:
+            return total / need
+    return None
+
+
 class PortfolioCalculator:
     def __init__(self, positions: Dict[str, float], spot_price: float, real_equity: float, 
                  virt_qty: float, 
@@ -23,8 +40,9 @@ class PortfolioCalculator:
                  base_ticker: str = "BTCUSDT", siphoning_reserve: float = 0.0,
                  targets: Dict[str, Dict] = None, initial_capital: float = 10000.0,
                  last_rebalance_price: float = 0.0,
-                 min_notional: float = 6.0, commission_pct: float = 0.0,
-                 slippage_pct: float = 0.0) -> None:
+                  min_notional: float = 6.0, commission_pct: float = 0.0,
+                  slippage_pct: float = 0.0,
+                  fuse_fill: Optional[Dict[str, Any]] = None) -> None:
         
         # Convert all inputs to Decimal for precision
         self.positions = {k: Decimal(str(v)) for k, v in positions.items()}
@@ -43,6 +61,26 @@ class PortfolioCalculator:
         for rate in (self.commission_pct, self.slippage_pct):
             if not rate.is_finite() or not Decimal('0') <= rate < Decimal('1'):
                 raise ValueError("Execution cost rates must be finite and in [0, 1)")
+
+        # Live-mode FUSE gate: book levels + account taker rate (None => unconfirmed)
+        self.fuse_fill = None
+        if fuse_fill is not None:
+            validated: Dict[str, Any] = {"bids": [], "asks": [], "taker": None}
+            for key in ("bids", "asks"):
+                converted: List[Tuple[Decimal, Decimal]] = []
+                for px, q in (fuse_fill.get(key) or []):
+                    px, q = Decimal(str(px)), Decimal(str(q))
+                    if not (px.is_finite() and px > 0 and q.is_finite() and q >= 0):
+                        raise ValueError("invalid fuse_fill level")
+                    converted.append((px, q))
+                validated[key] = converted
+            taker = fuse_fill.get("taker")
+            if taker is not None:
+                taker = Decimal(str(taker))
+                if not taker.is_finite() or not Decimal('0') <= taker < 1:
+                    raise ValueError("invalid fuse_fill taker rate")
+            validated["taker"] = taker
+            self.fuse_fill = validated
 
         # 1. PnL contributions for Heartbeat (RELATIVE to last rebalance)
         # This ensures the sign of $ PnL always matches the sign of % deviation.
@@ -295,15 +333,35 @@ class PortfolioCalculator:
                     is_valid = bypass_fuse or self.price >= limit_price
                     # Closing proceeds must exceed entry after execution costs.
                     if is_valid and self.long_entry_price > 0:
-                        sell_price = self.price * (1 - self.slippage_pct)
-                        is_valid = sell_price * (1 - self.commission_pct) > self.long_entry_price
+                        if self.fuse_fill is None:
+                            sell_price = self.price * (1 - self.slippage_pct)
+                            is_valid = sell_price * (1 - self.commission_pct) > self.long_entry_price
+                        else:
+                            # Live gate sized to the actual order volume; missing taker rate or
+                            # insufficient depth => closing unconfirmed, block the reduction
+                            sell_qty = abs(Decimal(str(act["diff_usdt"]))) / self.price
+                            px = book_vwap(self.fuse_fill["bids"], sell_qty)
+                            taker = self.fuse_fill["taker"]
+                            is_valid = bool(
+                                px is not None and taker is not None
+                                and px * (Decimal('1') - taker) > self.long_entry_price)
                 else:
                     limit_price = last_reb * (1 - dec_threshold_surplus)
                     is_valid = bypass_fuse or self.price <= limit_price
                     # Closing cost includes the buy-side execution costs.
                     if is_valid and self.short_entry_price > 0:
-                        buy_price = self.price * (1 + self.slippage_pct)
-                        is_valid = buy_price * (1 + self.commission_pct) < self.short_entry_price
+                        if self.fuse_fill is None:
+                            buy_price = self.price * (1 + self.slippage_pct)
+                            is_valid = buy_price * (1 + self.commission_pct) < self.short_entry_price
+                        else:
+                            # Live gate sized to the actual order volume; missing taker rate or
+                            # insufficient depth => closing unconfirmed, block the reduction
+                            buy_qty = abs(Decimal(str(act["diff_usdt"]))) / self.price
+                            px = book_vwap(self.fuse_fill["asks"], buy_qty)
+                            taker = self.fuse_fill["taker"]
+                            is_valid = bool(
+                                px is not None and taker is not None
+                                and px * (Decimal('1') + taker) < self.short_entry_price)
 
             if is_valid:
                 final_actions.append(act)
