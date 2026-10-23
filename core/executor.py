@@ -1,6 +1,7 @@
 """Исполнение ордеров на Binance Futures (Hedge Mode)."""
 import logging
 import asyncio
+from uuid import uuid4
 from typing import Dict, Optional, Tuple, Any, List, TYPE_CHECKING
 from decimal import Decimal, ROUND_HALF_EVEN, getcontext
 
@@ -425,6 +426,7 @@ class PortfolioExecutor:
                 "symbol": symbol,
                 "side": side,
                 "qty": float(qty_rounded),
+                "execution_id": "paper:" + uuid4().hex,
                 "price": float(qty_price),
                 "status": "SUCCESS",
                 "trade_pnl": float(trade_pnl),
@@ -476,6 +478,8 @@ class PortfolioExecutor:
                         "symbol": symbol,
                         "side": side,
                         "qty": float(executed_qty),
+                        "execution_id": (f"binance:{base_symbol}:{res.get('result', {}).get('orderId')}"
+                                         if res.get('result', {}).get('orderId') is not None else None),
                         "price": float(avg_price),
                         "status": "SUCCESS",
                         "reduce_only": reduce_only,

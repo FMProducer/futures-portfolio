@@ -1,6 +1,8 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from decimal import Decimal, ROUND_HALF_EVEN, getcontext
+
+from core.share_trail import FUTURES_LEGS, step as trail_step
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +113,7 @@ class PortfolioCalculator:
             diff = Decimal('100.00') - total_pct
             self.share_cash_pct += diff # Adjust cash by the sub-penny difference
 
-    def calculate_rebalance(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True) -> Dict:
+    def calculate_rebalance(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True, share_trail: Dict = None, trail_distance: float = 0.0) -> Dict:
         """
         Calculate rebalance actions and return a summary of the current state.
         allow_surplus_sell: if False, surplus (profit-taking) actions are blocked.
@@ -119,8 +121,12 @@ class PortfolioCalculator:
         force_block: if True, ALL actions are blocked (Net Move Guard active).
             Used during fast unidirectional price movements (pump/dump) to prevent
             closing positions at fake profit/loss.
+        share_trail: optional persistent two-sided share-trailing state
+            (core.share_trail.fresh_state()); mutated in place.
+        trail_distance: share-fraction pullback/rebound from the activated extremum; 0 disables trailing
+            (baseline threshold behaviour, trailing state untouched).
         """
-        dev_res = self.calculate_deviations(targets, threshold_surplus, threshold_deficit, current_equity, ignore_limits, allow_surplus_sell, force_block, fuse_enabled)
+        dev_res = self.calculate_deviations(targets, threshold_surplus, threshold_deficit, current_equity, ignore_limits, allow_surplus_sell, force_block, fuse_enabled, share_trail, trail_distance)
         # calculate_deviations возвращает dict с actions, available_funds, tpv, share_*
         actions = dev_res["actions"]
 
@@ -146,15 +152,40 @@ class PortfolioCalculator:
             "total_pnl_pct": float(self.total_pnl_pct)
         }
 
-    def calculate_deviations(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True) -> List[Dict]:
+    def calculate_deviations(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True, share_trail: Dict = None, trail_distance: float = 0.0) -> List[Dict]:
         """
         Rebalance based on CAPITAL (Equity) deviations. 
         This allows the portfolio to harvest volatility profit.
         allow_surplus_sell: if False, surplus actions are excluded (PnL protection mode).
         force_block: if True, ALL actions are blocked (Net Move Guard).
+        share_trail / trail_distance: two-sided share trailing (see core.share_trail).
+            When trail_distance > 0, futures-leg readiness comes from observed
+            peak pullbacks / trough rebounds; VIRTUAL keeps fixed thresholds.
         """
         if not isinstance(fuse_enabled, bool):
             raise ValueError("fuse_enabled must be a boolean")
+
+        # Trailing observation persists during WAIT/blocks: step before any
+        # early return, readiness flags are only used by the action loop.
+        # A flat leg falls back to baseline thresholds (None flag): trailing
+        # governs existing positions only and must never block the build.
+        trail_flags: Optional[Dict[str, Optional[Tuple[bool, bool]]]] = None
+        if share_trail is not None and not ignore_limits and Decimal(str(trail_distance)) > 0:
+            dec_surplus = Decimal(str(threshold_surplus))
+            dec_deficit = Decimal(str(threshold_deficit))
+            trail_flags = {}
+            flat_long = abs(self.positions.get(f"{self.base_ticker}_LONG", Decimal('0'))) <= 0
+            flat_short = abs(self.positions.get(f"{self.base_ticker}_SHORT", Decimal('0'))) <= 0
+            for key, raw_share, flat in (("BASE_LONG", self.share_long_raw, flat_long),
+                                         ("BASE_SHORT", self.share_short_raw, flat_short)):
+                target_share = Decimal(str(targets[key]["share"]))
+                red_ready, add_ready, _reset = trail_step(
+                    share_trail, key, raw_share, target_share,
+                    target_share + dec_surplus, target_share - dec_deficit,
+                    trail_distance, flat=flat,
+                )
+                trail_flags[key] = None if flat else (red_ready, add_ready)
+
         if force_block:
             # Net Move Guard active — block ALL actions during fast price movement
             return {
@@ -190,10 +221,20 @@ class PortfolioCalculator:
             diff_share = current_share - target_share # Positive if surplus (actual > target)
             
             if not ignore_limits:
-                if diff_share > 0 and abs(diff_share) < dec_threshold_surplus:
-                    continue
-                elif diff_share < 0 and abs(diff_share) < dec_threshold_deficit:
-                    continue
+                flags = (trail_flags or {}).get(key)
+                if flags is not None:
+                    # Trailing gates the direction: readiness from observed extrema
+                    # replaces the raw threshold test for futures legs.
+                    reduce_ready, add_ready = flags
+                    if diff_share > 0 and not reduce_ready:
+                        continue
+                    if diff_share < 0 and not add_ready:
+                        continue
+                else:
+                    if diff_share > 0 and abs(diff_share) < dec_threshold_surplus:
+                        continue
+                    elif diff_share < 0 and abs(diff_share) < dec_threshold_deficit:
+                        continue
 
             # Calculate theoretical diff_usdt
             # USE dynamic current_equity to ensure proportional rebalancing

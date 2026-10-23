@@ -18,11 +18,13 @@ from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation, getcontext
 try:
     from core.calculator import PortfolioCalculator
     from core.funding import FundingJournal, apply_funding_backtest
+    from core import share_trail
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from core.calculator import PortfolioCalculator
     from core.funding import FundingJournal, apply_funding_backtest
+    from core import share_trail
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("Backtest")
@@ -133,6 +135,12 @@ class BacktestState:
     funding_halt_active: bool = False
     funding_halt_event_id: str = ""
     funding_halt_at: float = 0.0
+
+    # Two-sided share trailing (contract 2026-10-23); None when distance <= 0
+    share_trail: Optional[Dict[str, Any]] = None
+    share_trail_spec: Optional[Dict[str, Any]] = None
+    share_trail_signals: int = 0
+    share_trail_consumes: int = 0
 
     def margin_long(self) -> Decimal:
         return (self.pos_long * self.long_entry_price) / self.l_lev if self.pos_long > 0 else Decimal('0')
@@ -549,6 +557,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             
         siphoning_threshold_pct: float = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
         reinvestment_ratio: float = portfolio_cfg.get("reinvestment_ratio", 0.0)
+        trail_distance: float = float(config.get("rebalance_share_trail_distance", 0.0))
+        if not math.isfinite(trail_distance) or trail_distance < 0:
+            raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
         trailing_stop_pct: float = config.get("equity_trailing_stop_pct", 0.0)
         trailing_stop_activation_pct: float = config.get("equity_trailing_stop_activation_pct", 0.0)
         trailing_stop_timeout_sec: int = int(config.get("equity_trailing_stop_timeout_sec", 0))
@@ -593,6 +604,11 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             funding_model=funding_model,
             ledger_base=Decimal(str(initial_capital)),
         )
+
+        if trail_distance > 0:
+            state.share_trail = share_trail.fresh_state()
+            state.share_trail_spec = share_trail.spec_fingerprint(
+                trail_distance, targets, threshold_surplus, threshold_deficit)
 
         start_price = Decimal(str(close_prices[0]))
         state.last_rebalance_price = start_price
@@ -664,6 +680,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.cooldown_until_bar = i + cooldown_bars_duration
                         state.log_event(i, "funding_shortfall", float(state.dormant_capital),
                                         f"event={event.event_id}")
+                        if state.share_trail is not None:
+                            share_trail.reset_all(state.share_trail)
+                            state.log_event(i, "share_trail_reset_all", float(state.dormant_capital), "funding halt close")
                         break  # stop processing events this bar
                 # Legacy shortfall check (CASH-first may leave V < 0)
                 if state.get_funding_shortfall() > 0 and (state.pos_long > 0 or state.pos_short > 0):
@@ -682,6 +701,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.cooldown_until_bar = i + cooldown_bars_duration
                     state.log_event(i, "funding_shortfall", float(state.dormant_capital),
                                     f"shortfall={float(state.get_funding_shortfall()):.4f}")
+                    if state.share_trail is not None:
+                        share_trail.reset_all(state.share_trail)
+                        state.log_event(i, "share_trail_reset_all", float(state.dormant_capital), "funding halt close")
                     logger.warning(f"Bar {i}: Funding halt — positions closed.")
                     state.history.append(float(state.dormant_capital))
                     continue
@@ -735,6 +757,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     + state.funding_paid + state.liquidation_loss_total
                 )
                 state.cooldown_until_bar = 0
+                if state.share_trail is not None:
+                    share_trail.reset_all(state.share_trail)
+                    state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
+                                    "cooldown rebase: new session")
                 state.check_accounting(mid_price, i, "cooldown_rebase")
 
             # --- 2. Portfolio Calculation ---
@@ -758,14 +784,45 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 slippage_pct=float(sim.slippage_pct),
             )
 
+            # Trailing diagnostics: arm/reset events and generated signals
+            if state.share_trail is not None:
+                trail_prev = {key: [state.share_trail[key]["peak"], state.share_trail[key]["trough"]]
+                              for key in ("BASE_LONG", "BASE_SHORT")}
             calc_res = calculator.calculate_rebalance(
                 targets,
                 threshold_surplus=threshold_surplus,
                 threshold_deficit=threshold_deficit,
                 current_equity=state.get_tpv(mid_price),
                 fuse_enabled=fuse_enabled,
+                share_trail=state.share_trail,
+                trail_distance=trail_distance,
             )
             actions = calc_res["actions"]
+
+            # Trailing diagnostics: arm/reset events and generated signals
+            if state.share_trail is not None:
+                for key in ("BASE_LONG", "BASE_SHORT"):
+                    prev_peak, prev_trough = trail_prev[key]
+                    peak, trough = state.share_trail[key]["peak"], state.share_trail[key]["trough"]
+                    for field, prev_v, cur_v in (("peak", prev_peak, peak), ("trough", prev_trough, trough)):
+                        if prev_v is None and cur_v is not None:
+                            state.log_event(i, "share_trail_observe", float(state.get_tpv_fast(float(mid_price))),
+                                            f"{key} {field}={cur_v}", key=key, field=field)
+                        elif prev_v is not None and cur_v is None:
+                            state.log_event(i, "share_trail_reset", float(state.get_tpv_fast(float(mid_price))),
+                                            f"{key} {field} cleared (flat leg)", key=key, field=field)
+                    for act in calc_res["actions"]:
+                        if act.get("key") != key:
+                            continue
+                        direction = "REDUCE" if act.get("is_reduction") else "ADD"
+                        # a trailing signal only when the extremum was armed pre-bar
+                        if trail_prev[key][0 if direction == "REDUCE" else 1] is None:
+                            continue
+                        state.share_trail_signals += 1
+                        state.log_event(i, "share_trail_signal", float(state.get_tpv_fast(float(mid_price))),
+                                        f"{key} {direction} req={abs(act.get('diff_usdt', 0.0)):.4f}",
+                                        key=key, direction=direction,
+                                        requested_usdt=float(abs(act.get("diff_usdt", 0.0))))
 
             if actions and i >= tg_trend_bars:
                 lookback_prices = close_prices[max(0, i - tg_trend_bars):i + 1]
@@ -926,6 +983,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                        float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
                                        leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
+                    if state.share_trail is not None:
+                        # confirmed fill (full or partial) consumes the REDUCE signal
+                        share_trail.consume(state.share_trail, key, "REDUCE")
+                        state.share_trail_consumes += 1
+                        state.log_event(i, "share_trail_consume", float(state.get_tpv_fast(float(mid_price))),
+                                        f"{key} REDUCE {capped_by or 'full'}", key=key)
+                        if capped_by == "capped_by_position":
+                            share_trail.reset_leg(state.share_trail, key)
                     state.check_accounting(mid_price, i, f"reduce_{key}")
 
                 expansions.sort(key=lambda x: x["key"] == "VIRTUAL")
@@ -1012,6 +1077,12 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                    float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
                                    leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
+                    if state.share_trail is not None:
+                        # confirmed fill (full or partial) consumes the ADD signal
+                        share_trail.consume(state.share_trail, key, "ADD")
+                        state.share_trail_consumes += 1
+                        state.log_event(i, "share_trail_consume", float(state.get_tpv_fast(float(mid_price))),
+                                        f"{key} ADD {capped_by or 'full'}", key=key)
                     state.check_accounting(mid_price, i, f"expand_{key}")
 
                 if is_initial_formation or was_initial_pending:
@@ -1141,6 +1212,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
                     state.liquidations_counter += 1
                     state.check_accounting(mid_price, i, "predictive_liquidation")
+                    if state.share_trail is not None:
+                        share_trail.reset_all(state.share_trail)
+                        state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
+                                        "predictive liquidation close")
                     state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = i + cooldown_bars_duration
                     state.log_event(i, "liquidation", float(state.dormant_capital),
@@ -1173,6 +1248,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.liquidation_loss_total += wiped_tpv
                     state.liquidations_counter += 1
                     state.check_accounting(mid_price, i, "hard_liquidation")
+                    if state.share_trail is not None:
+                        share_trail.reset_all(state.share_trail)
+                        state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
+                                        "hard liquidation wipe")
                     state.dormant_capital = Decimal(str(state.siphoning_reserve))
                     state.cooldown_until_bar = i + cooldown_bars_duration
                     state.log_event(i, "liquidation", float(state.dormant_capital), "HARD CROSS LIQUIDATION")
@@ -1234,6 +1313,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                        float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
                                        leverage=s_lev, trigger="max_dd_stop", cycle_id=state.cycles)
                     state.check_accounting(mid_price, i, "max_dd_stop")
+                    if state.share_trail is not None:
+                        share_trail.reset_all(state.share_trail)
+                        state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
+                                        "max dd stop close")
                     state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
                     state.cooldown_until_bar = len(df) + 1  # больше не стартуем
                     state.log_event(i, "max_dd_stop", float(state.dormant_capital),
@@ -1266,6 +1349,13 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             logger.warning(f"Bar {i}: Trailing Stop triggered. Entering {toxic_cooldown_days}d cooldown.")
                             state.trailing_stop_triggered = True
                             state.stops_counter += 1
+                            for leg, qty in (("BASE_LONG", state.pos_long), ("BASE_SHORT", state.pos_short)):
+                                state.close_position_for_funding_shortfall(
+                                    leg, qty, mid_price, sim, i, trigger="equity_trailing_stop")
+                            state.check_accounting(mid_price, i, "equity_trailing_stop")
+                            if state.share_trail is not None:
+                                share_trail.reset_all(state.share_trail)
+                            total_tpv_with_reserve = float(state.get_tpv(mid_price) + state.siphoning_reserve)
                             state.log_event(i, "trailing_stop", total_tpv_with_reserve, f"DD {drawdown_from_ath:.2f}% from ATH")
                             state.dormant_capital = Decimal(str(total_tpv_with_reserve))
                             state.cooldown_until_bar = i + cooldown_bars_duration
@@ -1310,6 +1400,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             logger.info(f"Sortino: {sortino_ratio:.4f} | Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
             logger.info(f"Skipped Expansions: {state.skipped_expansions_counter} | Stops: {state.stops_counter} | Liqs: {state.liquidations_counter}")
             logger.info(f"Trend Guard blocks: {tg_blocked_count} | Velocity Guard blocks: {vg_blocked_count}")
+            logger.info(f"Share trailing LONG/SHORT: distance={trail_distance:g} | model=pullback_rebound | consumed fills={state.share_trail_consumes}")
             if sim:
                 s = sim.get_summary()
                 logger.info(f"Market Orders: {s['filled']}/{s['attempted']} filled")
@@ -1382,6 +1473,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "liquidation_loss_total": float(state.liquidation_loss_total),
             "open_positions": {"long": float(state.pos_long), "short": float(state.pos_short)},
             "ticker": base_ticker,
+            "share_trail": state.share_trail,
+            "share_trail_spec": state.share_trail_spec,
+            "share_trail_signals": int(state.share_trail_signals),
+            "share_trail_consumes": int(state.share_trail_consumes),
             "settings": {
                 "fuse_enabled": fuse_enabled,
                 "commission_pct": float(sim.commission_pct),
@@ -1399,6 +1494,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "max_drawdown_limit_pct": float(max_drawdown_limit_pct),
                 "cooldown_bars": int(cooldown_bars_duration),
                 "min_notional_usdt": float(min_notional_usdt),
+                "share_trail_distance": float(trail_distance),
                 "account_free_margin": 0.0,
             },
             "data_window": data_window

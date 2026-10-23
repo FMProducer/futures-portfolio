@@ -9,7 +9,6 @@ Tests three crash points in the Phase 2 close-recovery path:
 Each crash is simulated by os._exit(99) in a child process.
 After restart, on-disk state is checked for correct reconciliation.
 """
-import asyncio
 import json
 import os
 import shutil
@@ -18,7 +17,6 @@ import sys
 import tempfile
 from decimal import Decimal as D
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -26,20 +24,19 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from futures_portfolio.core.funding import (
+from core.funding import (
     FundingHalt, CloseLegState, record_close_result,
     commit_funding_halt_with_intents, get_pending_close_legs,
     save_funding_boundary, RECOVERY_ABSENT, RECOVERY_RECOVERED,
     FundingJournal, FundingEvent,
 )
-from futures_portfolio.core.main import rebalance_loop
-from futures_portfolio.backtest.backtest_rebalance import run_backtest
-from futures_portfolio.core.executor import PortfolioExecutor
-from futures_portfolio.core.funding import apply_funding_backtest
-from futures_portfolio.backtest.backtest_rebalance import BacktestState
+from backtest.backtest_rebalance import run_backtest
+from core.executor import PortfolioExecutor
+from core.funding import apply_funding_backtest
+from backtest.backtest_rebalance import BacktestState
 
 
-# ===== Test constants =====================================================================
+# ── Test constants ────────────────────────────────────────────────────────
 
 BASE_TICKER = "ZECUSDT"
 INITIAL_CAPITAL = D("1000")
@@ -47,7 +44,7 @@ PAPER_INITIAL_CAPITAL = D("1000")
 TARGET_INITIAL_CAP = D("1000")
 
 
-# ===== Helpers ============================================================================
+# ── Helpers ──────────────────────────────────────────────────────────────
 
 def _make_funding_scenario(tmp_path: Path) -> str:
     """Generate the same 30-event funding scenario used in run_zec_replay.py"""
@@ -150,113 +147,6 @@ def _copy_feather_data(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _make_mock_connector():
-    """Create a fully mocked BinanceConnector for paper mode testing"""
-    from core.connector import BinanceConnectorMock
-    connector = BinanceConnectorMock()
-    connector.get_exchange_info = AsyncMock(return_value={
-        "symbols": [{"symbol": "ZECUSDT", "filters": [
-            {"filterType": "LOT_SIZE", "stepSize": "0.001"}
-        ]}]
-    })
-    connector.get_order_book = AsyncMock(return_value={
-        "bids": [["200.0", "100"]], "asks": [["200.1", "100"]]
-    })
-    connector.get_mark_prices = AsyncMock(return_value={"ZECUSDT": 200.0})
-    connector.get_futures_balance = AsyncMock(return_value=1000.0)
-    connector.get_futures_positions = AsyncMock(return_value=[])
-    connector.get_hedge_mode = AsyncMock(return_value=True)
-    connector.set_leverage = AsyncMock()
-    connector.set_margin_type = AsyncMock()
-    connector.get_mark_prices = AsyncMock(return_value={"ZECUSDT": 200.0})
-    connector.get_futures_balance = AsyncMock(return_value=1000.0)
-    connector.get_futures_positions = AsyncMock(return_value=[])
-    return connector
-
-
-def _make_state_and_paper(tmp_path: Path):
-    """Create initial state and paper_state dicts for crash testing"""
-    state = {
-        "virt_qty": 0.0,
-        "base_ticker": "ZECUSDT",
-        "siphoning_reserve": 0.0,
-        "balance": 1000.0,
-        "initial_tpv": 0.0,
-        "reference_tpv": 0.0,
-        "tpv_ath": 1000.0,
-        "trailing_stop_violation_start": 0.0,
-        "trailing_stop_paper_timeout_end": 0.0,
-        "rebalance_cycles": 0,
-        "last_rebalance_price": 0.0,
-        "cash_invariant_violation": None,
-        "initial_build_pending": None,
-        "started_at": 0.0,
-        "funding_model": "legacy_constant",
-        "funding_journal": [],
-        "funding_halt": {
-            "active": True,
-            "reason": "funding_shortfall",
-            "event_id": "test_halt",
-            "halted_at": 100.0,
-            "shortfall_amount": 50.0,
-            "increases_blocked": True,
-            "close_state": {
-                "BASE_LONG": {
-                    "leg": "BASE_LONG",
-                    "close_event_id": "close_LONG",
-                    "status": "pending",
-                    "qty_closed": 0.0,
-                    "qty_remaining": 1.5,
-                    "fill_price": 0.0,
-                    "commission": 0.0,
-                    "realized_pnl": 0.0,
-                    "filled_at": None
-                },
-                "BASE_SHORT": {
-                    "leg": "BASE_SHORT",
-                    "close_event_id": "close_SHORT",
-                    "status": "pending",
-                    "qty_closed": 0.0,
-                    "qty_remaining": 1.4,
-                    "fill_price": 0.0,
-                    "commission": 0.0,
-                    "realized_pnl": 0.0,
-                    "filled_at": None
-                }
-            }
-        },
-        "funding_paid": 0.0,
-        "rebalance_cycles": 0,
-        "last_rebalance_price": 0.0,
-        "cash_invariant_violation": None,
-        "initial_build_pending": None,
-        "started_at": 0.0,
-        "funding_model": "legacy_constant",
-        "funding_journal": [],
-        "funding_halt": {},
-        "funding_paid": 0.0,
-    }
-
-    paper_state = {
-        "balance": 660.0,
-        "positions": {"ZECUSDT_LONG": 1.5, "ZECUSDT_SHORT": 1.4},
-        "last_price": 200.0,
-        "base_ticker": "ZECUSDT",
-        "long_entry_price": 200.0,
-        "short_entry_price": 200.0,
-    }
-
-    state_file = tmp_path / "state.json"
-    paper_file = tmp_path / "paper_state.json"
-
-    with open(state_file, "w") as f:
-        json.dump(state, f)
-    with open(paper_file, "w") as f:
-        json.dump(paper_state, f)
-
-    return str(tmp_path), state_file, paper_file
-
-
 def _load_state_files(tmp_path: Path):
     """Load state and paper_state JSON files from disk."""
     state_file = tmp_path / "state.json"
@@ -271,7 +161,79 @@ def _load_state_files(tmp_path: Path):
     return state, paper_state
 
 
-# ===== Test Cases ========================================================================
+# ── Child-process crash harness ─────────────────────────────────────────────
+# The crash must be a real process death (os._exit skips finally/atexit), so
+# rebalance_loop runs in a child process — patching os._exit in-process would
+# kill the pytest runner itself instead of the bot under test.
+
+_CHILD_SRC = r'''
+import asyncio, logging, os, sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
+ROOT, CONFIG_PATH, STATE_PATH, PAPER_PATH = sys.argv[1:5]
+sys.path.insert(0, ROOT)
+
+from core.main import rebalance_loop
+
+
+def _connector():
+    c = MagicMock()
+    c.get_exchange_info = AsyncMock(return_value={
+        "symbols": [{"symbol": "ZECUSDT", "filters": [
+            {"filterType": "LOT_SIZE", "stepSize": "0.001"}
+        ]}]
+    })
+    c.get_order_book = AsyncMock(return_value={
+        "bids": [["200.0", "100"]], "asks": [["200.1", "100"]]
+    })
+    c.get_mark_prices = AsyncMock(return_value={"ZECUSDT": 200.0})
+    c.get_futures_balance = AsyncMock(return_value=1000.0)
+    c.get_futures_positions = AsyncMock(return_value=[])
+    c.get_hedge_mode = AsyncMock(return_value=True)
+    c.set_leverage = AsyncMock()
+    c.set_margin_type = AsyncMock()
+    return c
+
+
+logging.basicConfig(level=logging.CRITICAL)
+
+with patch("core.executor.PortfolioExecutor.execute_actions") as mock_execute:
+    mock_execute.side_effect = lambda *a, **kw: os._exit(99)
+    asyncio.run(rebalance_loop(
+        connector=_connector(),
+        config_path=CONFIG_PATH,
+        state_file_path=STATE_PATH,
+        paper_state_file_path=PAPER_PATH,
+        logger=MagicMock(),
+        ticker_override="ZECUSDT",
+        paper_mode_override=True,
+    ))
+'''
+
+
+def _run_crash_child(tmpdir: Path, config_path: str, state_file: Path,
+                     paper_file: Path, timeout: int = 120) -> int:
+    """Run rebalance_loop in a child process that crashes before the executor.
+
+    Returns the child's exit code (99 = the injected crash was reached)."""
+    child_path = tmpdir / "_crash_child.py"
+    child_path.write_text(_CHILD_SRC)
+
+    env = dict(os.environ)
+    # Keep the child from touching a real deployment's PM2 instance.
+    env["TELEGRAM_BOT_TOKEN"] = ""
+    env["TELEGRAM_CHAT_ID"] = ""
+
+    proc = subprocess.run(
+        [sys.executable, "-I", str(child_path), str(ROOT), config_path,
+         str(state_file), str(paper_file)],
+        capture_output=True, text=True, timeout=timeout, cwd=str(tmpdir),
+        env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    return proc.returncode
+
+
+# ── Test Cases ─────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_crash_before_executor():
@@ -333,15 +295,6 @@ async def test_crash_before_executor():
                 }
             },
             "funding_paid": 0.0,
-            "rebalance_cycles": 0,
-            "last_rebalance_price": 0.0,
-            "cash_invariant_violation": None,
-            "initial_build_pending": None,
-            "started_at": 0.0,
-            "funding_model": "legacy_constant",
-            "funding_journal": [],
-            "funding_halt": {},
-            "funding_paid": 0.0,
         }
 
         paper_state = {
@@ -353,36 +306,6 @@ async def test_crash_before_executor():
             "short_entry_price": 200.0,
         }
 
-        state_file = tmpdir / "state.json"
-        paper_file = tmpdir / "paper_state.json"
-
-        with open(state_file, "w") as f:
-            json.dump(state, f)
-        with open(paper_file, "w") as f:
-            json.dump(paper_state, f)
-
-        # Run rebalance_loop in a subprocess and crash before executor
-        from futures_portfolio.core.main import rebalance_loop
-        from futures_portfolio.core.storage import safe_load_json as load_json, safe_save_json as save_json
-
-        # Create a mock connector
-        connector = MagicMock()
-        connector.get_exchange_info = AsyncMock(return_value={
-            "symbols": [{"symbol": "ZECUSDT", "filters": [
-                {"filterType": "LOT_SIZE", "stepSize": "0.001"}
-            ]}]
-        })
-        connector.get_order_book = AsyncMock(return_value={
-            "bids": [["200.0", "100"]], "asks": [["200.1", "100"]]
-        })
-        connector.get_mark_prices = AsyncMock(return_value={"ZECUSDT": 200.0})
-        connector.get_futures_balance = AsyncMock(return_value=1000.0)
-        connector.get_futures_positions = AsyncMock(return_value=[])
-        connector.get_hedge_mode = AsyncMock(return_value=True)
-        connector.set_leverage = AsyncMock()
-        connector.set_margin_type = AsyncMock()
-
-        # Create state files
         state_file = tmpdir / "state.json"
         paper_file = tmpdir / "paper_state.json"
 
@@ -448,68 +371,30 @@ async def test_crash_before_executor():
         # Create funding scenario
         scenario_path = _make_funding_scenario(tmpdir)
 
-        # Create mock connector
-        connector = MagicMock()
-        connector.get_exchange_info = AsyncMock(return_value={
-            "symbols": [{"symbol": "ZECUSDT", "filters": [
-                {"filterType": "LOT_SIZE", "stepSize": "0.001"}
-            ]}]
-        })
-        connector.get_order_book = AsyncMock(return_value={
-            "bids": [["200.0", "100"]], "asks": [["200.1", "100"]]
-        })
-        connector.get_mark_prices = AsyncMock(return_value={"ZECUSDT": 200.0})
-        connector.get_futures_balance = AsyncMock(return_value=1000.0)
-        connector.get_futures_positions = AsyncMock(return_value=[])
-        connector.get_hedge_mode = AsyncMock(return_value=True)
-        connector.set_leverage = AsyncMock()
-        connector.set_margin_type = AsyncMock()
-        connector.get_mark_prices = AsyncMock(return_value={"ZECUSDT": 200.0})
-        connector.get_futures_balance = AsyncMock(return_value=1000.0)
-        connector.get_futures_positions = AsyncMock(return_value=[])
+        # Crash in a child process: the executor must be reached, then the
+        # child dies with exit code 99 before any fill is recorded.
+        exit_code = _run_crash_child(tmpdir, config_path, state_file, paper_file)
+        assert exit_code == 99, f"child did not reach the injected crash (exit={exit_code})"
 
-        # Mock logger
-        logger = MagicMock()
+        # Verify disk state is pre-crash (no commit happened)
+        state, paper = _load_state_files(tmpdir)
 
-        # Patch execute_actions to crash
-        with patch("futures_portfolio.core.executor.PortfolioExecutor.execute_actions") as mock_execute:
-            mock_execute.side_effect = lambda *a, **kw: os._exit(99)
+        # Funding halt should still be active
+        halt = state.get("funding_halt", {})
+        assert halt.get("active") is True
+        # Positions unchanged
+        assert paper.get("positions", {}).get("ZECUSDT_LONG", 0) == 1.5
+        assert paper.get("positions", {}).get("ZECUSDT_SHORT", 0) == 1.4
+        # Wallet unchanged
+        assert paper.get("balance", 0) == 660.0
+        # Halt close_state still pending
+        close_state = halt.get("close_state", {})
+        assert close_state.get("BASE_LONG", {}).get("status") == "pending"
+        assert close_state.get("BASE_SHORT", {}).get("status") == "pending"
 
-            try:
-                await rebalance_loop(
-                    connector=connector,
-                    config_path=str(config_path),
-                    state_file_path=str(state_file),
-                    paper_state_file_path=str(paper_file),
-                    logger=MagicMock(),
-                    ticker_override="ZECUSDT",
-                    paper_mode_override=True
-                )
-            except SystemExit as e:
-                assert e.code == 99
-            except Exception as e:
-                if "99" not in str(e):
-                    raise
-
-            # Verify disk state is pre-crash (no commit happened)
-            state, paper = _load_state_files(tmpdir)
-
-            # Funding halt should still be active
-            halt = state.get("funding_halt", {})
-            assert halt.get("active") is True
-            # Positions unchanged
-            assert paper.get("positions", {}).get("ZECUSDT_LONG", 0) == 1.5
-            assert paper.get("positions", {}).get("ZECUSDT_SHORT", 0) == 1.4
-            # Wallet unchanged
-            assert paper.get("balance", 0) == 660.0
-            # Halt close_state still pending
-            close_state = halt.get("close_state", {})
-            assert close_state.get("BASE_LONG", {}).get("status") == "pending"
-            assert close_state.get("BASE_SHORT", {}).get("status") == "pending"
-
-            # WAL intent should NOT exist (not reached)
-            intent_file = tmpdir / "state.json.funding_intent"
-            assert not intent_file.exists(), "WAL intent should not exist before executor"
+        # WAL intent should NOT exist (not reached)
+        intent_file = tmpdir / "state.json.funding_intent"
+        assert not intent_file.exists(), "WAL intent should not exist before executor"
 
 
 @pytest.mark.asyncio

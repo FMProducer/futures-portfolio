@@ -1,4 +1,5 @@
 import asyncio
+import math
 import sys
 import json
 import logging
@@ -20,6 +21,7 @@ from core.calculator import PortfolioCalculator, initial_notional_after_fee
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
+from core import share_trail
 
 from pathlib import Path
 
@@ -103,6 +105,8 @@ def _apply_clean_slate(state: dict, paper_state: dict, base_ticker: str, target_
     state['reference_tpv'] = target_cap
     state['trailing_stop_violation_start'] = 0.0
     state['trailing_stop_paper_timeout_end'] = 0.0
+    state['share_trail'] = share_trail.fresh_state()
+    state['share_trail_receipts'] = []
     logger.info(f"🔄 State reset (TS flag preserved): clean start detected (no open positions)")
 
 async def _update_final_metrics_for_exit(state: dict, state_file_path: str, total_tpv_final: Decimal, initial_tpv: Decimal, safe_calc_res: dict, cycles: int, logger: logging.Logger) -> None:
@@ -187,6 +191,8 @@ async def _handle_liquidation_recovery(connector, base_ticker, state, state_file
         state["last_profit"] = -float(state.get("initial_tpv", 180.0))
         state["total_pnl_pct"] = -100.0
         state["trailing_stop_triggered"] = True
+        state["share_trail"] = share_trail.fresh_state()
+        state["share_trail_receipts"] = []
         await save_json(state_file_path, state)
 
         # [SSOT] Delegate config mutation to supervisor via signal
@@ -335,6 +341,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
     siphoning_threshold_pct = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
     reinvestment_ratio = portfolio_cfg.get("reinvestment_ratio", 0.0)
+    trail_distance = float(config.get("rebalance_share_trail_distance", 0.0))
+    if not math.isfinite(trail_distance) or trail_distance < 0:
+        raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
     
     # SSOT Capital: Use paper_initial_capital for PAPER, initial_capital for REAL
     if paper_mode:
@@ -359,6 +368,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "last_rebalance_price": 0.0,
         "cash_invariant_violation": None,
         "initial_build_pending": None,
+        "share_trail": None,
+        "share_trail_spec": None,
+        "share_trail_receipts": [],
         "started_at": time.time(),
         # B1 funding state
         "funding_model": "legacy_constant",
@@ -366,6 +378,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "funding_halt": {},
         "funding_paid": 0.0,
     })
+
+    # Safe load of the two-sided share-trailing state: missing/corrupt rows fall back to unarmed.
+    state["share_trail"] = share_trail.load_state(state.get("share_trail"))
+    state.setdefault("share_trail_receipts", [])
+    _startup_trail_spec = share_trail.spec_fingerprint(trail_distance, targets, threshold_surplus, threshold_deficit)
+    if share_trail.spec_mismatch(state.get("share_trail_spec"), _startup_trail_spec):
+        state["share_trail"] = share_trail.fresh_state()
+    state["share_trail_spec"] = _startup_trail_spec
 
     # Persisted startup block — checked immediately after strategy state load,
     # before any migration, ticker-change reset, wallet fallback or Clean Slate.
@@ -436,6 +456,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         state["trailing_stop_paper_timeout_end"] = 0.0
         state["base_ticker"] = base_ticker
         state["started_at"] = time.time()
+        state["share_trail"] = share_trail.fresh_state()
+        state["share_trail_receipts"] = []
         await save_json(state_file_path, state)
 
     if paper_state.get("base_ticker") != base_ticker:
@@ -448,6 +470,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         paper_state["short_entry_price"] = 0.0
         await save_json(paper_state_file_path, paper_state)
 
+    if share_trail.restore_checkpoint(state, paper_state):
+        await save_json(state_file_path, state)
     if "positions" not in paper_state: paper_state["positions"] = {}
     if f"{base_ticker}_LONG" not in paper_state["positions"]: paper_state["positions"][f"{base_ticker}_LONG"] = 0.0
     if f"{base_ticker}_SHORT" not in paper_state["positions"]: paper_state["positions"][f"{base_ticker}_SHORT"] = 0.0
@@ -702,6 +726,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             paper_state_dirty = False
             any_success = False
             try:
+                if state.get("startup_blocked"):
+                    logger.critical("Unreconciled execution: trading remains blocked")
+                    await asyncio.sleep(86400)
+                    continue
                 # Failsafe: if restarted by PM2 with triggered state, exit immediately to trigger Reaper
                 if state.get("trailing_stop_triggered", False):
                     logger.critical(f"🚨 Trailing Stop already triggered for {base_ticker}. Entering Zombie Mode.")
@@ -743,6 +771,17 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         max_drawdown_limit = current_config.get("max_drawdown_limit", 0.5)
                         equity_trailing_stop_pct = current_config.get("equity_trailing_stop_pct", 0.0)
                         equity_trailing_stop_timeout_sec = current_config.get("equity_trailing_stop_timeout_sec", 0.0)
+                        trail_distance = float(current_config.get("rebalance_share_trail_distance", 0.0))
+                        if not math.isfinite(trail_distance) or trail_distance < 0:
+                            raise ValueError("rebalance_share_trail_distance must be finite and non-negative")
+                        _trail_spec = share_trail.spec_fingerprint(trail_distance, targets, threshold_surplus, threshold_deficit)
+                        if share_trail.spec_mismatch(state.get("share_trail_spec"), _trail_spec):
+                            # Incompatible observations: reset the trail, keep the rest of the state.
+                            state["share_trail"] = share_trail.fresh_state()
+                            state["share_trail_receipts"] = []
+                            state_dirty = True
+                            logger.warning("⚙️ Share-trail spec changed (distance/targets/thresholds) — trail observations reset.")
+                        state["share_trail_spec"] = _trail_spec
 
                         # Обновляем параметры защит
                         guards_cfg = portfolio_cfg.get("safety_guards", {})
@@ -770,6 +809,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 _bl = current_config.get(_bl_key, {})
                 _now = time.time()
                 _in_blacklist = base_ticker in _bl and _bl.get(base_ticker, 0) > _now
+                _rebased = False
 
                 if _in_blacklist:
                     _last_profit = float(state.get("last_profit", 0.0))
@@ -789,6 +829,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     paper_state["balance"] = _rebase_target
                     paper_state_dirty = True
                     state_dirty = True
+                    _rebased = True
                 elif initial_tpv != target_initial and target_initial > 0:
                     logger.info(f"🔄 Initial Capital changed in config: {initial_tpv} -> {target_initial}. Updating base.")
                     initial_tpv = target_initial
@@ -799,6 +840,12 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     # simulated equity. Only update initial_tpv/reference_tpv so
                     # calculator uses correct baseline.
                     paper_state_dirty = True
+                    state_dirty = True
+                    _rebased = True
+                # Rebase means a new economic session: incompatible trail observations.
+                if _rebased:
+                    state["share_trail"] = share_trail.fresh_state()
+                    state["share_trail_receipts"] = []
                     state_dirty = True
 
                 # Use Mark Price for TPV and rebalance triggers as recommended by Audit
@@ -1139,8 +1186,23 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # Blocking surplus sell prevents profit-taking during normal hedge operation
                 allow_surplus_sell = True
 
+                trail_state = state["share_trail"] if trail_distance > 0 else None
+                trail_snapshot_before = None
+                if trail_state is not None:
+                    trail_snapshot_before = tuple(
+                        tuple(trail_state[key][field] for field in ("peak", "trough"))
+                        for key in ("BASE_LONG", "BASE_SHORT"))
+
                 calc_res = calc.calculate_rebalance(targets, threshold_surplus, threshold_deficit, calc.tpv, ignore_limits, allow_surplus_sell,
-                                                    fuse_enabled=portfolio_cfg.get("fuse_enabled", True))
+                                                    fuse_enabled=portfolio_cfg.get("fuse_enabled", True),
+                                                    share_trail=trail_state, trail_distance=trail_distance)
+
+                if trail_snapshot_before is not None:
+                    trail_snapshot_after = tuple(
+                        tuple(trail_state[key][field] for field in ("peak", "trough"))
+                        for key in ("BASE_LONG", "BASE_SHORT"))
+                    if trail_snapshot_after != trail_snapshot_before:
+                        state_dirty = True
 
                 tpv_total = calc_res["total_tpv"]
                 tpv_active = calc_res["tpv"]
@@ -1184,6 +1246,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         )
                         state["initial_build_pending"] = None
                         state["trailing_stop_triggered"] = True
+                        state["share_trail"] = share_trail.fresh_state()
+                        state["share_trail_receipts"] = []
                         actions = []
                         paper_state_dirty = True
                         state_dirty = True
@@ -1221,6 +1285,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     msg = f"CRITICAL: Total Equity {tpv_total:.2f} (including SAFE) is less than {drawdown_threshold:.2f} ({max_drawdown_limit}% DD from ATH={_dd_base:.2f}). EMERGENCY STOP!"
                     logger.critical(msg)
                     asyncio.create_task(notifier.send_alert("EMERGENCY STOP", msg))
+                    state["share_trail"] = share_trail.fresh_state()
+                    state["share_trail_receipts"] = []
+                    state_dirty = True
                     
                     # Проверяем прибыль относительно глобального начального капитала
                     global_initial = portfolio_cfg.get("initial_capital", 60.0)
@@ -1313,6 +1380,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                                 # Жестко фиксируем смерть по трейлингу для HEAL Guard
                                 state["trailing_stop_triggered"] = True
+                                state["share_trail"] = share_trail.fresh_state()
+                                state["share_trail_receipts"] = []
+                                state_dirty = True
 
                                 # --- CRITICAL: Update final metrics BEFORE state resets and exit ---
                                 await _update_final_metrics_for_exit(state, state_file_path, Decimal(str(tpv_total)), Decimal(str(initial_tpv)), calc_res, cycles, logger)
@@ -1481,11 +1551,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 continue
 
                             if status in ["SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"]:
-                                any_success = True
                                 # -------------------------------------------------------------------------
                                 # [V3.8.3] LOGGING & ACCOUNTING FOR VIRTUAL SPOT POSITION (1x Leverage)
                                 # -------------------------------------------------------------------------
                                 if res.get("type") == "VIRTUAL_ORDER":
+                                    any_success = True
                                     diff_usdt = Decimal(str(res.get("diff_usdt", 0.0)))
 
                                     # [V-CASH] VIRTUAL = чистый USDT-кэш: ордер только
@@ -1517,6 +1587,19 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 if qty <= 0:
                                     logger.warning(f"⚠️ Skip state update for {key} because executed qty is {qty}")
                                     continue
+
+                                if trail_state is not None:
+                                    try:
+                                        is_new_fill = share_trail.fill_receipt(paper_state, res)
+                                    except ValueError:
+                                        state["startup_blocked"] = True
+                                        state["share_trail_unreconciled_results"] = exec_results
+                                        await save_json(state_file_path, state)
+                                        raise
+                                    if not is_new_fill:
+                                        logger.info("Duplicate confirmed fill ignored before position/cash update")
+                                        continue
+                                any_success = True
 
                                 trade_pnl = Decimal(str(res.get("trade_pnl", 0.0)))
                                 commission = Decimal(str(res.get("commission", 0.0)))
@@ -1562,9 +1645,30 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 # Запись обратно во float-структуру JSON
                                 paper_state["positions"][pos_key] = float(new_qty.quantize(Decimal('1e-8')))
 
+                                # Two-sided share trailing: a confirmed fill (full or partial, qty > 0)
+                                # consumes the signal of this leg and direction only. Unknown/failed
+                                # statuses are NOT consumed (reconciliation required first).
+                                if trail_state is not None:
+                                    _direction = "REDUCE" if reduce_only else "ADD"
+                                    share_trail.consume(trail_state, f"BASE_{pos_side}", _direction)
+                                    state_dirty = True
+                                    if new_qty == 0:
+                                        share_trail.reset_leg(trail_state, f"BASE_{pos_side}")
+                                        state_dirty = True
+
                                 current_balance = Decimal(str(paper_state["balance"]))
                                 paper_state["balance"] = float((current_balance + trade_pnl - commission).quantize(Decimal('1e-4')))
                                 paper_state_dirty = True
+                                if trail_state is not None:
+                                    share_trail.fill_receipt(paper_state, res, record=True)
+                                    paper_state["share_trail_checkpoint"] = {
+                                        "spec": state["share_trail_spec"],
+                                        "trail": share_trail.load_state(trail_state),
+                                        "execution_id": res["execution_id"],
+                                    }
+                                    state["share_trail_last_fill"] = res["execution_id"]
+                                    await save_json(paper_state_file_path, paper_state)
+                                    await save_json(state_file_path, state)
 
                                 mode_tag = "PAPER" if paper_mode else "REAL"
                                 trade_log = f"📝 {mode_tag}: {side} {float(qty)} {pos_key} @ {float(res.get('price', price)):.8g}"
