@@ -1146,6 +1146,16 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 tpv_active = calc_res["tpv"]
                 actions = calc_res["actions"]
 
+                if (paper_mode and state.get("cash_invariant_violation")
+                        and calc.val_cash.is_finite() and calc.val_cash >= 0):
+                    logger.warning(
+                        "Cash invariant restored: CASH=%s; increases unblocked. Previous violation: %s",
+                        calc.val_cash, state["cash_invariant_violation"],
+                    )
+                    state["cash_invariant_violation"] = None
+                    state_dirty = True
+                    await save_json(state_file_path, state)
+
                 if initial_build_pending:
                     missing = set(initial_build_pending.get("missing", []))
                     actions = [

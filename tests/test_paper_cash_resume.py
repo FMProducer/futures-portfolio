@@ -373,9 +373,9 @@ async def test_resume_on_actual_session_snapshot():
 
 
 @pytest.mark.asyncio
-async def test_resume_with_existing_halt_violation_does_not_trigger_orders():
-    """Cash invariant violation in saved state → resume keeps violation,
-    does NOT place new orders (increases are blocked)."""
+@pytest.mark.parametrize("cash", [Decimal("-0.13"), Decimal("0"), Decimal("38.0")])
+async def test_resume_cash_violation_recovers_only_with_nonnegative_cash(cash):
+    """Recomputed CASH controls recovery; expansions retain their execution budget."""
     config = _blocking_config()
     price = 1340.0
     state, paper = _hedged_session(price=price)
@@ -388,7 +388,7 @@ async def test_resume_with_existing_halt_violation_does_not_trigger_orders():
         "at": 1792614000.0,
     }
 
-    # Calculator produces an expansion action — but with violation, it should be blocked.
+    # A pending expansion must remain blocked until CASH recovers.
     buy_action = {
         "type": "ORDER", "key": "BASE_LONG", "symbol": "BTCUSDT_LONG",
         "base_symbol": "BTCUSDT", "position_side": "LONG",
@@ -407,19 +407,16 @@ async def test_resume_with_existing_halt_violation_does_not_trigger_orders():
 
     with patch(f"{author.M}.PortfolioExecutor", return_value=executor_mock):
         saves, _, _ = await author._run_rebalance(config, state, paper, loop_limit=1,
-            calc_return=calc_return, calc_val_cash=Decimal("38.0"))
+            calc_return=calc_return, calc_val_cash=cash)
 
     final_state = [v for p, v in saves if p == "state.json"][-1]
 
-    # Violation preserved
-    assert final_state.get("cash_invariant_violation") is not None
-    assert final_state["cash_invariant_violation"]["cash"] == -0.13
-
-    # execute_actions should receive only reductions (the expansion was filtered out)
-    # or receive empty list if only expansion was present
-    call_args_list = executor_mock.execute_actions.call_args_list
-    if call_args_list:
-        actions_sent = call_args_list[0][0][0]  # first positional arg = actions list
-        increases = [a for a in actions_sent if not a.get("is_reduction")]
-        assert len(increases) == 0, f"Increases should be blocked: got {increases}"
-    # else: execute_actions was not called at all — also acceptable (empty fused_actions)
+    if cash >= 0:
+        assert final_state["cash_invariant_violation"] is None
+        executor_mock.execute_actions.assert_awaited()
+        for call in executor_mock.execute_actions.await_args_list:
+            assert call.args[0] == [buy_action]
+            assert call.kwargs["cash_budget"] == cash
+    else:
+        assert final_state["cash_invariant_violation"]["cash"] == -0.13
+        executor_mock.execute_actions.assert_not_awaited()

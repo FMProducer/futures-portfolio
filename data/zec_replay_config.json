@@ -60,8 +60,9 @@
         "trend_eff_threshold": 0.55,
         "net_move_block_pct": 2.14,
         "net_move_window_sec": 72,
-        "trend_lookback_bars": 10
+        "trend_lookback_bars": 30
       },
+      "fuse_enabled": true,
       "rebalance_threshold_surplus": 0.01,
       "rebalance_threshold_deficit": 0.04,
       "ticker_thresholds": {
@@ -70,8 +71,8 @@
           "deficit": 0.04
         },
         "ZECUSDT": {
-          "surplus": 0.02,
-          "deficit": 0.04
+          "surplus": 0.01,
+          "deficit": 0.055
         }
       }
     }

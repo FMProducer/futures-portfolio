@@ -41,11 +41,11 @@
       "targets": {
         "BASE_LONG": {
           "share": 0.35,
-          "leverage": 1
+          "leverage": 7
         },
         "BASE_SHORT": {
           "share": 0.35,
-          "leverage": 1
+          "leverage": 7
         },
         "VIRTUAL": {
           "share": 0.30,
@@ -71,8 +71,8 @@
           "deficit": 0.04
         },
         "ZECUSDT": {
-          "surplus": 0.02,
-          "deficit": 0.04
+          "surplus": 0.01,
+          "deficit": 0.055
         }
       }
     }
