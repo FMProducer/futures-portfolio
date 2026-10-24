@@ -17,6 +17,7 @@ import sys
 import tempfile
 from decimal import Decimal as D
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -397,20 +398,206 @@ async def test_crash_before_executor():
         assert not intent_file.exists(), "WAL intent should not exist before executor"
 
 
+def _check_crash_after_fill(tmp_path, fraction):
+    """Unsaved paper results are replayed from the durable pre-fill state."""
+    scenario = _make_funding_scenario(tmp_path)
+    config_path = _make_config(tmp_path, scenario)
+    state_file = tmp_path / "state.json"
+    paper_file = tmp_path / "paper_state.json"
+    state = {
+        "base_ticker": BASE_TICKER, "virt_qty": 0.0, "virt_debt": -1.0,
+        "initial_tpv": 1000.0, "reference_tpv": 1000.0,
+        "tpv_ath": 1000.0, "rebalance_cycles": 0,
+        "funding_journal": [],
+        "funding_halt": {"active": True, "reason": "funding_shortfall",
+            "close_state": {f"BASE_{side}": {
+                "leg": f"BASE_{side}", "close_event_id": f"close_{side}",
+                "status": "pending", "qty_remaining": qty}
+                for side, qty in (("LONG", 1.5), ("SHORT", 1.4))}},
+    }
+    paper = {"base_ticker": BASE_TICKER, "balance": 660.0,
+        "positions": {"ZECUSDT_LONG": 1.5, "ZECUSDT_SHORT": 1.4},
+        "last_price": 200.0, "long_entry_price": 200.0,
+        "short_entry_price": 200.0}
+    state_file.write_text(json.dumps(state), encoding="utf-8")
+    paper_file.write_text(json.dumps(paper), encoding="utf-8")
+    child = tmp_path / "full_fill_child.py"
+    child.write_text(_CHILD_SRC.split('with patch("core.executor.')[0] + r'''
+import json
+from pathlib import Path
+from core import funding
+
+mode = sys.argv[5]
+fraction = float(sys.argv[6])
+original_save = funding.save_funding_boundary
+
+async def execute(actions, price, paper_mode, config, steps, wallet):
+    action = actions[0]
+    assert paper_mode and action["is_reduction"]
+    side = action["position_side"]
+    qty = wallet["positions"]["ZECUSDT_" + side]
+    if mode == "crash":
+        qty *= fraction
+    return [{"status": "SUCCESS", "qty": qty,
+        "side": "SELL" if side == "LONG" else "BUY", "price": price,
+        "commission": .01, "trade_pnl": 0}]
+
+def save(strategy_path, wallet_path, state, wallet, journal, halt):
+    if mode == "crash":
+        assert wallet["positions"]["ZECUSDT_LONG"] == 1.5 * (1 - fraction)
+        assert wallet["balance"] == 659.99
+        close = halt.close_state["BASE_LONG"]
+        assert close.status == ("filled" if fraction == 1 else "partial")
+        assert float(close.qty_closed) == 1.5 * fraction
+        assert float(close.qty_remaining) == 1.5 * (1 - fraction)
+        assert wallet["long_entry_price"] == (0 if fraction == 1 else 200)
+        Path("processed_fill.json").write_text(json.dumps({"state": state, "wallet": wallet}))
+        os._exit(99)
+    original_save(strategy_path, wallet_path, state, wallet, journal, halt)
+
+async def halted_sleep(seconds, *args, **kwargs):
+    assert seconds == 86400
+    raise SystemExit(0)
+
+with patch("core.executor.PortfolioExecutor.execute_actions", side_effect=execute), \
+     patch("core.funding.save_funding_boundary", side_effect=save), \
+     patch("core.main.self_kill_pm2", new=AsyncMock()), \
+     patch("core.main.emit_signal"), \
+     patch("core.main.TelegramNotifier", return_value=MagicMock()), \
+     patch("asyncio.sleep", side_effect=halted_sleep):
+    asyncio.run(rebalance_loop(_connector(), CONFIG_PATH, STATE_PATH, PAPER_PATH,
+        MagicMock(), ticker_override="ZECUSDT", paper_mode_override=True))
+''', encoding="utf-8")
+    for mode, expected_code in (("crash", 99), ("restart", 0)):
+        proc = subprocess.run([sys.executable, "-I", str(child), str(ROOT),
+            config_path, str(state_file), str(paper_file), mode, str(fraction)],
+            cwd=tmp_path, capture_output=True, text=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        assert proc.returncode == expected_code, proc.stdout + proc.stderr
+        if mode == "crash":
+            assert (tmp_path / "processed_fill.json").exists()
+            assert _load_state_files(tmp_path) == (state, paper)
+            assert not Path(str(state_file) + ".funding_intent").exists()
+    restored, wallet = _load_state_files(tmp_path)
+    assert wallet["positions"] == {"ZECUSDT_LONG": 0.0, "ZECUSDT_SHORT": 0.0}
+    assert wallet["balance"] == 659.98
+    assert wallet["long_entry_price"] == wallet["short_entry_price"] == 0
+    assert restored["funding_halt"]["active"]
+    for leg, qty in (("BASE_LONG", 1.5), ("BASE_SHORT", 1.4)):
+        close = restored["funding_halt"]["close_state"][leg]
+        assert close["status"] == "filled"
+        assert close["qty_closed"] == qty
+        assert close["commission"] == .01
+    assert not Path(str(state_file) + ".funding_intent").exists()
+
+
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Not implemented: crash-after-fill recovery")
-async def test_crash_after_full_fill():
+async def test_crash_after_full_fill(tmp_path):
     """Crash after full fill returned, before durable commit."""
-    # TODO: Implement
-    pass
+    _check_crash_after_fill(tmp_path, 1.0)
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Not implemented: crash-after-fill recovery")
-async def test_crash_after_partial_fill():
+async def test_crash_after_partial_fill(tmp_path):
     """Crash after partial fill returned, before durable commit."""
-    # TODO: Implement
-    pass
+    _check_crash_after_fill(tmp_path, 0.5)
+
+
+@pytest.mark.asyncio
+async def test_reconcile_grown_live_fill_accounted_once():
+    """Same order filled more after the crash: actuals replace the record, no double count."""
+    from futures_portfolio.core.main import _reconcile_funding_leg
+    halt = FundingHalt.from_dict({
+        "active": True,
+        "close_state": {"BASE_LONG": {
+            "leg": "BASE_LONG", "close_event_id": "close_LONG",
+            "status": "partial", "qty_closed": 0.5, "qty_remaining": 1.0,
+            "fill_price": 200.0, "commission": 0.01, "realized_pnl": 0.0,
+            "execution_id": "binance:ZECUSDT:555"}},
+    })
+    paper = {"positions": {"ZECUSDT_LONG": 1.0}, "balance": 660.0}
+    connector = MagicMock()
+    connector.get_order_status = AsyncMock(return_value={
+        "status": "PARTIALLY_FILLED", "executedQty": "1.2", "avgPrice": "200.5"})
+    connector.get_order_trades = AsyncMock(return_value=[
+        {"commission": "0.008", "realizedPnl": "0.01"},
+        {"commission": "0.022", "realizedPnl": "0.03"}])
+    verdict = await _reconcile_funding_leg(connector, halt, "BASE_LONG", paper,
+                                           BASE_TICKER, False, MagicMock())
+    cs = halt.close_state["BASE_LONG"]
+    assert verdict == "handled"
+    assert cs.status == "partial"
+    assert cs.qty_closed == D("1.2") and cs.qty_remaining == D("0.3")
+    assert cs.commission == D("0.03") and cs.realized_pnl == D("0.04")
+    assert cs.fill_price == D("200.5")
+    assert paper["positions"]["ZECUSDT_LONG"] == 0.3
+    assert paper["balance"] == 660.02  # +pnl delta .04, -commission delta .02
+    # a second pass on the same actuals must be a no-op (exactly once)
+    again = await _reconcile_funding_leg(connector, halt, "BASE_LONG", paper,
+                                         BASE_TICKER, False, MagicMock())
+    assert again == "handled"
+    assert cs.qty_closed == D("1.2") and cs.commission == D("0.03")
+    assert paper["positions"]["ZECUSDT_LONG"] == 0.3
+    assert paper["balance"] == 660.02
+
+
+@pytest.mark.asyncio
+async def test_reconcile_inconsistent_live_fill_quarantines():
+    """Actual fill outside the committed window: stop, keep facts, never re-order."""
+    from futures_portfolio.core.main import _reconcile_funding_leg
+    halt = FundingHalt.from_dict({
+        "active": True,
+        "close_state": {"BASE_LONG": {
+            "leg": "BASE_LONG", "close_event_id": "close_LONG",
+            "status": "partial", "qty_closed": 0.5, "qty_remaining": 1.0,
+            "execution_id": "binance:ZECUSDT:555"}},
+    })
+    paper = {"positions": {"ZECUSDT_LONG": 1.0}, "balance": 660.0}
+    connector = MagicMock()
+    connector.get_order_status = AsyncMock(return_value={
+        "status": "FILLED", "executedQty": "0.2", "avgPrice": "200.5"})
+    connector.get_order_trades = AsyncMock(return_value=[])
+    verdict = await _reconcile_funding_leg(connector, halt, "BASE_LONG", paper,
+                                           BASE_TICKER, False, MagicMock())
+    assert verdict == "handled"
+    assert halt.close_state["BASE_LONG"].status == "quarantined"
+    assert paper["positions"]["ZECUSDT_LONG"] == 1.0
+    assert paper["balance"] == 660.0
+    connector.get_order_status = AsyncMock(side_effect=Exception("api down"))
+    halt2 = FundingHalt.from_dict({
+        "active": True,
+        "close_state": {"BASE_SHORT": {
+            "leg": "BASE_SHORT", "close_event_id": "close_SHORT",
+            "status": "pending", "qty_closed": 0.0, "qty_remaining": 1.4,
+            "execution_id": "binance:ZECUSDT:556"}},
+    })
+    verdict2 = await _reconcile_funding_leg(connector, halt2, "BASE_SHORT", paper,
+                                            BASE_TICKER, False, MagicMock())
+    assert verdict2 == "handled"
+    assert halt2.close_state["BASE_SHORT"].status == "quarantined"
+
+
+@pytest.mark.asyncio
+async def test_reconcile_missing_identity_stops_when_position_shrunk():
+    """Live leg without order identity: a shrunken exchange position means an
+    unrecorded fill => stop trading; an intact position => re-issue is safe."""
+    from futures_portfolio.core.main import _reconcile_funding_leg
+    def _seed_halt():
+        return FundingHalt.from_dict({
+            "active": True,
+            "close_state": {"BASE_LONG": {
+                "leg": "BASE_LONG", "close_event_id": "close_LONG",
+                "status": "pending", "qty_closed": 0.0, "qty_remaining": 1.5}}})
+    paper = {"positions": {"ZECUSDT_LONG": 1.5}, "balance": 660.0}
+    connector = MagicMock()
+    connector.get_positions = AsyncMock(return_value={"ZECUSDT_LONG": {"qty": 0.3}})
+    verdict = await _reconcile_funding_leg(connector, _seed_halt(), "BASE_LONG", paper,
+                                           BASE_TICKER, False, MagicMock())
+    assert verdict == "handled"
+    connector.get_positions = AsyncMock(return_value={"ZECUSDT_LONG": {"qty": 1.5}})
+    verdict = await _reconcile_funding_leg(connector, _seed_halt(), "BASE_LONG", paper,
+                                           BASE_TICKER, False, MagicMock())
+    assert verdict == "reissue"
 
 
 if __name__ == "__main__":

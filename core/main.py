@@ -121,6 +121,162 @@ async def _live_fuse_fill(connector, base_ticker: str, logger: logging.Logger):
     return {"bids": _levels("bids"), "asks": _levels("asks"), "taker": taker}
 
 
+async def _reconcile_funding_leg(connector, halt_obj, leg: str, paper_state: dict,
+                                 base_ticker: str, paper_mode: bool, logger) -> str:
+    """Apply validated cumulative actuals; an unknown live outcome never authorizes retry."""
+    if paper_mode:
+        return "reissue"
+    cs = halt_obj.close_state.get(leg)
+    if cs is None:
+        raise ValueError("Missing durable funding close intent")
+    if cs.status == "quarantined":
+        return "handled"
+    side = leg.split("_")[-1]
+    expected_side = "SELL" if side == "LONG" else "BUY"
+    pos_key = f"{base_ticker}_{side}"
+    try:
+        if cs.execution_id:
+            provider, symbol, order_id = cs.execution_id.split(":")
+            if provider != "binance" or symbol != base_ticker:
+                raise ValueError("Funding order identity does not match portfolio")
+            order_id = int(order_id)
+            order = await connector.get_order_status(symbol, order_id)
+        elif cs.client_order_id and cs.submission_state != "ready":
+            order = await connector.get_order_by_client_id(base_ticker, cs.client_order_id)
+            order_id = int(order["orderId"])
+        elif cs.client_order_id and cs.submission_state == "ready":
+            positions = await connector.get_positions()
+            actual = abs(Decimal(str(positions.get(pos_key, {}).get("qty", 0))))
+            expected = abs(Decimal(str(paper_state["positions"].get(pos_key, 0))))
+            if not actual.is_finite() or actual != expected or actual != cs.qty_remaining:
+                raise ValueError("Prepared close does not match exchange and shadow position")
+            return "reissue"
+        else:
+            raise ValueError("Unknown submission identity; operator reconciliation required")
+        cs.reconciliation_payload = {"order": order}
+        if (order.get("symbol") != base_ticker or int(order.get("orderId", -1)) != order_id
+                or order.get("side") != expected_side or order.get("positionSide") != side):
+            raise ValueError("Order identity, symbol or hedge side mismatch")
+        if cs.client_order_id and order.get("clientOrderId") != cs.client_order_id:
+            raise ValueError("Client order identity mismatch")
+        filled = Decimal(str(order["executedQty"]))
+        total = cs.qty_closed + cs.qty_remaining
+        if not filled.is_finite() or filled < cs.qty_closed or filled > total:
+            raise ValueError("Executed quantity outside durable intent")
+        if Decimal(str(order["origQty"])) != total:
+            raise ValueError("Order quantity does not match durable intent")
+        status = order["status"]
+        if status not in {"NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "EXPIRED", "REJECTED", "EXPIRED_IN_MATCH"}:
+            raise ValueError("Unknown order status")
+        trades = await connector.get_order_trades(base_ticker, order_id)
+        cs.reconciliation_payload["trades"] = trades
+        trade_ids = set()
+        quantity = Decimal("0")
+        commission = Decimal("0")
+        pnl = Decimal("0")
+        obligations = {}
+        for trade in trades:
+            identity = trade["id"]
+            if identity in trade_ids:
+                raise ValueError("Duplicate trade identity")
+            trade_ids.add(identity)
+            if (int(trade["orderId"]) != order_id or trade["symbol"] != base_ticker
+                    or trade["side"] != expected_side or trade["positionSide"] != side):
+                raise ValueError("Trade identity or hedge side mismatch")
+            qty = Decimal(str(trade["qty"]))
+            fee = Decimal(str(trade["commission"]))
+            realized = Decimal(str(trade["realizedPnl"]))
+            price = Decimal(str(trade["price"]))
+            if not all(v.is_finite() for v in (qty, fee, realized, price)) or qty <= 0 or price <= 0:
+                raise ValueError("Invalid trade quantities or amounts")
+            quantity += qty
+            pnl += realized
+            asset = trade["commissionAsset"]
+            if asset == "USDT":
+                commission += fee
+            else:
+                obligations[asset] = str(Decimal(obligations.get(asset, "0")) + fee)
+        if quantity != filled:
+            raise ValueError("Trade history incomplete relative to executed quantity")
+        average = Decimal(str(order.get("avgPrice", 0)))
+        if not average.is_finite() or (filled > 0 and average <= 0):
+            raise ValueError("Invalid order average price")
+        cs.fee_obligations = obligations
+        if obligations:
+            raise ValueError("Non-USDT fees require explicit valuation; facts retained")
+        delta = filled - cs.qty_closed
+        remaining_position = Decimal(str(paper_state["positions"].get(pos_key, 0))) - delta
+        if remaining_position < 0:
+            raise ValueError("Execution exceeds shadow position")
+        balance = Decimal(str(paper_state["balance"])) + pnl - cs.realized_pnl - commission + cs.commission
+        if not balance.is_finite() or not math.isfinite(float(balance)):
+            raise ValueError("Invalid wallet accounting")
+        paper_state["positions"][pos_key] = float(remaining_position)
+        paper_state["balance"] = float(balance)
+        if remaining_position == 0:
+            paper_state[f"{side.lower()}_entry_price"] = 0.0
+            paper_state[f"{side.lower()}_liquidation_price"] = 0.0
+        cs.execution_id = f"binance:{base_ticker}:{order_id}"
+        cs.qty_closed = filled
+        cs.qty_remaining = total - filled
+        cs.commission = commission
+        cs.realized_pnl = pnl
+        cs.fill_price = average
+        cs.status = "filled" if cs.qty_remaining == 0 else "partial"
+        cs.submission_state = "reconciled"
+        if cs.qty_remaining > 0 and status not in ("NEW", "PARTIALLY_FILLED"):
+            raise ValueError("Terminal order left an unclosed residual; no automatic resubmission")
+    except Exception as error:
+        cs.status = "quarantined"
+        cs.reconciliation_error = str(error)
+        logger.error(f"Funding reconciliation quarantined {leg}: {error}")
+    return "handled"
+
+
+async def _run_live_funding_closes(connector, executor, halt_obj, state, paper_state,
+                                  base_ticker, state_path, wallet_path, journal,
+                                  step_sizes, portfolio_cfg, logger, fresh=False):
+    """Persist submission uncertainty before a single live request, then query actuals."""
+    from uuid import uuid4
+    from core.funding import save_funding_boundary
+
+    def persist():
+        save_funding_boundary(state_path, wallet_path, state, paper_state, journal, halt_obj)
+
+    if fresh:
+        for cs in halt_obj.close_state.values():
+            if not cs.client_order_id and not cs.execution_id:
+                cs.client_order_id = "fp_" + uuid4().hex
+                cs.submission_state = "ready"
+        persist()
+    for leg, cs in halt_obj.close_state.items():
+        if cs.status == "quarantined":
+            continue
+        side = leg.split("_")[-1]
+        decision = await _reconcile_funding_leg(
+            connector, halt_obj, leg, paper_state, base_ticker, False, logger)
+        if decision == "reissue":
+            if not cs.client_order_id or cs.submission_state != "ready" or cs.qty_remaining <= 0:
+                cs.status = "quarantined"
+                cs.reconciliation_error = "No durable prepared submission budget"
+                persist()
+                continue
+            cs.submission_state = "submitting"
+            persist()
+            try:
+                await executor.execute_market_order(
+                    symbol=base_ticker, qty=cs.qty_remaining,
+                    side="SELL" if side == "LONG" else "BUY", position_side=side,
+                    reduce_only=True, step_size=Decimal(str(step_sizes.get(base_ticker, 0))),
+                    min_notional=portfolio_cfg.get("min_notional_usdt", 6),
+                    price=paper_state.get("last_price", 0), client_order_id=cs.client_order_id)
+            except Exception as error:
+                logger.error(f"Funding submission outcome unknown for {leg}: {error}")
+            await _reconcile_funding_leg(
+                connector, halt_obj, leg, paper_state, base_ticker, False, logger)
+        persist()
+
+
 def _apply_clean_slate(state: dict, paper_state: dict, base_ticker: str, target_cap: float, logger: logging.Logger) -> None:
     """Enforces clean slate: resets phantom balances and state to target_initial_cap."""
     paper_state['balance'] = target_cap
@@ -512,7 +668,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     # Если реальных позиций нет, это чистый старт (или рестарт после стопа).
     # Жестко затираем фантомные балансы, чтобы не сломать Trailing Stop.
     # При чистом старте баланс ВСЕГДА сбрасывается на target_initial_cap из конфига.
-    if not paper_mode:
+    if not paper_mode and not _funding_halt_active:
         try:
             raw_positions = await connector.get_positions()
             ticker_positions = {k: v["qty"] for k, v in raw_positions.items() if base_ticker in k}
@@ -535,7 +691,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 _apply_clean_slate(state, paper_state, base_ticker, target_initial_cap, logger)
                 await save_json(paper_state_file_path, paper_state)
                 await save_json(state_file_path, state)
-    elif not state.get("initial_build_pending"):
+    elif paper_mode and not state.get("initial_build_pending"):
         # Pending initial fills and their fees must survive a paper restart.
         _p_l = abs(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))
         _p_s = abs(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))
@@ -629,6 +785,16 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             while True:
                 await asyncio.sleep(86400)
 
+        if not paper_mode:
+            await _run_live_funding_closes(
+                connector, executor, halt_obj, state, paper_state, base_ticker,
+                state_file_path, paper_state_file_path,
+                FundingJournal.from_list(state.get("funding_journal")),
+                step_sizes, portfolio_cfg, logger)
+            await self_kill_pm2(base_ticker, paper_mode)
+            while True:
+                await asyncio.sleep(86400)
+
         pending = get_pending_close_legs(halt_obj)
         if pending:
             logger.critical(f"🚨 Funding halt: {len(pending)} legs pending close.")
@@ -640,6 +806,17 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     record_close_result(halt_obj, leg, "filled",
                                          Decimal('0'), Decimal('0'),
                                          Decimal('0'), Decimal('0'))
+                    continue
+                # A leg whose close order is identified is reconciled against the exchange,
+                # never re-ordered: the same fill must be accounted exactly once.
+                verdict = await _reconcile_funding_leg(
+                    connector, halt_obj, leg, paper_state, base_ticker, paper_mode, logger)
+                if verdict == "handled":
+                    state["funding_halt"] = halt_obj.to_dict()
+                    state["funding_journal"] = state.get("funding_journal", [])
+                    journal = FundingJournal.from_list(state.get("funding_journal"))
+                    save_funding_boundary(state_file_path, paper_state_file_path,
+                                           state, paper_state, journal, halt_obj)
                     continue
                 price_val = paper_state.get("last_price", 0) or 0
                 close_acts = [{"type": "ORDER", "key": leg, "symbol": pos_key,
@@ -669,7 +846,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     leg_status = "filled" if new_q <= 0 else "partial"
                     record_close_result(halt_obj, leg, leg_status, cq,
                                          Decimal(str(cr.get("price", 0))),
-                                         cc, cp, qty_remaining=new_q)
+                                         cc, cp, qty_remaining=new_q,
+                                         execution_id=cr.get("execution_id"))
                 else:
                     # Recovery close failure is terminal — quarantine, don't retry.
                     record_close_result(halt_obj, leg, "quarantined",
@@ -1117,6 +1295,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                             save_funding_boundary(
                                 state_file_path, paper_state_file_path,
                                 state, paper_state, journal, halt_obj)
+                            if not paper_mode:
+                                await _run_live_funding_closes(
+                                    connector, executor, halt_obj, state, paper_state,
+                                    base_ticker, state_file_path, paper_state_file_path,
+                                    journal, step_sizes, portfolio_cfg, logger, fresh=True)
+                                await self_kill_pm2(base_ticker, paper_mode)
+                                while True:
+                                    await asyncio.sleep(86400)
                             for side in ("LONG", "SHORT"):
                                 pos_key = f"{base_ticker}_{side}"
                                 qty = abs(paper_state["positions"].get(pos_key, 0.0))
@@ -1151,7 +1337,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     record_close_result(halt_obj, f"BASE_{side}", leg_status,
                                                          cq, Decimal(str(cr.get("price", price))),
                                                          cc, cp,
-                                                         qty_remaining=new_q)
+                                                         qty_remaining=new_q,
+                                                         execution_id=cr.get("execution_id"))
                                     logger.info(f"📝 Funding close: {cr.get('side')} {float(cq)} {pos_key}"
                                                 f" @ {cr.get('price', price):.8g}"
                                                 f" PnL={float(cp):+.4f} comm={float(cc):.4f}"
@@ -1900,8 +2087,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 })
                 state_dirty = True
 
-                # [LIQUIDATION GUARD] Verify real positions after rebalance
-                if not paper_mode and any_success:
+                # [LIQUIDATION GUARD] Verify real positions every cycle, not only after a
+                # successful execution: a leg can be liquidated while the bot is idle.
+                # Expected quantities come from the shadow ledger — state["positions"] is a
+                # legacy dict the loop never writes.
+                if not paper_mode:
                     try:
                         real_pos_dict = await connector.get_position_risk()
                         # Convert dict {"SYMBOL_LONG": {...}, "SYMBOL_SHORT": {...}} to list
@@ -1925,17 +2115,17 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 has_short = True
 
                         # Check if one side is missing (liquidated)
-                        expected_long = float(state.get("positions", {}).get(f"{base_ticker}_LONG", 0))
-                        expected_short = float(state.get("positions", {}).get(f"{base_ticker}_SHORT", 0))
+                        expected_long = abs(float(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0)))
+                        expected_short = abs(float(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0)))
 
-                        if expected_long != 0 and not has_long:
+                        if expected_long > 1e-10 and not has_long:
                             logger.error(f"🚨 LIQUIDATION DETECTED: {base_ticker}_LONG is MISSING on exchange!")
                             await _handle_liquidation_recovery(connector, base_ticker, state, state_file_path,
                                                                 paper_state, paper_state_file_path,
                                                                 config_path, logger, notifier)
                             while True:
                                 await asyncio.sleep(86400)
-                        if expected_short != 0 and not has_short:
+                        if expected_short > 1e-10 and not has_short:
                             logger.error(f"🚨 LIQUIDATION DETECTED: {base_ticker}_SHORT is MISSING on exchange!")
                             await _handle_liquidation_recovery(connector, base_ticker, state, state_file_path,
                                                                 paper_state, paper_state_file_path,

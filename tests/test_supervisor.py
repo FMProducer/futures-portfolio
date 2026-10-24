@@ -238,7 +238,8 @@ async def test_isolated_blacklists_signal_processing():
          patch(f"{M}.stop_bot", AsyncMock()), \
          patch(f"{M}.safe_save_json", AsyncMock()) as mock_save, \
          patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.Path.glob", return_value=[mock_flag_paper, mock_flag_real]):
+         patch(f"{M}.Path.glob", return_value=[mock_flag_paper, mock_flag_real]), \
+         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
 
         await manage_swarm()
 

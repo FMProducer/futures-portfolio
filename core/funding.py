@@ -84,6 +84,12 @@ class CloseLegState:
     commission: Decimal = Decimal("0")
     realized_pnl: Decimal = Decimal("0")
     filled_at: Optional[float] = None
+    execution_id: Optional[str] = None  # order identity of the close fill, for crash reconciliation
+    client_order_id: Optional[str] = None
+    submission_state: str = ""
+    reconciliation_error: str = ""
+    reconciliation_payload: Dict[str, Any] = field(default_factory=dict)
+    fee_obligations: Dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -96,6 +102,12 @@ class CloseLegState:
             "commission": float(self.commission),
             "realized_pnl": float(self.realized_pnl),
             "filled_at": self.filled_at,
+            "execution_id": self.execution_id,
+            "client_order_id": self.client_order_id,
+            "submission_state": self.submission_state,
+            "reconciliation_error": self.reconciliation_error,
+            "reconciliation_payload": self.reconciliation_payload,
+            "fee_obligations": self.fee_obligations,
         }
 
     @classmethod
@@ -110,6 +122,12 @@ class CloseLegState:
             commission=Decimal(str(d.get("commission", 0))),
             realized_pnl=Decimal(str(d.get("realized_pnl", 0))),
             filled_at=d.get("filled_at"),
+            execution_id=d.get("execution_id"),
+            client_order_id=d.get("client_order_id"),
+            submission_state=d.get("submission_state", ""),
+            reconciliation_error=d.get("reconciliation_error", ""),
+            reconciliation_payload=d.get("reconciliation_payload", {}),
+            fee_obligations=d.get("fee_obligations", {}),
         )
 
 
@@ -342,6 +360,7 @@ def record_close_result(
     halt: FundingHalt, leg: str, status: str, qty: Decimal,
     price: Decimal, commission: Decimal, realized_pnl: Decimal,
     qty_remaining: Decimal = Decimal("0"),
+    execution_id: Optional[str] = None,
 ) -> None:
     cs = halt.close_state.get(leg)
     if cs is None:
@@ -354,6 +373,8 @@ def record_close_result(
     cs.commission += commission
     cs.realized_pnl += realized_pnl
     cs.filled_at = time.time()
+    if execution_id is not None:
+        cs.execution_id = execution_id
 
 
 def all_legs_closed(halt: FundingHalt) -> bool:

@@ -388,8 +388,23 @@ async def test_get_order_trades(connector):
     mock_to_thread.assert_called_once_with(
         connector.futures_client.futures_account_trades,
         symbol="BTCUSDT",
-        orderId=12345
+        orderId=12345, limit=1000
     )
+
+
+@pytest.mark.asyncio
+async def test_get_order_by_client_id(connector):
+    with patch("asyncio.to_thread", AsyncMock(return_value={"orderId": 42})) as call:
+        assert await connector.get_order_by_client_id("BTCUSDT", "fp_test") == {"orderId": 42}
+    call.assert_called_once_with(connector.futures_client.futures_get_order,
+                                 symbol="BTCUSDT", origClientOrderId="fp_test")
+
+
+@pytest.mark.asyncio
+async def test_truncated_trade_history_is_not_accepted(connector):
+    with patch("asyncio.to_thread", AsyncMock(return_value=[{}] * 1000)):
+        with pytest.raises(ValueError, match="truncated"):
+            await connector.get_order_trades("BTCUSDT", 42)
 
 @pytest.mark.asyncio
 async def test_set_leverage(connector):

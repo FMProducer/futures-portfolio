@@ -433,7 +433,7 @@ print(f"  funding apply bars: {'OK' if bars_ok else 'FAIL'}")
 # shortfall bar.  The close fills themselves carry trigger=funding_shortfall
 # and are allowed; rebalance triggers must be zero post-halt.
 increase_trig = [f for f in r1.get("fills", [])
-                 if f.get("bar", 0) >= halt_bar and f.get("trigger") != "funding_shortfall"
+                 if f.get("bar", 0) >= halt_bar
                  and not (f.get("side") == "SELL" and f.get("leg") == "BASE_LONG")
                  and not (f.get("side") == "BUY" and f.get("leg") == "BASE_SHORT")]
 inc_ok = len(increase_trig) == 0

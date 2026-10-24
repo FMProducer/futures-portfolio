@@ -52,7 +52,7 @@ class PortfolioExecutor:
         rounded = (qty / effective_step).quantize(Decimal('1'), rounding="ROUND_FLOOR") * effective_step
         return rounded.normalize()
 
-    async def execute_market_order(self, symbol: str, qty: Any, side: str, step_size: Any = Decimal('0'), reduce_only: bool = False, position_side: str = "BOTH", min_notional: Any = Decimal('6.0'), price: Any = Decimal('0')) -> Dict:
+    async def execute_market_order(self, symbol: str, qty: Any, side: str, step_size: Any = Decimal('0'), reduce_only: bool = False, position_side: str = "BOTH", min_notional: Any = Decimal('6.0'), price: Any = Decimal('0'), client_order_id: Optional[str] = None) -> Dict:
         """
         Отправка рыночного ордера на Binance Futures с полной точностью Decimal.
         """
@@ -94,6 +94,8 @@ class PortfolioExecutor:
                 "quantity": str_qty,  # Передаем строкой! Binance API это отлично переваривает
                 "positionSide": position_side
             }
+            if client_order_id is not None:
+                params["newClientOrderId"] = client_order_id
             
             result = await asyncio.to_thread(
                 self.connector.futures_client.futures_create_order,

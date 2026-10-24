@@ -47,6 +47,19 @@ async def test_execute_market_order_rounding_zero(mock_connector, executor):
     result = await executor.execute_market_order("BTCUSDT", Decimal("0.0001"), "BUY", step_size=Decimal("0.1"))
     assert result["status"] == "NO_ORDER"
 
+
+@pytest.mark.asyncio
+async def test_market_order_preserves_durable_client_identity(mock_connector, executor):
+    mock_connector.futures_client.futures_create_order = Mock(return_value={
+        "orderId": 123, "executedQty": "0.1", "avgPrice": "60000"})
+    mock_connector.get_order_trades = AsyncMock(return_value=[])
+    with patch("asyncio.sleep", AsyncMock()):
+        await executor.execute_market_order("BTCUSDT", Decimal('.1'), "SELL",
+            price=60000, position_side="LONG", reduce_only=True, client_order_id="fp_test")
+    request = mock_connector.futures_client.futures_create_order.call_args.kwargs
+    assert request["newClientOrderId"] == "fp_test"
+    assert request["positionSide"] == "LONG"
+
 @pytest.mark.asyncio
 async def test_execute_market_order_too_small(mock_connector, executor):
     mock_connector.get_futures_prices.return_value = {"BTCUSDT": 60000.0}

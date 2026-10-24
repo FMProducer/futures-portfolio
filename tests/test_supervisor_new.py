@@ -238,7 +238,8 @@ async def test_isolated_blacklists_signal_processing():
          patch(f"{M}.stop_bot", AsyncMock()), \
          patch(f"{M}.safe_save_json", AsyncMock()) as mock_save, \
          patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.Path.glob", return_value=[mock_flag_paper, mock_flag_real]):
+         patch(f"{M}.Path.glob", return_value=[mock_flag_paper, mock_flag_real]), \
+         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
 
         await manage_swarm()
 
@@ -470,7 +471,8 @@ async def test_manage_swarm_rotation_hysteresis_and_cushion():
          patch(f"{M}.stop_bot", AsyncMock()) as mock_stop, \
          patch(f"{M}.safe_save_json", AsyncMock()), \
          patch(f"{M}.Path.exists", return_value=False), \
-         patch(f"{M}.Path.glob", return_value=[]):
+         patch(f"{M}.Path.glob", return_value=[]), \
+         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
 
         await manage_swarm()
         # Should stop ETHUSDT and start BTCUSDT due to score cushion trigger!

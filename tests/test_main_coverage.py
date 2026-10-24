@@ -1049,7 +1049,8 @@ async def test_coverage_config_reload_detection():
 
 @pytest.mark.asyncio
 async def test_coverage_liquidation_guard_missing_long():
-    """Lines 1421-1460: real mode, expected LONG missing on exchange -> recovery"""
+    """Real mode: shadow ledger expects a LONG that is missing on the exchange ->
+    the per-cycle guard calls recovery (expectations come from paper_state, not state)."""
     from futures_portfolio.core.main import _handle_liquidation_recovery
 
     config = _make_config(paper_mode=False, equity_trailing_stop_pct=0.0, max_drawdown_limit=100.0)
@@ -1057,7 +1058,12 @@ async def test_coverage_liquidation_guard_missing_long():
         positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": -1.0},
         tpv_ath=100.0, initial_tpv=100.0,
     )
-    paper_state = _make_paper_state(balance=100.0)
+
+    paper_state = _make_paper_state(
+        balance=100.0,
+        positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": -1.0},
+        long_entry_price=60000.0, short_entry_price=60000.0,
+    )
 
     connector = MagicMock()
     connector.get_futures_prices = AsyncMock(return_value={"BTCUSDT": 60000.0})
@@ -1151,6 +1157,108 @@ async def test_coverage_liquidation_guard_missing_long():
             if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
 
     assert recovery_called[0], "Liquidation recovery should have been called for missing LONG"
+
+
+@pytest.mark.asyncio
+async def test_coverage_liquidation_guard_missing_short():
+    """Symmetric SHORT path: shadow ledger expects a SHORT that is missing on the exchange."""
+    config = _make_config(paper_mode=False, equity_trailing_stop_pct=0.0, max_drawdown_limit=100.0)
+    state = _make_state(
+        positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": -1.0},
+        tpv_ath=100.0, initial_tpv=100.0,
+    )
+    paper_state = _make_paper_state(
+        balance=100.0,
+        positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": -1.0},
+        long_entry_price=60000.0, short_entry_price=60000.0,
+    )
+
+    connector = MagicMock()
+    connector.get_futures_prices = AsyncMock(return_value={"BTCUSDT": 60000.0})
+    connector.get_mark_prices = AsyncMock(return_value={"BTCUSDT": 60000.0})
+    connector.get_exchange_info = AsyncMock(return_value={
+        "symbols": [{"symbol": "BTCUSDT", "filters": [
+            {"filterType": "LOT_SIZE", "stepSize": "0.001"},
+            {"filterType": "MIN_NOTIONAL", "notional": "5.0"},
+        ]}]
+    })
+    connector.get_hedge_mode = AsyncMock(return_value=True)
+    connector.get_free_balance = AsyncMock(return_value=100.0)
+    # Only LONG exists on exchange -> SHORT was liquidated
+    connector.get_positions = AsyncMock(return_value={
+        "BTCUSDT_LONG": {"qty": 1.0, "entry_price": 60000.0}
+    })
+    connector.get_margin_ratio = AsyncMock(return_value={"margin_ratio": 10.0, "total_wallet_balance": 100.0})
+    connector.get_bnb_balance = AsyncMock(return_value=1.0)
+    connector.get_order_book = AsyncMock(return_value={"bids": [["60000", "1"]], "asks": [["60001", "1"]]})
+    connector.set_leverage = AsyncMock()
+    connector.set_margin_type = AsyncMock()
+    connector.get_position_risk = AsyncMock(return_value={
+        "BTCUSDT_LONG": {
+            "positionAmt": "1.0",
+            "entryPrice": "60000.0",
+            "positionSide": "LONG",
+            "liq_price": "55000.0",
+            "unrealizedPnl": "10.0"
+        }
+    })
+
+    calc_mock = MagicMock()
+    calc_mock.calculate_rebalance.return_value = {
+        "total_tpv": 100.0, "tpv": 100.0,
+        "actions": [],
+        "total_pnl_pct": 0.0,
+        "share_long_pct": 40.0, "share_short_pct": 40.0, "share_virt_pct": 20.0,
+        "share_cash_pct": 0.0,
+        "val_long": 40.0, "val_short": 40.0, "val_virt": 20.0, "val_cash": 0.0,
+    }
+    calc_mock.tpv = 100.0
+    calc_mock.val_cash = Decimal("0")
+
+    executor_mock = MagicMock()
+    executor_mock.execute_actions = AsyncMock(return_value=[])
+
+    recovery_called = [False]
+    async def fake_recovery(*args, **kwargs):
+        recovery_called[0] = True
+
+    loop_count = [0]
+    async def bounded_sleep(secs, *args):
+        if secs == 86400: raise ZombieExit("ZombieMode")
+        loop_count[0] += 1
+        if loop_count[0] > 3: raise Exception("StopLoop")
+
+    def load_side_effect(path, default=None):
+        if "paper_state" in str(path):
+            return copy.deepcopy(paper_state)
+        if "state" in str(path) and "paper" not in str(path):
+            return copy.deepcopy(state)
+        return default
+
+    notifier = MagicMock()
+    notifier.send_message = AsyncMock()
+    notifier.send_alert = AsyncMock()
+    notifier.send_status = AsyncMock()
+    notifier.close = AsyncMock()
+
+    with patch(f"{M}.safe_load_json_sync", return_value=config), \
+         patch("builtins.open", mock_open(read_data=json.dumps(config))), \
+         patch("os.path.getmtime", return_value=123), \
+         patch(f"{M}.load_json", AsyncMock(side_effect=load_side_effect)), \
+         patch(f"{M}.save_json", AsyncMock()), \
+         patch(f"{M}.sys.exit", side_effect=BaseException("ProcessExit")), \
+         patch(f"{M}.TelegramNotifier", return_value=notifier), \
+         patch("asyncio.sleep", side_effect=bounded_sleep), \
+         patch(f"{M}.PortfolioCalculator", return_value=calc_mock), \
+         patch(f"{M}.PortfolioExecutor", return_value=executor_mock), \
+         patch(f"{M}._handle_liquidation_recovery", fake_recovery), \
+         patch(f"{M}.BinanceConnector", return_value=connector):
+        try:
+            await rebalance_loop(connector, "config.json", "state.json", "paper_state.json", MagicMock())
+        except (Exception, BaseException) as e:
+            if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
+
+    assert recovery_called[0], "Liquidation recovery should have been called for missing SHORT"
 
 
 # =====================================================================

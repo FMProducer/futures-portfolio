@@ -346,6 +346,12 @@ class BinanceConnector:
         )
 
     @retry_on_network_error(retries=3, delay=2.0)
+    async def get_order_by_client_id(self, symbol: str, client_order_id: str) -> Dict:
+        return await asyncio.to_thread(
+            self.futures_client.futures_get_order,
+            symbol=symbol, origClientOrderId=client_order_id)
+
+    @retry_on_network_error(retries=3, delay=2.0)
     async def place_limit_maker_order(self, symbol: str, side: str, qty: float, price: float,
                                        position_side: str = "BOTH", reduce_only: bool = False) -> Dict:
         """
@@ -366,8 +372,11 @@ class BinanceConnector:
     @retry_on_network_error(retries=3, delay=2.0)
     async def get_order_trades(self, symbol: str, order_id: int) -> List[Dict]:
         """Получение списка сделок по конкретному ID ордера."""
-        return await asyncio.to_thread(
+        trades = await asyncio.to_thread(
             self.futures_client.futures_account_trades,
             symbol=symbol,
-            orderId=order_id
+            orderId=order_id, limit=1000
         )
+        if len(trades) >= 1000:
+            raise ValueError("Order trade history may be truncated; reconciliation required")
+        return trades
