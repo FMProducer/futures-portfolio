@@ -59,6 +59,14 @@ async def self_kill_pm2(ticker: str, is_paper: bool) -> None:
     except Exception as e:
         logging.warning(f"PM2 self-kill failed for {proc_name}: {e}")
 
+def live_refusal_in_paper(base_ticker: str) -> str:
+    """Single wording for the launch contract, shared by CLI and loop refusal."""
+    return (
+        f"🚨 Launch expects a live snapshot but effective mode is PAPER for {base_ticker}. "
+        "No mode switch, migration, reset, state write or order is allowed; blocking."
+    )
+
+
 def _paper_collateral(paper_state: dict, base_ticker: str, price: float,
                       calc_tpv: Decimal, logger: logging.Logger) -> Decimal:
     calc_tpv = Decimal(str(calc_tpv))
@@ -481,7 +489,7 @@ async def _handle_liquidation_guard(
         )
 
 
-async def rebalance_loop(connector: BinanceConnector, config_path: str, state_file_path: str, paper_state_file_path: str, logger: logging.Logger, ticker_override: str = None, paper_mode_override: bool = None):
+async def rebalance_loop(connector: BinanceConnector, config_path: str, state_file_path: str, paper_state_file_path: str, logger: logging.Logger, ticker_override: str = None, paper_mode_override: bool = None, expect_live_snapshot: bool = False):
     # [SSOT] Absolute Scope Safety - Initialize all variables at function start
     i = 0
     status_offset = random.randint(0, 99)
@@ -507,6 +515,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     
     # Приоритет тикера: override > config > default
     base_ticker = ticker_override if ticker_override else config.get("base_ticker", "BTCUSDT")
+
+    # Launch contract: effective mode is decided before anything else, so a live
+    # expectation can never silently degrade into a paper run (forgotten --real).
+    # This invocation refuses itself only: managing PM2 would delete the running
+    # paper session of the very ticker we were wrongly pointed at.
+    if expect_live_snapshot and paper_mode:
+        logger.critical(live_refusal_in_paper(base_ticker))
+        while True:
+            await asyncio.sleep(86400)
 
     # Initial parameter load
     portfolio_cfg = config["portfolios"][0]
@@ -540,7 +557,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     max_capital_usdt = portfolio_cfg.get("max_capital_usdt", target_initial_cap)
 
     # Состояние синтетической доли и сейфа
-    state = await load_json(state_file_path, {
+    default_state = {
         "virt_qty": 0.0,
         "base_ticker": base_ticker,
         "siphoning_reserve": 0.0,
@@ -563,7 +580,16 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "funding_journal": [],
         "funding_halt": {},
         "funding_paid": 0.0,
-    })
+    }
+    state = await load_json(state_file_path, default_state)
+    if not isinstance(state, dict):
+        if not expect_live_snapshot:
+            # A non-object snapshot must never silently become a fresh legacy start.
+            raise ValueError(f"Strategy snapshot is not a JSON object: {state_file_path}")
+        # Trust boundary: the raw gate below preserves these bytes and WAL recovery
+        # (which runs after this point) must restore the real pair first.
+        logger.critical(f"🚨 Strategy snapshot is not a JSON object: {state_file_path}")
+        state = default_state
 
     # Safe load of the two-sided share-trailing state: missing/corrupt rows fall back to unarmed.
     state["share_trail"] = share_trail.load_state(state.get("share_trail"))
@@ -576,6 +602,17 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     # Persisted startup block — checked immediately after strategy state load,
     # before any migration, ticker-change reset, wallet fallback or Clean Slate.
     # Preserves all accounting facts on disk; blocks trading unconditionally.
+    if not paper_mode and state.get("rebalance_inflight"):
+        # An uncertain submission must survive restart without a second order or ledger reset.
+        state["startup_blocked"] = True
+        pending_book = await load_json(paper_state_file_path, {})
+        try:
+            if not isinstance(pending_book, dict):
+                raise ValueError("Pending execution wallet is not a JSON object")
+            share_trail.restore_checkpoint(state, pending_book)
+        except ValueError as error:
+            state["rebalance_inflight"]["checkpoint_error"] = str(error)
+        await save_json(state_file_path, state)
     if state.get("startup_blocked"):
         _state_ticker = state.get("base_ticker", "?")
         logger.critical(
@@ -596,7 +633,13 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "long_entry_price": 0.0,
         "short_entry_price": 0.0
     }
-    paper_state = await load_json(paper_state_file_path, {} if state.get("live_funding") is not None else default_paper_state)
+    _default_paper_state = {} if state.get("live_funding") is not None else default_paper_state
+    paper_state = await load_json(paper_state_file_path, _default_paper_state)
+    if not isinstance(paper_state, dict):
+        if not expect_live_snapshot:
+            raise ValueError(f"Wallet snapshot is not a JSON object: {paper_state_file_path}")
+        logger.critical(f"🚨 Wallet snapshot is not a JSON object: {paper_state_file_path}")
+        paper_state = _default_paper_state
 
     # ── B1 Phase 0: WAL file recovery BEFORE any migration/reset ───────
     from core.funding import recover_funding_boundary, \
@@ -615,6 +658,56 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         await self_kill_pm2(base_ticker, paper_mode)
         while True:
             await asyncio.sleep(86400)
+
+    # Launch contract: after WAL recovery the expected live pair must be usable.
+    # A lost, corrupt or mismatched pair blocks trading instead of degrading into
+    # the fresh legacy start that the default-loading path would otherwise allow.
+    if expect_live_snapshot:
+        from core.funding import live_snapshot_pair_error, atomic_save_json
+        _pair_error = live_snapshot_pair_error(state_file_path, paper_state_file_path, base_ticker)
+        if _pair_error:
+            logger.critical(
+                f"🚨 Live snapshot pair unusable for {base_ticker}: {_pair_error}. "
+                "Trading blocked until the operator restores the pair; migration, "
+                "reset and wallet fallback are refused."
+            )
+            _block_doc: Dict[str, Any] = {}
+            _preserve_ok = True
+            if os.path.exists(state_file_path):
+                try:
+                    with open(state_file_path, "r", encoding="utf-8") as _fh:
+                        _current = json.load(_fh)
+                    if not isinstance(_current, dict):
+                        raise ValueError("strategy snapshot is not a JSON object")
+                    _block_doc = _current
+                except Exception:
+                    # Never overwrite previous corruption evidence: pick a free name,
+                    # and if the bytes cannot be moved aside keep them untouched
+                    # (the raw gate re-blocks on every later start) instead of
+                    # replacing the only copy with the block document.
+                    _preserve_ok = False
+                    _free = f"{state_file_path}.corrupted"
+                    _n = 0
+                    while os.path.exists(_free):
+                        _n += 1
+                        _free = f"{state_file_path}.corrupted.{_n}"
+                    try:
+                        os.replace(state_file_path, _free)
+                        _preserve_ok = True
+                        logger.critical(f"Corrupt strategy snapshot preserved at {_free}")
+                    except Exception as _io_err:
+                        logger.critical(
+                            f"🚨 Cannot preserve corrupt strategy snapshot {state_file_path}: "
+                            f"{_io_err}. Original files kept untouched; startup stays blocked."
+                        )
+            if _preserve_ok:
+                _block_doc.setdefault("base_ticker", base_ticker)
+                _block_doc["startup_blocked"] = True
+                _block_doc["startup_block_reason"] = _pair_error
+                atomic_save_json(state_file_path, _block_doc)
+            await self_kill_pm2(base_ticker, paper_mode)
+            while True:
+                await asyncio.sleep(86400)
 
     if paper_state.get("live_funding_snapshot") is not None:
         source = state.get("live_funding")
@@ -1832,9 +1925,22 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                         # 1. Execute actions concurrently
                         budget_args = {"cash_budget": calc.val_cash} if paper_mode and not ignore_limits else {}
+                        if not paper_mode:
+                            from uuid import uuid4
+                            for action in fused_actions:
+                                if action.get("type") != "VIRTUAL_ORDER":
+                                    action["client_order_id"] = "reb-" + uuid4().hex
+                            state["startup_blocked"] = True
+                            state["rebalance_inflight"] = {
+                                "ticker": base_ticker, "created_at": time.time(),
+                                "actions": json.loads(json.dumps(fused_actions, default=str))}
+                            await save_json(state_file_path, state)
                         exec_results = await executor.execute_actions(
                             fused_actions, price, paper_mode, portfolio_cfg, step_sizes, paper_state, **budget_args
                         )
+                        if not paper_mode:
+                            state["rebalance_inflight"]["results"] = json.loads(json.dumps(exec_results, default=str))
+                            await save_json(state_file_path, state)
 
                         any_success = False
                         # 2. Update core states (Virtual Quantity, Paper Positions/Balance)
@@ -1973,6 +2079,22 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 # asyncio.create_task(notifier.send_message(f"<b>{trade_log}</b>"))
                             else:
                                 logger.warning(f"❌ {side} {key} execution status: {status}. Message: {res.get('message')}")
+
+                        if not paper_mode:
+                            await save_json(paper_state_file_path, paper_state)
+                            uncertain = (len(exec_results) != len(fused_actions) or any(
+                                result.get("execution_pending") or result.get("status") not in
+                                {"SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK", "SKIPPED", "NO_ORDER"}
+                                for result in exec_results))
+                            if uncertain:
+                                state["startup_blocked"] = True
+                            else:
+                                state.pop("rebalance_inflight", None)
+                                state.pop("startup_blocked", None)
+                            await save_json(state_file_path, state)
+                            if uncertain:
+                                logger.critical("Uncertain market execution: facts saved; reconciliation required")
+                                continue
 
                         if any_success and (ignore_limits or paper_mode):
                             post_virt = Decimal(str(state.get("virt_debt", 0.0)))
@@ -2360,6 +2482,8 @@ if __name__ == "__main__":
     parser.add_argument("--wipe", action="store_true", help="Wipe bot state (destructive stop)")
     parser.add_argument("--paper", action="store_true", help="Force paper mode for this instance")
     parser.add_argument("--real", action="store_true", help="Force real mode (live) for this instance")
+    parser.add_argument("--expect-live-snapshot", action="store_true",
+                        help="Require a usable live snapshot pair; block startup when it is lost, corrupt or mismatched")
     args = parser.parse_args()
     
     config_base = os.path.splitext(os.path.basename(args.config))[0]
@@ -2408,6 +2532,13 @@ if __name__ == "__main__":
     
     # Prevent propagation to root logger
     logger.propagate = False
+
+    # Launch contract: refuse a PAPER invocation before any state read, API call or
+    # PM2 action. --stop/--wipe keep working: they never launch trading.
+    if args.expect_live_snapshot and is_paper_instance and not args.stop:
+        logger.critical(live_refusal_in_paper(base_ticker))
+        while True:
+            time.sleep(86400)
     
     if is_paper_instance:
         # PAPER mode uses paper_state_*.json for primary state and paper_shadow_*.json for simulated wallet
@@ -2423,7 +2554,8 @@ if __name__ == "__main__":
 
     # [Hardware Block] Zombie Mode to prevent PM2 autorestart loop and API spam
     pre_state = safe_load_json_sync(instance_state_file, {})
-    if pre_state.get("trailing_stop_triggered", False) and not args.stop and not args.wipe:
+    # A non-object snapshot must not crash the CLI before the loop can fail closed.
+    if isinstance(pre_state, dict) and pre_state.get("trailing_stop_triggered", False) and not args.stop and not args.wipe:
         logger.critical(f"🚨 [ZOMBIE MODE] Trailing Stop triggered for {base_ticker}. Entering infinite sleep to block PM2 autorestart.")
         import time
         while True:
@@ -2456,4 +2588,4 @@ if __name__ == "__main__":
         logger.info(f"💾 State files: REAL={instance_state_file}, PAPER={instance_paper_state_file} | Mode: {'PAPER' if is_paper_instance else 'REAL'}")
         # Передаем признак paper_mode в rebalance_loop через конфиг-обертку или напрямую, 
         # но rebalance_loop читает конфиг из файла. Лучше пропатчить rebalance_loop чтобы он принимал paper_mode_override.
-        asyncio.run(rebalance_loop(connector, args.config, instance_state_file, instance_paper_state_file, logger, ticker_override=base_ticker, paper_mode_override=is_paper_instance))
+        asyncio.run(rebalance_loop(connector, args.config, instance_state_file, instance_paper_state_file, logger, ticker_override=base_ticker, paper_mode_override=is_paper_instance, expect_live_snapshot=args.expect_live_snapshot))

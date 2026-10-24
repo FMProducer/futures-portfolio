@@ -191,6 +191,28 @@ async def test_first_bar_has_no_phantom_capital(tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("prices", [[100.0] * 20, [100.0, 110.0, 120.0, 90.0, 100.0]])
+async def test_max_drawdown_includes_opening_capital(tmp_path, prices):
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(_flat_config()), encoding="utf-8")
+    pd.DataFrame({
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(prices),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    res = await run_backtest(str(config_file), str(tmp_path), live_mode=False, days=0.1,
+                             commission=0.0004, slippage=0.0005, quiet=True)
+    assert res is not None and res["accounting_ok"]
+    assert len(res["equity_curve"]) == len(prices)
+    assert res["equity_curve"][0] < res["initial_capital"]
+    peak, expected = res["initial_capital"], 0.0
+    for equity in res["equity_curve"]:
+        peak = max(peak, equity)
+        expected = max(expected, (peak - equity) / peak * 100)
+    assert res["max_dd_pct"] == pytest.approx(expected, abs=1e-9)
+
+
+@pytest.mark.asyncio
 async def test_explicit_window_uses_feather_time_not_mtime(tmp_path):
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps(_flat_config()), encoding="utf-8")

@@ -61,7 +61,7 @@ net_pnl = final_tpv - initial
 funding_residual = initial + total_realized - total_commission - siphoning - final_tpv
 
 # drawdown %
-runmax = np.maximum.accumulate(equity)
+runmax = np.maximum(np.maximum.accumulate(equity), initial)
 dd_pct = (runmax - equity) / runmax * 100.0
 
 # ---- KPI tiles

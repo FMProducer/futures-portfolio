@@ -494,7 +494,7 @@ def build_payload(prefix: str) -> Dict[str, Any]:
     attr_series = attr["series"]
     attr_idx = attr_series["idx"]
 
-    runmax = np.maximum.accumulate(equity)
+    runmax = np.maximum(np.maximum.accumulate(equity), initial)
     dd_pct = np.where(runmax > 0, (runmax - equity) / runmax * 100.0, 0.0)
     dd_pct = np.maximum(dd_pct, 0.0)
 

@@ -1391,7 +1391,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
         equity_curve: npt.NDArray[np.float64] = np.array(state.history)
         profit_pct: float = (equity_curve[-1] / (initial_capital + 1e-9) - 1) * 100
-        max_eq: npt.NDArray[np.float64] = np.maximum.accumulate(equity_curve)
+        max_eq: npt.NDArray[np.float64] = np.maximum(np.maximum.accumulate(equity_curve), initial_capital)
         dd: npt.NDArray[np.float64] = (max_eq - equity_curve) / (max_eq + 1e-9)
         max_dd_pct: float = np.max(dd) * 100 if len(dd) > 0 else 0.0
         asset_chg_pct: float = (close_prices[-1] / (close_prices[0] + 1e-9) - 1) * 100

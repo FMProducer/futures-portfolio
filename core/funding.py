@@ -571,6 +571,45 @@ def prepare_live_funding_snapshot(state, wallet, symbol, snapshot_ms, exchange_w
     return result
 
 
+def live_snapshot_pair_error(strategy_path: str, wallet_path: str, ticker: str) -> str:
+    """Blocking reason for a launch that expects a live snapshot; '' when usable.
+
+    Reads the raw files: safe_load_json substitutes defaults for a missing or
+    corrupt pair, which is exactly the fresh legacy start this gate must refuse.
+    """
+    problems: List[str] = []
+    docs: Dict[str, Dict] = {}
+    for label, path in (("strategy", strategy_path), ("wallet", wallet_path)):
+        if not _os.path.exists(path):
+            problems.append(f"{label} snapshot missing: {path}")
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                doc = _json.load(fh)
+        except Exception as exc:
+            problems.append(f"{label} snapshot unreadable: {exc}")
+            continue
+        if not isinstance(doc, dict):
+            problems.append(f"{label} snapshot is not a JSON object")
+            continue
+        docs[label] = doc
+    if problems:
+        return "; ".join(problems)
+    strategy, wallet = docs["strategy"], docs["wallet"]
+    if strategy.get("base_ticker") != ticker or wallet.get("base_ticker") != ticker:
+        problems.append(
+            f"snapshot ticker mismatch (strategy={strategy.get('base_ticker')}, "
+            f"wallet={wallet.get('base_ticker')}, expected={ticker})")
+    source = strategy.get("live_funding")
+    if (not isinstance(source, dict) or source.get("symbol") != ticker
+            or type(source.get("snapshot_ms")) is not int or source.get("snapshot_ms", 0) <= 0):
+        problems.append("strategy snapshot has no live funding boundary")
+    elif wallet.get("live_funding_snapshot") != {
+            "symbol": source.get("symbol"), "snapshot_ms": source.get("snapshot_ms")}:
+        problems.append("wallet reciprocal marker missing or mismatched")
+    return "; ".join(problems)
+
+
 async def poll_live_funding(connector, state, symbol, end_ms):
     """Receive a bounded overlap without applying cashflows or advancing on errors."""
     import hashlib

@@ -17,7 +17,7 @@ prices = prices[-n:]
 fig = make_subplots(rows=3, cols=1, shared_xaxes=True, row_heights=[0.5, 0.25, 0.25], vertical_spacing=0.05)
 
 eq = pd.Series(curve)
-running_max = eq.cummax()
+running_max = eq.cummax().clip(lower=res.get("initial_capital", eq.iloc[0]))
 dd = (running_max - eq) / running_max * 100
 
 fig.add_trace(go.Scatter(y=eq, name="TPV (equity)", line=dict(color="#4dabf7", width=1.2)), row=1, col=1)

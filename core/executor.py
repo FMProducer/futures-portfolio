@@ -113,6 +113,7 @@ class PortfolioExecutor:
                 for _ in range(5):
                     await asyncio.sleep(0.3)
                     status = await self.connector.get_order_status(symbol, order_id)
+                    result.update(status)
                     executed_qty = Decimal(str(status.get("executedQty", "0.0")))
                     avg_price = Decimal(str(status.get("avgPrice", "0.0")))
                     if executed_qty > 0: break
@@ -486,7 +487,8 @@ class PortfolioExecutor:
                     # Передаем Decimal напрямую без кастинга во float!
                     res = await self.execute_market_order(
                         symbol=base_symbol, qty=order_qty, side=side, step_size=step_size,
-                        reduce_only=reduce_only, position_side=pos_side, min_notional=min_notional, price=qty_price
+                        reduce_only=reduce_only, position_side=pos_side, min_notional=min_notional, price=qty_price,
+                        **({"client_order_id": action["client_order_id"]} if action.get("client_order_id") else {})
                     )
 
                 # Initialize defaults (fixes UnboundLocalError when res status is not SUCCESS)
@@ -516,6 +518,7 @@ class PortfolioExecutor:
                                          if res.get('result', {}).get('orderId') is not None else None),
                         "price": float(avg_price),
                         "status": "SUCCESS",
+                        "execution_pending": (not limit_enabled and res.get("result", {}).get("status") != "FILLED"),
                         "reduce_only": reduce_only,
                         "trade_pnl": float(trade_pnl),
                         "commission": float(commission)
