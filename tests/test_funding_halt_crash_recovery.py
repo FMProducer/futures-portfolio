@@ -518,10 +518,16 @@ async def test_reconcile_grown_live_fill_accounted_once():
     paper = {"positions": {"ZECUSDT_LONG": 1.0}, "balance": 660.0}
     connector = MagicMock()
     connector.get_order_status = AsyncMock(return_value={
+        "symbol": BASE_TICKER, "orderId": 555, "side": "SELL",
+        "positionSide": "LONG", "origQty": "1.5",
         "status": "PARTIALLY_FILLED", "executedQty": "1.2", "avgPrice": "200.5"})
     connector.get_order_trades = AsyncMock(return_value=[
-        {"commission": "0.008", "realizedPnl": "0.01"},
-        {"commission": "0.022", "realizedPnl": "0.03"}])
+        {"id": 1, "orderId": 555, "symbol": BASE_TICKER, "side": "SELL",
+         "positionSide": "LONG", "qty": "0.4", "price": "200.5",
+         "commissionAsset": "USDT", "commission": "0.008", "realizedPnl": "0.01"},
+        {"id": 2, "orderId": 555, "symbol": BASE_TICKER, "side": "SELL",
+         "positionSide": "LONG", "qty": "0.8", "price": "200.5",
+         "commissionAsset": "USDT", "commission": "0.022", "realizedPnl": "0.03"}])
     verdict = await _reconcile_funding_leg(connector, halt, "BASE_LONG", paper,
                                            BASE_TICKER, False, MagicMock())
     cs = halt.close_state["BASE_LONG"]
@@ -579,8 +585,7 @@ async def test_reconcile_inconsistent_live_fill_quarantines():
 
 @pytest.mark.asyncio
 async def test_reconcile_missing_identity_stops_when_position_shrunk():
-    """Live leg without order identity: a shrunken exchange position means an
-    unrecorded fill => stop trading; an intact position => re-issue is safe."""
+    """Missing durable identity quarantines even with unchanged exchange quantity."""
     from futures_portfolio.core.main import _reconcile_funding_leg
     def _seed_halt():
         return FundingHalt.from_dict({
@@ -595,9 +600,14 @@ async def test_reconcile_missing_identity_stops_when_position_shrunk():
                                            BASE_TICKER, False, MagicMock())
     assert verdict == "handled"
     connector.get_positions = AsyncMock(return_value={"ZECUSDT_LONG": {"qty": 1.5}})
-    verdict = await _reconcile_funding_leg(connector, _seed_halt(), "BASE_LONG", paper,
+    halt = _seed_halt()
+    verdict = await _reconcile_funding_leg(connector, halt, "BASE_LONG", paper,
                                            BASE_TICKER, False, MagicMock())
-    assert verdict == "reissue"
+    assert verdict == "handled"
+    assert halt.close_state["BASE_LONG"].status == "quarantined"
+    assert "identity" in halt.close_state["BASE_LONG"].reconciliation_error
+    assert paper == {"positions": {"ZECUSDT_LONG": 1.5}, "balance": 660.0}
+    connector.get_positions.assert_not_awaited()
 
 
 if __name__ == "__main__":
