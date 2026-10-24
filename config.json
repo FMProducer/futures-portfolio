@@ -65,21 +65,17 @@
         "trend_lookback_bars": 30
       },
       "fuse_enabled": false,
-      "rebalance_threshold_surplus": 0.01,
-      "rebalance_threshold_deficit": 0.04,
+      "rebalance_threshold_surplus": 0.031,
+      "rebalance_threshold_deficit": 0.031,
       "ticker_thresholds": {
-        "BTCUSDT": {
-          "surplus": 0.01,
-          "deficit": 0.04
-        },
         "ZECUSDT": {
-          "surplus": 0.01,
-          "deficit": 0.055
+          "surplus": 0.031,
+          "deficit": 0.031
         }
       }
     }
   ],
-  "rebalance_share_trail_distance": 0.035,
+  "rebalance_share_trail_distance": 0.04,
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
