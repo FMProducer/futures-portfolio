@@ -38,21 +38,22 @@
       "liquidation_distance_warn_pct": 0.0,
       "liquidation_distance_crit_pct": 0.0,
       "post_factum_liquidation_check": false,
-      "siphoning_threshold_pct": 1000.0,
+      "siphoning_threshold_pct": 1000.05,
       "targets": {
         "BASE_LONG": {
-          "share": 0.35,
+          "share": 0.25,
           "leverage": 7
         },
         "BASE_SHORT": {
-          "share": 0.35,
+          "share": 0.25,
           "leverage": 7
         },
         "VIRTUAL": {
-          "share": 0.30,
+          "share": 0.50,
           "leverage": 1
         }
       },
+      "trend_add_block": {"pct": 0.01, "window_bars": 60},
       "safety_guards": {
         "max_spread_pct": 0.15,
         "max_price_velocity_pct": 2.0,

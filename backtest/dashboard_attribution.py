@@ -183,7 +183,9 @@ def reconstruct_attribution(
             reserve -= float(cooldown_ends[i].get("reserve_reset", 0.0) or 0.0)
 
         unrealized = pos_long * (closes[i] - entry_mid_long) + pos_short * (entry_mid_short - closes[i])
-        net = realized + unrealized - commissions - funding - slippage - reserve
+        # reserve is informational only: the engine equity curve already includes TPV + siphoning_reserve,
+        # so it must not be subtracted from the reconstructed net again.
+        net = realized + unrealized - commissions - funding - slippage
         if i in sample_indices:
             equity_pnl = equity[i] - initial_capital
             series["idx"].append(i)
@@ -197,9 +199,9 @@ def reconstruct_attribution(
             series["net"].append(net)
             series["residual"].append(equity_pnl - net)
 
-    final_unrealized = pos_long * (closes[n - 1] - entry_mid_long) + pos_short * (entry_mid_short - closes[n - 1]) if n else 0.0
+        final_unrealized = pos_long * (closes[n - 1] - entry_mid_long) + pos_short * (entry_mid_short - closes[n - 1]) if n else 0.0
     net_equity_pnl = final_equity - initial_capital
-    residual = net_equity_pnl - (realized + final_unrealized - commissions - funding - slippage - reserve)
+    residual = net_equity_pnl - (realized + final_unrealized - commissions - funding - slippage)
     return {
         "totals": {
             "initial_capital": float(initial_capital),

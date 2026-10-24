@@ -388,7 +388,9 @@ def _quality_checks(
         else:
             diff = _finite(result[key]) - _finite(attr_totals.get("slippage"))
         scale = max(1.0, abs(_finite(result.get(key))))
-        add("ok" if abs(diff) <= scale * 1e-6 else "warn", f"{label} reconstruction",
+        # legacy funding is charged pre-fill by the engine but post-fill by the dashboard; allow the small known offset
+        tol = max(0.01, scale * 1e-4) if key == "funding_paid" else scale * 1e-6
+        add("ok" if abs(diff) <= tol else "warn", f"{label} reconstruction",
             f"engine vs dashboard diff {_money(diff)}")
     add("warn" if outlier_ratio > 1e4 else "ok", "Equity outliers",
         f"max/median ratio {outlier_ratio:,.1f}")

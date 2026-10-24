@@ -637,6 +637,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         vg_window_sec = guards_cfg.get("velocity_window_sec", 60)
         vg_window_bars = max(1, vg_window_sec // 60)
         vg_blocked_count = 0
+        trend_add_blocks = 0
         vg_cooldown_bars = 0  # оставшиеся бары блокировки от Velocity Guard
 
         for i in range(len(df)):
@@ -872,6 +873,22 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         vg_cooldown_bars = vg_window_bars  # блокируем на окно
                         state.log_event(i, "velocity_guard_block", float(state.get_tpv_fast(float(mid_price))),
                                         f"velocity {vg_move*100:.2f}%", keys=blocked)
+
+            # --- Trend regime: block additions opposite a one-way window move ---
+            if actions:
+                t_cfg = portfolio_cfg.get("trend_add_block") or {}
+                t_pct, t_win = t_cfg.get("pct"), int(t_cfg.get("window_bars", 120))
+                if t_pct and i >= t_win:
+                    move = (close_prices[i] - close_prices[i - t_win]) / close_prices[i - t_win]
+                    if abs(move) >= float(t_pct):
+                        opposite = "BASE_SHORT" if move > 0 else "BASE_LONG"
+                        blocked = [a for a in actions if a.get("key") == opposite and not a.get("is_reduction", False)]
+                        if blocked:
+                            trend_add_blocks += 1
+                            actions = [a for a in actions if a not in blocked]
+                            state.log_event(i, "trend_add_block", float(state.get_tpv_fast(float(mid_price))),
+                                            f"move {move*100:.2f}% over {t_win} bars; adds on {opposite} blocked",
+                                            keys=[a["key"] for a in blocked])
 
             if state.cash_invariant_violation:
                 actions = [a for a in actions if a.get("is_reduction", False)]
@@ -1399,7 +1416,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% | Cycles: {state.cycles}")
             logger.info(f"Sortino: {sortino_ratio:.4f} | Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
             logger.info(f"Skipped Expansions: {state.skipped_expansions_counter} | Stops: {state.stops_counter} | Liqs: {state.liquidations_counter}")
-            logger.info(f"Trend Guard blocks: {tg_blocked_count} | Velocity Guard blocks: {vg_blocked_count}")
+            logger.info(f"Trend Guard blocks: {tg_blocked_count} | Velocity Guard blocks: {vg_blocked_count} | Trend-add blocks: {trend_add_blocks}")
             logger.info(f"Share trailing LONG/SHORT: distance={trail_distance:g} | model=pullback_rebound | consumed fills={state.share_trail_consumes}")
             if sim:
                 s = sim.get_summary()
@@ -1437,6 +1454,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "trailing_stop_triggered": state.stops_counter > 0,
             "trend_guard_blocks": int(tg_blocked_count),
             "velocity_guard_blocks": int(vg_blocked_count),
+            "trend_add_blocks": int(trend_add_blocks),
             "sortino_ratio": float(sortino_ratio),
             "equity_curve": equity_curve.tolist(),
             "fills": state.fills,
@@ -1495,6 +1513,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "cooldown_bars": int(cooldown_bars_duration),
                 "min_notional_usdt": float(min_notional_usdt),
                 "share_trail_distance": float(trail_distance),
+                "trend_add_block": portfolio_cfg.get("trend_add_block"),
                 "account_free_margin": 0.0,
             },
             "data_window": data_window

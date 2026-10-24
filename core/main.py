@@ -1091,7 +1091,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 now = time.time()
                 price_history.append((now, price))
                 # Увеличиваем окно истории до 300 секунд для анализа тренда
-                while price_history and (now - price_history[0][0]) > 300:
+                prune_cut = max(300, int(((portfolio_cfg.get("trend_add_block") or {}).get("window_bars", 0)) * 60))
+                while price_history and (now - price_history[0][0]) > prune_cut:
                     price_history.popleft()
                 
                 if len(price_history) > 1:
@@ -1501,6 +1502,24 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         action for action in actions
                         if action.get("key") in missing and not action.get("is_reduction", False)
                     ]
+
+                # Trend-add block: additions opposite a one-way window move are skipped (mirrors backtest guard).
+                _t_cfg = portfolio_cfg.get("trend_add_block") or {}
+                _t_pct = _t_cfg.get("pct")
+                if actions and _t_pct:
+                    _t_sec = int(_t_cfg.get("window_sec", int(_t_cfg.get("window_bars", 120)) * 60))  # backtest bars are minute-scale
+                    _t_ref = next((pt for pt in price_history if now - pt[0] <= _t_sec), None)
+                    if _t_ref and _t_ref[1]:
+                        _t_move = (price - _t_ref[1]) / _t_ref[1]
+                        if abs(_t_move) >= float(_t_pct):
+                            _t_opposite = "BASE_SHORT" if _t_move > 0 else "BASE_LONG"
+                            _t_blocked = [a for a in actions if a.get("key") == _t_opposite and not a.get("is_reduction", False)]
+                            if _t_blocked:
+                                logger.warning(
+                                    f"Trend-add block: {base_ticker} moved {_t_move*100:+.2f}% vs {_t_sec}s window; "
+                                    f"adds on {_t_opposite} blocked ({len(_t_blocked)} action(s))."
+                                )
+                                actions = [a for a in actions if a not in _t_blocked]
 
                 if paper_mode:
                     collateral, maintenance, distance = _paper_guard_metrics(
