@@ -411,6 +411,12 @@ def save_funding_boundary(strategy_path: str, wallet_path: str,
     """
     state["funding_journal"] = journal.to_list()
     state["funding_halt"] = halt.to_dict()
+    if state.get("live_funding") is not None:
+        source = state["live_funding"]
+        identity = {"symbol": source["symbol"], "snapshot_ms": source["snapshot_ms"]}
+        if paper_state.get("live_funding_snapshot", identity) != identity:
+            raise ValueError("Funding snapshot pair identity mismatch")
+        paper_state["live_funding_snapshot"] = identity
     intent = {
         "strategy_state": dict(state),
         "paper_wallet": dict(paper_state),
@@ -532,3 +538,71 @@ def compute_funding_from_rates(
     long_funding = -qty_long * mark_price * funding_rate
     short_funding = qty_short * mark_price * funding_rate
     return long_funding + short_funding
+
+
+def prepare_live_funding_snapshot(state, wallet, symbol, snapshot_ms, exchange_wallet, positions):
+    """Prepare an explicit opening boundary; caller commits it with the existing WAL."""
+    from copy import deepcopy
+
+    if (type(snapshot_ms) is not int or snapshot_ms <= 0 or state.get("live_funding")
+            or state.get("base_ticker") != symbol or wallet.get("base_ticker") != symbol
+            or state.get("initial_build_pending") or state.get("startup_blocked")
+            or state.get("funding_journal") or FundingHalt.from_dict(state.get("funding_halt")).active):
+        raise ValueError("Opening snapshot requires a clean reconciled funding boundary")
+    actual, shadow = Decimal(str(exchange_wallet)), Decimal(str(wallet["balance"]))
+    virtual = Decimal(str(state["virt_debt"]))
+    if not all(v.is_finite() for v in (actual, shadow, virtual)) or actual != shadow or virtual < 0:
+        raise ValueError("Opening wallet does not reconcile")
+    for side in ("LONG", "SHORT"):
+        key = f"{symbol}_{side}"
+        qty = Decimal(str(wallet["positions"].get(key, 0)))
+        real = abs(Decimal(str(positions.get(key, {}).get("qty", 0))))
+        if not qty.is_finite() or not real.is_finite() or qty < 0 or qty != real:
+            raise ValueError("Opening positions do not reconcile")
+    result = deepcopy(state)
+    initial = Decimal(str(state.get("initial_tpv", actual)))
+    if not initial.is_finite() or initial <= 0 or virtual > actual:
+        raise ValueError("Invalid opening capital or VIRTUAL allocation")
+    result["initial_tpv"] = float(initial)
+    result["reference_tpv"] = float(initial)
+    result["funding_model"] = "signed_actual"
+    result["live_funding"] = {"symbol": symbol, "snapshot_ms": snapshot_ms,
+        "boundary_ms": snapshot_ms, "opening_wallet": str(actual), "blocked": ""}
+    return result
+
+
+async def poll_live_funding(connector, state, symbol, end_ms):
+    """Receive a bounded overlap without applying cashflows or advancing on errors."""
+    import hashlib
+    from copy import deepcopy
+
+    source = state["live_funding"]
+    if (source.get("symbol") != symbol or state.get("funding_model") != "signed_actual"
+            or type(source.get("snapshot_ms")) is not int
+            or type(source.get("boundary_ms")) is not int
+            or source["snapshot_ms"] <= 0 or source["boundary_ms"] < source["snapshot_ms"]
+            or type(end_ms) is not int or end_ms < source["boundary_ms"]):
+        raise ValueError("Invalid live funding boundary")
+    if source.get("blocked"):
+        raise ValueError("Live funding source requires operator reconciliation")
+    rows = await connector.get_funding_income(symbol, source["snapshot_ms"], end_ms)
+    journal = FundingJournal.from_list(deepcopy(state.get("funding_journal")))
+    for row in rows:
+        timestamp = row["time"]
+        if timestamp <= source["snapshot_ms"]:
+            continue
+        event = FundingEvent(event_id=f"binance:FUNDING_FEE:{row['tranId']}",
+            signed_amount=Decimal(str(row["income"])), event_time=timestamp / 1000,
+            source="binance_income", source_ref=str(row["tranId"]), symbol=symbol,
+            raw_payload_hash=hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest())
+        status = journal.receive(event)
+        if status not in ("new", "duplicate"):
+            state["funding_journal"] = journal.to_list()
+            raise ValueError("Funding identity conflict or quarantine")
+        if status == "new" and timestamp <= source["boundary_ms"]:
+            journal.mark_quarantined(event.event_id, "late_event")
+            state["funding_journal"] = journal.to_list()
+            raise ValueError("Late funding requires snapshot replay")
+    state["funding_journal"] = journal.to_list()
+    source["boundary_ms"] = end_ms
+    return journal

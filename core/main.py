@@ -596,7 +596,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         "long_entry_price": 0.0,
         "short_entry_price": 0.0
     }
-    paper_state = await load_json(paper_state_file_path, default_paper_state)
+    paper_state = await load_json(paper_state_file_path, {} if state.get("live_funding") is not None else default_paper_state)
 
     # ── B1 Phase 0: WAL file recovery BEFORE any migration/reset ───────
     from core.funding import recover_funding_boundary, \
@@ -615,6 +615,20 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         await self_kill_pm2(base_ticker, paper_mode)
         while True:
             await asyncio.sleep(86400)
+
+    if paper_state.get("live_funding_snapshot") is not None:
+        source = state.get("live_funding")
+        if not isinstance(source, dict) or paper_state["live_funding_snapshot"] != {
+                "symbol": source.get("symbol"), "snapshot_ms": source.get("snapshot_ms")}:
+            raise ValueError("Live wallet requires its matching strategy snapshot")
+    if state.get("live_funding") is not None:
+        if (paper_mode or state["live_funding"].get("symbol") != base_ticker
+                or state.get("base_ticker") != base_ticker
+                or paper_state.get("base_ticker") != base_ticker
+                or not {"balance", "positions", "long_entry_price", "short_entry_price"}.issubset(paper_state)
+                or not math.isfinite(float(state.get("initial_tpv", 0)))
+                or float(state.get("initial_tpv", 0)) <= 0):
+            raise ValueError("Live funding snapshot cannot be migrated or reset")
 
     # Detect active funding halt BEFORE startup validation so that
     # Phase 2 recovery can complete reductions uninterrupted.
@@ -668,7 +682,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     # Если реальных позиций нет, это чистый старт (или рестарт после стопа).
     # Жестко затираем фантомные балансы, чтобы не сломать Trailing Stop.
     # При чистом старте баланс ВСЕГДА сбрасывается на target_initial_cap из конфига.
-    if not paper_mode and not _funding_halt_active:
+    if not paper_mode and not _funding_halt_active and state.get("live_funding") is None:
         try:
             raw_positions = await connector.get_positions()
             ticker_positions = {k: v["qty"] for k, v in raw_positions.items() if base_ticker in k}
@@ -1019,6 +1033,16 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 _in_blacklist = base_ticker in _bl and _bl.get(base_ticker, 0) > _now
                 _rebased = False
 
+                if state.get("live_funding") is not None:
+                    source = state["live_funding"]
+                    if source.get("blocked") or _in_blacklist or initial_tpv != target_initial:
+                        from core.funding import save_funding_boundary, FundingHalt, FundingJournal
+                        source["blocked"] = source.get("blocked") or "Snapshot/config rebase requires operator reconciliation"
+                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
+                                              FundingJournal.from_list(state.get("funding_journal")),
+                                              FundingHalt.from_dict(state.get("funding_halt")))
+                        continue
+
                 if _in_blacklist:
                     _last_profit = float(state.get("last_profit", 0.0))
                     if _last_profit < 0:
@@ -1210,7 +1234,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # In calculator.py, real_equity is treated as Wallet Balance.
                 positions = paper_state["positions"] if paper_mode else {k: v for k, v in ticker_positions.items()}
 
-                if virt_qty == 0 or initial_tpv == 0:
+                if state.get("live_funding") is None and (virt_qty == 0 or initial_tpv == 0):
                     if initial_tpv == 0:
                         # For shared accounts, we MUST use assigned initial_capital as base
                         initial_tpv = portfolio_cfg.get("initial_capital", paper_state["balance"])
@@ -1264,6 +1288,20 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     # but we NO LONGER overwrite paper_state["balance"] with it.
                     wallet_balance = float(m_info.get("total_wallet_balance", 0.0))
 
+                if not paper_mode and state.get("live_funding") is not None:
+                    from core.funding import poll_live_funding, save_funding_boundary, FundingHalt, FundingJournal
+                    try:
+                        live_journal = await poll_live_funding(connector, state, base_ticker, int(time.time() * 1000))
+                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
+                                              live_journal, FundingHalt.from_dict(state.get("funding_halt")))
+                    except Exception as error:
+                        state["live_funding"]["blocked"] = str(error)
+                        logger.critical("Live funding reconciliation blocked: %s", error)
+                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
+                                              FundingJournal.from_list(state.get("funding_journal")),
+                                              FundingHalt.from_dict(state.get("funding_halt")))
+                        continue
+
                 # --- B1: Funding BEFORE calculator (per canonical order §3) ---
                 funding_model = state.get("funding_model", "legacy_constant")
                 if funding_model == "signed_actual":
@@ -1278,6 +1316,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         state_dirty = True
                         paper_state_dirty = True
                         v_now = Decimal(str(state.get("virt_debt", 0)))
+                        if state.get("live_funding") is not None and v_now >= 0:
+                            from core.funding import save_funding_boundary, FundingHalt
+                            try:
+                                save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
+                                                      journal, FundingHalt.from_dict(state.get("funding_halt")))
+                            except Exception:
+                                state["live_funding"]["blocked"] = "Funding commit failed; restart recovery required"
+                                raise
                         if v_now < 0:
                             from core.funding import (
                                 FundingHalt, commit_funding_halt_with_intents,

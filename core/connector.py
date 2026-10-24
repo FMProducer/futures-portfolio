@@ -369,6 +369,46 @@ class BinanceConnector:
         )
         return result
 
+    async def get_funding_income(self, symbol: str, start_ms: int, end_ms: int) -> List[Dict]:
+        """Read complete bounded USDT funding history without changing accounting."""
+        from decimal import Decimal
+
+        if (not symbol or type(start_ms) is not int or type(end_ms) is not int
+                or start_ms < 0 or end_ms < start_ms):
+            raise ValueError("Invalid funding history window")
+        pending, found, calls = [(start_ms, end_ms)], {}, 0
+        while pending:
+            lo, hi = pending.pop()
+            calls += 1
+            if calls > 128:
+                raise ValueError("Funding request budget exceeded; narrow the window")
+            rows = await asyncio.to_thread(
+                self.futures_client.futures_income_history, symbol=symbol,
+                incomeType="FUNDING_FEE", startTime=lo, endTime=hi, limit=1000)
+            if not isinstance(rows, list) or len(rows) > 1000:
+                raise ValueError("Invalid funding response")
+            for row in rows:
+                if not isinstance(row, dict):
+                    raise ValueError("Invalid funding row")
+                amount = Decimal(str(row["income"]))
+                timestamp, identity = row["time"], row["tranId"]
+                if (row.get("symbol") != symbol or row.get("incomeType") != "FUNDING_FEE"
+                        or row.get("asset") != "USDT" or not amount.is_finite()
+                        or type(timestamp) is not int or not lo <= timestamp <= hi
+                        or type(identity) is not int or identity <= 0):
+                    raise ValueError("Invalid funding identity, amount, asset or timestamp")
+                fingerprint = (symbol, row["asset"], timestamp, amount)
+                previous = found.get(identity)
+                if previous and previous[0] != fingerprint:
+                    raise ValueError("Conflicting funding transaction identity")
+                found[identity] = (fingerprint, row.copy())
+            if len(rows) == 1000:
+                if lo == hi:
+                    raise ValueError("Funding history truncated at a single timestamp")
+                mid = (lo + hi) // 2
+                pending.extend([(mid + 1, hi), (lo, mid)])
+        return sorted((item[1] for item in found.values()), key=lambda row: (row["time"], row["tranId"]))
+
     @retry_on_network_error(retries=3, delay=2.0)
     async def get_order_trades(self, symbol: str, order_id: int) -> List[Dict]:
         """Получение списка сделок по конкретному ID ордера."""
