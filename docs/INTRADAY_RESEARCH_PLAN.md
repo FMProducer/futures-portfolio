@@ -284,3 +284,6 @@ Funding внутри сессии учитывается в обоих режи�
 ## Fixed PAPER system capital — 25.10.2026
 
 По поручению пользователя внедрён постоянный бюджет10000USDT, резервирование/возврат PAPER капитала через SQLite и equity/Net%/наблюдаемый MaxDD от фиксированной базы. После архивирования и модельного закрытия12старых пар запущены10ботов:9x1000+854.3544USDT. Старые неподтверждённые положительные результаты152.93667245USDT выделены отдельно и не расходуются. REAL=0. Полная миграция, проверки и ограничения: `reports/paper_system_budget_20261025_195505/REPORT.md`. Это не PASS REAL gate.
+
+
+PAPER classification repair25.10.2026: common PM2/session/terminal rules, explicit unknown;5legacy sessions reclassified interrupted with original estimates preserved. Authorized restart preserved10wallets/positions/session identities and budget; REAL0. Final9testsPASS. Evidence `reports/paper_classification_20261025_203651/REPORT.md`. Old observations unchanged.

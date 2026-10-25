@@ -56,14 +56,18 @@ def sample(db, root, now=None):
             except OSError as exc:
                 errors.append(f"{path.name}: {type(exc).__name__}")
         from dashboard.swarm_history import reconstruct
-        current = {f"paper-{p.stem.removeprefix('paper_state_').removesuffix('USDT').lower()}"
-                   for p in (root / "core").glob("paper_state_*.json")}
+        from dashboard.data_collector import _get_pm2_list
+        processes = _get_pm2_list()
+        current = {p["name"] for p in processes if p.get("status") == "online"} if processes else None
+        if current is None:
+            errors.append("PM2 status unavailable; session liveness unknown")
         history = reconstruct(root, current)
         summary = {k: history[k] for k in ("reported_closed_net", "open_net", "interrupted_net",
                                            "reported_cumulative_net", "verified_net", "fees_recorded", "session_count")}
         summary["errors"] = errors + history["errors"]
         summary["system"] = history.get("system")
-        summary["identity_basis"] = "state presence; process liveness checked separately"
+        summary["identity_basis"] = "PM2 online + current session identity; confirmed terminal close takes precedence"
+        summary["classification_version"] = 2
         db.execute("INSERT INTO observations VALUES(?,?,?)", (now, max(0, now - previous) if previous else None,
                                                              json.dumps(summary, ensure_ascii=False)))
     return summary

@@ -140,7 +140,7 @@ function updatePaperHistory(history) {
         (history.errors.length ? ` Ошибок чтения/покрытия: ${history.errors.length}.` : '');
     const body = document.getElementById('paper-history-rows');
     body.replaceChildren();
-    const status = {open: 'Открыта', closed_reported: 'Закрыта по отчёту', interrupted: 'Прервана / нет закрытия'};
+    const status = {open: 'Открыта', closed_reported: 'Закрыта по отчёту', interrupted: 'Прервана / нет закрытия', unknown: 'Активность неизвестна / PM2 недоступен'};
     for (const row of [...history.sessions].sort(compareHistoryRows)) {
         const tr = document.createElement('tr');
         if (row.ticker === 'TUSDT') tr.style.fontWeight = 'bold';

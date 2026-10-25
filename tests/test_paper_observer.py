@@ -3,7 +3,8 @@ import sqlite3
 from futures_portfolio.scripts.watch_paper_swarm import sample
 
 
-def test_observer_keeps_offsets_and_records_gap(tmp_path):
+def test_observer_keeps_offsets_and_records_gap(tmp_path, monkeypatch):
+    monkeypatch.setattr('dashboard.data_collector._get_pm2_list', lambda: [{'name':'swarm-observer','status':'online'}])
     logs = tmp_path / "core/logs"
     logs.mkdir(parents=True)
     path = logs / "paper_X.log"

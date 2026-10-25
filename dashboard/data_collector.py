@@ -79,7 +79,7 @@ def get_system_overview() -> dict:
         from .swarm_history import reconstruct
     except ImportError:
         from swarm_history import reconstruct
-    history = reconstruct(PROJECT_PATH, {p["name"] for p in pm2_procs if p.get("status") == "online"})
+    history = reconstruct(PROJECT_PATH, {p["name"] for p in pm2_procs if p.get("status") == "online"} if pm2_procs else None)
     try:
         from .swarm_curve import read_curve
     except ImportError:

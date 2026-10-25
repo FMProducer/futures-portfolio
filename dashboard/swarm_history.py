@@ -67,18 +67,29 @@ def reconstruct(root, running_names=()):
                         if isinstance(r[0].get("initial_tpv"), (int, float))), None)
         state, wallet, _, current, _ = records[-1]
         live = any(r[3] for r in records)
-        is_running = live and f"paper-{ticker.removesuffix('USDT').lower()}" in running_names
+        is_running = live and running_names is not None and f"paper-{ticker.removesuffix('USDT').lower()}" in running_names
         end = state.get("last_tpv")
         snapshots = [(float(r[0].get("last_update") or r[4] or start), r[0].get("last_tpv")) for r in records]
         snapshots = [(t, v) for t, v in snapshots if isinstance(v, (int, float)) and math.isfinite(v)]
         if not isinstance(opening, (int, float)) or not isinstance(end, (int, float)):
             errors.append(f"{ticker}/{start}: missing capital or endpoint")
             continue
-        flat_wallets = [r[1] for r in records if r[1].get("positions")
-                        and all(float(q) == 0 for q in r[1]["positions"].values())
-                        and isinstance(r[1].get("balance"), (int, float))]
-        terminal = flat_wallets[-1]["balance"] if flat_wallets and not is_running else None
+        closing_wallet = next((r[1] for r in reversed(records) if r[1].get("positions")), wallet)
+        latest_flat = (bool(closing_wallet.get("positions"))
+                       and all(float(q) == 0 for q in closing_wallet["positions"].values())
+                       and isinstance(closing_wallet.get("balance"), (int, float)))
+        confirmed_close = bool(state.get("paper_close_complete")) and latest_flat
+        terminal = closing_wallet["balance"] if latest_flat and (confirmed_close or (not is_running and (not live or running_names is not None))) else None
+        status = ("closed_reported" if confirmed_close or terminal is not None else
+                  "open" if is_running else "unknown" if live and running_names is None else "interrupted")
         endpoint = terminal if terminal is not None else end
+        legacy_reports = [r[1]["balance"] for r in records if r[1].get("positions")
+                          and all(float(q) == 0 for q in r[1]["positions"].values())
+                          and isinstance(r[1].get("balance"), (int, float))]
+        legacy_endpoint = terminal is None and not live and bool(legacy_reports)
+        if legacy_endpoint:
+            # Preserve the published historical estimate without treating an earlier flat snapshot as a close.
+            endpoint = legacy_reports[-1]
         receipt_sets = [r[1].get("share_fill_receipts", {}) for r in records]
         receipts = {}
         for receipt_set in receipt_sets:
@@ -87,7 +98,8 @@ def reconstruct(root, running_names=()):
         realized = sum(float(v.get("trade_pnl", 0)) for v in receipts.values())
         rows.append({"ticker": ticker, "started_at": start, "initial": opening,
                      "endpoint": endpoint, "reported_net": endpoint - opening,
-                     "status": "open" if is_running else ("closed_reported" if terminal is not None else "interrupted"),
+                     "status": status,
+                     "endpoint_basis": "legacy report; terminal unconfirmed" if legacy_endpoint else "latest state / terminal wallet",
                      "cycles": max(int(r[0].get("rebalance_cycles") or 0) for r in records),
                      "fees_recorded": fees if receipts else None,
                      "fills_recorded": len(receipts), "realized_recorded": realized if receipts else None,
@@ -128,7 +140,7 @@ def reconstruct(root, running_names=()):
 
     closed = [r for r in rows if r["status"] == "closed_reported"]
     active = [r for r in rows if r["status"] == "open"]
-    interrupted = [r for r in rows if r["status"] == "interrupted"]
+    interrupted = [r for r in rows if r["status"] in ("interrupted", "unknown")]
     result = {"sessions": rows, "errors": errors,
             "reported_closed_net": sum(r["reported_net"] for r in closed),
             "open_net": sum(r["reported_net"] for r in active),

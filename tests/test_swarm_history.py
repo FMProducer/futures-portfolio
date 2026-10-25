@@ -1,6 +1,28 @@
 import json
+import pytest
 
 from futures_portfolio.dashboard.swarm_history import reconstruct
+
+
+@pytest.mark.parametrize('running,closed,quantity,expected', [
+    ({'paper-t'}, True, 0, 'closed_reported'),
+    (set(), False, 1, 'interrupted'),
+    ({'paper-t'}, False, 1, 'open'),
+    (None, False, 1, 'unknown'),
+    (None, False, 0, 'unknown'),
+])
+def test_current_identity_and_terminal_close(tmp_path, running, closed, quantity, expected):
+    core = tmp_path / 'core'
+    core.mkdir()
+    state = {'base_ticker':'TUSDT','started_at':100,'initial_tpv':1000,
+             'last_tpv':990,'last_update':200,'paper_close_complete':closed}
+    wallet = {'balance':990,'positions':{'TUSDT_LONG':quantity}}
+    (core/'paper_state_TUSDT.json').write_text(json.dumps(state))
+    (core/'paper_shadow_TUSDT.json').write_text(json.dumps(wallet))
+    result = reconstruct(tmp_path, running)
+    assert result['sessions'][0]['status'] == expected
+    assert result['reported_cumulative_net'] == -10
+    assert result['reported_closed_net'] + result['open_net'] + result['interrupted_net'] == -10
 
 
 def test_history_deduplicates_archives_and_preserves_capital_across_reset(tmp_path):
