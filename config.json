@@ -20,7 +20,7 @@
   "equity_trailing_stop_pct": 0.3,
   "equity_trailing_stop_activation_pct": 7.0,
   "equity_trailing_stop_timeout_sec": 40,
-  "toxic_cooldown_days": 0.1,  
+  "toxic_cooldown_days": 0.1,
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
   "telegram_enabled": false,
@@ -49,11 +49,14 @@
           "leverage": 7
         },
         "VIRTUAL": {
-          "share": 0.50,
+          "share": 0.5,
           "leverage": 1
         }
       },
-      "trend_add_block": {"pct": 0.01, "window_bars": 60},
+      "trend_add_block": {
+        "pct": 0.01,
+        "window_bars": 60
+      },
       "safety_guards": {
         "max_spread_pct": 0.15,
         "max_price_velocity_pct": 2.0,
@@ -83,8 +86,13 @@
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
-  "tickers": [],
-  "base_ticker": "ZECUSDT",
+  "tickers": [
+    "1000PEPEUSDT",
+    "ENAUSDT",
+    "WLDUSDT",
+    "ZECUSDT"
+  ],
+  "base_ticker": "1000PEPEUSDT",
   "probation_paper": {},
   "probation_real": {}
 }

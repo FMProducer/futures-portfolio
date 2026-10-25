@@ -3,6 +3,20 @@
 # ZECUSDT: актуальный план исправлений и проверки
 
 
+## Дополнение 25.10.2026: замороженный комплект только funding-теста ×1
+
+Пользователь выбрал комплект одного funding-теста ×1, **без запуска всей стратегии**. Рабочий config с долями25/25/50 и плечом7 не изменялся и не считается разрешённым live-конфигом теста.
+
+Создан отдельный frozen-код, SHA256 manifest, отдельный funding_test_contract.json и READINESS.md: `C:\Users\svsma\.codex\worktrees\a008\futures_portfolio\reports\funding_test_release_2026-10-25\`. Код исполняется из code/futures_portfolio; .env и paper/state в комплект не копировались. Python/dependencies пока общие с проектной .venv, не vendored. Точный capture HEAD и dirty diff записаны в provenance.json. После capture источник изменялся в supervisor/swarm_manager.py и tests/test_supervisor.py; frozen-копия не обновлялась.
+
+**В frozen-копии180targeted PASS38.08s**, integrity verifier и3отрицательных unittest PASS. Исторические635PASS относятся к исходному кандидату, не полному frozen-suite. Reviewer Gauss: ограниченный PASS «package prepared», активация NO-GO. Первый frozen-прогон179PASS/1missingFeather сохранён отдельно; после добавления локальной фикстуры повторный полный targeted180PASS, без изменения кода/ослабления тестов.
+
+Последняя read-only observation из frozen connector: wallet6.99002462, flat/0orders, ×1/cross/Hedge Mode. При ask1207.74 минимум0.005ZEC=6.03870USDT **превышал cap6**, поэтому при таких условиях тест пропускается. Лимит не увеличивается и округление ниже биржевого минимума не допускается. Это не текущая котировка и не установленная snapshot-пара. Свежая корреляция sing-box direct не получена; исторического proof/HTTP200 недостаточно.
+
+Следующий шаг — минимальный bounded test executor с заранее проверенным закрытием, независимая приёмка этого исполнителя и preflight по свежим данным. Пока нет runner/deployment, snapshot в работающий процесс не установлен, scheduled zecusdt-long-funding остаётся PAUSED. Новые ордера/переводы/PM2/restart/commit не выполнялись. Переход к полной стратегии не разрешён этим выбранным этапом.
+
+
+
 ## Дополнение 25.10.2026: закрыты шесть ordinary market crash-сценариев
 
 Основной checkout `C:\Python\Prosperous_Bot\futures_portfolio`, HEAD `5d98260200997bd940f8b3c772aa0ae8380af2ce` + сохранённый чужой diff + market-only fix. Этот статус уточняет прежние 629 PASS / 6 FAIL ниже.

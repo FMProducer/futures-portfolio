@@ -28,6 +28,7 @@ with open(CONFIG_PATH, "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 PROJECT_PATH = Path(config["paths"]["project"])
+STATE_PATH = PROJECT_PATH / "core"
 LOGS_PATH = Path(config["paths"]["logs"])
 DATA_PATH = Path(config["paths"]["data"])
 PM2_LOGS_PATH = Path(config["paths"]["pm2_logs"])
@@ -52,7 +53,7 @@ def _read_json(path: Path) -> Optional[dict]:
 def _find_state_files(mode: str) -> list[str]:
     """Найти все тикеры по state-файлам."""
     pattern = f"{mode}_state_*.json"
-    files = list(PROJECT_PATH.glob(pattern))
+    files = list(STATE_PATH.glob(pattern))
     return [f.stem.replace(f"{mode}_state_", "") for f in files]
 
 
@@ -122,15 +123,15 @@ def get_system_overview() -> dict:
 
 def _get_ticker_summary(ticker: str, mode: str) -> dict:
     """Краткая сводка по тикеру."""
-    state = _read_json(PROJECT_PATH / f"{mode}_state_{ticker}.json")
-    shadow = _read_json(PROJECT_PATH / f"{mode}_shadow_{ticker}.json")
+    state = _read_json(STATE_PATH / f"{mode}_state_{ticker}.json")
+    shadow = _read_json(STATE_PATH / (f"paper_shadow_{ticker}.json" if mode == "paper" else f"shadow_state_{ticker}.json"))
 
     if not state:
         return {"ticker": ticker, "mode": mode, "status": "no_state"}
 
-    tpv = state.get("tpv", 0)
-    initial = state.get("initial_capital", 0)
-    pnl = state.get("pnl", tpv - initial if initial else 0)
+    tpv = state.get("last_tpv", state.get("tpv", 0))
+    initial = state.get("initial_tpv", state.get("initial_capital", 0))
+    pnl = state.get("last_profit", state.get("pnl", tpv - initial if initial else 0))
     pnl_pct = (pnl / initial * 100) if initial > 0 else 0
     cycles = state.get("rebalance_cycles", state.get("cycles", 0))
 
@@ -232,15 +233,15 @@ def _get_alerts(paper_bots: list, real_bots: list, pm2_procs: list) -> list:
 
 def get_ticker_details(mode: str, ticker: str) -> dict:
     """Детальная информация по тикеру."""
-    state = _read_json(PROJECT_PATH / f"{mode}_state_{ticker}.json")
-    shadow = _read_json(PROJECT_PATH / f"{mode}_shadow_{ticker}.json")
+    state = _read_json(STATE_PATH / f"{mode}_state_{ticker}.json")
+    shadow = _read_json(STATE_PATH / (f"paper_shadow_{ticker}.json" if mode == "paper" else f"shadow_state_{ticker}.json"))
 
     if not state:
         return {"error": f"State file not found for {mode}/{ticker}"}
 
     # PM2 процесс
     pm2_proc = None
-    pm2_name = f"{mode}-{ticker.lower()}"
+    pm2_name = f"{mode}-{ticker.removesuffix('USDT').lower()}"
     for p in _get_pm2_list():
         if p.get("name") == pm2_name:
             pm2_proc = p
@@ -250,7 +251,7 @@ def get_ticker_details(mode: str, ticker: str) -> dict:
     hb_ok, hb_age = _check_heartbeat(ticker, mode)
 
     # Последние записи лога
-    log_tail = _read_log_lines(ticker, mode, 50)
+    log_tail = get_log_tail(mode, ticker, 50).get("lines", [])
 
     return {
         "ticker": ticker,
@@ -273,11 +274,11 @@ def get_history_data() -> dict:
     history = []
 
     for t in real_tickers:
-        state = _read_json(PROJECT_PATH / f"real_state_{t}.json")
+        state = _read_json(STATE_PATH / f"real_state_{t}.json")
         if state:
-            tpv = state.get("tpv", 0)
-            initial = state.get("initial_capital", 0)
-            pnl = tpv - initial if initial else 0
+            tpv = state.get("last_tpv", state.get("tpv", 0))
+            initial = state.get("initial_tpv", state.get("initial_capital", 0))
+            pnl = state.get("last_profit", tpv - initial if initial else 0)
             history.append({
                 "ticker": t,
                 "date": datetime.now().strftime("%Y-%m-%d"),

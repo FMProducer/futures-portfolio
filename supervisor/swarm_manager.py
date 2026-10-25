@@ -570,6 +570,15 @@ async def manage_swarm():
     config = await safe_load_json(CONFIG_PATH, {})
     if not config: return
 
+    paper_only = (config.get("paper_mode") is True
+                  and config.get("max_bots", 10) <= config.get("paper_mode_bots", 9))
+    if paper_only:
+        running = await get_pm2_processes()
+        if (config.get("live_swarm") or config.get("real_whitelist")
+                or any(p.get("name", "").startswith("real-") for p in running)):
+            raise RuntimeError("Paper-only swarm refuses to manage existing REAL bots or allocations")
+        logger.info("PAPER ONLY: exchange reconciliation and REAL process management disabled.")
+
     # [P1] O(1) lookup: конвертируем list → set для проверок в runtime
     if "black_list" in config and isinstance(config["black_list"], list):
         config["black_list"] = set(config["black_list"])
@@ -579,12 +588,14 @@ async def manage_swarm():
     # Инициализация коннектора для операций на бирже
     api_key = os.environ.get("BINANCE_API_KEY", config.get("api_key", ""))
     secret_key = os.environ.get("BINANCE_SECRET_KEY", config.get("secret_key", ""))
-    connector = BinanceConnector(api_key=api_key, secret_key=secret_key, testnet=config.get("testnet", True))
-    await connector.verify_connection()
+    connector = None
+    if not paper_only:
+        connector = BinanceConnector(api_key=api_key, secret_key=secret_key, testnet=config.get("testnet", True))
+        await connector.verify_connection()
 
     # !!! [SAFETY GATE] !!!
     # 0. Принудительная проверка согласованности роя с биржевыми позициями
-    healed_tickers = await enforce_swarm_consistency(connector, config)
+    healed_tickers = set() if paper_only else await enforce_swarm_consistency(connector, config)
 
     # 0.5. [SSOT] Чтение и маршрутизация сигналов от ботов (stop/exit flags)
     # Worker → Read-Only + Signal. Supervisor — единственный мутатор config.json.
@@ -606,6 +617,8 @@ async def manage_swarm():
                 continue
 
             signal_type, mode_tag, ticker = parts
+            if paper_only and mode_tag != "paper":
+                continue
 
             # 1. Удаляем из live_swarm в любом случае
             live_swarm = config.get("live_swarm", [])
@@ -659,6 +672,8 @@ async def manage_swarm():
 
     # Prune expired entries from blacklists and apply Amnesty (reset state)
     for mode, bl_dict, bl_key in [("paper", bl_paper, "toxic_blacklist_paper"), ("real", bl_real, "toxic_blacklist_real")]:
+        if paper_only and mode == "real":
+            continue
         active_bl = {}
         for t, exp in bl_dict.items():
             if exp > now_ts:
@@ -686,6 +701,8 @@ async def manage_swarm():
 
     # [CACHE] Один вызов pm2 jlist на цикл — результат переиспользуется везде
     running_bots = await get_running_bots_info()
+    if paper_only:
+        running_bots = {k: v for k, v in running_bots.items() if k.startswith("p_")}
 
     # Дополняем кэш процессов "оздоровленными" тикерами, чтобы защитить их от PM2 latency
     for t in healed_tickers:
@@ -957,7 +974,7 @@ async def manage_swarm():
     # 3.5. [Authoritative Cleanup] Close exchange positions for those not in live_swarm/whitelist,
     # even if PM2 process is missing (stray positions).
     real_whitelist = config.get("real_whitelist", [])
-    active_positions = await connector.get_positions()
+    active_positions = {} if paper_only else await connector.get_positions()
     allowed_cleanup_tickers = set(target_real_bots).union(set(real_whitelist))
     for pos_key in active_positions.keys():
         # pos_key is like "SYMBOL_SIDE"
@@ -980,10 +997,13 @@ async def manage_swarm():
     logger.info("⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.")
     await reconcile_swarm_state(final_incubator, "paper")
     real_cleanup_pool = list(set(target_real_bots).union(set(config.get("real_whitelist", []))))
-    await reconcile_swarm_state(real_cleanup_pool, "real")
+    if not paper_only:
+        await reconcile_swarm_state(real_cleanup_pool, "real")
 
     # Обновляем кэш процессов после тотальной зачистки орфанов
     running_bots = await get_running_bots_info()
+    if paper_only:
+        running_bots = {k: v for k, v in running_bots.items() if k.startswith("p_")}
     # Создаем мутабельное множество текущих запущенных ключей для исключения рассинхрона
     active_running_keys = set(running_bots.keys())
 
@@ -1038,7 +1058,8 @@ async def manage_swarm():
     config["live_swarm"] = sorted(target_real_bots)
 
     # --- [INVARIANT GATE] ---
-    await enforce_invariant_gate(connector, config)
+    if not paper_only:
+        await enforce_invariant_gate(connector, config)
     # Safety: if tickers is empty, restore from scanner to avoid losing all tickers
     if not config.get("tickers"):
         fallback = [r['symbol'] for r in scanner_results[:config.get("max_bots", 20)]]
@@ -1063,7 +1084,8 @@ async def manage_swarm():
     # After supervisor restart, PM2 may have lost processes but config still has
     # them in live_swarm. This detects missing processes and relaunches them.
     # -------------------------------------------------------------------------
-    await _ensure_real_bots_alive(config)
+    if not paper_only:
+        await _ensure_real_bots_alive(config)
 
 
 async def _ensure_real_bots_alive(config: dict):

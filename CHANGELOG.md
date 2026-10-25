@@ -1,5 +1,39 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[25 Oct 2026] — PAPER-only swarm launch and restored swarm dashboard
+
+Пользователь разрешил запуск существующего paper-роя и дашборда; работоспособность интерфейса затем подтверждена пользователем. Это операционная диагностика, не принятие доходности, REAL или forward-gate исследования.
+
+### История и параметры
+- Просканированы Obsidian и документы проекта: 348 MD/TXT/HTML/PDF с вложенным checkout, 269 без `.claude`-копии. Найден прямой протокол PM2 от 14 июля в `docs/log.md`; старые схемы разных версий сопоставлены с июльскими записями исправлений. Документы `docs/coordination/` другого checkout не приписаны этому рою.
+- Текущий запуск: `paper_mode=true`, `max_bots=10`, `paper_mode_bots=10`; REAL slots=0. `max_bots` — вместимость PAPER, не число REAL. `live_swarm=[]`, whitelist REAL пуст, Telegram выключен.
+- `tickers.txt` ограничивает scanner 20 символами; volume>=20M USDT, окно3ч, >=10 proxy cycles при пороге0.5%. Получены4 кандидата: ENAUSDT/ZECUSDT/1000PEPEUSDT/WLDUSDT. Фильтры не расширялись ради заполнения10слотов.
+- Каждый бот имеет1000 виртуальных USDT; это не единый ограниченный капитал роя. Пауза supervisor432с плюс длительность цикла.
+
+### Supervisor: изоляция PAPER-only
+- Блокер: ноль REAL-слотов не отключал private exchange reconciliation, HEAL/REAL launch, закрытие позиций и Invariant Gate.
+- `supervisor/swarm_manager.py`: при PAPER и нуле REAL-слотов исключены exchange connector/reconciliation и REAL process management; конфликтующие REAL процессы/allocations отклоняют цикл до записи. REAL-флаги сохраняются; REAL amnesty не сбрасывает state. Scanner/scoring/PAPER rotation не менялись.
+- Проверка: `python -m pytest tests/test_supervisor.py tests/test_supervisor_new.py tests/test_supervisor_service.py tests/test_supervisor_rotation_whitelist.py tests/test_supervisor_whitelist.py --ignore-safety -q --tb=short` — exit0,76 PASS,40.10s. Четыре новых случая проверяют отсутствие exchange/REAL действий и три вида REAL-конфликта. Network/PM2/state paths изолированы mocks/fixtures.
+
+### Фактический запуск
+- Пользователь остановил прежний `paper-zec`; после подтверждения в PM2 был только stopped `collect-zec-depth`. Старые ZEC JSON в `core/` уже отсутствовали: backup прежней сессии не создан, причина отсутствия не установлена. Сохранён предзапусковой config; ZEC стартовал новой сессией1000USDT.
+- PM2 CLI с явным project `.venv/Scripts/python.exe`, cwd проекта, PYTHONPATH и PYTHONUNBUFFERED. Запущен `supervisor-service`; ecosystem не использован. Aggregator/Telegram sender не запускались.
+- Первый цикл завершён25.10.2026 01:46:18 Europe/Kaliningrad (24.10.2026 23:46:18UTC): PAPER ONLY, REAL Swarm=[]. Четыре `paper-*` online с `--paper`, ноль рестартов на первичной проверке. Initial build каждого: cycle1, TPV~998.604 из1000; -1.396USDT — стартовая комиссия, не последующие ребалансировки.
+- Supervisor сам заполнил `config.tickers` и `base_ticker` через fallback; live_swarm остался пуст. Ручной настройки экономики не было. Тестовые mock-сообщения до01:46 в общем supervisor.log не считать реальными событиями.
+- Evidence: `reports/paper_swarm_launch_20261025_014431/` — REPORT, before/after config, hashes, diff, безопасный PM2 snapshot, state snapshots и startup logs. Начальная PREPARED-фаза отчёта дополнена runtime acceptance.
+
+### Dashboard
+- Восстановлен `dashboard/dashboard.py`; в project `.venv` установлены Flask/bcrypt/psutil/PyYAML/waitress. Pip сообщал ошибки metadata части существующих пакетов; общая пересборка среды/pip check не выполнялись.
+- Исправлены `core/` state paths, paper/real shadow names, `last_tpv/initial_tpv/last_profit`, `core/logs`, PM2 ticker name, отсутствующий `_read_log_lines` заменён `get_log_tail`. Карточка ticker поддерживает актуальные метрики и числовые позиции. Общие карточки уточнены как REAL TPV/REAL PnL.
+- Изменены `dashboard/config.yaml`, `data_collector.py`, `static/ticker.js`, `templates/dashboard.html`; добавлен `tests/test_swarm_dashboard.py`:2 PASS,exit0. `node --check dashboard/static/ticker.js` PASS. Первый тестовый кандидат выявил отсутствующий helper; после исправления повтор прошёл.
+- PM2 `swarm-dashboard`, waitress, `--production --host 127.0.0.1 --port 8080`; HTTP http://127.0.0.1:8080 . Успешный запуск через Python subprocess→node→PM2 обошёл потерю разделителя аргументов в PowerShell wrapper. Один намеренный restart только dashboard применил подписи; рой не перезапускался.
+- HTTP200 проверены login, authenticated overview, ZEC details/logs, health, static JS; API: supervisor online,4 PAPER,0 REAL, свежие heartbeat. После финальной правки повторены login/overview; пользователь подтвердил UI. Управляющие кнопки не нажимались, screenshot-QA не проводилась. Настройки входа сохранены; секреты сюда не копируются.
+
+### Provenance и границы
+- Подготовка supervisor при HEAD `5d98260200997bd940f8b3c772aa0ae8380af2ce`; dashboard при `d43bb74b8fd51908b7a352f0d809629742cada95`. Изменение HEAD не приписывается этим действиям. Чужие изменения не откатывались, новых commit/push не было.
+- Обновлён `docs/INTRADAY_RESEARCH_PLAN.md`: старт наблюдения не закрывает этапы2–5; общая аллокация/риск и критерии forward остаются открытыми. Следующая работа — отдельный read-only разбор retention/rotation и сохранности капитала. Scanner бэктестером пока не заменён.
+- Полный протокол Obsidian: `D:/Obsidian/MyVault/Hermes/Docs/futures-portfolio-paper-swarm-dashboard-2026-10-25.md`.
+
 [20 Oct 2026 — 15:58] — ZECUSDT Paper Trade: запуск и bugfix сборщика стакана
 
 ### paper-zec: запуск

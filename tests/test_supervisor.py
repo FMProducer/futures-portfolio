@@ -896,6 +896,53 @@ async def _run_manage(tmp_path, **kwargs):
 
 
 @pytest.mark.asyncio
+async def test_paper_only_swarm_never_manages_exchange_or_real(tmp_path):
+    cm, saved, connector, stop, start = _cm_manage_swarm(
+        tmp_path, config_overrides={"max_bots": 10, "paper_mode_bots": 10},
+        running_bots={"r_FOREIGN": {"paper": False, "name": "real-foreign"}},
+        scanner=[{"symbol": "X", "score": 1}],
+    )
+    signals = tmp_path / "signals"
+    signals.mkdir()
+    real_signal = signals / "stop_real_FOREIGN.flag"
+    real_signal.write_text("stop", encoding="utf-8")
+    with cm, patch(f"{M}.get_pm2_processes", AsyncMock(return_value=[])), \
+            patch(f"{M}.enforce_swarm_consistency", AsyncMock()) as heal, \
+            patch(f"{M}.enforce_invariant_gate", AsyncMock()) as gate, \
+            patch(f"{M}._ensure_real_bots_alive", AsyncMock()) as ensure, \
+            patch(f"{M}.reconcile_swarm_state", AsyncMock()) as reconcile:
+        await manage_swarm()
+        connector.assert_not_called()
+        heal.assert_not_awaited()
+        gate.assert_not_awaited()
+        ensure.assert_not_awaited()
+        stop.assert_not_awaited()
+        start.assert_awaited_once_with("X", is_paper=True, config=saved)
+        reconcile.assert_awaited_once_with(["X"], "paper")
+    assert saved["live_swarm"] == []
+    assert real_signal.read_text(encoding="utf-8") == "stop"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("conflict", ["process", "live_swarm", "real_whitelist"])
+async def test_paper_only_swarm_rejects_real_conflicts(tmp_path, conflict):
+    overrides = {"max_bots": 10, "paper_mode_bots": 10}
+    if conflict != "process":
+        overrides[conflict] = ["FOREIGN"]
+    cm, saved, connector, stop, start = _cm_manage_swarm(
+        tmp_path, config_overrides=overrides,
+    )
+    processes = [{"name": "real-foreign"}] if conflict == "process" else []
+    with cm, patch(f"{M}.get_pm2_processes", AsyncMock(return_value=processes)), \
+            pytest.raises(RuntimeError, match="Paper-only swarm refuses"):
+        await manage_swarm()
+    connector.assert_not_called()
+    start.assert_not_awaited()
+    stop.assert_not_awaited()
+    assert saved == {}
+
+
+@pytest.mark.asyncio
 async def test_integration_signal_stop_toxic_blacklist(tmp_path, monkeypatch):
     """Lines 591-613: stop signal -> toxic_blacklist + black_list"""
     sig_dir = tmp_path / "signals"

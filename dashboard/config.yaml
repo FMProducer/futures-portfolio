@@ -16,7 +16,7 @@ auth:
 
 paths:
   project: "C:\\Python\\Prosperous_Bot\\futures_portfolio"
-  logs: "C:\\Python\\Prosperous_Bot\\futures_portfolio\\logs"
+  logs: "C:\\Python\\Prosperous_Bot\\futures_portfolio\\core\\logs"
   data: "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data"
   pm2_logs: "C:\\Users\\svsma\\.pm2\\logs"
   state_pattern: "{mode}_state_{ticker}.json"

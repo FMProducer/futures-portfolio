@@ -56,9 +56,9 @@ function updateStats(data) {
     const state = data.state || {};
     const container = document.getElementById('ticker-stats');
 
-    const tpv = state.tpv || 0;
-    const initial = state.initial_capital || 0;
-    const pnl = tpv - initial;
+    const tpv = state.last_tpv ?? state.tpv ?? 0;
+    const initial = state.initial_tpv ?? state.initial_capital ?? 0;
+    const pnl = state.last_profit ?? state.pnl ?? (tpv - initial);
     const pnlPct = initial > 0 ? (pnl / initial * 100) : 0;
     const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
     const hb = data.heartbeat || {};
@@ -106,9 +106,9 @@ function updatePositions(shadow) {
                 ${entries.map(([side, pos]) => `
                     <tr>
                         <td><span class="badge ${side.toUpperCase() === 'LONG' || side.toUpperCase() === 'L' ? 'badge-ok' : 'badge-stale'}">${side}</span></td>
-                        <td>${pos.qty || pos.amount || '—'}</td>
-                        <td>${pos.entry_price || pos.price || '—'}</td>
-                        <td>$${fmt((pos.qty || 0) * (pos.mark_price || pos.price || 0))}</td>
+                        <td>${typeof pos === 'number' ? pos : (pos.qty ?? pos.amount ?? '—')}</td>
+                        <td>${typeof pos === 'number' ? (side.endsWith('_LONG') ? shadow.long_entry_price : shadow.short_entry_price) : (pos.entry_price ?? pos.price ?? '—')}</td>
+                        <td>$${fmt(typeof pos === 'number' ? Math.abs(pos) * (shadow.last_price ?? 0) : (pos.qty || 0) * (pos.mark_price || pos.price || 0))}</td>
                     </tr>
                 `).join('')}
             </tbody>
