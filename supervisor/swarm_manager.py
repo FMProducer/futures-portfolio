@@ -120,6 +120,9 @@ async def reconcile_swarm_state(target_tickers: List[str], mode: str) -> None:
         logger.warning(f"🚨 [REAPER GUARD] Обнаружен рассинхрон. Orphaned процессы в режиме {mode}: {orphans_to_kill}")
 
         async def kill_orphan(orphan_name: str) -> None:
+            if mode == "paper" and (CORE_PATH / "paper_budget.sqlite").exists():
+                await stop_bot(orphan_name.removeprefix("paper-").upper() + "USDT", is_paper=True)
+                return
             try:
                 proc = await asyncio.create_subprocess_shell(
                     f"pm2 delete {orphan_name}",
@@ -150,16 +153,32 @@ async def stop_bot(ticker: str, is_paper: bool = False):
     prefix = "paper" if is_paper else "real"
     proc_name = f"{prefix}-{ticker.replace('USDT', '').lower()}"
     try:
-        await (await asyncio.create_subprocess_shell(
+        code = await (await asyncio.create_subprocess_shell(
             f"pm2 delete {proc_name}",
             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
         )).wait()
+        if is_paper and (CORE_PATH / "paper_budget.sqlite").exists():
+            if code != 0:
+                raise RuntimeError(f"PAPER process stop failed: {ticker}")
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(BASE_PATH.parent)
+            close = await asyncio.create_subprocess_exec(
+                sys.executable, str(CORE_PATH / "main.py"), "--config", str(CONFIG_PATH),
+                "--ticker", ticker, "--stop", "--paper", cwd=str(BASE_PATH), env=env)
+            if await close.wait() != 0:
+                raise RuntimeError(f"PAPER close failed; capital remains reserved: {ticker}")
+            from core.paper_budget import release
+            release(BASE_PATH, ticker,
+                    await safe_load_json(str(CORE_PATH / f"paper_state_{ticker}.json"), {}),
+                    await safe_load_json(str(CORE_PATH / f"paper_shadow_{ticker}.json"), {}))
     except FileNotFoundError:
         logger.error(f"PM2 binary not found — cannot delete {proc_name}")
     except OSError as e:
         logger.error(f"OS error deleting {proc_name}: {e}")
     except Exception as e:
         logger.error(f"Failed to delete {proc_name}: {e}")
+        if is_paper and (CORE_PATH / "paper_budget.sqlite").exists():
+            raise
 
 async def enforce_swarm_consistency(connector: BinanceConnector, config: dict) -> Set[str]:
     """
@@ -295,7 +314,7 @@ async def enforce_invariant_gate(connector: BinanceConnector, config: dict):
     except Exception as e:
         logger.error(f"Failed to verify exchange exposure tracking in Invariant Gate: {e}")
 
-async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict) -> None:
+async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capital_override=None) -> None:
     """
     Сбрасывает файлы состояния к чистым начальным значениям, используя
     динамическое ребазирование капитала для предотвращения инфляции баланса.
@@ -320,6 +339,8 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict) -> No
     
     # Динамическое ребазирование: сохраняем накопленный или урезанный стопом капитал
     final_capital = float(old_state.get("last_tpv", config_capital)) if old_state else config_capital
+    if capital_override is not None:
+        final_capital = capital_override
 
     if old_state and (old_state.get("trailing_stop_triggered") or old_state.get("trailing_stop_violation_start", 0.0) > 0.0):
         logger.warning(f"📉 Обнаружен Trailing Stop для {ticker}. Капитал ребазирован: {config_capital} -> {final_capital}")
@@ -376,6 +397,15 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
     prefix = "paper" if is_paper else "real"
     proc_name = f"{prefix}-{ticker.replace('USDT', '').lower()}"
     mode_flag = "--paper" if is_paper else "--real"
+    if is_paper and config and (CORE_PATH / "paper_budget.sqlite").exists():
+        from core.paper_budget import reserve, bind
+        capital, fresh, identity = reserve(BASE_PATH, ticker, config.get("portfolios", [{}])[0].get("paper_initial_capital", 1000))
+        if capital <= 0:
+            logger.warning(f"PAPER budget exhausted; launch deferred: {ticker}")
+            return
+        if fresh or identity is None:
+            await reset_bot_state_files(ticker, True, config, capital_override=capital)
+        bind(BASE_PATH, ticker, await safe_load_json(str(CORE_PATH / f"paper_state_{ticker}.json"), {}))
     
     # Перед запуском: сбрасываем state для paper (чистый старт), для real — только если файлов нет
     if config:

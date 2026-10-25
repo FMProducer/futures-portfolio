@@ -1,6 +1,7 @@
-"""Offline Pareto search. Run: python -m optimization.optimize_universal --days 30.
+"""Offline Pareto search. Run: python -m optimization.optimize_universal --days 1.
 
-Writes a new JSON report; never writes the source config. No live downloads.
+Resumes compatible SQLite studies and writes reports, HTML plots and a recommended
+config without changing the source config. n-trials adds trials on each invocation.
 """
 
 import argparse
@@ -13,6 +14,7 @@ import os
 import re
 import statistics
 import tempfile
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -47,8 +49,7 @@ def search_space(config):
         P + "safety_guards.net_move_block_pct": ("float", 1.54, 2.86),
         P + "safety_guards.net_move_window_sec": ("int", 42, 78),
         P + "safety_guards.trend_lookback_bars": ("int", 10, 60),
-        P + "targets.BASE_LONG.leverage": ("int", 3, 10),
-        P + "targets.BASE_SHORT.leverage": ("int", 3, 10),
+        "leverage": ("int", 3, 10),
         P + "fuse_enabled": ("categorical", False, True),
     }
     for path in (
@@ -70,8 +71,14 @@ def search_space(config):
 def candidate(config, params):
     result = copy.deepcopy(config)
     for path, value in params.items():
-        set_path(result, path, value)
+        if path != "leverage":
+            set_path(result, path, value)
     targets = result["portfolios"][0]["targets"]
+    leverage = params.get("leverage", targets["BASE_LONG"]["leverage"])
+    if isinstance(leverage, bool) or not isinstance(leverage, int) or not 3 <= leverage <= 10:
+        raise ValueError("Shared leverage must be an integer from 3 to 10")
+    for leg in ("BASE_LONG", "BASE_SHORT"):
+        targets[leg]["leverage"] = leverage
     for leg, share in (("BASE_LONG", 0.25), ("BASE_SHORT", 0.25), ("VIRTUAL", 0.5)):
         targets[leg]["share"] = share
     targets["VIRTUAL"]["leverage"] = 1
@@ -120,7 +127,7 @@ def fixed_settings(config, space, prefix=""):
         path = f"{prefix}.{key}" if prefix else str(key)
         if isinstance(value, (dict, list)) and value:
             rows.update(fixed_settings(value, space, path))
-        elif path not in space:
+        elif path not in space and path not in (P + "targets.BASE_LONG.leverage", P + "targets.BASE_SHORT.leverage"):
             rows[path] = value
     return rows
 
@@ -153,10 +160,157 @@ def prepare_history(frame, days, path):
     return tail, metadata
 
 
+def write_json(path, value):
+    staging = path.with_suffix(path.suffix + ".tmp")
+    staging.write_text(json.dumps(value, indent=2, allow_nan=False), encoding="utf-8")
+    staging.replace(path)
+
+
+def study_contract(report):
+    contract = {key: report[key] for key in (
+        "config_sha256", "days", "search_space", "objectives", "constraints", "data", "code_sha256",
+    )}
+    return hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
+
+
+def open_study(storage, name, fingerprint):
+    import optuna
+
+    backend = optuna.storages.RDBStorage(storage)
+    study = optuna.create_study(storage=backend, study_name=name, load_if_exists=True,
+                                directions=["maximize", "minimize"],
+                                sampler=optuna.samplers.NSGAIISampler(seed=42))
+    recorded = study.user_attrs.get("contract_sha256")
+    if recorded != fingerprint:
+        if recorded is not None or study.trials:
+            backend.remove_session()
+            backend.engine.dispose()
+            raise ValueError("Study inputs differ: use a new study name or restore the original inputs")
+        study.set_user_attr("contract_sha256", fingerprint)
+    if study.trials:
+        # Reusing seed 42 on every process restart repeats the startup candidates.
+        study.sampler.reseed_rng()
+    return study
+
+
+def update_trials(report, study):
+    report["trials"] = [{"number": t.number, "state": t.state.name, "values": t.values,
+                         "params": t.params, **t.user_attrs} for t in study.trials]
+    report["pareto"] = [t.number for t in study.best_trials]
+
+
+def export_results(report, study, output):
+    update_trials(report, study)
+    complete = [t for t in report["trials"] if t["state"] == "COMPLETE"]
+    # Net is the primary user objective; lower drawdown breaks equal-Net ties.
+    best = min(complete, key=lambda t: (-t["values"][0], t["values"][1], t["number"])) if complete else None
+    stamp = report["created_utc"]
+    report["artifacts"] = {"json_report": str(output)}
+    report["recommendation"] = None
+    if best:
+        rows = best["per_ticker"]
+        report["recommendation"] = {
+            "trial": best["number"], "median_net_pct": best["values"][0],
+            "worst_max_dd_pct": best["values"][1],
+            "positive_tickers": sum(v["net_pct"] > 0 for v in rows.values()),
+            "negative_tickers": sum(v["net_pct"] < 0 for v in rows.values()),
+            "worst_net_pct": min(v["net_pct"] for v in rows.values()),
+            "modeled_liquidations": sum(v["liquidations"] for v in rows.values()),
+            "selection": "Highest median Net, then lowest worst MaxDD, then earliest trial",
+        }
+        config_path = output.parents[1] / f"best_netdd_config_{stamp}.json"
+        cfg = best["candidate_config"]
+        targets = cfg["portfolios"][0]["targets"]
+        if targets["BASE_LONG"]["leverage"] != targets["BASE_SHORT"]["leverage"]:
+            raise ValueError("Refusing to export unequal LONG/SHORT leverage")
+        write_json(config_path, cfg)
+        report["artifacts"]["recommended_config"] = str(config_path)
+
+    visuals = output.parent / f"optuna_visuals_{stamp}"
+    report["visualization_errors"] = []
+    if complete:
+        try:
+            import optuna.visualization as vis
+            from optuna.importance import PedAnovaImportanceEvaluator
+            import plotly.graph_objects as go
+
+            visuals.mkdir(exist_ok=True)
+            varying = [name for name, (_, low, high) in report["search_space"].items() if low != high]
+            for index, label in ((0, "median_net_pct"), (1, "worst_max_dd_pct")):
+                target = lambda t, i=index: t.values[i]
+                # PED-ANOVA assumes smaller targets are better, including for custom targets.
+                importance_target = lambda t, i=index: -t.values[0] if i == 0 else t.values[1]
+                plots = {
+                    f"optimization_history_{label}": lambda: vis.plot_optimization_history(study, target=target, target_name=label),
+                    f"param_importances_{label}": lambda: vis.plot_param_importances(
+                        study, target=importance_target, target_name=label,
+                        evaluator=PedAnovaImportanceEvaluator(evaluate_on_local=False)),
+                    f"parallel_{label}": lambda: vis.plot_parallel_coordinate(study, params=varying, target=target, target_name=label),
+                    f"contour_{label}": lambda: vis.plot_contour(study, params=["leverage", "equity_trailing_stop_pct"], target=target, target_name=label),
+                }
+                for name, build in plots.items():
+                    try:
+                        fig = build()
+                        fig.write_html(str(visuals / f"{name}.html"), include_plotlyjs=True)
+                    except Exception as exc:
+                        report["visualization_errors"].append(f"{name}: {exc}")
+            fig = go.Figure()
+            fig.add_scatter(x=[t["values"][1] for t in complete], y=[t["values"][0] for t in complete],
+                            text=[f"Trial {t['number']}" for t in complete], mode="markers", name="Feasible trials")
+            front = sorted(study.best_trials, key=lambda t: t.values[1])
+            fig.add_scatter(x=[t.values[1] for t in front], y=[t.values[0] for t in front],
+                            mode="lines+markers", name="Pareto front")
+            if best:
+                fig.add_scatter(x=[best["values"][1]], y=[best["values"][0]], mode="markers",
+                                marker={"size": 15, "symbol": "star"}, name=f"Recommended: trial {best['number']}")
+            fig.update_layout(title="Median Net vs worst ticker MaxDD", xaxis_title="Worst MaxDD (%)", yaxis_title="Median Net (%)")
+            fig.write_html(str(visuals / "pareto.html"), include_plotlyjs=True)
+            report["artifacts"]["visualizations"] = str(visuals)
+        except Exception as exc:
+            report["visualization_errors"].append(str(exc))
+
+    lines = ["# Universal configuration search", "", f"Status: {report['status']}",
+             f"Study: {report['study_name']}", f"Days: {report['days']} ({int(report['days'] * 1440)} bars per ticker)",
+             f"Eligible tickers: {len(report['data'])}; excluded: {len(report['excluded_tickers'])}",
+             f"Trials: {len(report['trials'])}; states: {dict(Counter(t['state'] for t in report['trials']))}", ""]
+    if best:
+        rec = report["recommendation"]
+        lines += [f"Recommended trial: {best['number']}", f"Median Net: {rec['median_net_pct']:+.4f}%",
+                  f"Worst ticker MaxDD: {rec['worst_max_dd_pct']:.4f}%",
+                  f"Positive/negative tickers: {rec['positive_tickers']}/{rec['negative_tickers']}",
+                  f"Worst ticker Net: {rec['worst_net_pct']:+.4f}%; modeled liquidations: {rec['modeled_liquidations']}",
+                  f"Config: {config_path}", "Selection: highest median Net; lower worst MaxDD breaks ties.", ""]
+        if rec["median_net_pct"] <= 0:
+            lines += ["WARNING: best median Net is not positive.", ""]
+    else:
+        lines += ["No feasible completed trials; no recommended config was generated.", ""]
+    lines += ["## Pareto candidates", "", "| Trial | Median Net (%) | Worst MaxDD (%) |", "|---:|---:|---:|"]
+    seen = set()
+    for t in sorted(study.best_trials, key=lambda t: -t.values[0]):
+        values = tuple(t.values)
+        if values not in seen:
+            lines.append(f"| {t.number} | {values[0]:+.4f} | {values[1]:.4f} |")
+            seen.add(values)
+    lines += ["", "## Excluded tickers", ""]
+    lines += [f"- {ticker}: {reason}" for ticker, reason in report["excluded_tickers"].items()] or ["None."]
+    lines += ["", "## Limitations", ""] + [f"- {item}" for item in report["limitations"]]
+    lines += ["", "## Artifacts", ""] + [f"- {name}: {path}" for name, path in report["artifacts"].items()]
+    lines += ["", "## Visualization errors", ""] + (report["visualization_errors"] or ["None."])
+    summary = output.with_suffix(".md")
+    summary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    report["artifacts"]["summary"] = str(summary)
+    write_json(output, report)
+    print("\n" + "\n".join(lines[:lines.index("## Pareto candidates")]))
+    print(f"Summary: {summary}\nReport: {output}\nVisualizations: {visuals if complete else 'none'}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--days", type=float, required=True)
     parser.add_argument("--n-trials", type=int, default=150)
+    parser.add_argument("--storage", type=Path, default=PROJECT_DIR / "optimization" / "universal_optuna.db",
+                        help="SQLite file used to resume compatible trials")
+    parser.add_argument("--study-name", help="Defaults to an input fingerprint; n-trials adds new trials")
     args = parser.parse_args()
     if not math.isfinite(args.days) or args.days * 1440 < 2 or args.n_trials < 1:
         parser.error("--days must cover at least two minutes; --n-trials must be positive")
@@ -175,7 +329,12 @@ def main():
     report = {
         "created_utc": stamp, "config_sha256": hashlib.sha256(source_bytes).hexdigest(),
         "source_config": config, "days": args.days, "search_space": space,
+        "status": "preparing",
+        "code_sha256": {str(path.relative_to(PROJECT_DIR)): hashlib.sha256(path.read_bytes()).hexdigest()
+                        for path in [Path(__file__).resolve(), PROJECT_DIR / "backtest/backtest_rebalance.py",
+                                     *sorted((PROJECT_DIR / "core").glob("*.py"))]},
         "fixed_settings": fixed_settings(candidate(config, {}), space),
+        "importance_method": "PED-ANOVA on completed feasible trials; Net target negated because lower is better",
         "objectives": ["maximize median net_pct", "minimize worst ticker max_dd_pct"],
         "constraints": {"max_dd_pct_each_ticker": 50, "modeled_liquidations": 0},
         "fixed_policy": {"shares": [0.25, 0.25, 0.5], "ticker_thresholds": {},
@@ -183,6 +342,9 @@ def main():
         "limitations": ["In-sample search; no holdout validation", "Independent ticker replays, not a swarm simulation",
                         "Minute OHLCV, simulated market fills and funding; no historical bid/ask",
                         "Largest file per ticker, separate trailing windows; see per-ticker data_window",
+                        "Missing time axes do not verify calendar alignment or minute continuity",
+                        "Parameter importance is statistical association, not a causal effect",
+                        "Resuming restores trials, not the exact random generator state",
                         "Supervisor, rotation, limit execution, spread and live margin ratio settings are not modeled"],
         "data": {}, "excluded_tickers": {}, "trials": [], "pareto": [],
     }
@@ -190,9 +352,7 @@ def main():
     def save():
         if source.read_bytes() != source_bytes:
             raise RuntimeError("Source config changed externally during optimization")
-        staging = output.with_suffix(".tmp")
-        staging.write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
-        staging.replace(output)
+        write_json(output, report)
 
     with tempfile.TemporaryDirectory(prefix="universal_", dir=PROJECT_DIR / "optimization") as tmp:
         tmp = Path(tmp)
@@ -215,7 +375,19 @@ def main():
         if not report["data"]:
             raise ValueError(f"No tickers have enough history for {args.days} days. Exclusions: {output}")
         print(f"Eligible tickers: {len(report['data'])}; excluded: {len(report['excluded_tickers'])}; report: {output}")
-        study = optuna.create_study(directions=["maximize", "minimize"], sampler=optuna.samplers.NSGAIISampler(seed=42))
+        fingerprint = study_contract(report)
+        report["study_name"] = args.study_name or f"universal_equal_leverage_{fingerprint[:24]}"
+        storage_path = args.storage.resolve()
+        if storage_path == source.resolve() or storage_path.suffix.lower() not in (".db", ".sqlite", ".sqlite3"):
+            parser.error("--storage must be a separate SQLite file (.db, .sqlite, .sqlite3)")
+        storage_path.parent.mkdir(parents=True, exist_ok=True)
+        report["storage"] = str(storage_path)
+        study = open_study(f"sqlite:///{storage_path.as_posix()}", report["study_name"], fingerprint)
+        report["resumed_trials"] = len(study.trials)
+        report["requested_additional_trials"] = args.n_trials
+        report["status"] = "running"
+        update_trials(report, study)
+        save()
 
         def objective(trial):
             params = {}
@@ -243,16 +415,24 @@ def main():
                 raise optuna.TrialPruned(str(exc)) from exc
 
         def checkpoint(study, trial):
-            report["trials"].append({"number": trial.number, "state": trial.state.name,
-                                     "values": trial.values, "params": trial.params, **trial.user_attrs})
-            report["pareto"] = [t.number for t in study.best_trials]
+            update_trials(report, study)
             save()
 
         try:
             study.optimize(objective, n_trials=args.n_trials, n_jobs=1, callbacks=[checkpoint])
+            report["status"] = "completed"
+        except KeyboardInterrupt:
+            report["status"] = "interrupted"
+        except Exception:
+            report["status"] = "failed"
+            raise
         finally:
-            save()
-    print(f"Report: {output}; Pareto trials: {report['pareto']}")
+            try:
+                save()
+                export_results(report, study, output)
+            finally:
+                study._storage._backend.remove_session()
+                study._storage._backend.engine.dispose()
 
 
 if __name__ == "__main__":

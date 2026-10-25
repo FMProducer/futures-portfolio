@@ -709,3 +709,8 @@ Remaining main.py gaps (need +8%): liquidation guard get_position_risk flow (142
 [30 May 2026]
 Liquidation Guard & Supervisor Auto-Restart
 Per-position liquidation distance monitoring (warn ≤15%, critical ≤8%)
+
+
+## Fixed PAPER system capital — 25.10.2026
+
+По поручению пользователя внедрён постоянный бюджет10000USDT, резервирование/возврат PAPER капитала через SQLite и equity/Net%/наблюдаемый MaxDD от фиксированной базы. После архивирования и модельного закрытия12старых пар запущены10ботов:9x1000+854.3544USDT. Старые неподтверждённые положительные результаты152.93667245USDT выделены отдельно и не расходуются. REAL=0. Полная миграция, проверки и ограничения: `reports/paper_system_budget_20261025_195505/REPORT.md`. Это не PASS REAL gate.

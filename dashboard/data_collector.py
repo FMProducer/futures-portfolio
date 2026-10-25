@@ -85,10 +85,13 @@ def get_system_overview() -> dict:
     except ImportError:
         from swarm_curve import read_curve
     history["as_of"] = datetime.now().timestamp()
-    curve = read_curve(PROJECT_PATH, (history["as_of"], history["reported_cumulative_net"]))
+    curve = read_curve(PROJECT_PATH, (history["as_of"], history["reported_cumulative_net"]),
+                       (history.get("system") or {}).get("initial"))
 
     # Тикеры
     paper_tickers = _find_state_files("paper")
+    if history.get("system"):
+        paper_tickers = [t for t in paper_tickers if t in history["system"]["allocations"]]
     real_tickers = _find_state_files("real")
 
     # Собираем данные по каждому тикеру

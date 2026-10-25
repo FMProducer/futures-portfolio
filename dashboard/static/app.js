@@ -78,7 +78,7 @@ function updateSwarmCurve(data) {
     const valid = points.filter(p => p[1] != null);
     if (!valid.length) { status.textContent = 'Нет корректных значений'; return; }
     const values = valid.map(p => p[1]);
-    const lo = Math.min(0, ...values), hi = Math.max(1, ...values);
+    const lo = Math.min(...values), hi = Math.max(1, ...values);
     const start = points[0][0], end = points[points.length - 1][0];
     const x = t => 85 + (t - start) / Math.max(1, end - start) * 890;
     const y = v => 245 - (v - lo) / Math.max(1, hi - lo) * 220;
@@ -109,7 +109,7 @@ function updateSwarmCurve(data) {
         add('text', {x:x(ts), y:280, fill:'currentColor', 'text-anchor':anchor, 'font-size':13}, new Date(ts*1000).toLocaleString('ru-RU'));
     }
     const last = valid[valid.length-1];
-    status.textContent = `Последняя оценка: ${formatUsd(last[1])}. Наблюдаемая максимальная просадка: ${formatUsd(data.max_drawdown_usdt)}. Точек: ${points.length}. Обновлено: ${new Date(last[0]*1000).toLocaleString('ru-RU')}.`;
+    status.textContent = `${data.initial ? 'Equity системы' : 'Накопленный результат'}: ${formatUsd(last[1])}. Наблюдаемая максимальная просадка: ${formatUsd(data.max_drawdown_usdt)}${data.max_drawdown_pct == null ? '' : ` (${data.max_drawdown_pct.toFixed(2)}%)`}. Точек: ${points.length}. Обновлено: ${new Date(last[0]*1000).toLocaleString('ru-RU')}.`;
     svg.onpointermove = event => {
         const box = svg.getBoundingClientRect();
         const ts = start + (((event.clientX-box.left)/box.width*1000-85)/890)*(end-start);
@@ -131,6 +131,11 @@ function updatePaperHistory(history) {
         `прерванные: ${money(history.interrupted_net)}. Проверенный Net: не установлен. ` +
         `Всего стартовых аллокаций: ${money(history.capital_allocated)} (не доход и не общий кошелёк). ` +
         `Известные комиссии: ${money(history.fees_recorded)} — уже учтены в результате, повторно не вычитаются.`;
+    if (history.system) {
+        const s = history.system;
+        document.getElementById('paper-history-summary').textContent =
+            `База системы: ${money(s.initial)}. Equity (историческая оценка): ${money(s.equity)}. Net: ${money(history.reported_cumulative_net)} (${s.net_pct.toFixed(2)}%). Equity обеспеченного пула: ${money(s.funded_equity)}. Неподтверждённый исторический плюс: ${money(s.unverified_historical_gain)} (не доступен для аллокаций). Свободно в денежном пуле: ${money(s.cash)}. ` + document.getElementById('paper-history-summary').textContent;
+    }
     document.getElementById('paper-history-warning').textContent = history.warning +
         (history.errors.length ? ` Ошибок чтения/покрытия: ${history.errors.length}.` : '');
     const body = document.getElementById('paper-history-rows');

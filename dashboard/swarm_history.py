@@ -129,7 +129,7 @@ def reconstruct(root, running_names=()):
     closed = [r for r in rows if r["status"] == "closed_reported"]
     active = [r for r in rows if r["status"] == "open"]
     interrupted = [r for r in rows if r["status"] == "interrupted"]
-    return {"sessions": rows, "errors": errors,
+    result = {"sessions": rows, "errors": errors,
             "reported_closed_net": sum(r["reported_net"] for r in closed),
             "open_net": sum(r["reported_net"] for r in active),
             "interrupted_net": sum(r["reported_net"] for r in interrupted),
@@ -138,3 +138,15 @@ def reconstruct(root, running_names=()):
             "capital_allocated": sum(r["initial"] for r in rows),
             "fees_recorded": sum(r["fees_recorded"] or 0 for r in rows),
             "warning": "Оценка по архивам и state; не проверенный Net. Закрывающие fills/funding могут отсутствовать. Независимые wallets; сбросы не обнуляют историю. MaxDD — нижняя оценка по наблюдениям, не общий риск счёта."}
+    try:
+        from core.paper_budget import read_budget
+    except ImportError:
+        from futures_portfolio.core.paper_budget import read_budget
+    budget = read_budget(root)
+    if budget:
+        net = result["reported_cumulative_net"]
+        result["system"] = {**budget, "equity": budget["initial"] + net,
+                            "net_pct": net / budget["initial"] * 100,
+                            "funded_equity": budget["initial"] + net - budget["unverified_historical_gain"]}
+        result["warning"] = "База системы зафиксирована. Equity включает оценку старых сессий; неподтверждённая историческая прибыль не доступна для новых аллокаций. MaxDD по наблюдениям — нижняя оценка."
+    return result

@@ -19,4 +19,7 @@ def test_curve_preserves_net_gap_and_observed_drawdown(tmp_path):
     current = read_curve(tmp_path, (210, 25))
     assert current["points"][-1] == [210, 25, 35, False]
     assert current["max_drawdown_usdt"] == 35
+    equity = read_curve(tmp_path, (210, 25), initial=10000)
+    assert equity['points'][-1][1] == 10025
+    assert abs(equity['max_drawdown_pct'] - 35/10060*100) < 1e-10
     assert read_curve(tmp_path / "missing")["points"] == []

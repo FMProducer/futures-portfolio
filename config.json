@@ -3,7 +3,7 @@
   "limit_order_enabled": false,
   "limit_offset_pct": 0.1,
   "limit_timeout_sec": 30,
-  "min_notional_usdt": 6.0,
+  "min_notional_usdt": 7.0,
   "paper_mode": true,
   "max_orders_per_second": 10,
   "min_cycles_for_rank": 15,

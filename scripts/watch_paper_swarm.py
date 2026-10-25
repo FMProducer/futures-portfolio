@@ -62,6 +62,7 @@ def sample(db, root, now=None):
         summary = {k: history[k] for k in ("reported_closed_net", "open_net", "interrupted_net",
                                            "reported_cumulative_net", "verified_net", "fees_recorded", "session_count")}
         summary["errors"] = errors + history["errors"]
+        summary["system"] = history.get("system")
         summary["identity_basis"] = "state presence; process liveness checked separately"
         db.execute("INSERT INTO observations VALUES(?,?,?)", (now, max(0, now - previous) if previous else None,
                                                              json.dumps(summary, ensure_ascii=False)))
