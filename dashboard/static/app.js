@@ -6,6 +6,8 @@
 // ─── State ────────────────────────────────────────────────────
 
 let refreshTimer = null;
+let paperHistory = null;
+let historySort = {key: 'ticker', direction: 1};
 
 // ─── Init ─────────────────────────────────────────────────────
 
@@ -57,17 +59,74 @@ async function loadOverview() {
 
     updateSummary(data.summary, data.supervisor);
     updatePaperHistory(data.paper_history);
+    updateSwarmCurve(data.paper_curve);
     updateAlerts(data.alerts);
     updateBotsTable('real-bots-table', data.real_bots);
     updateBotsTable('paper-bots-table', data.paper_bots);
     updatePm2Table(data.pm2_processes);
 }
 
+function updateSwarmCurve(data) {
+    const status = document.getElementById('swarm-curve-status');
+    const svg = document.getElementById('swarm-curve');
+    svg.replaceChildren();
+    if (!data || data.error || !data.points.length) {
+        status.textContent = 'График недоступен: ' + (data?.error || 'нет наблюдений');
+        return;
+    }
+    const points = data.points;
+    const valid = points.filter(p => p[1] != null);
+    if (!valid.length) { status.textContent = 'Нет корректных значений'; return; }
+    const values = valid.map(p => p[1]);
+    const lo = Math.min(0, ...values), hi = Math.max(1, ...values);
+    const start = points[0][0], end = points[points.length - 1][0];
+    const x = t => 85 + (t - start) / Math.max(1, end - start) * 890;
+    const y = v => 245 - (v - lo) / Math.max(1, hi - lo) * 220;
+    const add = (tag, attrs, text) => {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+        if (text != null) el.textContent = text;
+        svg.append(el); return el;
+    };
+    for (const value of [lo, (lo + hi) / 2, hi]) {
+        add('line', {x1:85, x2:975, y1:y(value), y2:y(value), stroke:'#667085', opacity:0.3});
+        add('text', {x:0, y:y(value)+5, fill:'currentColor', 'font-size':14}, formatUsd(value));
+    }
+    let path = '', connected = false;
+    for (const [ts, net, dd, gap] of points) {
+        if (net == null) { connected = false; continue; }
+        path += `${connected && !gap ? 'L' : 'M'}${x(ts).toFixed(2)},${y(net).toFixed(2)} `;
+        connected = true;
+    }
+    add('path', {d:path, fill:'none', stroke:'#38bdf8', 'stroke-width':2});
+    for (const marker of data.markers || []) {
+        if (marker.ts < start || marker.ts > end) continue;
+        const line = add('line', {x1:x(marker.ts), x2:x(marker.ts), y1:25, y2:245, stroke:'#fbbf24', 'stroke-dasharray':'5 5'});
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        title.textContent = marker.label; line.append(title);
+    }
+    for (const [ts, anchor] of [[start, 'start'], [end, 'end']]) {
+        add('text', {x:x(ts), y:280, fill:'currentColor', 'text-anchor':anchor, 'font-size':13}, new Date(ts*1000).toLocaleString('ru-RU'));
+    }
+    const last = valid[valid.length-1];
+    status.textContent = `Последняя оценка: ${formatUsd(last[1])}. Наблюдаемая максимальная просадка: ${formatUsd(data.max_drawdown_usdt)}. Точек: ${points.length}. Обновлено: ${new Date(last[0]*1000).toLocaleString('ru-RU')}.`;
+    svg.onpointermove = event => {
+        const box = svg.getBoundingClientRect();
+        const ts = start + (((event.clientX-box.left)/box.width*1000-85)/890)*(end-start);
+        const nearest = valid.reduce((a,b) => Math.abs(a[0]-ts)<Math.abs(b[0]-ts) ? a : b);
+        svg.setAttribute('aria-label', `${new Date(nearest[0]*1000).toLocaleString('ru-RU')}: ${formatUsd(nearest[1])}, просадка ${formatUsd(nearest[2])}`);
+        let title = svg.querySelector('title');
+        if (!title) title = add('title', {});
+        title.textContent = svg.getAttribute('aria-label');
+    };
+}
+
 function updatePaperHistory(history) {
     if (!history) return;
+    paperHistory = history;
     const money = value => value == null ? 'неизвестно' : formatUsd(value);
     document.getElementById('paper-history-summary').textContent =
-        `Сессий: ${history.session_count}. Накопленная оценка: ${money(history.reported_cumulative_net)}. ` +
+        `На ${new Date(history.as_of * 1000).toLocaleString('ru-RU')}. Сессий: ${history.session_count}. Накопленная оценка: ${money(history.reported_cumulative_net)}. ` +
         `Закрытые по отчётам: ${money(history.reported_closed_net)}; открытые: ${money(history.open_net)}; ` +
         `прерванные: ${money(history.interrupted_net)}. Проверенный Net: не установлен. ` +
         `Всего стартовых аллокаций: ${money(history.capital_allocated)} (не доход и не общий кошелёк). ` +
@@ -77,7 +136,7 @@ function updatePaperHistory(history) {
     const body = document.getElementById('paper-history-rows');
     body.replaceChildren();
     const status = {open: 'Открыта', closed_reported: 'Закрыта по отчёту', interrupted: 'Прервана / нет закрытия'};
-    for (const row of [...history.sessions].sort((a, b) => a.ticker.localeCompare(b.ticker) || a.started_at - b.started_at)) {
+    for (const row of [...history.sessions].sort(compareHistoryRows)) {
         const tr = document.createElement('tr');
         if (row.ticker === 'TUSDT') tr.style.fontWeight = 'bold';
         const values = [row.ticker, new Date(row.started_at * 1000).toLocaleString('ru-RU'), status[row.status],
@@ -86,6 +145,22 @@ function updatePaperHistory(history) {
         for (const value of values) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
         body.append(tr);
     }
+}
+
+function compareHistoryRows(a, b) {
+    const x = a[historySort.key], y = b[historySort.key];
+    if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+    const order = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ru');
+    return order * historySort.direction || a.ticker.localeCompare(b.ticker) || a.started_at - b.started_at;
+}
+
+function sortPaperHistory(key) {
+    historySort = {key, direction: historySort.key === key ? -historySort.direction : 1};
+    document.querySelectorAll('[data-history-sort]').forEach(button => {
+        const active = button.dataset.historySort === key;
+        button.parentElement.setAttribute('aria-sort', active ? (historySort.direction === 1 ? 'ascending' : 'descending') : 'none');
+    });
+    if (paperHistory) updatePaperHistory(paperHistory);
 }
 
 // ─── Update summary ───────────────────────────────────────────

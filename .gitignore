@@ -101,3 +101,4 @@ data/intraday_90d_20260726_20261024/
 dashboard/static/ticker.js
 dashboard/templates/dashboard.html
 dashboard/config.yaml
+optimization/

@@ -80,6 +80,12 @@ def get_system_overview() -> dict:
     except ImportError:
         from swarm_history import reconstruct
     history = reconstruct(PROJECT_PATH, {p["name"] for p in pm2_procs if p.get("status") == "online"})
+    try:
+        from .swarm_curve import read_curve
+    except ImportError:
+        from swarm_curve import read_curve
+    history["as_of"] = datetime.now().timestamp()
+    curve = read_curve(PROJECT_PATH, (history["as_of"], history["reported_cumulative_net"]))
 
     # Тикеры
     paper_tickers = _find_state_files("paper")
@@ -121,6 +127,7 @@ def get_system_overview() -> dict:
         },
         "paper_bots": paper_bots,
         "paper_history": history,
+        "paper_curve": curve,
         "real_bots": real_bots,
         "pm2_processes": pm2_procs,
         "alerts": _get_alerts(paper_bots, real_bots, pm2_procs),

@@ -217,6 +217,12 @@ def create_app():
 
     # ─── API endpoints ─────────────────────────────────────────
 
+    @app.route("/api/swarm-curve")
+    @login_required
+    def api_swarm_curve():
+        from swarm_curve import read_curve
+        return jsonify(read_curve(PROJECT_PATH))
+
     @app.route("/api/overview")
     @login_required
     def api_overview():
