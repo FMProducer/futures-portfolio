@@ -56,10 +56,36 @@ async function loadOverview() {
     if (!data) return;
 
     updateSummary(data.summary, data.supervisor);
+    updatePaperHistory(data.paper_history);
     updateAlerts(data.alerts);
     updateBotsTable('real-bots-table', data.real_bots);
     updateBotsTable('paper-bots-table', data.paper_bots);
     updatePm2Table(data.pm2_processes);
+}
+
+function updatePaperHistory(history) {
+    if (!history) return;
+    const money = value => value == null ? 'неизвестно' : formatUsd(value);
+    document.getElementById('paper-history-summary').textContent =
+        `Сессий: ${history.session_count}. Накопленная оценка: ${money(history.reported_cumulative_net)}. ` +
+        `Закрытые по отчётам: ${money(history.reported_closed_net)}; открытые: ${money(history.open_net)}; ` +
+        `прерванные: ${money(history.interrupted_net)}. Проверенный Net: не установлен. ` +
+        `Всего стартовых аллокаций: ${money(history.capital_allocated)} (не доход и не общий кошелёк). ` +
+        `Известные комиссии: ${money(history.fees_recorded)} — уже учтены в результате, повторно не вычитаются.`;
+    document.getElementById('paper-history-warning').textContent = history.warning +
+        (history.errors.length ? ` Ошибок чтения/покрытия: ${history.errors.length}.` : '');
+    const body = document.getElementById('paper-history-rows');
+    body.replaceChildren();
+    const status = {open: 'Открыта', closed_reported: 'Закрыта по отчёту', interrupted: 'Прервана / нет закрытия'};
+    for (const row of [...history.sessions].sort((a, b) => a.ticker.localeCompare(b.ticker) || a.started_at - b.started_at)) {
+        const tr = document.createElement('tr');
+        if (row.ticker === 'TUSDT') tr.style.fontWeight = 'bold';
+        const values = [row.ticker, new Date(row.started_at * 1000).toLocaleString('ru-RU'), status[row.status],
+            money(row.initial), money(row.endpoint), money(row.reported_net), row.cycles,
+            `${row.observed_maxdd_pct.toFixed(2)}%`, money(row.fees_recorded), money(row.wallet_receipt_residual)];
+        for (const value of values) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
+        body.append(tr);
+    }
 }
 
 // ─── Update summary ───────────────────────────────────────────
