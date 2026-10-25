@@ -943,6 +943,57 @@ async def test_paper_only_swarm_rejects_real_conflicts(tmp_path, conflict):
 
 
 @pytest.mark.asyncio
+async def test_paper_resume_retains_wallet_and_session(tmp_path):
+    from futures_portfolio.supervisor import swarm_manager as manager
+    state = {"started_at": 123, "initial_tpv": 1000, "tpv_ath": 1200,
+             "trailing_stop_triggered": True, "paper_close_complete": True}
+    wallet = {"balance": 1118, "positions": {"X_LONG": 0, "X_SHORT": 0}}
+    (tmp_path / "paper_state_X.json").write_text(json.dumps(state))
+    wp = tmp_path / "paper_shadow_X.json"
+    wp.write_text(json.dumps(wallet))
+    with patch.object(manager, "CORE_PATH", tmp_path), \
+            patch.object(manager, "reset_bot_state_files", AsyncMock()) as reset, \
+            patch.object(manager.asyncio, "create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
+        await manager.start_bot("X", is_paper=True, config={"max_bots": 10})
+    reset.assert_not_awaited()
+    resumed = json.loads((tmp_path / "paper_state_X.json").read_text())
+    assert resumed["initial_tpv"] == 1000 and resumed["tpv_ath"] == 1200
+    assert resumed["started_at"] == 123
+    assert resumed["paper_close_complete"] is False
+    assert json.loads(wp.read_text()) == wallet
+
+
+@pytest.mark.asyncio
+async def test_paper_resume_rejects_stale_close_marker(tmp_path):
+    from futures_portfolio.supervisor import swarm_manager as manager
+    state = {"started_at": 123, "initial_tpv": 1000,
+             "trailing_stop_triggered": True, "paper_close_complete": True}
+    (tmp_path / "paper_state_X.json").write_text(json.dumps(state))
+    (tmp_path / "paper_shadow_X.json").write_text(json.dumps(
+        {"balance": 1100, "positions": {"X_LONG": 1}}))
+    with patch.object(manager, "CORE_PATH", tmp_path), \
+            patch.object(manager.asyncio, "create_subprocess_shell", AsyncMock()) as launch:
+        with pytest.raises(ValueError, match="terminal close is unverified"):
+            await manager.start_bot("X", is_paper=True, config={"max_bots": 10})
+    launch.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_paper_probation_filters_incubator_and_scanner(tmp_path):
+    import time
+    from futures_portfolio.supervisor import swarm_manager as manager
+    cm, _, _, _, start = _cm_manage_swarm(
+        tmp_path, config_overrides={"paper_mode_bots": 10, "tickers": ["X"],
+                                    "probation_paper": {"X": time.time() + 1000}})
+    with cm, patch.object(manager, "get_pm2_processes", AsyncMock(return_value=[])), \
+            patch.object(manager, "selective_merge_incubator", AsyncMock(return_value=[])) as merge:
+        await manager.manage_swarm()
+    assert merge.call_args.kwargs["old_incubator"] == []
+    assert merge.call_args.kwargs["scanner_results"] == []
+    start.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_integration_signal_stop_toxic_blacklist(tmp_path, monkeypatch):
     """Lines 591-613: stop signal -> toxic_blacklist + black_list"""
     sig_dir = tmp_path / "signals"

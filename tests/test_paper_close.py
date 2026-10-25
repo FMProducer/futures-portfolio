@@ -51,3 +51,29 @@ async def test_emergency_paper_stop_preserves_opening_and_ath(tmp_path):
     await emergency_stop(connector, str(config), str(sp), str(wp), logging.getLogger(),
                          ticker_override="X", paper_mode=True, close_only=True)
     assert json.loads(wp.read_text())["balance"] == 1014.874
+
+
+def test_close_pair_recovers_after_wallet_write_crash(tmp_path, monkeypatch):
+    from core import funding
+    wallet = {"balance": 1000, "positions": {"X_LONG": 2, "X_SHORT": 1},
+              "long_entry_price": 100, "short_entry_price": 110}
+    closed = close_wallet(wallet, "X", 105, "stop1", "0.0004")
+    state = {"base_ticker": "X", "initial_tpv": 1000, "last_tpv": closed["balance"],
+             "paper_close_complete": True}
+    sp, wp = str(tmp_path / "state.json"), str(tmp_path / "wallet.json")
+    original = funding.atomic_save_json
+
+    def crash(path, data):
+        if path == wp:
+            raise OSError("simulated wallet write crash")
+        original(path, data)
+
+    with monkeypatch.context() as patcher:
+        patcher.setattr(funding, "atomic_save_json", crash)
+        with pytest.raises(OSError):
+            funding.save_funding_boundary(sp, wp, state, closed, funding.FundingJournal(), funding.FundingHalt())
+    status, recovered, recovered_wallet = funding.recover_funding_boundary(sp, wp)
+    assert status == funding.RECOVERY_RECOVERED
+    assert recovered["paper_close_complete"]
+    assert recovered_wallet["balance"] == 1014.874
+    assert len(recovered_wallet["share_fill_receipts"]) == 2

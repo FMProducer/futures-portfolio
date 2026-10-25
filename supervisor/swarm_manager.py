@@ -386,16 +386,21 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
                 wallet_path = CORE_PATH / f"paper_shadow_{ticker}.json"
                 wallet = await safe_load_json(str(wallet_path), {})
                 if (not state.get("started_at") or not wallet or state.get("startup_blocked")
-                        or state.get("cash_invariant_violation") or state.get("rebalance_inflight")):
+                        or state.get("cash_invariant_violation") or state.get("rebalance_inflight")
+                        or (state.get("funding_halt") or {}).get("active")):
                     raise ValueError(f"PAPER resume requires reconciliation: {ticker}")
                 if state.get("trailing_stop_triggered"):
-                    if not state.get("paper_close_complete"):
+                    if (not state.get("paper_close_complete")
+                            or any(float(qty) != 0 for qty in wallet.get("positions", {}).values())):
                         raise ValueError(f"PAPER terminal close is unverified: {ticker}")
                     state["trailing_stop_triggered"] = False
+                    state["paper_close_complete"] = False
                     state["trailing_stop_violation_start"] = 0.0
                     await safe_save_json(str(state_path), state)
                 logger.info(f"PAPER RESUME: {ticker}; wallet/session/opening/ATH retained")
             else:
+                if (CORE_PATH / f"paper_shadow_{ticker}.json").exists():
+                    raise ValueError(f"PAPER wallet exists without strategy identity: {ticker}")
                 await reset_bot_state_files(ticker, is_paper=True, config=config)
         else:
             state_path = CORE_PATH / f"real_state_{ticker}.json"

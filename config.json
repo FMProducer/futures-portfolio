@@ -83,9 +83,13 @@
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
-  "black_list": [],
+  "black_list": [
+    "BTCUSDT"
+  ],
   "toxic_blacklist": {},
-  "toxic_blacklist_paper": {},
+  "toxic_blacklist_paper": {
+    "BTCUSDT": 1792943441.3688607
+  },
   "toxic_blacklist_real": {},
   "tickers": [
     "1000PEPEUSDT",

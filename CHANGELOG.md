@@ -1,5 +1,12 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[25 Oct 2026] — PAPER closing accounting, capital retention and monitoring
+
+- PAPER emergency/trailing/collateral closes now record idempotent PnL/fee receipts and paired state through existing WAL; resume retains wallet/session/opening/ATH, prevents stale terminal markers and respects probation. 145 affected tests passed before the final supervisor safeguard; 53 supervisor tests passed after it.
+- User-authorized six-worker PAPER and supervisor restart backed up in `reports/paper_lifecycle_repair/deploy_20261025_141940/`. All session/opening identities retained; TUSDT cycle18 movement reconciled to its new receipt. REAL stays disabled.
+- `swarm-observer` captures snapshots/log tails/reported cumulative Net and coverage gaps. Hourly monitoring resumes for24h through26Oct14:25UTC. Initial observer name collided with supervisor PAPER orphan cleanup; renamed and outage retained as evidence. Historical verified Net is still unknown; TUSDT hypothetical closing replay is explicitly separate.
+- Future pilot parameters agreed:68USDT,1slot,7x cross,MaxDD50%; exchange/execution/economic/forward gates and separate launch permission remain. Full status: `reports/paper_lifecycle_repair/REPORT.md`.
+
 [25 Oct 2026] — PAPER-only swarm launch and restored swarm dashboard
 
 Пользователь разрешил запуск существующего paper-роя и дашборда; работоспособность интерфейса затем подтверждена пользователем. Это операционная диагностика, не принятие доходности, REAL или forward-gate исследования.

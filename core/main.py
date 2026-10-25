@@ -1622,13 +1622,17 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         )
                         state["initial_build_pending"] = None
                         state["trailing_stop_triggered"] = True
+                        state["paper_close_complete"] = True
+                        state["last_tpv"] = float(paper_state["balance"]) + float(state.get("siphoning_reserve", 0))
+                        state["last_profit"] = state["last_tpv"] - float(state["initial_tpv"])
                         state["share_trail"] = share_trail.fresh_state()
                         state["share_trail_receipts"] = []
                         actions = []
                         paper_state_dirty = True
                         state_dirty = True
-                        await save_json(state_file_path, state)
-                        await save_json(paper_state_file_path, paper_state)
+                        from core.funding import save_funding_boundary, load_funding_state
+                        journal, halt = load_funding_state(state)
+                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                         logger.critical(
                             "PAPER COLLATERAL CRITICAL: trading halted pending supervisor stop"
                         )

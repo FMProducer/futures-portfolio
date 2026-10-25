@@ -453,7 +453,7 @@ async def test_handle_liquidation_guard_paper_critical():
     # 1.0 * (45.0 - 50.0) = -5.0 PnL for Long
     # 1.0 * (50.0 - 45.0) = -5.0? No, Short PnL = 1 * (50 - 45) = +5.0 PnL
     # So balance = 100.0 - 5.0 + 5.0 = 100.0
-    assert paper_state["balance"] == 100.0
+    assert paper_state["balance"] == 99.964
     assert paper_state["positions"]["BTCUSDT_LONG"] == 0.0
     assert paper_state["positions"]["BTCUSDT_SHORT"] == 0.0
 
