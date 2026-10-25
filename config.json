@@ -17,6 +17,7 @@
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
   "max_drawdown_limit": 200.0,
+  "max_drawdown_cooldown_days": 1.0,
   "equity_trailing_stop_pct": 0.3,
   "equity_trailing_stop_activation_pct": 7.0,
   "equity_trailing_stop_timeout_sec": 40,
@@ -82,9 +83,21 @@
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
-  "black_list": [],
+  "black_list": [
+    "1000PEPEUSDT",
+    "ENAUSDT",
+    "TUSDT",
+    "WLDUSDT",
+    "ZECUSDT"
+  ],
   "toxic_blacklist": {},
-  "toxic_blacklist_paper": {},
+  "toxic_blacklist_paper": {
+    "1000PEPEUSDT": 1792899493.3909118,
+    "ENAUSDT": 1792899493.3909118,
+    "TUSDT": 1792899493.3909118,
+    "WLDUSDT": 1792899493.3909118,
+    "ZECUSDT": 1792899493.3909118
+  },
   "toxic_blacklist_real": {},
   "tickers": [
     "1000PEPEUSDT",

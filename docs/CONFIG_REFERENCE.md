@@ -169,6 +169,11 @@
 - **Оптимизаторы:** область поиска 5.0–50.0 (`optimize_stops.py:54`) — рекомендация автора, не валидация.
 - **Режимы:** live, paper, backtest. После emergency stop бот шлёт сигнал `stop` (если TPV < initial_capital) или `exit` (probation) (`main.py:936-944`).
 
+### `max_drawdown_cooldown_days`
+- **Scope:** backtest only; top-level config, default `0.1` days.
+- After `max_drawdown_limit`, positions close and trading resumes after this independent cooldown with capital and ATH rebased. `toxic_cooldown_days` does not affect this timer.
+- Must be finite and non-negative. Converted to minute bars as `max(1, int(days * 1440))`; zero resumes on the next bar.
+
 ### `equity_trailing_stop_pct`
 - **Текущее значение:** `0.001` | **Тип:** float, % просадки от tpv_ath
 - **Чтение:** `core/main.py:444` (default 0.0 = выключен). Логика (`main.py:971-1050`): активен только если `equity_trailing_stop_pct > 0` И `tpv_ath ≥ initial_tpv*(1+activation/100)`; если просадка `≥ pct` — засечь время; one-shot: восстановление просадки не отменяет уже начатый отсчёт (`:1044-1048`). Триггер → закрытие всех позиций, флаг `trailing_stop_triggered=true` (дальше Zombie Mode, `main.py:1112-1116, 1671-1677`), сигнал stop/exit.

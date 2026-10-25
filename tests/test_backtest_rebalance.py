@@ -174,6 +174,37 @@ def _flat_config() -> dict:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("cooldown_days, expected_bars", [(0.1, 144), (0.02, 28), (0.0, 1)])
+async def test_max_drawdown_stop_reopens_after_cooldown(tmp_path, cooldown_days, expected_bars):
+    config = _flat_config()
+    config.update(max_drawdown_limit=0.1, toxic_cooldown_days=1.0,
+                  max_drawdown_cooldown_days=cooldown_days)
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0] * 320
+    pd.DataFrame({
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(prices),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    res = await run_backtest(
+        str(config_file), str(tmp_path), days=1,
+        commission=0.001, slippage=0.0, quiet=True,
+    )
+    assert res is not None and res["accounting_ok"]
+    stops = [e for e in res["events"] if e["kind"] == "max_dd_stop"]
+    resumes = [e for e in res["events"] if e["kind"] == "cooldown_end"]
+    assert len(stops) >= 2 and resumes
+    stop_bar, resume_bar = stops[0]["bar"], resumes[0]["bar"]
+    assert resume_bar == stop_bar + expected_bars
+    assert res["settings"]["max_drawdown_cooldown_bars"] == expected_bars
+    closes = [f for f in res["fills"] if f["bar"] == stop_bar and f["trigger"] == "max_dd_stop"]
+    assert {f["leg"] for f in closes} == {"BASE_LONG", "BASE_SHORT"}
+    assert not any(stop_bar < f["bar"] < resume_bar for f in res["fills"])
+    assert any(f["bar"] == resume_bar and f["trigger"] != "max_dd_stop" for f in res["fills"])
+
+
+@pytest.mark.asyncio
 async def test_first_bar_has_no_phantom_capital(tmp_path):
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps(_flat_config()), encoding="utf-8")

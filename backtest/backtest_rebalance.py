@@ -566,6 +566,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         min_notional_usdt: Decimal = Decimal(str(config.get("min_notional_usdt", 6.0)))
         toxic_cooldown_days: float = config.get("toxic_cooldown_days", 0.02)
         cooldown_bars_duration: int = int(toxic_cooldown_days * 1440)
+        max_drawdown_cooldown_days = float(config.get("max_drawdown_cooldown_days", 0.1))
+        if not math.isfinite(max_drawdown_cooldown_days) or max_drawdown_cooldown_days < 0:
+            raise ValueError("max_drawdown_cooldown_days must be finite and non-negative")
+        max_drawdown_cooldown_bars = max(1, int(max_drawdown_cooldown_days * 1440))
         max_drawdown_limit_pct: float = config.get("max_drawdown_limit", 100.0)  # по умолчанию 100% = отключён
 
         close_prices: npt.NDArray[np.float64] = df['close'].values.astype(np.float64)
@@ -1303,7 +1307,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 _dd_base = state.tpv_ath if state.tpv_ath > 0 else initial_capital_f
                 drawdown_threshold = _dd_base * (1.0 - max_drawdown_limit_pct / 100.0)
                 if total_tpv_with_reserve < drawdown_threshold:
-                    logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! TPV={total_tpv_with_reserve:.2f} < threshold={drawdown_threshold:.2f} ({max_drawdown_limit_pct}% DD from ATH={_dd_base:.2f}). Stopping.")
+                    logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! TPV={total_tpv_with_reserve:.2f} < threshold={drawdown_threshold:.2f} ({max_drawdown_limit_pct}% DD from ATH={_dd_base:.2f}). Entering {max_drawdown_cooldown_days}d cooldown.")
                     state.trailing_stop_triggered = True
                     state.stops_counter += 1
                     # Закрыть все позиции по текущей цене
@@ -1335,7 +1339,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
                                         "max dd stop close")
                     state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
-                    state.cooldown_until_bar = len(df) + 1  # больше не стартуем
+                    state.cooldown_until_bar = i + max_drawdown_cooldown_bars
                     state.log_event(i, "max_dd_stop", float(state.dormant_capital),
                                     f"max drawdown limit {max_drawdown_limit_pct}%")
                     state.log_event(i, "cooldown_start", float(state.dormant_capital),
@@ -1510,6 +1514,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "trailing_stop_activation_pct": float(trailing_stop_activation_pct),
                 "trailing_stop_timeout_sec": int(trailing_stop_timeout_sec),
                 "max_drawdown_limit_pct": float(max_drawdown_limit_pct),
+                "max_drawdown_cooldown_days": max_drawdown_cooldown_days,
+                "max_drawdown_cooldown_bars": max_drawdown_cooldown_bars,
                 "cooldown_bars": int(cooldown_bars_duration),
                 "min_notional_usdt": float(min_notional_usdt),
                 "share_trail_distance": float(trail_distance),
