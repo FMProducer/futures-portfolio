@@ -430,24 +430,11 @@ async def _handle_liquidation_guard(
             pass
 
         if is_paper:
-            # Paper mode: simulate closing BOTH sides at current price
-            for _side in ("LONG", "SHORT"):
-                _pos_key = f"{base_ticker}_{_side}"
-                _entry_key = f"{_side.lower()}_entry_price"
-                _old_entry = paper_state.get(_entry_key, 0.0)
-                _old_qty = paper_state["positions"].get(_pos_key, 0.0)
-                if _old_qty == 0:
-                    continue
-                # Calculate PnL from price movement
-                if _side == "LONG":
-                    _pnl = _old_qty * (liq_price - _old_entry)
-                else:
-                    _pnl = _old_qty * (_old_entry - liq_price)
-                paper_state["balance"] = float(Decimal(str(paper_state["balance"])) + Decimal(str(_pnl)))
-                paper_state["positions"][_pos_key] = 0.0
-                paper_state[_entry_key] = 0.0
-                paper_state[f"{_side.lower()}_liquidation_price"] = 0.0
-                logger.info(f"✅ PAPER: Emergency closed {_pos_key} (PnL={_pnl:+.4f})")
+            from core.paper_close import close_wallet
+            closed = close_wallet(paper_state, base_ticker, liq_price,
+                                  f"guard:{base_ticker}:{paper_state.get('balance')}", PAPER_COMMISSION_RATE)
+            paper_state.clear()
+            paper_state.update(closed)
             mode_tag = "PAPER"
         else:
             # Real mode: send actual close order for BOTH sides
@@ -809,7 +796,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     f"wallet={paper_state.get('balance', 0):.4f}, "
                     f"V={state.get('virt_debt', 0):.4f}. Clean Slate suppressed."
                 )
-            else:
+            elif not (state.get("started_at") and float(state.get("initial_tpv", 0)) > 0):
                 _clean_balance = float(paper_state.get('balance', target_initial_cap))
                 if abs(_clean_balance - target_initial_cap) > 0.1 or float(state.get('virt_qty', 0)) > 0:
                     logger.warning(f"🧹 [PAPER] Phantom Buffer detected for {base_ticker}. Enforcing Clean Slate!")
@@ -1136,7 +1123,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                               FundingHalt.from_dict(state.get("funding_halt")))
                         continue
 
-                if _in_blacklist:
+                if _in_blacklist and not paper_mode:
                     _last_profit = float(state.get("last_profit", 0.0))
                     if _last_profit < 0:
                         # Убыточный бот → полный сброс на начальный капитал из конфига
@@ -1155,7 +1142,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     paper_state_dirty = True
                     state_dirty = True
                     _rebased = True
-                elif initial_tpv != target_initial and target_initial > 0:
+                elif initial_tpv != target_initial and target_initial > 0 and not paper_mode:
                     logger.info(f"🔄 Initial Capital changed in config: {initial_tpv} -> {target_initial}. Updating base.")
                     initial_tpv = target_initial
                     reference_tpv = initial_tpv
@@ -1735,7 +1722,20 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 asyncio.create_task(notifier.send_alert("STOP LOSS", msg))
 
                                 # Realize PnL and close positions
+                                if paper_mode:
+                                    from core.paper_close import close_wallet
+                                    paper_state = close_wallet(paper_state, base_ticker, price,
+                                                               f"trailing:{state.get('started_at')}:{cycles}", PAPER_COMMISSION_RATE)
+                                    from core.funding import save_funding_boundary, load_funding_state
+                                    tpv_total = float(paper_state["balance"]) + float(state.get("siphoning_reserve", 0))
+                                    state["last_tpv"] = tpv_total
+                                    state["last_profit"] = tpv_total - float(state["initial_tpv"])
+                                    state["paper_close_complete"] = True
+                                    journal, halt = load_funding_state(state)
+                                    save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                                 for pos_key, qty in positions.items():
+                                    if paper_mode:
+                                        continue
                                     if qty == 0 or base_ticker not in pos_key: continue
                                     side = "SELL" if qty > 0 else "BUY"
                                     step_size = step_sizes.get(base_ticker, 0.0)
@@ -2345,6 +2345,33 @@ async def emergency_stop(connector: BinanceConnector, config_path: str, state_fi
     base_ticker = ticker_override if ticker_override else config.get("base_ticker", "BTCUSDT")
     portfolio_cfg = config.get("portfolios", [{}])[0]
     initial_capital = portfolio_cfg.get("initial_capital", 60.0)
+
+    if paper_mode:
+        from core.paper_close import close_wallet
+        from core.funding import save_funding_boundary, load_funding_state
+        state = await load_json(state_file_path, {})
+        wallet = await load_json(paper_state_file_path, {})
+        if not state or not wallet or not state.get("started_at") or float(state.get("initial_tpv", 0)) <= 0:
+            raise ValueError("PAPER stop requires an identified strategy/wallet pair")
+        if any(float(q) for q in wallet.get("positions", {}).values()):
+            prices = await connector.get_mark_prices([base_ticker])
+            close_price = prices.get(base_ticker)
+        else:
+            close_price = wallet.get("last_price") or 1
+        event = f"stop:{state['started_at']}:{state.get('rebalance_cycles', 0)}"
+        wallet = close_wallet(wallet, base_ticker, close_price, event, PAPER_COMMISSION_RATE)
+        equity = float(wallet["balance"]) + float(state.get("siphoning_reserve", 0))
+        state.update(last_tpv=equity, last_profit=equity - float(state["initial_tpv"]),
+                     paper_close_complete=True, trailing_stop_triggered=True, last_update=time.time())
+        state["total_pnl_pct"] = state["last_profit"] / float(state["initial_tpv"]) * 100
+        journal, halt = load_funding_state(state)
+        save_funding_boundary(state_file_path, paper_state_file_path, state, wallet, journal, halt)
+        archive = Path(state_file_path).resolve().parent.parent / "history"
+        archive.mkdir(exist_ok=True)
+        await save_json(str(archive / f"paper_close_{base_ticker}_{state['started_at']}.json"),
+                        {"state": state, "paper_state": wallet, "timestamp": time.time(), "close_event": event})
+        logger.info(f"PAPER CLOSE committed: {base_ticker} equity={equity:.8f} net={state['last_profit']:.8f}; opening and ATH retained")
+        return
 
     logger.info(f"🛑 EMERGENCY STOP for {base_ticker} (Paper: {paper_mode}, CloseOnly: {close_only})")
 

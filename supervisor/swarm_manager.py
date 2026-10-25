@@ -380,7 +380,23 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
     # Перед запуском: сбрасываем state для paper (чистый старт), для real — только если файлов нет
     if config:
         if is_paper:
-            await reset_bot_state_files(ticker, is_paper=True, config=config)  # Paper always starts fresh
+            state_path = CORE_PATH / f"paper_state_{ticker}.json"
+            if state_path.exists():
+                state = await safe_load_json(str(state_path), {})
+                wallet_path = CORE_PATH / f"paper_shadow_{ticker}.json"
+                wallet = await safe_load_json(str(wallet_path), {})
+                if (not state.get("started_at") or not wallet or state.get("startup_blocked")
+                        or state.get("cash_invariant_violation") or state.get("rebalance_inflight")):
+                    raise ValueError(f"PAPER resume requires reconciliation: {ticker}")
+                if state.get("trailing_stop_triggered"):
+                    if not state.get("paper_close_complete"):
+                        raise ValueError(f"PAPER terminal close is unverified: {ticker}")
+                    state["trailing_stop_triggered"] = False
+                    state["trailing_stop_violation_start"] = 0.0
+                    await safe_save_json(str(state_path), state)
+                logger.info(f"PAPER RESUME: {ticker}; wallet/session/opening/ATH retained")
+            else:
+                await reset_bot_state_files(ticker, is_paper=True, config=config)
         else:
             state_path = CORE_PATH / f"real_state_{ticker}.json"
             if not state_path.exists():
@@ -760,6 +776,8 @@ async def manage_swarm():
     clean_scanner = []
     for r in scanner_results:
         symbol = r['symbol']
+        if config.get("probation_paper", {}).get(symbol, 0) > time.time():
+            continue
         if symbol in bl_paper:
             logger.info(f"⏳ {symbol} is in Toxic Quarantine. Skipping.")
             continue
@@ -772,7 +790,8 @@ async def manage_swarm():
     old_incubator = list(set(config.get("tickers", [])).union(running_paper_from_pm2))
 
     # Фильтруем тикеры в toxic_blacklist_paper — они не должны попадать в инкубатор
-    old_incubator = [t for t in old_incubator if t not in bl_paper]
+    old_incubator = [t for t in old_incubator if t not in bl_paper
+                     and config.get("probation_paper", {}).get(t, 0) <= time.time()]
 
     # Собираем метрики для старых тикеров (для оценки PnL в ротации)
     old_perf_tasks = [get_bot_efficiency(t, config) for t in old_incubator]

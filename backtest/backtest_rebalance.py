@@ -1569,21 +1569,13 @@ if __name__ == "__main__":
         import pathlib, subprocess
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         reports = pathlib.Path(root) / "reports"
-        try:
-            _cfg = json.load(open(args.config, "r", encoding="utf-8"))
-            _ticker = (args.ticker or _cfg.get("base_ticker", "BTCUSDT")).upper()
-        except Exception:
-            _ticker = (args.ticker or "BTCUSDT").upper()
-        if _ticker == "ZECUSDT":
-            window_bars = int(res.get("data_window", {}).get("bars", int(args.days * 1440)))
-            window_days = window_bars / 1440.0
-            prefix = "zec_12m" if abs(window_days - 365.0) < 0.5 else f"zec_{int(round(window_days))}d"
-            viz = pathlib.Path(root) / "scripts" / "visualize_zec_dashboard.py"
-            viz_args = [sys.executable, str(viz), prefix]
-        else:
-            prefix = "btc_365d"
-            viz = pathlib.Path(root) / "scripts" / "visualize_365d_dashboard.py"
-            viz_args = [sys.executable, str(viz)]
+        _ticker = res["ticker"].lower().removesuffix("usdt")
+        window_bars = int(res.get("data_window", {}).get("bars", int(args.days * 1440)))
+        window_days = window_bars / 1440.0
+        prefix = f"{_ticker}_12m" if abs(window_days - 365.0) < 0.5 else f"{_ticker}_{int(round(window_days))}d"
+        viz = pathlib.Path(root) / "scripts" / "visualize_zec_dashboard.py"
+        viz_args = [sys.executable, str(viz), prefix]
+        reports.mkdir(parents=True, exist_ok=True)
         curve = res.pop("equity_curve", [])
         (reports / f"{prefix}_backtest_result.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
         (reports / f"{prefix}_equity.json").write_text(json.dumps(curve), encoding="utf-8")
