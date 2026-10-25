@@ -87,9 +87,7 @@
     "BTCUSDT"
   ],
   "toxic_blacklist": {},
-  "toxic_blacklist_paper": {
-    "BTCUSDT": 1792943441.3688607
-  },
+  "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
     "1000PEPEUSDT",

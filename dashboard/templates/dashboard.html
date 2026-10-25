@@ -62,12 +62,21 @@
 
         <section class="section">
             <h2 class="section-title">PAPER: результат всех восстановленных сессий</h2>
+            <h3>Накопленный результат роя · USDT</h3>
+            <p id="swarm-curve-status" aria-live="polite">Загрузка графика…</p>
+            <svg id="swarm-curve" viewBox="0 0 1000 300" role="img" aria-label="Накопленная оценка результата PAPER-роя по времени" style="width:100%;min-height:180px"></svg>
+            <p>Оценка всех сессий, не equity общего счёта и не проверенный Net. Пробелы более 20 секунд показаны разрывами. Просадка — от наблюдавшегося пика, в USDT; комиссии повторно не вычитаются.</p>
             <p id="paper-history-summary">Загрузка…</p>
             <p id="paper-history-warning"></p>
+            <details><summary style="cursor:pointer;padding:12px 0">Сессии роя — раскрыть таблицу · сортировка по заголовкам ↕</summary>
             <div class="table-responsive"><table class="table">
-                <thead><tr><th>Тикер</th><th>Начало сессии</th><th>Статус</th><th>Старт, USDT</th><th>Конечный / текущий TPV</th><th>Результат по данным системы</th><th>Циклы</th><th>Наблюдаемый MaxDD</th><th>Известные комиссии</th><th>Остаток сверки wallet</th></tr></thead>
+                <thead><tr>
+                {% for key, label in [('ticker','Тикер'),('started_at','Начало сессии'),('status','Статус'),('initial','Старт, USDT'),('endpoint','Конечный / текущий TPV'),('reported_net','Результат по данным системы'),('cycles','Циклы'),('observed_maxdd_pct','Наблюдаемый MaxDD'),('fees_recorded','Известные комиссии'),('wallet_receipt_residual','Остаток сверки wallet')] %}
+                <th aria-sort="{{ 'ascending' if key == 'ticker' else 'none' }}"><button type="button" data-history-sort="{{ key }}" onclick="sortPaperHistory('{{ key }}')" style="background:none;border:0;color:inherit;font:inherit;cursor:pointer;text-align:left">{{ label }} ↕</button></th>
+                {% endfor %}
+                </tr></thead>
                 <tbody id="paper-history-rows"></tbody>
-            </table></div>
+            </table></div></details>
         </section>
 
         <!-- Real Bots -->
