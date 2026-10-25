@@ -1,0 +1,258 @@
+{
+  "selection": {
+    "source_report": "optimization/universal_report_20261025T195121232427Z.json",
+    "completed_trials": 182,
+    "criterion": "Top 8 PED-ANOVA importances for primary objective median Net; MaxDD reported separately",
+    "net_importance_coverage": 0.8821987651797933,
+    "maxdd_importance_coverage": 0.8967892361302223,
+    "limitations": "One day, 160 tickers; best median Net is negative; association is not causation",
+    "importance": {
+      "leverage": {
+        "net": 0.4624893597914162,
+        "maxdd": 0.032462531241663366
+      },
+      "rebalance_share_trail_distance": {
+        "net": 0.1892326926059464,
+        "maxdd": 0.0033740220013898114
+      },
+      "portfolios.0.safety_guards.net_move_window_sec": {
+        "net": 0.04825102928788688,
+        "maxdd": 0.0039003603985390415
+      },
+      "portfolios.0.safety_guards.trend_lookback_bars": {
+        "net": 0.04767906648739759,
+        "maxdd": 0.009961089687050782
+      },
+      "portfolios.0.rebalance_threshold_surplus": {
+        "net": 0.04363095513969875,
+        "maxdd": 0.013647148434307543
+      },
+      "max_drawdown_limit": {
+        "net": 0.034200371163544956,
+        "maxdd": 0.8060184240863458
+      },
+      "toxic_cooldown_days": {
+        "net": 0.02921398394830229,
+        "maxdd": 0.0029252879345163796
+      },
+      "equity_trailing_stop_activation_pct": {
+        "net": 0.027501306755600377,
+        "maxdd": 0.024500372346409567
+      },
+      "portfolios.0.siphoning_threshold_pct": {
+        "net": 0.017188522556571783,
+        "maxdd": 0.015354904367067353
+      },
+      "equity_trailing_stop_timeout_sec": {
+        "net": 0.01586966395709182,
+        "maxdd": 0.022186156472295136
+      },
+      "portfolios.0.safety_guards.velocity_window_sec": {
+        "net": 0.015380381743808342,
+        "maxdd": 0.006701231426076305
+      },
+      "max_drawdown_cooldown_days": {
+        "net": 0.011447363507633337,
+        "maxdd": 0.012667461387204364
+      },
+      "portfolios.0.rebalance_threshold_deficit": {
+        "net": 0.01053786806573762,
+        "maxdd": 0.0009142000050231973
+      },
+      "portfolios.0.safety_guards.max_price_velocity_pct": {
+        "net": 0.00976098700585546,
+        "maxdd": 0.024349241475695078
+      },
+      "portfolios.0.safety_guards.trend_min_move_pct": {
+        "net": 0.007944537611841454,
+        "maxdd": 0.008252742984930828
+      },
+      "equity_trailing_stop_pct": {
+        "net": 0.007330827888823458,
+        "maxdd": 0.0015520170107864526
+      },
+      "portfolios.0.trend_add_block.pct": {
+        "net": 0.006161513677899746,
+        "maxdd": 0.005647736156017944
+      },
+      "portfolios.0.fuse_enabled": {
+        "net": 0.0060363243406190235,
+        "maxdd": 2.6663671317890954e-05
+      },
+      "portfolios.0.safety_guards.trend_eff_threshold": {
+        "net": 0.005080842941611838,
+        "maxdd": 0.0037108758656492135
+      },
+      "portfolios.0.safety_guards.net_move_block_pct": {
+        "net": 0.004282194244204818,
+        "maxdd": 0.0011992419698864615
+      },
+      "portfolios.0.trend_add_block.window_bars": {
+        "net": 0.0007802072785081403,
+        "maxdd": 0.0006482910778273099
+      },
+      "portfolios.0.liquidation_distance_crit_pct": {
+        "net": 0.0,
+        "maxdd": 0.0
+      }
+    }
+  },
+  "parameters": {
+    "max_drawdown_limit": {
+      "enabled": true,
+      "type": "int",
+      "value": 200.0,
+      "low": 5,
+      "high": 50
+    },
+    "equity_trailing_stop_pct": {
+      "enabled": false,
+      "type": "float",
+      "value": 0.3,
+      "low": 0.0001,
+      "high": 25.0
+    },
+    "equity_trailing_stop_activation_pct": {
+      "enabled": true,
+      "type": "float",
+      "value": 7.0,
+      "low": 0.5,
+      "high": 20.0
+    },
+    "portfolios.0.rebalance_threshold_surplus": {
+      "enabled": true,
+      "type": "float",
+      "value": 0.031,
+      "low": 0.008,
+      "high": 0.01
+    },
+    "portfolios.0.rebalance_threshold_deficit": {
+      "enabled": false,
+      "type": "float",
+      "value": 0.031,
+      "low": 0.01,
+      "high": 0.12
+    },
+    "portfolios.0.safety_guards.trend_min_move_pct": {
+      "enabled": false,
+      "type": "float",
+      "value": 0.5,
+      "low": 0.49,
+      "high": 0.91
+    },
+    "portfolios.0.safety_guards.trend_eff_threshold": {
+      "enabled": false,
+      "type": "float",
+      "value": 0.55,
+      "low": 0.32,
+      "high": 0.59
+    },
+    "portfolios.0.safety_guards.net_move_block_pct": {
+      "enabled": false,
+      "type": "float",
+      "value": 2.14,
+      "low": 1.54,
+      "high": 2.86
+    },
+    "portfolios.0.safety_guards.net_move_window_sec": {
+      "enabled": true,
+      "type": "int",
+      "value": 72,
+      "low": 42,
+      "high": 78
+    },
+    "portfolios.0.safety_guards.trend_lookback_bars": {
+      "enabled": true,
+      "type": "int",
+      "value": 30,
+      "low": 10,
+      "high": 60
+    },
+    "leverage": {
+      "enabled": true,
+      "type": "int",
+      "value": 7,
+      "low": 3,
+      "high": 10
+    },
+    "portfolios.0.fuse_enabled": {
+      "enabled": false,
+      "type": "categorical",
+      "value": false,
+      "choices": [
+        false,
+        true
+      ]
+    },
+    "rebalance_share_trail_distance": {
+      "enabled": true,
+      "type": "float",
+      "value": 0.04,
+      "low": 0.02,
+      "high": 0.06
+    },
+    "equity_trailing_stop_timeout_sec": {
+      "enabled": false,
+      "type": "int",
+      "value": 40,
+      "low": 20,
+      "high": 60
+    },
+    "toxic_cooldown_days": {
+      "enabled": true,
+      "type": "float",
+      "value": 0.1,
+      "low": 0.05,
+      "high": 0.15000000000000002
+    },
+    "max_drawdown_cooldown_days": {
+      "enabled": false,
+      "type": "float",
+      "value": 1.0,
+      "low": 0.5,
+      "high": 1.5
+    },
+    "portfolios.0.trend_add_block.pct": {
+      "enabled": false,
+      "type": "float",
+      "value": 0.01,
+      "low": 0.005,
+      "high": 0.015
+    },
+    "portfolios.0.trend_add_block.window_bars": {
+      "enabled": false,
+      "type": "int",
+      "value": 60,
+      "low": 30,
+      "high": 90
+    },
+    "portfolios.0.safety_guards.max_price_velocity_pct": {
+      "enabled": false,
+      "type": "float",
+      "value": 2.0,
+      "low": 1.0,
+      "high": 3.0
+    },
+    "portfolios.0.safety_guards.velocity_window_sec": {
+      "enabled": false,
+      "type": "int",
+      "value": 60,
+      "low": 30,
+      "high": 90
+    },
+    "portfolios.0.liquidation_distance_crit_pct": {
+      "enabled": false,
+      "type": "float",
+      "value": 0.0,
+      "low": 0.0,
+      "high": 0.0
+    },
+    "portfolios.0.siphoning_threshold_pct": {
+      "enabled": false,
+      "type": "float",
+      "value": 1000.05,
+      "low": 500.025,
+      "high": 1500.0749999999998
+    }
+  }
+}

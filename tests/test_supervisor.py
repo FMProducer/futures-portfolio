@@ -1,12 +1,18 @@
 import pytest
 import math
 import json
+import logging
 from unittest.mock import MagicMock, AsyncMock, patch, mock_open
 from futures_portfolio import supervisor
 from futures_portfolio.supervisor.swarm_manager import calculate_bot_score, _calc_rotation_score, selective_merge_incubator, get_bot_efficiency, reset_bot_state_files, enforce_swarm_consistency, _ensure_real_bots_alive, manage_swarm
 
 # Префикс для всех patch-путей — модуль supervisor как он виден тесту
 M = "futures_portfolio.supervisor.swarm_manager"
+
+
+@pytest.fixture(autouse=True)
+def isolate_supervisor_log(monkeypatch):
+    monkeypatch.setattr(logging.getLogger("Supervisor"), "handlers", [logging.NullHandler()])
 
 def test_calculate_bot_score():
     # is_in_drawdown=True -> INF
@@ -275,8 +281,8 @@ async def test_get_running_bots_info():
         assert res["r_ETHUSDT"]["paper"] is False
 
 @pytest.mark.asyncio
-async def test_stop_bot():
-    with patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())) as mock_shell:
+async def test_stop_bot(tmp_path):
+    with patch(f"{M}.CORE_PATH", tmp_path), patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())) as mock_shell:
         await supervisor.stop_bot("BTCUSDT", is_paper=True)
         assert "pm2 delete paper-btc" in mock_shell.call_args[0][0]
 

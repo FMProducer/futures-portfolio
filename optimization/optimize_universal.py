@@ -86,6 +86,53 @@ def candidate(config, params):
     return result
 
 
+def load_optimizer_settings(config, path):
+    settings = json.loads(path.read_text(encoding="utf-8"))
+    defaults = search_space(config)
+    parameters = settings["parameters"]
+    if set(parameters) != set(defaults):
+        raise ValueError(f"Optimizer parameter keys differ: missing={set(defaults) - set(parameters)}, unknown={set(parameters) - set(defaults)}")
+    space, fixed, steps = {}, {}, {}
+    for name, spec in parameters.items():
+        kind = defaults[name][0]
+        if type(spec["enabled"]) is not bool or spec["type"] != kind:
+            raise ValueError(f"Invalid enabled/type for {name}")
+        value = spec["value"]
+        if kind == "categorical":
+            choices = spec["choices"]
+            if not choices or any(type(x) is not bool for x in choices) or type(value) is not bool:
+                raise ValueError(f"Boolean choices/value required for {name}")
+            if len(set(choices)) != len(choices):
+                raise ValueError(f"Duplicate choices for {name}")
+            bounds = (kind, choices[0], choices[-1])
+        else:
+            low, high = spec["low"], spec["high"]
+            numbers = (low, high, value)
+            if any(type(x) not in (int, float) or not math.isfinite(x) or x < 0 for x in numbers):
+                raise ValueError(f"Finite nonnegative numbers required for {name}")
+            if kind == "int" and any(int(x) != x for x in numbers):
+                raise ValueError(f"Integers required for {name}")
+            if kind == "int":
+                low, high, value = int(low), int(high), int(value)
+            if low > high or (name == "leverage" and not (3 <= low <= high <= 10 and 3 <= value <= 10)):
+                raise ValueError(f"Invalid range/value for {name}")
+            step = spec.get("step")
+            if step is not None:
+                if type(step) not in (int, float) or not math.isfinite(step) or step <= 0 or (kind == "int" and type(step) is not int):
+                    raise ValueError(f"Invalid step for {name}")
+                if not math.isclose((high - low) / step, round((high - low) / step), abs_tol=1e-8):
+                    raise ValueError(f"Range must be divisible by step for {name}")
+                steps[name] = step
+            bounds = (kind, low, high)
+        if spec["enabled"]:
+            space[name] = bounds
+        else:
+            fixed[name] = value
+    if not space:
+        raise ValueError("Enable at least one optimizer parameter")
+    return space, fixed, steps, settings
+
+
 def discover(data_dir):
     selected = {}
     for path in sorted(data_dir.glob("*.feather")):
@@ -170,6 +217,7 @@ def study_contract(report):
     contract = {key: report[key] for key in (
         "config_sha256", "days", "search_space", "objectives", "constraints", "data", "code_sha256",
     )}
+    contract["optimizer_settings"] = report.get("optimizer_settings")
     return hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
 
 
@@ -236,6 +284,8 @@ def export_results(report, study, output):
 
             visuals.mkdir(exist_ok=True)
             varying = [name for name, (_, low, high) in report["search_space"].items() if low != high]
+            contour_params = [name for name in ("leverage", "equity_trailing_stop_pct", *varying) if name in varying]
+            contour_params = list(dict.fromkeys(contour_params))[:2]
             for index, label in ((0, "median_net_pct"), (1, "worst_max_dd_pct")):
                 target = lambda t, i=index: t.values[i]
                 # PED-ANOVA assumes smaller targets are better, including for custom targets.
@@ -246,7 +296,7 @@ def export_results(report, study, output):
                         study, target=importance_target, target_name=label,
                         evaluator=PedAnovaImportanceEvaluator(evaluate_on_local=False)),
                     f"parallel_{label}": lambda: vis.plot_parallel_coordinate(study, params=varying, target=target, target_name=label),
-                    f"contour_{label}": lambda: vis.plot_contour(study, params=["leverage", "equity_trailing_stop_pct"], target=target, target_name=label),
+                    f"contour_{label}": lambda: vis.plot_contour(study, params=contour_params, target=target, target_name=label),
                 }
                 for name, build in plots.items():
                     try:
@@ -311,6 +361,8 @@ def main():
     parser.add_argument("--storage", type=Path, default=PROJECT_DIR / "optimization" / "universal_optuna.db",
                         help="SQLite file used to resume compatible trials")
     parser.add_argument("--study-name", help="Defaults to an input fingerprint; n-trials adds new trials")
+    parser.add_argument("--optimizer-config", type=Path, default=PROJECT_DIR / "optimizer_config.json",
+                        help="Parameter switches, fixed values, ranges and optional steps")
     args = parser.parse_args()
     if not math.isfinite(args.days) or args.days * 1440 < 2 or args.n_trials < 1:
         parser.error("--days must cover at least two minutes; --n-trials must be positive")
@@ -322,7 +374,7 @@ def main():
     source = PROJECT_DIR / "config.json"
     source_bytes = source.read_bytes()
     config = json.loads(source_bytes)
-    space = search_space(config)
+    space, fixed_params, steps, settings = load_optimizer_settings(config, args.optimizer_config)
     files = discover(PROJECT_DIR / "data")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output = PROJECT_DIR / "optimization" / f"universal_report_{stamp}.json"
@@ -333,7 +385,10 @@ def main():
         "code_sha256": {str(path.relative_to(PROJECT_DIR)): hashlib.sha256(path.read_bytes()).hexdigest()
                         for path in [Path(__file__).resolve(), PROJECT_DIR / "backtest/backtest_rebalance.py",
                                      *sorted((PROJECT_DIR / "core").glob("*.py"))]},
-        "fixed_settings": fixed_settings(candidate(config, {}), space),
+        "optimizer_settings": settings,
+        "fixed_parameter_values": fixed_params,
+        "optimizer_config_path": str(args.optimizer_config.resolve()),
+        "fixed_settings": fixed_settings(candidate(config, fixed_params), space),
         "importance_method": "PED-ANOVA on completed feasible trials; Net target negated because lower is better",
         "objectives": ["maximize median net_pct", "minimize worst ticker max_dd_pct"],
         "constraints": {"max_dd_pct_each_ticker": 50, "modeled_liquidations": 0},
@@ -392,8 +447,8 @@ def main():
         def objective(trial):
             params = {}
             for path, (kind, low, high) in space.items():
-                params[path] = trial.suggest_categorical(path, [low, high]) if kind == "categorical" else getattr(trial, f"suggest_{kind}")(path, low, high)
-            cfg = candidate(config, params)
+                params[path] = trial.suggest_categorical(path, list(dict.fromkeys([low, high]))) if kind == "categorical" else getattr(trial, f"suggest_{kind}")(path, low, high, **({"step": steps[path]} if path in steps else {}))
+            cfg = candidate(config, {**fixed_params, **params})
             trial.set_user_attr("candidate_config", cfg)
             cfg_path = tmp / "candidate.json"
             cfg_path.write_text(json.dumps(cfg), encoding="utf-8")

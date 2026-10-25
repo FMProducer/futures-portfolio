@@ -829,6 +829,11 @@ async def manage_swarm():
                      and config.get("probation_paper", {}).get(t, 0) <= time.time()]
 
     # Собираем метрики для старых тикеров (для оценки PnL в ротации)
+    if config.get("paper_backtest_gate", False):
+        from scanner.backtest_gate import filter_candidates
+        before_gate = len(clean_scanner)
+        clean_scanner = await filter_candidates(BASE_PATH, clean_scanner, config, set(old_incubator))
+        logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; closed24h, Net>0, DD<=50%, cycles>=2")
     old_perf_tasks = [get_bot_efficiency(t, config) for t in old_incubator]
     old_perf_results = await asyncio.gather(*old_perf_tasks)
     global_perf_map = dict(zip(old_incubator, old_perf_results))

@@ -8,7 +8,7 @@ import optimization.optimize_universal as optimizer
 
 from optimization.optimize_universal import (
     PROJECT_DIR, P, aggregate, candidate, discover, fixed_settings, metrics, search_space, prepare_history,
-    export_results, open_study, study_contract,
+    export_results, open_study, study_contract, load_optimizer_settings,
 )
 
 
@@ -107,6 +107,34 @@ class UniversalOptimizerTests(unittest.TestCase):
         for value in (2, 11, True, 3.5):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 candidate(self.config, {"leverage": value})
+
+    def test_optimizer_config_switches_ranges_and_fixed_values(self):
+        settings = json.loads((PROJECT_DIR / "optimizer_config.json").read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "optimizer.json"
+            path.write_text(json.dumps(settings))
+            space, fixed, steps, _ = load_optimizer_settings(self.config, path)
+            self.assertEqual(len(space), 8)
+            self.assertIn("leverage", space)
+            self.assertIn("equity_trailing_stop_pct", fixed)
+            settings["parameters"]["leverage"].update(enabled=False, value=4)
+            settings["parameters"]["equity_trailing_stop_pct"].update(enabled=True, low=1.0, high=2.0, step=.25)
+            path.write_text(json.dumps(settings))
+            space, fixed, steps, _ = load_optimizer_settings(self.config, path)
+            self.assertNotIn("leverage", space)
+            self.assertEqual(space["equity_trailing_stop_pct"], ("float", 1.0, 2.0))
+            self.assertEqual(steps["equity_trailing_stop_pct"], .25)
+            cfg = candidate(self.config, fixed)
+            self.assertEqual(cfg["portfolios"][0]["targets"]["BASE_SHORT"]["leverage"], 4)
+            settings["parameters"]["equity_trailing_stop_pct"]["step"] = .3
+            path.write_text(json.dumps(settings))
+            with self.assertRaisesRegex(ValueError, "divisible"):
+                load_optimizer_settings(self.config, path)
+            settings["parameters"]["equity_trailing_stop_pct"]["step"] = .25
+            settings["parameters"]["leverage"]["high"] = 11
+            path.write_text(json.dumps(settings))
+            with self.assertRaisesRegex(ValueError, "Invalid range"):
+                load_optimizer_settings(self.config, path)
 
     def test_sqlite_resume_and_contract_mismatch(self):
         import optuna
@@ -207,6 +235,7 @@ class UniversalOptimizerTests(unittest.TestCase):
             (root / "backtest/backtest_rebalance.py").write_text("test backtest", encoding="utf-8")
             source = root / "config.json"
             source.write_text(json.dumps(self.config), encoding="utf-8")
+            (root / "optimizer_config.json").write_bytes((PROJECT_DIR / "optimizer_config.json").read_bytes())
             frame = pd.DataFrame({key: [1.0] * 3 for key in ("open", "high", "low", "close", "volume")})
             frame.to_feather(root / "data/TESTUSDT_live.feather")
             frame.iloc[:1].to_feather(root / "data/SHORTUSDT_live.feather")

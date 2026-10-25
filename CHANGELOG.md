@@ -717,3 +717,8 @@ Per-position liquidation distance monitoring (warn ≤15%, critical ≤8%)
 
 
 PAPER classification repair25.10.2026: common PM2/session/terminal rules, explicit unknown;5legacy sessions reclassified interrupted with original estimates preserved. Authorized restart preserved10wallets/positions/session identities and budget; REAL0. Final9testsPASS. Evidence `reports/paper_classification_20261025_203651/REPORT.md`. Old observations unchanged.
+
+
+## PAPER backtest-gate — 25.10.2026
+
+Пользователь согласовал24закрытыхUTCчаса минутных данных, текущий конфиг, модельный выход с расходами, Net>0/MaxDD<=50%/cycles>=2. Включён `paper_backtest_gate=true`: фильтрует новыеPAPERкандидаты доmerge, текущие позиции не ликвидирует по одному replay. Из34новых кандидатов интеграционной проверки прошли12. Полные условия, тесты, provenance и ограничения: `reports/backtest_gate/REPORT.md`. Это не оптимизация и не допускREAL. Первый автономный цикл после включения проверяется отдельно.
