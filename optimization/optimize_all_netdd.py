@@ -71,6 +71,40 @@ def load_base() -> dict:
         return json.load(f)
 
 
+def raw_base_params(base: dict) -> dict:
+    # exact current-config values (no step quantization) for the reference trial
+    pf = base["portfolios"][0]
+    sg = pf.get("safety_guards", {})
+    tdb = pf.get("trend_add_block", {})
+    targets = pf["targets"]
+    return {
+        "equity_trailing_stop_pct": base["equity_trailing_stop_pct"],
+        "equity_trailing_stop_activation_pct": base["equity_trailing_stop_activation_pct"],
+        "equity_trailing_stop_timeout_sec": base["equity_trailing_stop_timeout_sec"],
+        "toxic_cooldown_days": base["toxic_cooldown_days"],
+        "max_drawdown_limit": base["max_drawdown_limit"],
+        "max_drawdown_cooldown_days": base["max_drawdown_cooldown_days"],
+        "rebalance_share_trail_distance": base["rebalance_share_trail_distance"],
+        "min_notional_usdt": base["min_notional_usdt"],
+        "rebalance_threshold_surplus": pf["rebalance_threshold_surplus"],
+        "rebalance_threshold_deficit": pf["rebalance_threshold_deficit"],
+        "virtual_share": targets["VIRTUAL"]["share"],
+        "leverage": targets["BASE_LONG"]["leverage"],
+        "fuse_enabled": pf["fuse_enabled"],
+        "trend_add_block_pct": tdb["pct"],
+        "trend_add_block_window": tdb["window_bars"],
+        "sg_trend_min_move_pct": sg["trend_min_move_pct"],
+        "sg_trend_eff_threshold": sg["trend_eff_threshold"],
+        "sg_net_move_block_pct": sg["net_move_block_pct"],
+        "sg_net_move_window_sec": sg["net_move_window_sec"],
+        "sg_trend_lookback_bars": sg["trend_lookback_bars"],
+        "sg_max_price_velocity_pct": sg["max_price_velocity_pct"],
+        "sg_velocity_window_sec": sg["velocity_window_sec"],
+        "liq_warn_pct": pf["liquidation_distance_warn_pct"],
+        "liq_crit_pct": pf["liquidation_distance_crit_pct"],
+    }
+
+
 def encode(params: dict) -> list:
     vec = []
     for key, kind, a, b, _step, _base in SPEC:
@@ -154,16 +188,15 @@ def run_trial(params: dict, base: dict):
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(cfg, f)
     try:
-        backtest_log = logging.getLogger("Backtest")
-        prev_level = backtest_log.level
-        backtest_log.setLevel(logging.CRITICAL)
+        # quiet=True would reset the "Backtest" logger to WARNING inside run_backtest,
+        # so silence the whole logging stack for the trial instead
+        logging.disable(logging.CRITICAL)
         try:
-            # quiet=True would reset the logger to WARNING inside run_backtest, undoing CRITICAL
             return asyncio.run(
                 run_backtest(path, str(DATA_DIR), False, TICKER, DAYS,
                              quiet=False, since_utc=SINCE, until_utc=UNTIL))
         finally:
-            backtest_log.setLevel(prev_level)
+            logging.disable(logging.NOTSET)
     finally:
         os.remove(path)
 
@@ -188,10 +221,10 @@ CSV_HEADER = ["trial", "stage", "net", "maxdd", "cycles", "stops", "liquidations
 def run_optimize(n_trials: int, seed: int) -> None:
     rng = random.Random(seed)
     base = load_base()
+    raw_params = raw_base_params(base)
     for stale in PROJECT_DIR.glob("tmp_netdd_*.json"):
         stale.unlink()
 
-    base_vec = encode(BASE_PARAMS)
     points = []
     rejected = 0
     started = time.time()
@@ -201,9 +234,8 @@ def run_optimize(n_trials: int, seed: int) -> None:
         writer.writerow(CSV_HEADER)
         cf.flush()
 
-        def run_one(tid: int, stage: str, vec: list) -> None:
+        def run_one(tid: int, stage: str, params: dict) -> None:
             nonlocal rejected
-            params = decode(vec)
             res = run_trial(params, base)
             reason = ""
             ok = False
@@ -220,7 +252,7 @@ def run_optimize(n_trials: int, seed: int) -> None:
                     "net": round(res["profit_pct"], 4),
                     "dd": round(res["max_dd_pct"], 4),
                     "cycles": res["cycles"], "stops": res["trailing_stops"],
-                    "vec": [round(v, 6) for v in vec],
+                    "vec": encode(params),
                     "params": params,
                 })
             if not ok:
@@ -245,21 +277,21 @@ def run_optimize(n_trials: int, seed: int) -> None:
             else:
                 print(f"[{tid:03d}] {stage:7s} REJECTED: {reason}")
 
-        run_one(0, "baseline", base_vec)
+        run_one(0, "baseline", raw_params)
         explore = max(1, (n_trials - 1) // 2)
         exploit = n_trials - 1 - explore
 
         for i in range(explore):
-            run_one(1 + i, "explore", [rng.random() for _ in SPEC])
+            run_one(1 + i, "explore", decode([rng.random() for _ in SPEC]))
 
         front = sorted(pareto_front(points), key=lambda p: (-p["net"], p["dd"]))
-        anchors = [p["vec"] for p in front[:5]] or [base_vec]
+        anchors = [p["vec"] for p in front[:5]] or [encode(raw_params)]
         for i in range(exploit):
             width = max(0.1, 0.5 - 0.4 * i / max(1, exploit - 1))
             anchor = anchors[i % len(anchors)]
             noise = [rng.random() for _ in SPEC]
             vec = [(1.0 - width) * a + width * x for a, x in zip(anchor, noise)]
-            run_one(explore + 1 + i, "exploit", vec)
+            run_one(explore + 1 + i, "exploit", decode(vec))
 
     elapsed = time.time() - started
     write_report(points, rejected, n_trials, seed, elapsed)
@@ -351,11 +383,12 @@ def pick_trial(tid: int) -> None:
 
 def smoke() -> None:
     base = load_base()
-    res0 = run_trial(BASE_PARAMS, base)
+    res0 = run_trial(raw_base_params(base), base)
     assert res0 is not None, "baseline backtest failed"
     assert res0["accounting_ok"] and res0["liquidations"] == 0
-    assert 80.0 < res0["profit_pct"] < 100.0, res0["profit_pct"]
-    assert 30.0 < res0["max_dd_pct"] < 70.0, res0["max_dd_pct"]
+    # raw current config on the fixed TUSDT window: 94.18% / 49.42%
+    assert 90.0 < res0["profit_pct"] < 97.0, res0["profit_pct"]
+    assert 45.0 < res0["max_dd_pct"] < 55.0, res0["max_dd_pct"]
 
     rng = random.Random(0)
     p1 = decode([rng.random() for _ in SPEC])
