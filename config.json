@@ -90,12 +90,18 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "1000PEPEUSDT",
-    "ENAUSDT",
-    "WLDUSDT",
-    "ZECUSDT"
+    "AGTUSDT",
+    "AKEUSDT",
+    "APRUSDT",
+    "BIRBUSDT",
+    "BMTUSDT",
+    "CTUSDT",
+    "ERAUSDT",
+    "IRYSUSDT",
+    "JCTUSDT",
+    "ORDERUSDT"
   ],
-  "base_ticker": "1000PEPEUSDT",
+  "base_ticker": "AGTUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true

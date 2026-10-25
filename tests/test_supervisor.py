@@ -13,6 +13,7 @@ M = "futures_portfolio.supervisor.swarm_manager"
 @pytest.fixture(autouse=True)
 def isolate_supervisor_log(monkeypatch):
     monkeypatch.setattr(logging.getLogger("Supervisor"), "handlers", [logging.NullHandler()])
+    monkeypatch.setattr('core.paper_budget.read_budget', lambda root: {'allocations':{}})
 
 def test_calculate_bot_score():
     # is_in_drawdown=True -> INF
@@ -899,6 +900,47 @@ async def _run_manage(tmp_path, **kwargs):
         from futures_portfolio.supervisor.swarm_manager import manage_swarm
         await manage_swarm()
     return saved, mock_stop, mock_start
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('count', [0, 10])
+async def test_stale_config_does_not_bypass_gate_or_create_protected_sessions(tmp_path, count):
+    existing = {f'LIVE{i}USDT' for i in range(count)}
+    running = {f'p_{t}': {'name':f'paper-{t.lower()}', 'paper':True} for t in existing}
+    scanner = [{'symbol':'REJECTUSDT'},{'symbol':'PASSUSDT'}]
+    cm, saved, _, _, start = _cm_manage_swarm(
+        tmp_path, config_overrides={'paper_mode':True,'max_bots':10,'paper_mode_bots':10,
+                                   'paper_backtest_gate':True,'tickers':['REJECTUSDT','GHOSTUSDT']},
+        running_bots=running, scanner=scanner)
+    with cm, patch(f'{M}.selective_merge_incubator', side_effect=selective_merge_incubator), \
+            patch('scanner.backtest_gate.filter_candidates', AsyncMock(return_value=[{'symbol':'PASSUSDT'}])) as gate:
+        await manage_swarm()
+    assert gate.call_args.args[3] == existing
+    assert set(saved['tickers']) == (existing or {'PASSUSDT'})
+    assert len(saved['tickers']) <= 10
+    assert all(c.args[0] not in ('REJECTUSDT','GHOSTUSDT') for c in start.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_protected_sessions_over_capacity_abort_instead_of_truncating():
+    old = [f'LIVE{i}' for i in range(13)]
+    with pytest.raises(ValueError, match='Protected PAPER sessions exceed capacity'):
+        await selective_merge_incubator(old, [], {'max_bots':10}, {t:{'cycles':0,'profit':0} for t in old})
+
+
+@pytest.mark.asyncio
+async def test_pending_reservation_is_retained_without_process(tmp_path):
+    cm, saved, _, _, start = _cm_manage_swarm(
+        tmp_path, config_overrides={'paper_mode':True,'max_bots':10,'paper_mode_bots':10,
+                                   'paper_backtest_gate':True,'tickers':['GHOSTUSDT']})
+    (tmp_path/'paper_budget.sqlite').touch()
+    with cm, patch('core.paper_budget.read_budget', return_value={'allocations':{'RESERVEDUSDT':1000}}), \
+            patch(f'{M}.selective_merge_incubator', side_effect=selective_merge_incubator), \
+            patch('scanner.backtest_gate.filter_candidates', AsyncMock(return_value=[])) as gate:
+        await manage_swarm()
+    assert gate.call_args.args[3] == {'RESERVEDUSDT'}
+    assert saved['tickers'] == ['RESERVEDUSDT']
+    assert any(c.args[0]=='RESERVEDUSDT' for c in start.call_args_list)
 
 
 @pytest.mark.asyncio

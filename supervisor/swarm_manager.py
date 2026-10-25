@@ -534,6 +534,8 @@ async def selective_merge_incubator(
 
     # 4. Формируем финал: прибыльные + незримые (оба защищены), потом конкуренция
     final = list(profitable) + list(immature)  # Защищённые боты — всегда в рое
+    if len(final) > max_bots:
+        raise ValueError(f"Protected PAPER sessions exceed capacity: {len(final)} > {max_bots}; reconcile before rotation")
 
     # 5. Слоты для остальных: конкуренция между зрелыми убыточными и новыми
     # Ранжируем зрелых убыточных по score
@@ -818,11 +820,13 @@ async def manage_swarm():
             continue
         clean_scanner.append(r)
 
-    # [FIX-1] Старый инкубатор: статический список из конфига + реально запущенные paper-боты из PM2
-    # Раньше брался ТОЛЬКО из config.json — если тикер был добавлен вручную через PM2 (как DEXEUSDT),
-    # он терялся при ротации и мог быть убит супервайзером
+    # Declarations are candidates, not proof of an existing protected session.
     running_paper_from_pm2 = [k.replace("p_", "") for k in running_bots.keys() if k.startswith("p_")]
-    old_incubator = list(set(config.get("tickers", [])).union(running_paper_from_pm2))
+    reserved_paper = set()
+    if (CORE_PATH / "paper_budget.sqlite").exists():
+        from core.paper_budget import read_budget
+        reserved_paper = set(read_budget(BASE_PATH)["allocations"])
+    old_incubator = sorted(set(running_paper_from_pm2).union(reserved_paper))
 
     # Фильтруем тикеры в toxic_blacklist_paper — они не должны попадать в инкубатор
     old_incubator = [t for t in old_incubator if t not in bl_paper
@@ -1119,12 +1123,9 @@ async def manage_swarm():
     # --- [INVARIANT GATE] ---
     if not paper_only:
         await enforce_invariant_gate(connector, config)
-    # Safety: if tickers is empty, restore from scanner to avoid losing all tickers
-    if not config.get("tickers"):
-        fallback = [r['symbol'] for r in scanner_results[:config.get("max_bots", 20)]]
-        config["tickers"] = sorted(fallback)
-        config["base_ticker"] = config["tickers"][0] if config["tickers"] else "ALGOUSDT"
-        logger.warning(f"⚠️ tickers was empty — restored {len(config['tickers'])} tickers from scanner")
+    config["tickers"] = sorted(final_incubator)
+    if paper_only and config.get("base_ticker") not in final_incubator:
+        config["base_ticker"] = config["tickers"][0] if config["tickers"] else ""
 
     # [P1] Конвертируем set → sorted list для JSON-сериализации
     if "black_list" in config and isinstance(config["black_list"], set):

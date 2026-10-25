@@ -102,3 +102,4 @@ dashboard/static/ticker.js
 dashboard/templates/dashboard.html
 dashboard/config.yaml
 optimization/
+core/paper_budget.sqlite

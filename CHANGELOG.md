@@ -1,5 +1,10 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+[26 Oct 2026] — PAPER capacity and stale declaration fix
+
+- Existing incubator derives from actual PM2/pool reservations; declarations no longer bypass admission gate. Persist selected incubator rather than raw scanner fallback; reject excess protected sessions without arbitrary liquidation.
+- 59 tests passed; automatic cycles produce10rather than13. Authorized restart retained4active wallets/positions/session identities and budget. Six prior collateral STOP quarantines still reserve capital (cash0): separate OPEN lifecycle-return blocker, no balances reset or quarantine bypassed. Evidence: `reports/paper_capacity_fix_20261025_231604/REPORT.md`.
+
 [25 Oct 2026] — PAPER closing accounting, capital retention and monitoring
 
 - PAPER emergency/trailing/collateral closes now record idempotent PnL/fee receipts and paired state through existing WAL; resume retains wallet/session/opening/ATH, prevents stale terminal markers and respects probation. 145 affected tests passed before the final supervisor safeguard; 53 supervisor tests passed after it.
@@ -722,3 +727,13 @@ PAPER classification repair25.10.2026: common PM2/session/terminal rules, explic
 ## PAPER backtest-gate — 25.10.2026
 
 Пользователь согласовал24закрытыхUTCчаса минутных данных, текущий конфиг, модельный выход с расходами, Net>0/MaxDD<=50%/cycles>=2. Включён `paper_backtest_gate=true`: фильтрует новыеPAPERкандидаты доmerge, текущие позиции не ликвидирует по одному replay. Из34новых кандидатов интеграционной проверки прошли12. Полные условия, тесты, provenance и ограничения: `reports/backtest_gate/REPORT.md`. Это не оптимизация и не допускREAL. Первый автономный цикл после включения проверяется отдельно.
+
+
+## New PAPER experiment —25.10.2026 21:27UTC
+
+По явному запросу пользователя выполнен чистый старт без переноса предыдущих сессий/Net. База/cash10000USDT, старая история, бюджет и наблюдения архивированы в `reports/paper_clean_slate_20261025_212711`. Текущие торговые правила и24h backtest-gate сохранены. Мониторинг новой истории отдельно от старой, прежний срок окончания26.10 14:25UTC не продлён автоматически.
+
+
+## Clean PAPER restart —26.10.2026 01:22Kaliningrad
+
+По повторному явному запросу пользователя новый эксперимент:initial10000USDT,безпереносасессий/Net/старыхreserve; прежняяисторияархивирована `reports/paper_clean_slate_20261025_232225`. СтарыеPAPERSTOPкарантиныснятыкакчастьreset;REALнетронут. Правкилимита10иgateсохранены. БлокерSTOP→releaseещёоткрыт. Мониторинготэтойграницы,исходныйсрок26.10 14:25UTCсохранён.

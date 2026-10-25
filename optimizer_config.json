@@ -28,8 +28,8 @@
         "maxdd": 0.013647148434307543
       },
       "max_drawdown_limit": {
-        "net": 0.034200371163544956,
-        "maxdd": 0.8060184240863458
+        "net": 0.0,
+        "maxdd": 0.80
       },
       "toxic_cooldown_days": {
         "net": 0.02921398394830229,
@@ -99,7 +99,7 @@
   },
   "parameters": {
     "max_drawdown_limit": {
-      "enabled": true,
+      "enabled": false,
       "type": "int",
       "value": 200.0,
       "low": 5,
