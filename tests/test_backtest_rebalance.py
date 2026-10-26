@@ -174,6 +174,91 @@ def _flat_config() -> dict:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("overrides, expected_reason", [
+    ({}, "predictive cross distance"),
+    ({"liquidation_distance_crit_pct": 0.0}, "HARD CROSS LIQUIDATION"),
+    ({"liquidation_distance_crit_pct": 0.0, "post_factum_liquidation_check": True},
+     "HARD CROSS LIQUIDATION"),
+    ({"post_factum_liquidation_check": False}, "predictive cross distance"),
+    ({"liquidation_distance_crit_pct": 0.0, "liquidation_distance_warn_pct": 0.0,
+      "post_factum_liquidation_check": False}, None),
+    ({"liquidation_distance_crit_pct": 0.0, "post_factum_liquidation_check": False}, None),
+    ({"post_factum_liquidation_check": "false"}, "invalid boolean"),
+])
+async def test_backtest_liquidation_config_switches(tmp_path, overrides, expected_reason):
+    config = _flat_config()
+    portfolio = config["portfolios"][0]
+    portfolio.update(overrides)
+    for side in ("BASE_LONG", "BASE_SHORT"):
+        portfolio["targets"][side]["leverage"] = 500.0
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0] * 4
+    pd.DataFrame({
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(prices),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    with patch.object(backtest_rebalance.logger, "debug") as debug_log:
+        res = await run_backtest(str(config_file), str(tmp_path), days=0.1,
+                                 commission=0.0, slippage=0.0, quiet=True)
+    if expected_reason == "invalid boolean":
+        assert res is None
+        return
+    assert res is not None and res["accounting_ok"]
+    events = [e for e in res["events"] if e["kind"] == "liquidation"]
+    assert res["liquidations"] == len(events) == int(expected_reason is not None)
+    if expected_reason is not None:
+        assert expected_reason in events[0]["detail"]
+    else:
+        assert res["final_tpv"] > 0
+        assert not any(e["kind"] == "cooldown_start" for e in res["events"])
+        warnings = [c for c in debug_log.call_args_list if "CROSS Liquidation Warning" in str(c)]
+        assert bool(warnings) is (overrides.get("liquidation_distance_warn_pct", 15.0) != 0)
+    assert res["settings"]["post_factum_liquidation_check"] is overrides.get(
+        "post_factum_liquidation_check", True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("default_price", [80.0, 70.0])
+async def test_portfolio_default_returns_result_at_stop_bar(tmp_path, capsys, default_price):
+    config = _flat_config()
+    portfolio = config["portfolios"][0]
+    portfolio.update(liquidation_distance_crit_pct=0.0, liquidation_distance_warn_pct=0.0,
+                     post_factum_liquidation_check=False)
+    portfolio["targets"] = {
+        "BASE_LONG": {"share": 1.0, "leverage": 5.0},
+        "BASE_SHORT": {"share": 0.0, "leverage": 5.0},
+        "VIRTUAL": {"share": 0.0},
+    }
+    journal = tmp_path / "funding.json"
+    journal.write_text("[]", encoding="utf-8")
+    config.update(funding_model="signed_actual", funding_scenario=str(journal))
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0, default_price, 200.0]
+    pd.DataFrame({
+        "time": pd.date_range("2026-10-10", periods=3, freq="min", tz="UTC"),
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(prices),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    res = await run_backtest(str(config_file), str(tmp_path), days=0.1,
+                             commission=0.0, slippage=0.0, quiet=True)
+    assert res is not None and res["accounting_ok"]
+    assert res["status"] == "portfolio_default" and res["stopped_bar"] == 1
+    assert res["final_tpv"] == pytest.approx(1000 + 50 * (default_price - 100))
+    assert res["equity_curve"] == pytest.approx([1000, res["final_equity"]])
+    assert res["profit_pct"] == pytest.approx((res["final_equity"] / 1000 - 1) * 100)
+    assert res["max_dd_pct"] >= 99.99 and res["liquidations"] == 0
+    assert res["events"][-1]["kind"] == "portfolio_default"
+    assert res["data_window"]["bars"] == 2 and res["data_window"]["requested_bars"] == 3
+    assert res["data_window"]["end_utc"] == "2026-10-10 00:01"
+    assert not any(f["bar"] > 1 for f in res["fills"])
+    assert "Traceback" not in capsys.readouterr().err
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("cooldown_days, expected_bars", [(0.1, 144), (0.02, 28), (0.0, 1)])
 async def test_max_drawdown_stop_reopens_after_cooldown(tmp_path, cooldown_days, expected_bars):
     config = _flat_config()

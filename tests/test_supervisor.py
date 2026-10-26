@@ -131,6 +131,38 @@ async def test_reset_bot_state_files_paper():
         args, kwargs = mock_save.call_args_list[0]
         assert args[1]["balance"] == 150.0
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_paper", [True, False])
+@pytest.mark.parametrize("status", ["portfolio_default", "modeled_liquidation", "reconciliation_required"])
+async def test_terminal_state_cannot_be_reset_or_launched(is_paper, status):
+    with patch(f"{M}.safe_load_json", AsyncMock(return_value={"status": status})), \
+         patch(f"{M}.safe_save_json", AsyncMock()) as save, \
+         patch(f"{M}.shutil.copy") as copy_file, \
+         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock()) as launch:
+        with pytest.raises(ValueError, match="manual reconciliation"):
+            await reset_bot_state_files("BTCUSDT", is_paper, {"portfolios": [{}]})
+        with pytest.raises(ValueError, match="manual reconciliation"):
+            await supervisor.start_bot("BTCUSDT", is_paper, {"portfolios": [{}]})
+    save.assert_not_awaited()
+    copy_file.assert_not_called()
+    launch.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_unreconciled_live_position_is_neither_healed_nor_closed(tmp_path):
+    snapshot = {"startup_blocked": True, "status": "reconciliation_required", "rebalance_cycles": 10}
+    (tmp_path / "real_state_BTCUSDT.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    connector = MagicMock(get_positions=AsyncMock(return_value={"BTCUSDT_LONG": {"qty": 1}}))
+    with patch(f"{M}.CORE_PATH", tmp_path), \
+         patch(f"{M}.get_running_bots_info", AsyncMock(return_value={})), \
+         patch(f"{M}.start_bot", AsyncMock()) as start, \
+         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock()) as close:
+        assert await enforce_swarm_consistency(connector, {"live_swarm": []}) == set()
+    start.assert_not_awaited()
+    close.assert_not_awaited()
+    assert json.loads((tmp_path / "real_state_BTCUSDT.json").read_text()) == snapshot
+
 @pytest.mark.asyncio
 async def test_enforce_swarm_consistency():
     config = {"live_swarm": ["BTCUSDT"]}

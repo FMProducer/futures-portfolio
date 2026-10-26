@@ -73,6 +73,10 @@ class UniversalOptimizerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             metrics(result)
 
+    def test_portfolio_default_is_an_infeasible_result(self):
+        with self.assertRaisesRegex(ValueError, "Infeasible candidate: portfolio default"):
+            metrics({"status": "portfolio_default", "accounting_ok": True})
+
     def test_history_without_time_is_supported_without_inventing_dates(self):
         import pandas as pd
 

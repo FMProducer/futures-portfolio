@@ -147,6 +147,8 @@ def discover(data_dir):
 
 
 def metrics(result):
+    if result and result.get("status") == "portfolio_default":
+        raise ValueError("Infeasible candidate: portfolio default (TPV <= 0)")
     if not result or result.get("accounting_ok") is not True or result.get("cash_invariant_violation"):
         raise ValueError("Backtest failed or accounting validation failed")
     capital = result["initial_capital"]

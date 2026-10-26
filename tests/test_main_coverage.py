@@ -1156,7 +1156,8 @@ async def test_coverage_liquidation_guard_missing_long():
         except (Exception, BaseException) as e:
             if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
 
-    assert recovery_called[0], "Liquidation recovery should have been called for missing LONG"
+    assert recovery_called[0], "Missing LONG must require reconciliation"
+    executor_mock.execute_actions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -1258,7 +1259,8 @@ async def test_coverage_liquidation_guard_missing_short():
         except (Exception, BaseException) as e:
             if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
 
-    assert recovery_called[0], "Liquidation recovery should have been called for missing SHORT"
+    assert recovery_called[0], "Missing SHORT must require reconciliation"
+    executor_mock.execute_actions.assert_not_awaited()
 
 
 # =====================================================================
@@ -1594,8 +1596,8 @@ async def test_coverage_emergency_stop_close_only():
 # =====================================================================
 
 @pytest.mark.asyncio
-async def test_coverage_handle_liquidation_recovery_closes_positions():
-    """Lines 130-148: _handle_liquidation_recovery closes remaining position"""
+async def test_coverage_missing_position_blocks_without_closing_or_inventing_loss():
+    """A missing exchange position requires reconciliation before further execution."""
     from futures_portfolio.core.main import _handle_liquidation_recovery
 
     connector = MagicMock()
@@ -1636,10 +1638,13 @@ async def test_coverage_handle_liquidation_recovery_closes_positions():
             notifier=notifier,
         )
 
-    # Should have closed the SHORT position
-    assert executor_mock.execute_market_order.call_count >= 1
-    # Should emit stop signal (SSOT)
-    mock_emit.assert_called_once_with("stop", "BTCUSDT", is_paper=False)
+    executor_mock.execute_market_order.assert_not_awaited()
+    mock_emit.assert_not_called()
+    assert state["status"] == "reconciliation_required"
+    assert state["startup_blocked"] is True
+    assert state["positions"] == {"BTCUSDT_SHORT": -1.0}
+    assert "last_tpv" not in state
+    assert paper_state == {"balance": 100.0}
 
 
 # =====================================================================
@@ -1771,6 +1776,99 @@ async def test_a2_canonical_guard_closes_critical_paper_position_and_ignores_leg
     assert final_state["initial_build_pending"] is None
     emit.assert_called_once_with("stop", "BTCUSDT", is_paper=True)
     notifier.send_alert.assert_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("critical, hard_check, balance, expected_status", [
+    (0.0, False, 4.0, None),
+    (0.0, True, 4.0, "modeled_liquidation"),
+    (0.0, False, 0.0, "portfolio_default"),
+    (0.0, False, -1.0, "portfolio_default"),
+])
+async def test_paper_liquidation_switches_and_terminal_result(critical, hard_check, balance, expected_status):
+    config = _make_config(max_drawdown_limit=200, equity_trailing_stop_pct=0)
+    config["portfolios"][0].update(liquidation_distance_crit_pct=critical,
+                                  liquidation_distance_warn_pct=0.0,
+                                  post_factum_liquidation_check=hard_check)
+    state = _make_state()
+    wallet = _make_paper_state(balance=balance, positions={"BTCUSDT_LONG": 5.0, "BTCUSDT_SHORT": 5.0},
+                               long_entry_price=100.0, short_entry_price=100.0)
+    terminal = []
+    def save_boundary(state_path, wallet_path, saved_state, saved_wallet, *args):
+        terminal.append((copy.deepcopy(saved_state), copy.deepcopy(saved_wallet)))
+
+    executor = MagicMock(execute_actions=AsyncMock(return_value=[]))
+    with patch("core.funding.save_funding_boundary", side_effect=save_boundary), \
+         patch(f"{M}.PortfolioExecutor", return_value=executor), \
+         patch(f"{M}.self_kill_pm2", AsyncMock()), patch(f"{M}.emit_signal") as emit:
+        saves, _, _ = await _run_rebalance(config, state, wallet, loop_limit=2, price=100,
+                                           calc_tpv=balance, calc_return={
+            "total_tpv": balance, "tpv": balance, "actions": [], "total_pnl_pct": 0,
+            "share_long_pct": 50, "share_short_pct": 50, "share_virt_pct": 0,
+            "share_cash_pct": 0, "val_long": 0, "val_short": 0, "val_virt": 0, "val_cash": 0,
+        })
+    emit.assert_not_called()
+    executor.execute_actions.assert_not_awaited()
+    if expected_status is None:
+        assert not terminal
+        assert [v for p, v in saves if p == "paper_state.json"][-1]["positions"] == wallet["positions"]
+    else:
+        final, book = terminal[-1]
+        assert final["status"] == expected_status and final["startup_blocked"] is True
+        assert final["last_tpv"] == (0 if expected_status == "modeled_liquidation" else balance)
+        assert final["last_profit"] == final["last_tpv"] - 100
+        assert final["total_pnl_pct"] == final["last_tpv"] - 100
+        assert book["balance"] == (0 if expected_status == "modeled_liquidation" else balance)
+        assert book["positions"] == ({"BTCUSDT_LONG": 0, "BTCUSDT_SHORT": 0}
+                                     if expected_status == "modeled_liquidation" else wallet["positions"])
+        assert not book.get("share_fill_receipts")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_terminal_status_blocks_restart_before_wallet_load(paper_mode):
+    config = _make_config(paper_mode=paper_mode)
+    with patch(f"{M}.self_kill_pm2", AsyncMock()), patch(f"{M}.PortfolioCalculator") as calculator:
+        saves, _, conn = await _run_rebalance(config, _make_state(status="portfolio_default"),
+                                              _make_paper_state(), loop_limit=1)
+    assert not saves
+    calculator.assert_not_called()
+    conn.get_positions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_live_missing_both_legs_preserves_ledger_before_any_order():
+    config = _make_config(paper_mode=False)
+    config["portfolios"][0].update(liquidation_distance_crit_pct=0.0,
+                                  liquidation_distance_warn_pct=0.0,
+                                  post_factum_liquidation_check=False)
+    state = _make_state(last_tpv=123.0, last_profit=23.0, total_pnl_pct=23.0)
+    book = _make_paper_state(balance=123.0, positions={"BTCUSDT_LONG": 1.0, "BTCUSDT_SHORT": 1.0},
+                             long_entry_price=100.0, short_entry_price=100.0)
+    with patch(f"{M}.PortfolioExecutor") as executor, patch(f"{M}.PortfolioCalculator") as calculator:
+        saves, _, _ = await _run_rebalance(config, state, book, price=100.0, loop_limit=1)
+    final = [v for p, v in saves if p == "state.json"][-1]
+    assert final["startup_blocked"] is True and final["status"] == "reconciliation_required"
+    assert final["last_tpv"] == 123 and final["total_pnl_pct"] == 23
+    assert final["virt_qty"] == state["virt_qty"]
+    assert not [v for p, v in saves if p == "paper_state.json"]
+    executor.return_value.execute_actions.assert_not_called()
+    executor.return_value.execute_market_order.assert_not_called()
+    calculator.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("warn, expected_warnings", [(0.0, 0), (15.0, 1)])
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_shared_liquidation_guard_zero_disables_critical_and_warning(warn, expected_warnings, paper_mode):
+    from futures_portfolio.core.main import _handle_liquidation_guard
+    logger = MagicMock()
+    with patch(f"{M}.PortfolioExecutor") as executor, patch(f"{M}.emit_signal") as emit:
+        await _handle_liquidation_guard("PORTFOLIO", -8.3, 100, warn, 0,
+            paper_mode, {}, {}, None, "BTCUSDT", {}, MagicMock(send_alert=AsyncMock()), logger)
+    executor.assert_not_called()
+    emit.assert_not_called()
+    assert logger.warning.call_count == expected_warnings
 
 
 @pytest.mark.asyncio

@@ -217,6 +217,10 @@ async def enforce_swarm_consistency(connector: BinanceConnector, config: dict) -
                 with open(state_path, "r", encoding="utf-8") as f:
                     state_data = json.load(f)
 
+                if state_data.get("startup_blocked") or state_data.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
+                    logger.warning(f"HEAL REJECTED: {ticker} requires manual reconciliation; state and positions retained")
+                    continue
+
                 # Инвариант легитимности: у бота есть история или открытый виртуальный объем
                 if state_data.get("rebalance_cycles", 0) > 0 or abs(state_data.get("virt_qty", 0.0)) > 0:
                     # Защита от воскрешения ботов, остановленных по Trailing Stop
@@ -336,6 +340,8 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
     history_dir.mkdir(exist_ok=True)
 
     old_state = await safe_load_json(str(base_state_path), {})
+    if old_state.get("startup_blocked") or old_state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
+        raise ValueError(f"State reset requires manual reconciliation: {ticker}")
     
     # Динамическое ребазирование: сохраняем накопленный или урезанный стопом капитал
     final_capital = float(old_state.get("last_tpv", config_capital)) if old_state else config_capital
@@ -395,6 +401,9 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
 
 async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
     prefix = "paper" if is_paper else "real"
+    existing = await safe_load_json(str(CORE_PATH / f"{prefix}_state_{ticker}.json"), {})
+    if existing.get("startup_blocked") or existing.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
+        raise ValueError(f"Bot launch requires manual reconciliation: {ticker}")
     proc_name = f"{prefix}-{ticker.replace('USDT', '').lower()}"
     mode_flag = "--paper" if is_paper else "--real"
     if is_paper and config and (CORE_PATH / "paper_budget.sqlite").exists():

@@ -87,7 +87,9 @@
     "BTCUSDT"
   ],
   "toxic_blacklist": {},
-  "toxic_blacklist_paper": {},
+  "toxic_blacklist_paper": {
+    "BTCUSDT": 1793039519.8366225
+  },
   "toxic_blacklist_real": {},
   "tickers": [
     "AGTUSDT",
@@ -102,7 +104,9 @@
     "WLDUSDT"
   ],
   "base_ticker": "APRUSDT",
-  "probation_paper": {},
+  "probation_paper": {
+    "BTCUSDT": 1793031743.8366225
+  },
   "probation_real": {},
   "paper_backtest_gate": true
 }

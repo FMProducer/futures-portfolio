@@ -250,17 +250,30 @@
 - **Чтение:** `core/main.py:448` (default 2.0); применение `main.py:1085-1086` (перечитывается из конфига): `m_ratio < critical` → EMERGENCY STOP, сигнал `stop`, закрытие позиций, self-kill PM2 (`:1088-1103`). Только REAL. Зависимость: должен быть < `margin_ratio_warning`, иначе warning-зона пуста (код это не проверяет). Диапазон в коде не проверяется.
 
 ### `portfolios[].liquidation_distance_warn_pct`
-- **Текущее значение:** `0.0` | **Тип:** float, % расстояния до цены ликвидации
-- **Чтение:** `core/main.py:738` (default 15.0), передаётся в `_handle_liquidation_guard` (`main.py:789-797`). **Замечено:** в `_handle_liquidation_guard` (`main.py:175-220`) аргумент `liquidation_distance_warn` **нигде не используется** — warn-уровень фактически мёртвый (только crit действует). В paper-формуле расстояние до смус-ливидации (`main.py:780-787`). Backtest: `backtest_rebalance.py:662` (default 15.0) — тоже читается, но в предиктивном guard'е (`:665`) используется только crit. Текущее значение 0.0 → warn всё равно ничего не делал бы. Диапазон в коде не проверяется.
+- **Current value:** `0.0` | **Type:** float, percent.
+- **Backtest:** defaults to `15.0`; `0.0` disables warnings. A nonzero threshold logs when `cross_liq_dist_pct <= threshold` unless the critical branch closes first. Distance is `(TPV - maintenance_margin) / TPV * 100`, not a price distance.
+- **Paper/shared live handler:** `0.0` disables the warning branch. PAPER uses the same collateral-distance formula as backtest. Live CROSS still uses the independent margin-ratio monitor instead of exchange liquidation-price distance.
 
 ### `portfolios[].liquidation_distance_crit_pct`
-- **Текущее значение:** `0.0` | **Тип:** float, %
-- **Чтение:** `core/main.py:739` (default 8.0). Paper: `dist <= crit` → аварийное закрытие обеих ног по симулированной цене ликвидации + сигнал `stop` (чёрный список) (`main.py:175-…`, `:798-803`). Real-путь в main для биржевой liq пропущен (`main.py:741-745` — полагаются на margin ratio). Backtest: `:663` (default 8.0), `cross_liq_dist_pct <= crit` → predictive liquidation + cooldown (`:665-700`).
-- **Поведение при 0.0:** критическое закрытие наступает только при фактической цене ликвидации (distance=0) — защита максимально «поздняя». Увеличение — раньше закрывает. Диапазон в коде не проверяется.
+- **Current value:** `0.0` | **Type:** float, percent.
+- **Backtest:** defaults to `8.0`; `0.0` disables predictive liquidation. A nonzero threshold closes both futures legs, increments `liquidations`, and starts `toxic_cooldown_days` when `cross_liq_dist_pct <= threshold`. HARD liquidation is controlled independently by `post_factum_liquidation_check`.
+- **Paper/shared live handler:** `0.0` disables predictive closing. PAPER closes both legs at the current price with normal closing fees when enabled. Live CROSS keeps its existing margin-ratio protection; this field does not disable `margin_ratio_critical`.
 
 ### `portfolios[].post_factum_liquidation_check`
-- **Текущее значение:** `false` | **Тип:** bool
-- **Чтение:** **в исследованном коде использование не найдено** (только в config). Post-factum проверка ликвидаций в real-режиме реализована безусловно (`main.py:1400-1435`, LIQUIDATION DETECTED по positionRisk) и от этого флага не зависит. Не влияет на поведение.
+- **Current value:** `false` | **Type:** boolean; non-boolean values are rejected by the backtest.
+- **Backtest:** defaults to `true`; `false` disables HARD liquidation (`TPV <= maintenance_margin`). It does not disable predictive liquidation.
+- **Paper:** defaults to `true`; `false` disables modeled HARD liquidation. With predictive closing disabled and positive collateral no greater than maintenance, enabled HARD liquidation records `status: "modeled_liquidation"`, wipes the simulated futures wallet, and blocks automatic restart. No exchange orders or fictitious ordinary closing fills are created.
+- **Live:** exchange-position reconciliation always remains active, independently of this flag. A missing expected leg persists `status: "reconciliation_required"` and `startup_blocked` before any recovery action; it does not assert an exchange liquidation or fabricate a 100% loss. Positions and shadow balances remain unchanged until manual reconciliation.
+- To disable all three backtest checks, set the following fields inside `portfolios[0]` (the current `config.json` already has these values):
+
+```json
+"liquidation_distance_warn_pct": 0.0,
+"liquidation_distance_crit_pct": 0.0,
+"post_factum_liquidation_check": false
+```
+
+- Accounting checks remain active. At the bar-boundary TPV check, non-positive TPV stops the run and returns a `portfolio_default` result with `stopped_bar`, an event, and actual equity/Net/MaxDD through that bar; it does not print an exception traceback. `data_window.bars` and `end_utc` describe the processed window, and `requested_bars` preserves the original length. Negative equity is preserved without clamping or invented closing trades. The universal optimizer rejects this status as infeasible, independently of the liquidation counter. Other exceptions, including accounting mismatches, retain error handling. Normal runs return `status: "completed"` and `stopped_bar: null`. Effective liquidation settings are exported in the result's `settings`.
+- **Paper default:** raw collateral `<= 0` always records `status: "portfolio_default"`, `last_tpv`, `last_profit`, `total_pnl_pct`, terminal price/collateral/maintenance and `startup_blocked`. The wallet, open positions and negative value are preserved, without simulated closing trades or replenishment. State and wallet are saved through the existing funding WAL boundary. Both the loop and supervisor refuse automatic launch/reset of defaulted, modeled-liquidated or unreconciled sessions; operator reconciliation is required. These switches do not disable max-drawdown, trailing-stop, funding or margin-ratio protections.
 
 ### `portfolios[].siphoning_threshold_pct`
 - **Текущее значение:** `1000.0` | **Тип:** float, % от initial_tpv
@@ -407,7 +420,7 @@
 
 ## 8. Неиспользуемые / неоднозначные параметры (сводно)
 
-- **Не используются вообще (в исследованном коде использования не найдено):** `use_v2_scoring`, `scoring_drawdown_weight`, `toxic_blacklist`, `portfolios[].post_factum_liquidation_check`, `portfolios[].name`, `portfolios[].safety_guards.trend_lookback_bars` (в рантайме; используется лишь Optuna-патчером).
+- **Не используются вообще (в исследованном коде использования не найдено):** `use_v2_scoring`, `scoring_drawdown_weight`, `toxic_blacklist`, `portfolios[].name`, `portfolios[].safety_guards.trend_lookback_bars` (в рантайме; используется лишь Optuna-патчером).
 - **Используются, но эффект подавлен кодом:** `limit_order_enabled`, `limit_offset_pct`, `limit_timeout_sec` (market-only доктрина).
 - **Используются частично/неявно:** `max_replace_per_cycle` (только REAL-ротация), `max_capital_usdt` (не найден потребитель, если добавить).
 - **Работают только в части режимов:** `backtest_period_days` (только optimization), `min_cycles_for_rotation`, `paper_mode_bots`, `use_real_whitelist`, `real_whitelist`, `live_swarm`, `probation_*` (только supervisor); `margin_ratio_*`, spread-guard, `post-factum` ликвидационная проверка (только real); `telegram_summary_interval_min` (только aggregator); `scanner_period_days` (scanner + fallback supervisor); `min_notional_usdt` (live/paper/backtest/supervisor-dust).
@@ -421,7 +434,7 @@
 - **Открыть REAL-слоты:** `max_bots − paper_mode_bots > 0` (например, уменьшить `paper_mode_bots`) — сверх этого потребуется `paper_mode=false` или флаг `--real` и работающий `testnet`/ключи.
 - **Вернуть Trend Guard в осмысленную зону:** заменить `safety_guards.trend_min_move_pct` с `999990.91` на величину порядка долей процента (диапазон Optuna-поиска: 0.49–0.91 — это область эксперимента оптимизатора, а не валидация).
 - **Включить фиксацию прибыли в SAFE:** уменьшить `portfolios[0].siphoning_threshold_pct` (0.0 = порог 0.1 USDT).
-- **Сделать ликвидационный crit более ранним:** увеличить `portfolios[0].liquidation_distance_crit_pct` (сейчас 0.0 = закрытие только по факту ликвидации).
+- **Enable predictive liquidation in backtest:** set `portfolios[0].liquidation_distance_crit_pct` to a positive threshold; `0.0` disables it. Set `post_factum_liquidation_check: true` independently to enable HARD liquidation.
 - **Изменить пороги для конкретного тикера:** добавить запись в `portfolios[0].ticker_thresholds` вида `{"ADAUSDT": {"surplus": 0.015, "deficit": 0.05}}` — применится hot-reload'ом (`main.py:548-554`) только процессу с `base_ticker=ADAUSDT`.
 
 ---

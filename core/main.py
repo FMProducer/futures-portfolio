@@ -336,72 +336,19 @@ async def _update_final_metrics_for_exit(state: dict, state_file_path: str, tota
 async def _handle_liquidation_recovery(connector, base_ticker, state, state_file_path,
                                         paper_state, paper_state_file_path,
                                         config_path, logger, notifier):
-    """Handles liquidation: closes remaining position, stops bot, adds to blacklist."""
+    """Persist a trading block; a missing leg alone does not prove liquidation."""
+    state.update(startup_blocked=True, status="reconciliation_required",
+                 startup_block_reason="Expected exchange position missing",
+                 reconciliation_required_at=time.time())
+    await save_json(state_file_path, state)
+    logger.critical(f"Exchange position missing for {base_ticker}; trading blocked pending reconciliation")
     try:
-        logger.critical(f"🚨 LIQUIDATION RECOVERY for {base_ticker}: Closing remaining positions...")
-
-        from decimal import Decimal
-        executor = PortfolioExecutor(connector, base_ticker=base_ticker)
-
-        # Get real positions
-        real_pos_dict = await connector.get_position_risk()
-        # Convert dict to list for uniform processing
-        # Dict format: {"SYMBOL_LONG": {"liq_price": ..., "unrealized_pnl": ..., "positionAmt": ...}, ...}
-        real_pos = []
-        for key, val in real_pos_dict.items():
-            entry = dict(val)
-            entry["symbol"] = key.split("_")[0] if "_" in key else key
-            entry["positionSide"] = key.split("_")[1] if "_" in key else "BOTH"
-            entry["positionAmt"] = entry.get("qty", 0) or entry.get("positionAmt", 0)
-            real_pos.append(entry)
-        real_pos = [p for p in real_pos if base_ticker in p.get("symbol", "")]
-
-        for p in real_pos:
-            amt = float(p.get("positionAmt", 0))
-            if abs(amt) < 1e-10:
-                continue
-            ps = p.get("positionSide", "")
-            side = "SELL" if amt > 0 else "BUY"
-            logger.critical(f"Closing {ps} position: {amt} @ market")
-
-            try:
-                symbol = p.get("symbol", base_ticker)
-                await executor.execute_market_order(
-                    symbol=symbol,
-                    qty=Decimal(str(abs(amt))),
-                    side=side,
-                    step_size=Decimal("0.1"),
-                    reduce_only=True,
-                    position_side=ps if ps in ("LONG", "SHORT") else "BOTH",
-                    min_notional=Decimal("0"),
-                )
-                logger.critical(f"✅ Closed {ps} position")
-            except Exception as e:
-                logger.error(f"Failed to close {ps}: {e}")
-
-        # Update state
-        state["positions"] = {}
-        state["last_tpv"] = 0.0
-        state["last_profit"] = -float(state.get("initial_tpv", 180.0))
-        state["total_pnl_pct"] = -100.0
-        state["trailing_stop_triggered"] = True
-        state["share_trail"] = share_trail.fresh_state()
-        state["share_trail_receipts"] = []
+        state["exchange_position_snapshot"] = await connector.get_position_risk()
         await save_json(state_file_path, state)
-
-        # [SSOT] Delegate config mutation to supervisor via signal
-        emit_signal("stop", base_ticker, is_paper=False)
-
-        try:
-            await notifier.send_alert("🚨 LIQUIDATION",
-                f"{base_ticker}: Position liquidated! Bot stopped. Remaining positions closed.")
-        except:
-            pass
-
-        logger.critical(f"🚨 LIQUIDATION RECOVERY complete for {base_ticker}")
-
-    except Exception as e:
-        logger.error(f"Liquidation recovery failed: {e}")
+        await notifier.send_alert("POSITION RECONCILIATION REQUIRED",
+                                  f"{base_ticker}: Expected position missing. Trading blocked; verify exchange fills.")
+    except Exception as error:
+        logger.error(f"Position reconciliation diagnostics failed; trading remains blocked: {error}")
 
 
 async def _handle_liquidation_guard(
@@ -416,7 +363,7 @@ async def _handle_liquidation_guard(
     Paper: simulates price-based close (adjusts shadow_state balance).
     Real: sends actual market close order via Binance.
     """
-    if dist <= liquidation_distance_crit:
+    if liquidation_distance_crit != 0 and dist <= liquidation_distance_crit:
         logger.critical(
             f"🚨 {reason} CRITICAL [{'PAPER' if is_paper else 'REAL'}]: "
             f"{pos_key} distance {dist:.1f}% ({price_label}={liq_price:.8f}). Emergency close!"
@@ -469,7 +416,7 @@ async def _handle_liquidation_guard(
             f"Awaiting supervisor to blacklist and remove from live_swarm."
         )
 
-    elif dist <= liquidation_distance_warn:
+    elif liquidation_distance_warn != 0 and dist <= liquidation_distance_warn:
         logger.warning(
             f"⚠️ {reason} WARNING [{'PAPER' if is_paper else 'REAL'}]: "
             f"{pos_key} distance {dist:.1f}% ({price_label}={liq_price:.8f})"
@@ -600,7 +547,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         except ValueError as error:
             state["rebalance_inflight"]["checkpoint_error"] = str(error)
         await save_json(state_file_path, state)
-    if state.get("startup_blocked"):
+    if state.get("startup_blocked") or state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
         _state_ticker = state.get("base_ticker", "?")
         logger.critical(
             f"🚨 [PAPER] Persisted startup_blocked for {base_ticker} "
@@ -771,7 +718,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     # Если реальных позиций нет, это чистый старт (или рестарт после стопа).
     # Жестко затираем фантомные балансы, чтобы не сломать Trailing Stop.
     # При чистом старте баланс ВСЕГДА сбрасывается на target_initial_cap из конфига.
-    if not paper_mode and not _funding_halt_active and state.get("live_funding") is None:
+    if (not paper_mode and not _funding_halt_active and state.get("live_funding") is None
+            and not any(abs(float(qty)) > 1e-10 for qty in paper_state["positions"].values())):
         try:
             raw_positions = await connector.get_positions()
             ticker_positions = {k: v["qty"] for k, v in raw_positions.items() if base_ticker in k}
@@ -1037,7 +985,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             paper_state_dirty = False
             any_success = False
             try:
-                if state.get("startup_blocked"):
+                if state.get("startup_blocked") or state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
                     logger.critical("Unreconciled execution: trading remains blocked")
                     await asyncio.sleep(86400)
                     continue
@@ -1267,6 +1215,16 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 else:
                     # In REAL mode, we sync positions from exchange but keep balance in shadow
                     raw_positions = await connector.get_positions()
+                    if any(
+                        abs(float(paper_state["positions"].get(f"{base_ticker}_{side}", 0))) > 1e-10
+                        and abs(float(raw_positions.get(f"{base_ticker}_{side}", {}).get("qty", 0))) < 1e-10
+                        for side in ("LONG", "SHORT")
+                    ):
+                        await _handle_liquidation_recovery(
+                            connector, base_ticker, state, state_file_path,
+                            paper_state, paper_state_file_path, config_path, logger, notifier)
+                        while True:
+                            await asyncio.sleep(86400)
                     # Filter for this ticker only
                     ticker_positions = {k: v["qty"] for k, v in raw_positions.items() if base_ticker in k}
                     l_qty = abs(ticker_positions.get(f"{base_ticker}_LONG", 0.0))
@@ -1285,6 +1243,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # Works for BOTH paper (simulated liq price) and real (exchange liq price).
                 liquidation_distance_warn = portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)
                 liquidation_distance_crit = portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)
+                post_factum_liquidation_check = portfolio_cfg.get("post_factum_liquidation_check", True)
+                if not isinstance(post_factum_liquidation_check, bool):
+                    raise ValueError("post_factum_liquidation_check must be a boolean")
 
                 if not paper_mode and raw_positions:
                     # REAL mode + CROSSED margin: Binance returns unreliable liq_price
@@ -1616,7 +1577,35 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     collateral, maintenance, distance = _paper_guard_metrics(
                         paper_state, base_ticker, price, calc.tpv, logger
                     )
-                    if distance <= liquidation_distance_crit:
+                    predictive_liquidation = liquidation_distance_crit != 0 and distance <= liquidation_distance_crit
+                    hard_liquidation = (not predictive_liquidation and post_factum_liquidation_check
+                                        and maintenance > 0 and collateral <= maintenance)
+                    if collateral <= 0 or hard_liquidation:
+                        terminal_status = "portfolio_default" if collateral <= 0 else "modeled_liquidation"
+                        if hard_liquidation and collateral > 0:
+                            paper_state["balance"] = 0.0
+                            for side in ("LONG", "SHORT"):
+                                paper_state["positions"][f"{base_ticker}_{side}"] = 0.0
+                                paper_state[f"{side.lower()}_entry_price"] = 0.0
+                                paper_state[f"{side.lower()}_liquidation_price"] = 0.0
+                            state["liquidation_loss_total"] = float(state.get("liquidation_loss_total", 0)) + float(collateral)
+                            state["virt_qty"] = 0.0
+                            state["virt_debt"] = 0.0
+                        final_tpv = (Decimal('0') if terminal_status == "modeled_liquidation" else collateral)
+                        final_tpv += Decimal(str(state.get("siphoning_reserve", 0)))
+                        initial = Decimal(str(state["initial_tpv"]))
+                        state.update(status=terminal_status, startup_blocked=True,
+                                     startup_block_reason=terminal_status, stopped_at=time.time(),
+                                     last_tpv=float(final_tpv), last_profit=float(final_tpv - initial),
+                                     total_pnl_pct=float((final_tpv / initial - 1) * 100),
+                                     terminal_price=price, terminal_collateral=float(collateral),
+                                     terminal_maintenance=float(maintenance))
+                        from core.funding import save_funding_boundary, load_funding_state
+                        journal, halt = load_funding_state(state)
+                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                        logger.warning(f"PAPER {terminal_status}: TPV={final_tpv}; trading blocked until manual reconciliation")
+                        continue
+                    elif predictive_liquidation:
                         logger.critical(
                             f"🚨 PAPER COLLATERAL CRITICAL: distance={distance:.2f}% "
                             f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
@@ -1649,7 +1638,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         )
                         # Skipping the rest of the cycle prevents any opening before Zombie Mode.
                         continue
-                    elif distance <= liquidation_distance_warn:
+                    elif liquidation_distance_warn != 0 and distance <= liquidation_distance_warn:
                         logger.warning(
                             f"⚠️ PAPER COLLATERAL WARNING: distance={distance:.2f}% "
                             f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
@@ -2317,7 +2306,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         has_long = False
                         has_short = False
                         for p in real_pos:
-                            amt = float(p.get("positionAmt", 0))
+                            amt = float(p.get("qty", p.get("positionAmt", 0)))
                             if abs(amt) < 1e-10:
                                 continue
                             ps = p.get("positionSide", "")
@@ -2331,14 +2320,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         expected_short = abs(float(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0)))
 
                         if expected_long > 1e-10 and not has_long:
-                            logger.error(f"🚨 LIQUIDATION DETECTED: {base_ticker}_LONG is MISSING on exchange!")
+                            logger.error(f"Expected position {base_ticker}_LONG is missing on exchange; reconciliation required")
                             await _handle_liquidation_recovery(connector, base_ticker, state, state_file_path,
                                                                 paper_state, paper_state_file_path,
                                                                 config_path, logger, notifier)
                             while True:
                                 await asyncio.sleep(86400)
                         if expected_short > 1e-10 and not has_short:
-                            logger.error(f"🚨 LIQUIDATION DETECTED: {base_ticker}_SHORT is MISSING on exchange!")
+                            logger.error(f"Expected position {base_ticker}_SHORT is missing on exchange; reconciliation required")
                             await _handle_liquidation_recovery(connector, base_ticker, state, state_file_path,
                                                                 paper_state, paper_state_file_path,
                                                                 config_path, logger, notifier)

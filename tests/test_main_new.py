@@ -402,11 +402,12 @@ async def test_handle_liquidation_recovery_flow(tmp_path):
                 paper_state, str(paper_state_file), str(config_file),
                 MagicMock(), notifier
             )
-            assert state["total_pnl_pct"] == -100.0
-            assert state["trailing_stop_triggered"] is True
-            mock_save.assert_called_once_with(str(state_file), state)
-            # [SSOT] main.py does NOT mutate config.json — only emits signal
-            mock_signal.assert_called_with("stop", "BTCUSDT", is_paper=False)
+            assert state["status"] == "reconciliation_required"
+            assert state["startup_blocked"] is True
+            assert "total_pnl_pct" not in state
+            assert "trailing_stop_triggered" not in state
+            assert mock_save.await_count == 2
+            mock_signal.assert_not_called()
 
 @pytest.mark.asyncio
 async def test_rebalance_loop_zombie_on_startup(mock_config, mock_connector, mock_notifier):

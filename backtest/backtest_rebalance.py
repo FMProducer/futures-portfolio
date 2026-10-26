@@ -443,6 +443,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         fuse_enabled = portfolio_cfg.get("fuse_enabled", True)
         if not isinstance(fuse_enabled, bool):
             raise ValueError("fuse_enabled must be a boolean")
+        post_factum_liquidation_check = portfolio_cfg.get("post_factum_liquidation_check", True)
+        if not isinstance(post_factum_liquidation_check, bool):
+            raise ValueError("post_factum_liquidation_check must be a boolean")
         
         bars_per_day = 1440
         max_bars = int(days * bars_per_day)
@@ -643,6 +646,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         vg_blocked_count = 0
         trend_add_blocks = 0
         vg_cooldown_bars = 0  # оставшиеся бары блокировки от Velocity Guard
+        status = "completed"
+        stopped_bar = None
 
         for i in range(len(df)):
             mid_price = Decimal(str(close_prices[i]))
@@ -1204,7 +1209,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 liq_distance_warn_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)))
                 liq_distance_crit_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)))
 
-                if cross_liq_dist_pct <= liq_distance_crit_pct:
+                if liq_distance_crit_pct != 0 and cross_liq_dist_pct <= liq_distance_crit_pct:
                     logger.warning(f"Bar {i}: Predictive CROSS Liquidation Guard triggered! Distance={float(cross_liq_dist_pct):.1f}%. Экстренное закрытие фьючерсных позиций.")
                     
                     # Закрытие Long
@@ -1247,14 +1252,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     logger.warning(f"Bar {i}: Entering {toxic_cooldown_days}d cooldown after Predictive Liquidation.")
                     state.history.append(float(state.dormant_capital))
                     continue
-                elif cross_liq_dist_pct <= liq_distance_warn_pct:
+                elif liq_distance_warn_pct != 0 and cross_liq_dist_pct <= liq_distance_warn_pct:
                     logger.debug(f"Bar {i}: CROSS Liquidation Warning! Distance={float(cross_liq_dist_pct):.1f}%")
 
             # --- 3. Post-Factum Cross-Margin Liquidation Check (Абсолютный Фоллбэк) ---
             if state.pos_long > 0 or state.pos_short > 0:
                 upnl_l = state.pos_long * (mid_price - state.long_entry_price) if state.pos_long > 0 else Decimal('0')
                 upnl_s = state.pos_short * (state.short_entry_price - mid_price) if state.pos_short > 0 else Decimal('0')
-                if state.hard_liquidation_triggered(mid_price, mmr):
+                if post_factum_liquidation_check and state.hard_liquidation_triggered(mid_price, mmr):
                     logger.warning(f"Bar {i}: HARD CROSS LIQUIDATION! Весь баланс суб-аккаунта уничтожен.")
 
                     # The whole futures account (including the VIRTUAL cash bucket) is wiped.
@@ -1389,9 +1394,19 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
             # --- 5. Bar-boundary accounting invariant ---
             current_tpv = state.get_tpv(mid_price)
-            assert current_tpv > Decimal('0'), "Critical portfolio default: TPV <= 0"
             state.check_accounting(mid_price, i, "bar_close")
             state.history.append(float(current_tpv + state.siphoning_reserve))
+            if current_tpv <= 0:
+                status = "portfolio_default"
+                stopped_bar = i
+                state.log_event(i, status, float(current_tpv), "TPV <= 0")
+                logger.warning(f"Bar {i}: Portfolio default: TPV={current_tpv}. Backtest stopped.")
+                close_prices = close_prices[:i + 1]
+                data_window["requested_bars"] = data_window["bars"]
+                data_window["bars"] = i + 1
+                if time_window is not None:
+                    data_window["end_utc"] = pd.Timestamp(int(time_window[i]), unit="ms", tz="UTC").strftime("%Y-%m-%d %H:%M")
+                break
 
         equity_curve: npt.NDArray[np.float64] = np.array(state.history)
         profit_pct: float = (equity_curve[-1] / (initial_capital + 1e-9) - 1) * 100
@@ -1439,6 +1454,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         tolerance = max(Decimal('1e-6'), abs(expected_tpv) * Decimal('1e-9'))
 
         return {
+            "status": status,
+            "stopped_bar": stopped_bar,
             "profit_pct": float(profit_pct),
             "max_dd_pct": float(max_dd_pct),
             "cycles": int(state.cycles),
@@ -1501,6 +1518,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "share_trail_consumes": int(state.share_trail_consumes),
             "settings": {
                 "fuse_enabled": fuse_enabled,
+                "liquidation_distance_warn_pct": float(portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)),
+                "liquidation_distance_crit_pct": float(portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)),
+                "post_factum_liquidation_check": post_factum_liquidation_check,
                 "commission_pct": float(sim.commission_pct),
                 "slippage_pct": float(slippage),
                 "targets": {k: {"share": float(v.get("share", 0.0)), "leverage": float(v.get("leverage", 1))}
