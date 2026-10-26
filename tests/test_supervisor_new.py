@@ -421,8 +421,8 @@ async def test_reset_bot_state_files_exceptions():
          patch(f"{M}.Path.exists", return_value=True), \
          patch(f"{M}.safe_load_json", AsyncMock(return_value={})), \
          patch(f"{M}.safe_save_json", AsyncMock()):
-        # Verification that it runs and handles errors without crashing
-        await reset_bot_state_files(ticker, is_paper=False, config=config)
+        with pytest.raises(Exception, match="Copy failed"):
+            await reset_bot_state_files(ticker, is_paper=False, config=config)
 
 @pytest.mark.asyncio
 async def test_manage_swarm_rotation_hysteresis_and_cushion():

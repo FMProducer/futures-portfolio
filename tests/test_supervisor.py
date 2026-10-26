@@ -1026,8 +1026,8 @@ async def test_paper_only_swarm_rejects_real_conflicts(tmp_path, conflict):
 async def test_paper_resume_retains_wallet_and_session(tmp_path):
     from futures_portfolio.supervisor import swarm_manager as manager
     state = {"started_at": 123, "initial_tpv": 1000, "tpv_ath": 1200,
-             "trailing_stop_triggered": True, "paper_close_complete": True}
-    wallet = {"balance": 1118, "positions": {"X_LONG": 0, "X_SHORT": 0}}
+             "trailing_stop_triggered": False, "paper_close_complete": False}
+    wallet = {"balance": 1118, "positions": {"X_LONG": 1, "X_SHORT": 1}}
     (tmp_path / "paper_state_X.json").write_text(json.dumps(state))
     wp = tmp_path / "paper_shadow_X.json"
     wp.write_text(json.dumps(wallet))

@@ -347,6 +347,10 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
     final_capital = float(old_state.get("last_tpv", config_capital)) if old_state else config_capital
     if capital_override is not None:
         final_capital = capital_override
+    final_capital, config_capital = float(final_capital), float(config_capital)
+    if not all(math.isfinite(value) and value > 0 for value in (final_capital, config_capital)):
+        raise ValueError(f"Invalid starting capital: {ticker}")
+    final_capital = min(final_capital, config_capital)
 
     if old_state and (old_state.get("trailing_stop_triggered") or old_state.get("trailing_stop_violation_start", 0.0) > 0.0):
         logger.warning(f"📉 Обнаружен Trailing Stop для {ticker}. Капитал ребазирован: {config_capital} -> {final_capital}")
@@ -362,6 +366,7 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
                 logger.info(f"🗑️ Deleted stale state file: {path.name}")
             except Exception as e:
                 logger.error(f"Failed to archive {path}: {e}")
+                raise
 
     new_state = {
         "virt_qty": 0.0,
@@ -406,6 +411,31 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
         raise ValueError(f"Bot launch requires manual reconciliation: {ticker}")
     proc_name = f"{prefix}-{ticker.replace('USDT', '').lower()}"
     mode_flag = "--paper" if is_paper else "--real"
+    if config and (existing.get("trailing_stop_triggered") or existing.get("paper_close_complete")):
+        shadow = "paper_shadow" if is_paper else "shadow_state"
+        wallet = await safe_load_json(str(CORE_PATH / f"{shadow}_{ticker}.json"), {})
+        if (not wallet or "positions" not in wallet
+                or (is_paper and any(float(qty) != 0 for qty in wallet["positions"].values()))
+                or existing.get("rebalance_inflight") or existing.get("live_funding") is not None
+                or (existing.get("funding_halt") or {}).get("active")):
+            raise ValueError(f"{'PAPER' if is_paper else 'REAL'} terminal close is unverified: {ticker}")
+        if is_paper:
+            if not existing.get("paper_close_complete"):
+                raise ValueError(f"PAPER terminal close is unverified: {ticker}")
+            if not (CORE_PATH / "paper_budget.sqlite").exists():
+                raise ValueError(f"PAPER restart requires capital pool reconciliation: {ticker}")
+            from core.paper_budget import release
+            release(BASE_PATH, ticker, existing, wallet)
+        else:
+            connector = BinanceConnector(
+                api_key=os.environ.get("BINANCE_API_KEY", config.get("api_key", "")),
+                secret_key=os.environ.get("BINANCE_SECRET_KEY", config.get("secret_key", "")),
+                testnet=config.get("testnet", True))
+            await connector.verify_connection()
+            positions = await connector.get_positions()
+            if any(float(p["qty"]) != 0 for key, p in positions.items() if key.split("_")[0] == ticker):
+                raise ValueError(f"REAL terminal close is unverified: {ticker}")
+            await reset_bot_state_files(ticker, False, config)
     if is_paper and config and (CORE_PATH / "paper_budget.sqlite").exists():
         from core.paper_budget import reserve, bind
         capital, fresh, identity = reserve(BASE_PATH, ticker, config.get("portfolios", [{}])[0].get("paper_initial_capital", 1000))
@@ -432,10 +462,7 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
                     if (not state.get("paper_close_complete")
                             or any(float(qty) != 0 for qty in wallet.get("positions", {}).values())):
                         raise ValueError(f"PAPER terminal close is unverified: {ticker}")
-                    state["trailing_stop_triggered"] = False
-                    state["paper_close_complete"] = False
-                    state["trailing_stop_violation_start"] = 0.0
-                    await safe_save_json(str(state_path), state)
+                    raise ValueError(f"PAPER terminal session was not reallocated: {ticker}")
                 logger.info(f"PAPER RESUME: {ticker}; wallet/session/opening/ATH retained")
             else:
                 if (CORE_PATH / f"paper_shadow_{ticker}.json").exists():

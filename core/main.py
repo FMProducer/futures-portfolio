@@ -729,7 +729,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 _clean_balance = float(paper_state.get('balance', target_initial_cap))
                 if abs(_clean_balance - target_initial_cap) > 0.1 or float(state.get('virt_qty', 0)) > 0:
                     logger.warning(f"🧹 Phantom Buffer detected for {base_ticker}. Enforcing Clean Slate for baseline!")
-                    _apply_clean_slate(state, paper_state, base_ticker, target_initial_cap, logger)
+                    _apply_clean_slate(state, paper_state, base_ticker, min(_clean_balance, target_initial_cap), logger)
                     await save_json(paper_state_file_path, paper_state)
                     await save_json(state_file_path, state)
         except Exception as e:
@@ -739,7 +739,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             _clean_balance = float(paper_state.get('balance', target_initial_cap))
             if abs(_clean_balance - target_initial_cap) > 0.1:
                 logger.warning(f"🧹 [FALLBACK] Enforcing Clean Slate for {base_ticker} (balance desync: {_clean_balance:.2f} vs {target_initial_cap:.2f})")
-                _apply_clean_slate(state, paper_state, base_ticker, target_initial_cap, logger)
+                _apply_clean_slate(state, paper_state, base_ticker, min(_clean_balance, target_initial_cap), logger)
                 await save_json(paper_state_file_path, paper_state)
                 await save_json(state_file_path, state)
     elif paper_mode and not state.get("initial_build_pending"):
@@ -969,10 +969,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         if _pos_long < 1e-10 and _pos_short < 1e-10:
             _initial = Decimal(str(state.get("initial_tpv", target_initial_cap)))
             _current_ath = Decimal(str(state.get("tpv_ath", 0.0)))
-            # Floor: tpv_ath cannot be below global initial capital
-            _floor = Decimal(str(target_initial_cap))
             if _current_ath > _initial:
-                _new_ath = max(_initial, _floor)
+                _new_ath = _initial
                 logger.info(f"🔄 Clean start detected. Resetting tpv_ath from {_current_ath} to {_new_ath} to enable TS activation.")
                 state["tpv_ath"] = float(_new_ath)
                 state["trailing_stop_violation_start"] = 0.0
@@ -1101,7 +1099,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     paper_state_dirty = True
                     state_dirty = True
                     _rebased = True
-                elif initial_tpv != target_initial and target_initial > 0 and not paper_mode:
+                elif initial_tpv > target_initial and target_initial > 0 and not paper_mode:
                     logger.info(f"🔄 Initial Capital changed in config: {initial_tpv} -> {target_initial}. Updating base.")
                     initial_tpv = target_initial
                     reference_tpv = initial_tpv
@@ -1670,7 +1668,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     state_dirty = True
                     
                     # Проверяем прибыль относительно глобального начального капитала
-                    global_initial = portfolio_cfg.get("initial_capital", 60.0)
+                    global_initial = initial_tpv
                     if tpv_total < global_initial:
                         emit_signal("stop", base_ticker, paper_mode)
                         logger.info(f"Sent STOP signal. Total Equity {tpv_total:.2f} < Global Initial {global_initial:.2f}. Ticker blacklisted.")
@@ -1695,9 +1693,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 if tpv_ath == 0 or tpv_total > tpv_ath:
                     tpv_ath = tpv_total
-                    # Floor: tpv_ath cannot be below global initial capital
-                    if tpv_ath < target_initial_cap:
-                        tpv_ath = target_initial_cap
+                    # The session allocation may be smaller than the configured cap.
+                    if tpv_ath < initial_tpv:
+                        tpv_ath = initial_tpv
                     state["tpv_ath"] = tpv_ath
                     state_dirty = True
 
@@ -1791,7 +1789,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 logger.info(f"Post-stop paper probation end: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timeout_end))}")
 
                                 # Эмитируем сигнал остановки для супервайзера
-                                global_initial = portfolio_cfg.get("initial_capital", 60.0)
+                                global_initial = initial_tpv
                                 if tpv_total < global_initial:
                                     emit_signal("stop", base_ticker, paper_mode)
                                     logger.info(f"Sent STOP signal. Total Equity {tpv_total:.2f} < Global Initial {global_initial:.2f}. Ticker blacklisted.")

@@ -219,16 +219,16 @@ async def test_enforce_invariant_gate_exception():
 
 @pytest.mark.asyncio
 async def test_reset_bot_state_files_rebases_on_trailing_stop(tmp_path, monkeypatch):
-    """Lines 312-313: trailing_stop_triggered -> capital rebased from last_tpv"""
+    """A completed session cannot compound beyond the configured capital cap."""
     from futures_portfolio.supervisor.swarm_manager import reset_bot_state_files
     monkeypatch.setattr(f"{M}.BASE_PATH", tmp_path)
     monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
     old_state = {"trailing_stop_triggered": True, "last_tpv": 200.0}
     (tmp_path / "paper_state_BTCUSDT.json").write_text(json.dumps(old_state))
-    config = {"initial_capital": 100.0}
+    config = {"portfolios": [{"paper_initial_capital": 100.0}]}
     await reset_bot_state_files("BTCUSDT", is_paper=True, config=config)
     new_state = json.loads((tmp_path / "paper_state_BTCUSDT.json").read_text())
-    assert new_state["balance"] == 200.0
+    assert new_state["balance"] == 100.0
 
 
 @pytest.mark.asyncio
