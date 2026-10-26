@@ -1,9 +1,10 @@
 """Исполнение ордеров на Binance Futures (Hedge Mode)."""
 import logging
 import asyncio
+from copy import deepcopy
 from uuid import uuid4
 from typing import Dict, Optional, Tuple, Any, List, TYPE_CHECKING
-from decimal import Decimal, ROUND_HALF_EVEN, getcontext
+from decimal import Decimal, ROUND_HALF_EVEN, getcontext, InvalidOperation
 
 if TYPE_CHECKING:
     from core.connector import BinanceConnector
@@ -17,6 +18,18 @@ getcontext().prec = 28
 getcontext().rounding = ROUND_HALF_EVEN
 
 PAPER_COMMISSION_RATE = Decimal('0.0004')
+
+def validate_paper_positions(paper_state):
+    positions = paper_state.get("positions")
+    if not isinstance(positions, dict):
+        raise ValueError("Invalid PAPER positions")
+    try:
+        quantities = [Decimal(str(qty)) for qty in positions.values()]
+    except (InvalidOperation, ValueError, TypeError) as error:
+        raise ValueError("Invalid PAPER hedge quantity") from error
+    if any(not qty.is_finite() or qty < 0 for qty in quantities):
+        raise ValueError("Invalid PAPER hedge quantity")
+
 
 class PortfolioExecutor:
     def __init__(self, connector: 'BinanceConnector', base_ticker: str = "BTCUSDT", max_orders_per_second: int = 10):
@@ -386,6 +399,8 @@ class PortfolioExecutor:
         """Внутренний метод для выполнения одного действия (для gather).
         B7 FIX: mid_prices — dict {base_symbol: mid_price} для симметричного qty.
         """
+        if paper_mode and paper_state is not None:
+            validate_paper_positions(paper_state)
         if action["type"] == "VIRTUAL_ORDER":
             diff_usdt = action["diff_usdt"]
             side = "BUY" if diff_usdt > 0 else "SELL"
@@ -413,6 +428,9 @@ class PortfolioExecutor:
             qty_price = mid_prices[base_symbol]
         else:
             qty_price = Decimal(str(price))
+        if paper_mode and (pos_side not in ("LONG", "SHORT") or not diff_usdt.is_finite()
+                           or not qty_price.is_finite() or qty_price <= 0):
+            raise ValueError("Invalid PAPER order")
         side = ("BUY" if diff_usdt > 0 else "SELL") if pos_side == "LONG" else ("SELL" if diff_usdt > 0 else "BUY")
         order_qty = abs(diff_usdt / qty_price)
         reduce_only = (pos_side == "LONG" and side == "SELL") or (pos_side == "SHORT" and side == "BUY")
@@ -420,6 +438,11 @@ class PortfolioExecutor:
         min_notional = Decimal(str(portfolio_cfg.get("min_notional_usdt", 6.0)))
 
         if paper_mode:
+            if reduce_only:
+                if paper_state is None:
+                    raise ValueError("Invalid PAPER reduction without wallet")
+                available = Decimal(str(paper_state["positions"].get(f"{base_symbol}_{pos_side}", 0)))
+                order_qty = min(order_qty, available)
             qty_rounded = self.round_quantity(order_qty, step_size)
             # B7 FIX: Используем qty_price (mid_price) для расчёта order_value
             order_value = qty_rounded * qty_price
@@ -450,6 +473,8 @@ class PortfolioExecutor:
                 entry_key = "long_entry_price" if pos_side == "LONG" else "short_entry_price"
                 old_entry = Decimal(str(paper_state.get(entry_key, price)))
                 if reduce_only:
+                    if not old_entry.is_finite() or old_entry <= 0:
+                        raise ValueError("Invalid PAPER reduction entry")
                     if pos_side == "LONG":
                         trade_pnl = qty_rounded * (qty_price - old_entry)
                     else:
@@ -577,16 +602,19 @@ class PortfolioExecutor:
         # Mapping for result tracking to maintain original order
         results_map = {}
 
-        if paper_mode and cash_budget is not None:
-            budget = Decimal(str(cash_budget))
-            wallet = Decimal(str(paper_state["balance"]))
+        if paper_mode:
+            batch_state = deepcopy(paper_state)
+            if batch_state is not None:
+                validate_paper_positions(batch_state)
+            budget = Decimal(str(cash_budget)) if cash_budget is not None else None
+            wallet = Decimal(str(paper_state["balance"])) if budget is not None else Decimal('0')
             for action in reductions + expansions:
                 approved = dict(action)
                 virtual = action.get("type") == "VIRTUAL_ORDER"
                 leg = action.get("position_side", "LONG")
                 symbol = action.get("base_symbol") or action.get("symbol", "").split("_")[0]
                 lev = Decimal(str((portfolio_cfg or {}).get("targets", {}).get(f"BASE_{leg}", {}).get("leverage", action.get("leverage", 1))))
-                if not action.get("is_reduction"):
+                if budget is not None and not action.get("is_reduction"):
                     # Wallet persistence rounds to 1e-4; reserve one unit against rounding up the debit.
                     spendable = max(Decimal('0'), budget - Decimal('0.0001'))
                     limit = spendable if virtual else spendable / (Decimal('1') / lev + PAPER_COMMISSION_RATE)
@@ -596,16 +624,27 @@ class PortfolioExecutor:
                         results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient strategy CASH including commission"}
                         continue
                 try:
-                    result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, paper_state, mid_prices)
+                    result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)
                 except Exception as exc:
                     result = {"status": "ERROR", "message": str(exc)}
                 results_map[id(action)] = result
                 if result.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
                     continue
                 if virtual:
-                    budget -= Decimal(str(result["diff_usdt"]))
+                    if budget is not None:
+                        budget -= Decimal(str(result["diff_usdt"]))
                     continue
                 qty = Decimal(str(result.get("qty", 0)))
+                if batch_state is not None and qty > 0:
+                    leg = result.get("type", leg)
+                    pos_key = result.get("symbol", f"{symbol}_{leg}")
+                    old_qty = Decimal(str(batch_state["positions"].get(pos_key, 0)))
+                    new_qty = old_qty - qty if result.get("reduce_only") else old_qty + qty
+                    if not new_qty.is_finite() or new_qty < 0:
+                        raise ValueError("Invalid PAPER fill quantity")
+                    batch_state["positions"][pos_key] = str(new_qty)
+                if budget is None:
+                    continue
                 fill_price = Decimal(str(result.get("price", mid_prices.get(symbol, price))))
                 commission = Decimal(str(result.get("commission", 0)))
                 pnl = Decimal(str(result.get("trade_pnl", 0)))

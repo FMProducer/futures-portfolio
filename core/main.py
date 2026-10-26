@@ -18,7 +18,7 @@ load_dotenv()
 
 from core.connector import BinanceConnector
 from core.calculator import PortfolioCalculator, initial_notional_after_fee
-from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE
+from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
 from core import share_trail
@@ -646,6 +646,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         while True:
             await asyncio.sleep(86400)
 
+    if paper_mode:
+        try:
+            validate_paper_positions(paper_state)
+        except ValueError as error:
+            state["startup_blocked"] = True
+            state["startup_block_reason"] = str(error)
+            await save_json(state_file_path, state)
+            raise
+
     # Launch contract: after WAL recovery the expected live pair must be usable.
     # A lost, corrupt or mismatched pair blocks trading instead of degrading into
     # the fresh legacy start that the default-loading path would otherwise allow.
@@ -1032,6 +1041,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     logger.critical("Unreconciled execution: trading remains blocked")
                     await asyncio.sleep(86400)
                     continue
+                if paper_mode:
+                    validate_paper_positions(paper_state)
                 # Failsafe: if restarted by PM2 with triggered state, exit immediately to trigger Reaper
                 if state.get("trailing_stop_triggered", False):
                     logger.critical(f"🚨 Trailing Stop already triggered for {base_ticker}. Entering Zombie Mode.")
@@ -1990,11 +2001,13 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 side = res.get("side", "UNKNOWN")
 
                                 qty = Decimal(str(res.get("qty", 0.0)))
+                                if paper_mode and (not qty.is_finite() or qty < 0):
+                                    raise ValueError("Invalid PAPER fill quantity")
                                 if qty <= 0:
                                     logger.warning(f"⚠️ Skip state update for {key} because executed qty is {qty}")
                                     continue
 
-                                if trail_state is not None:
+                                if trail_state is not None or paper_mode:
                                     try:
                                         is_new_fill = share_trail.fill_receipt(paper_state, res)
                                     except ValueError:
@@ -2022,6 +2035,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     new_qty = old_qty + qty
                                 else:
                                     new_qty = old_qty - qty
+
+                                if paper_mode and (
+                                        pos_side not in ("LONG", "SHORT") or side not in ("BUY", "SELL")
+                                        or key != pos_key or not new_qty.is_finite() or new_qty < 0
+                                        or not trade_pnl.is_finite() or not commission.is_finite() or commission < 0
+                                        or bool(reduce_only) != ((pos_side == "LONG" and side == "SELL")
+                                                                 or (pos_side == "SHORT" and side == "BUY"))):
+                                    raise ValueError("Invalid PAPER fill quantity or identity")
 
                                 # Расчет средней цены входа (только при увеличении позиции)
                                 if not reduce_only and (old_qty + qty) > 0:
@@ -2065,7 +2086,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 current_balance = Decimal(str(paper_state["balance"]))
                                 paper_state["balance"] = float((current_balance + trade_pnl - commission).quantize(Decimal('1e-4')))
                                 paper_state_dirty = True
-                                if trail_state is not None:
+                                if trail_state is not None or paper_mode:
                                     share_trail.fill_receipt(paper_state, res, record=True)
                                     paper_state["share_trail_checkpoint"] = {
                                         "spec": state["share_trail_spec"],
@@ -2336,6 +2357,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     logger.info(f"Heartbeat: TPV={total_tpv_final:.2f} | PnL={total_pnl_final:+.2f} | {base_ticker}={price:.6g} | Cycles={cycles}")
 
             except Exception as e:
+                if paper_mode and isinstance(e, ValueError) and str(e).startswith("Invalid PAPER"):
+                    state["startup_blocked"] = True
+                    state["startup_block_reason"] = str(e)
+                    await save_json(state_file_path, state)
                 logger.error(f"Error in cycle: {e}")
                 await asyncio.sleep(10)
             await asyncio.sleep(check_interval)

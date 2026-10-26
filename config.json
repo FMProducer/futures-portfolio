@@ -91,17 +91,17 @@
   "toxic_blacklist_real": {},
   "tickers": [
     "AGTUSDT",
-    "AKEUSDT",
     "APRUSDT",
     "BIRBUSDT",
     "BMTUSDT",
-    "CTUSDT",
-    "ERAUSDT",
+    "CAPUSDT",
+    "INJUSDT",
+    "IOSTUSDT",
     "IRYSUSDT",
     "JCTUSDT",
-    "ORDERUSDT"
+    "WLDUSDT"
   ],
-  "base_ticker": "AGTUSDT",
+  "base_ticker": "APRUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true

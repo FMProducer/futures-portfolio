@@ -96,7 +96,7 @@ async def test_normal_rebalance_unexpected_fee_records_cash_violation():
     executor = MagicMock()
     executor.execute_actions = AsyncMock(return_value=[{'status': 'SUCCESS', 'type': 'LONG',
         'symbol': 'BTCUSDT_LONG', 'side': 'BUY', 'qty': .001, 'price': 60000,
-        'commission': 101, 'trade_pnl': 0, 'reduce_only': False}])
+        'commission': 101, 'trade_pnl': 0, 'reduce_only': False, 'execution_id': 'paper:fee-fixture'}])
     with patch(f'{author.M}.PortfolioExecutor', return_value=executor):
         saves, _, _ = await author._run_rebalance(config, state, paper, loop_limit=1,
             calc_return=calc_result, calc_val_cash=-1)

@@ -260,7 +260,7 @@ async def test_execute_actions_surplus_first(executor, mock_connector):
 @pytest.mark.asyncio
 async def test_execute_single_action_paper_mode(executor):
     action = {"symbol": "BTCUSDT_LONG", "diff_usdt": 100.0, "type": "ORDER", "is_reduction": False}
-    paper_state = {"long_entry_price": 50000.0}
+    paper_state = {"long_entry_price": 50000.0, "positions": {"BTCUSDT_LONG": 0.001}}
     # price 60000. diff_usdt 100. qty = 100 / 60000 = 0.001666...
     # qty_rounded (step 0.001) = 0.001
     # reduce_only = False (side BUY, pos LONG)

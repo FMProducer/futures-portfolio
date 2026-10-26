@@ -213,6 +213,23 @@ def write_json(path, value):
     staging.replace(path)
 
 
+def load_base_config(path, project_config):
+    if path.resolve() == project_config.resolve():
+        raise ValueError("Optimizer base config must be separate from the project config.json")
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        raw = project_config.read_bytes()
+        json.loads(raw)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with path.open("xb") as stream:
+                stream.write(raw)
+        except FileExistsError:
+            raw = path.read_bytes()
+    return json.loads(raw), raw
+
+
 def study_contract(report):
     contract = {key: report[key] for key in (
         "config_sha256", "days", "search_space", "objectives", "constraints", "data", "code_sha256",
@@ -363,6 +380,8 @@ def main():
     parser.add_argument("--study-name", help="Defaults to an input fingerprint; n-trials adds new trials")
     parser.add_argument("--optimizer-config", type=Path, default=PROJECT_DIR / "optimizer_config.json",
                         help="Parameter switches, fixed values, ranges and optional steps")
+    parser.add_argument("--base-config", type=Path, default=PROJECT_DIR / "optimizer_base_config.json",
+                        help="Independent trading-config snapshot; initialized from config.json only if missing")
     args = parser.parse_args()
     if not math.isfinite(args.days) or args.days * 1440 < 2 or args.n_trials < 1:
         parser.error("--days must cover at least two minutes; --n-trials must be positive")
@@ -371,9 +390,9 @@ def main():
     import pandas as pd
     from backtest.backtest_rebalance import run_backtest
 
-    source = PROJECT_DIR / "config.json"
-    source_bytes = source.read_bytes()
-    config = json.loads(source_bytes)
+    source = args.base_config
+    config, source_bytes = load_base_config(source, PROJECT_DIR / "config.json")
+    print(f"Optimizer base config: {source.resolve()}")
     space, fixed_params, steps, settings = load_optimizer_settings(config, args.optimizer_config)
     files = discover(PROJECT_DIR / "data")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -381,6 +400,7 @@ def main():
     report = {
         "created_utc": stamp, "config_sha256": hashlib.sha256(source_bytes).hexdigest(),
         "source_config": config, "days": args.days, "search_space": space,
+        "base_config_path": str(source.resolve()),
         "status": "preparing",
         "code_sha256": {str(path.relative_to(PROJECT_DIR)): hashlib.sha256(path.read_bytes()).hexdigest()
                         for path in [Path(__file__).resolve(), PROJECT_DIR / "backtest/backtest_rebalance.py",
@@ -405,8 +425,6 @@ def main():
     }
 
     def save():
-        if source.read_bytes() != source_bytes:
-            raise RuntimeError("Source config changed externally during optimization")
         write_json(output, report)
 
     with tempfile.TemporaryDirectory(prefix="universal_", dir=PROJECT_DIR / "optimization") as tmp:
@@ -433,7 +451,7 @@ def main():
         fingerprint = study_contract(report)
         report["study_name"] = args.study_name or f"universal_equal_leverage_{fingerprint[:24]}"
         storage_path = args.storage.resolve()
-        if storage_path == source.resolve() or storage_path.suffix.lower() not in (".db", ".sqlite", ".sqlite3"):
+        if storage_path in (source.resolve(), (PROJECT_DIR / "config.json").resolve()) or storage_path.suffix.lower() not in (".db", ".sqlite", ".sqlite3"):
             parser.error("--storage must be a separate SQLite file (.db, .sqlite, .sqlite3)")
         storage_path.parent.mkdir(parents=True, exist_ok=True)
         report["storage"] = str(storage_path)

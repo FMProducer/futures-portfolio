@@ -161,7 +161,7 @@ async def stop_bot(ticker: str, is_paper: bool = False):
             if code != 0:
                 raise RuntimeError(f"PAPER process stop failed: {ticker}")
             env = os.environ.copy()
-            env["PYTHONPATH"] = str(BASE_PATH.parent)
+            env["PYTHONPATH"] = str(BASE_PATH)
             close = await asyncio.create_subprocess_exec(
                 sys.executable, str(CORE_PATH / "main.py"), "--config", str(CONFIG_PATH),
                 "--ticker", ticker, "--stop", "--paper", cwd=str(BASE_PATH), env=env)

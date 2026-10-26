@@ -8,7 +8,7 @@ import optimization.optimize_universal as optimizer
 
 from optimization.optimize_universal import (
     PROJECT_DIR, P, aggregate, candidate, discover, fixed_settings, metrics, search_space, prepare_history,
-    export_results, open_study, study_contract, load_optimizer_settings,
+    export_results, open_study, study_contract, load_optimizer_settings, load_base_config,
 )
 
 
@@ -108,8 +108,33 @@ class UniversalOptimizerTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 candidate(self.config, {"leverage": value})
 
+    def test_base_snapshot_is_initialized_once_and_survives_missing_project_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "config.json"
+            snapshot = Path(tmp) / "optimizer_base_config.json"
+            original = json.dumps(self.config).encode()
+            project.write_bytes(original)
+            cfg, raw = load_base_config(snapshot, project)
+            self.assertEqual(cfg, self.config)
+            self.assertEqual(raw, original)
+            self.assertEqual(snapshot.read_bytes(), original)
+            project.write_text("invalid JSON from an external writer")
+            self.assertEqual(load_base_config(snapshot, project), (cfg, raw))
+            project.unlink()
+            self.assertEqual(load_base_config(snapshot, project), (cfg, raw))
+            with self.assertRaisesRegex(ValueError, "separate"):
+                load_base_config(snapshot, snapshot)
+            snapshot.write_text("invalid snapshot")
+            with self.assertRaises(json.JSONDecodeError):
+                load_base_config(snapshot, project)
+
     def test_optimizer_config_switches_ranges_and_fixed_values(self):
         settings = json.loads((PROJECT_DIR / "optimizer_config.json").read_text())
+        enabled = {"leverage", "equity_trailing_stop_activation_pct", "rebalance_share_trail_distance",
+                   "max_drawdown_limit", "toxic_cooldown_days", P + "safety_guards.net_move_window_sec",
+                   P + "rebalance_threshold_surplus", P + "safety_guards.trend_lookback_bars"}
+        for name, spec in settings["parameters"].items():
+            spec["enabled"] = name in enabled
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "optimizer.json"
             path.write_text(json.dumps(settings))
@@ -223,6 +248,8 @@ class UniversalOptimizerTests(unittest.TestCase):
             targets = cfg["portfolios"][0]["targets"]
             self.assertEqual(targets["BASE_LONG"]["leverage"], targets["BASE_SHORT"]["leverage"])
             self.assertEqual(len(pd.read_feather(Path(data_dir) / "TESTUSDT_live.feather")), 3)
+            if mutate_project[0]:
+                source.write_text("externally changed project config")
             return {"initial_capital": 1000, "final_equity": 1010, "max_dd_pct": 5,
                     "liquidations": 0, "cycles": 1, "data_window": {}, "accounting_ok": True}
 
@@ -241,20 +268,30 @@ class UniversalOptimizerTests(unittest.TestCase):
             frame.iloc[:1].to_feather(root / "data/SHORTUSDT_live.feather")
             source_bytes = source.read_bytes()
             data_bytes = (root / "data/TESTUSDT_live.feather").read_bytes()
+            mutate_project = [False]
             with patch.object(optimizer, "PROJECT_DIR", root), patch.object(optimizer, "__file__", str(script)), \
                     patch("backtest.backtest_rebalance.run_backtest", side_effect=fake_backtest):
                 for count in (2, 1):
                     with patch("sys.argv", ["optimizer", "--days", str(3 / 1440), "--n-trials", str(count)]):
                         optimizer.main()
+                self.assertEqual(source.read_bytes(), source_bytes)
+                mutate_project[0] = True
+                with patch("sys.argv", ["optimizer", "--days", str(3 / 1440), "--n-trials", "1"]):
+                    optimizer.main()
+                source.unlink()
+                with patch("sys.argv", ["optimizer", "--days", str(3 / 1440), "--n-trials", "1"]):
+                    mutate_project[0] = False
+                    optimizer.main()
             reports = sorted((root / "optimization").glob("universal_report_*.json"))
-            self.assertEqual(len(reports), 2)
+            self.assertEqual(len(reports), 4)
             latest = json.loads(reports[-1].read_text())
             self.assertEqual(latest["status"], "completed")
-            self.assertEqual(latest["resumed_trials"], 2)
-            self.assertEqual(len(latest["trials"]), 3)
+            self.assertEqual(latest["resumed_trials"], 4)
+            self.assertEqual(len(latest["trials"]), 5)
             self.assertIn("SHORTUSDT", latest["excluded_tickers"])
             self.assertEqual(list(latest["data"]), ["TESTUSDT"])
-            self.assertEqual(source.read_bytes(), source_bytes)
+            self.assertFalse(source.exists())
+            self.assertEqual((root / "optimizer_base_config.json").read_bytes(), source_bytes)
             self.assertEqual((root / "data/TESTUSDT_live.feather").read_bytes(), data_bytes)
             self.assertTrue(Path(latest["artifacts"]["recommended_config"]).exists())
 
