@@ -103,3 +103,4 @@ dashboard/templates/dashboard.html
 dashboard/config.yaml
 optimization/
 core/paper_budget.sqlite
+best_netdd_config_*.json

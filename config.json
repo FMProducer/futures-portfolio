@@ -89,15 +89,15 @@
   "toxic_blacklist_real": {},
   "tickers": [
     "AGTUSDT",
-    "AKEUSDT",
     "APRUSDT",
+    "BIRBUSDT",
+    "BMTUSDT",
     "CAPUSDT",
-    "ERAUSDT",
+    "GTCUSDT",
     "INJUSDT",
     "IOSTUSDT",
     "PUMPUSDT",
-    "QUSDT",
-    "TUSDT"
+    "QNTUSDT"
   ],
   "base_ticker": "AGTUSDT",
   "probation_paper": {},
