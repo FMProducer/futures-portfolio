@@ -133,13 +133,16 @@ def load_optimizer_settings(config, path):
     return space, fixed, steps, settings
 
 
-def discover(data_dir):
+def discover(data_dir, recursive=False):
     selected = {}
-    for path in sorted(data_dir.glob("*.feather")):
+    paths = data_dir.rglob("*.feather") if recursive else data_dir.glob("*.feather")
+    for path in sorted(paths):
+        if not path.is_file():
+            continue
         match = re.fullmatch(r"([A-Z0-9]+USDT)(?:_.*)?\.feather", path.name)
         if match:
             ticker = match[1]
-            if ticker not in selected or (path.stat().st_size, path.name) > (selected[ticker].stat().st_size, selected[ticker].name):
+            if ticker not in selected or (path.stat().st_size, str(path)) > (selected[ticker].stat().st_size, str(selected[ticker])):
                 selected[ticker] = path
     if not selected:
         raise ValueError(f"No USDT ticker Feather files in {data_dir}")
@@ -377,6 +380,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--days", type=float, required=True)
     parser.add_argument("--n-trials", type=int, default=150)
+    parser.add_argument("--data-dir", type=Path,
+                        help="Use only this directory and its nested Feather files; default: project data/ (top-level)")
     parser.add_argument("--storage", type=Path, default=PROJECT_DIR / "optimization" / "universal_optuna.db",
                         help="SQLite file used to resume compatible trials")
     parser.add_argument("--study-name", help="Defaults to an input fingerprint; n-trials adds new trials")
@@ -387,6 +392,9 @@ def main():
     args = parser.parse_args()
     if not math.isfinite(args.days) or args.days * 1440 < 2 or args.n_trials < 1:
         parser.error("--days must cover at least two minutes; --n-trials must be positive")
+    data_dir = (args.data_dir if args.data_dir is not None else PROJECT_DIR / "data").resolve()
+    if not data_dir.is_dir():
+        parser.error(f"Data directory does not exist: {data_dir}")
 
     import optuna
     import pandas as pd
@@ -396,13 +404,15 @@ def main():
     config, source_bytes = load_base_config(source, PROJECT_DIR / "config.json")
     print(f"Optimizer base config: {source.resolve()}")
     space, fixed_params, steps, settings = load_optimizer_settings(config, args.optimizer_config)
-    files = discover(PROJECT_DIR / "data")
+    files = discover(data_dir, recursive=args.data_dir is not None)
+    print(f"Historical data directory: {data_dir}")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output = PROJECT_DIR / "optimization" / f"universal_report_{stamp}.json"
     report = {
         "created_utc": stamp, "config_sha256": hashlib.sha256(source_bytes).hexdigest(),
         "source_config": config, "days": args.days, "search_space": space,
         "base_config_path": str(source.resolve()),
+        "data_dir": str(data_dir),
         "status": "preparing",
         "code_sha256": {str(path.relative_to(PROJECT_DIR)): hashlib.sha256(path.read_bytes()).hexdigest()
                         for path in [Path(__file__).resolve(), PROJECT_DIR / "backtest/backtest_rebalance.py",

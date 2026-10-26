@@ -47,6 +47,23 @@ class UniversalOptimizerTests(unittest.TestCase):
             self.assertEqual(set(result), {"BTCUSDT", "ETHUSDT"})
             self.assertEqual(result["BTCUSDT"].name, "BTCUSDT_snapshot.feather")
 
+    def test_recursive_discovery_stays_in_selected_dataset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            selected = root / "selected"
+            (selected / "BTCUSDT").mkdir(parents=True)
+            (selected / "ETHUSDT").mkdir()
+            (selected / "BTCUSDT/BTCUSDT_live.feather").write_bytes(b"123")
+            (selected / "BTCUSDT_snapshot.feather").write_bytes(b"1")
+            (selected / "ETHUSDT/ETHUSDT_live.feather").write_bytes(b"12")
+            (root / "OUTSIDEUSDT_live.feather").write_bytes(b"12345")
+            self.assertEqual(set(discover(selected)), {"BTCUSDT"})
+            files = discover(selected, recursive=True)
+            self.assertEqual(set(files), {"BTCUSDT", "ETHUSDT"})
+            self.assertEqual(files["BTCUSDT"].parent.name, "BTCUSDT")
+            with self.assertRaisesRegex(ValueError, "No USDT"):
+                discover(root / "missing", recursive=True)
+
     def test_objectives_and_hard_constraints(self):
         rows = [{"net_pct": n, "max_dd_pct": d, "liquidations": 0} for n, d in
                 ((-10, 20), (5, 50), (1000, 30))]
@@ -268,22 +285,28 @@ class UniversalOptimizerTests(unittest.TestCase):
             source.write_text(json.dumps(self.config), encoding="utf-8")
             (root / "optimizer_config.json").write_bytes((PROJECT_DIR / "optimizer_config.json").read_bytes())
             frame = pd.DataFrame({key: [1.0] * 3 for key in ("open", "high", "low", "close", "volume")})
-            frame.to_feather(root / "data/TESTUSDT_live.feather")
-            frame.iloc[:1].to_feather(root / "data/SHORTUSDT_live.feather")
+            selected = root / "reports/backtest_gate/dataset"
+            (selected / "TESTUSDT").mkdir(parents=True)
+            (selected / "SHORTUSDT").mkdir()
+            history = selected / "TESTUSDT/TESTUSDT_live.feather"
+            frame.to_feather(history)
+            frame.iloc[:1].to_feather(selected / "SHORTUSDT/SHORTUSDT_live.feather")
+            frame.to_feather(root / "data/DECOYUSDT_live.feather")
             source_bytes = source.read_bytes()
-            data_bytes = (root / "data/TESTUSDT_live.feather").read_bytes()
+            data_bytes = history.read_bytes()
+            argv = ["optimizer", "--data-dir", str(selected), "--days", str(3 / 1440), "--n-trials"]
             mutate_project = [False]
             with patch.object(optimizer, "PROJECT_DIR", root), patch.object(optimizer, "__file__", str(script)), \
                     patch("backtest.backtest_rebalance.run_backtest", side_effect=fake_backtest):
                 for count in (2, 1):
-                    with patch("sys.argv", ["optimizer", "--days", str(3 / 1440), "--n-trials", str(count)]):
+                    with patch("sys.argv", [*argv, str(count)]):
                         optimizer.main()
                 self.assertEqual(source.read_bytes(), source_bytes)
                 mutate_project[0] = True
-                with patch("sys.argv", ["optimizer", "--days", str(3 / 1440), "--n-trials", "1"]):
+                with patch("sys.argv", [*argv, "1"]):
                     optimizer.main()
                 source.unlink()
-                with patch("sys.argv", ["optimizer", "--days", str(3 / 1440), "--n-trials", "1"]):
+                with patch("sys.argv", [*argv, "1"]):
                     mutate_project[0] = False
                     optimizer.main()
             reports = sorted((root / "optimization").glob("universal_report_*.json"))
@@ -296,7 +319,8 @@ class UniversalOptimizerTests(unittest.TestCase):
             self.assertEqual(list(latest["data"]), ["TESTUSDT"])
             self.assertFalse(source.exists())
             self.assertEqual((root / "optimizer_base_config.json").read_bytes(), source_bytes)
-            self.assertEqual((root / "data/TESTUSDT_live.feather").read_bytes(), data_bytes)
+            self.assertEqual(history.read_bytes(), data_bytes)
+            self.assertEqual(latest["data_dir"], str(selected.resolve()))
             self.assertTrue(Path(latest["artifacts"]["recommended_config"]).exists())
 
 
