@@ -104,6 +104,35 @@ async def evaluate(root, symbols, config, end):
     return results
 
 
+def rank_candidates(candidates, results, existing):
+    admitted = []
+    for candidate in candidates:
+        symbol = candidate['symbol']
+        if symbol in existing:
+            admitted.append(candidate)
+        elif results[symbol].get('pass'):
+            metrics = results[symbol]
+            if not all(math.isfinite(metrics[k]) for k in ('net_pct', 'max_dd_pct')):
+                raise ValueError("Nonfinite candidate ranking metrics")
+            admitted.append({**candidate, 'backtest_net_pct': metrics['net_pct'],
+                             'backtest_max_dd_pct': metrics['max_dd_pct']})
+    pending = [r for r in admitted if r['symbol'] not in existing]
+    ranked = []
+    while pending:
+        front = [r for r in pending if not any(
+            other['backtest_net_pct'] >= r['backtest_net_pct']
+            and other['backtest_max_dd_pct'] <= r['backtest_max_dd_pct']
+            and (other['backtest_net_pct'] > r['backtest_net_pct']
+                 or other['backtest_max_dd_pct'] < r['backtest_max_dd_pct'])
+            for other in pending)]
+        for candidate in front:
+            candidate['backtest_rank'] = 1 + max((r['backtest_rank'] for r in ranked), default=0)
+        ranked.extend(front)
+        pending = [r for r in pending if r not in front]
+    ordered = iter(ranked)
+    return [r if r['symbol'] in existing else next(ordered) for r in admitted]
+
+
 async def filter_candidates(root, candidates, config, existing):
     symbols = [r['symbol'] for r in candidates if r['symbol'] not in existing]
     if not symbols:
@@ -125,7 +154,9 @@ async def filter_candidates(root, candidates, config, existing):
                 proc.kill()
                 await proc.wait()
             raise
-    return [r for r in candidates if r['symbol'] in existing or results[r['symbol']].get('pass')]
+    ranked = rank_candidates(candidates, results, existing)
+    request.with_name('ranking.json').write_text(json.dumps(ranked, indent=2))
+    return ranked
 
 
 if __name__ == '__main__':

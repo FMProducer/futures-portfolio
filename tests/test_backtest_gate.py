@@ -7,6 +7,23 @@ import pytest
 from futures_portfolio.scanner.backtest_gate import closed_metrics, effective_config
 
 
+def test_candidate_ranking_uses_terminal_net_and_drawdown_without_moving_existing():
+    from futures_portfolio.scanner.backtest_gate import rank_candidates
+    candidates = [{'symbol': s} for s in ['WEAK', 'EXISTING', 'STRONG', 'SAFE', 'TIE', 'FAIL']]
+    before = deepcopy(candidates)
+    results = {s: {'pass': True, 'net_pct': net, 'max_dd_pct': dd}
+               for s, net, dd in [('WEAK', 1, 4), ('STRONG', 3, 2),
+                                  ('SAFE', 2, 0), ('TIE', 3, 2)]}
+    results['FAIL'] = {'pass': False}
+    ranked = rank_candidates(candidates, results, {'EXISTING'})
+    assert [r['symbol'] for r in ranked] == ['STRONG', 'EXISTING', 'SAFE', 'TIE', 'WEAK']
+    assert [r.get('backtest_rank') for r in ranked] == [1, None, 1, 1, 2]
+    assert candidates == before
+    results['STRONG']['net_pct'] = float('nan')
+    with pytest.raises(ValueError, match='Nonfinite'):
+        rank_candidates(candidates, results, {'EXISTING'})
+
+
 def replay():
     return {"accounting_ok":True,"settings":{"slippage_pct":0.001,"commission_pct":0.0004},
             "open_positions":{"long":2,"short":1},"final_equity":1010,"initial_capital":1000,

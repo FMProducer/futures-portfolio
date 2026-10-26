@@ -13,6 +13,8 @@ CHANGELOG — Prosperous BOT Futures Portfolio
 
 [26 Oct 2026] — Isolated PAPER terminal allocation return candidate
 
+- Revalidated against current master `c98cac10a420c54013bf5c9fdeffe895b5cf5390` in `codex/paper-capital-return-current`, preserving the newer liquidation/manual-reconciliation guards: 128 pytest checks and 2 closing-child checks passed. Current patch, hashes, read-only snapshots and application plan: `reports/paper_capital_return_fix/current_head_validation/REPORT.md`. Primary runtime sources and budget remain unchanged; runtime acceptance is OPEN.
+
 - Reconcile confirmed terminal allocations independently of PM2 presence before candidate selection; reuse the existing transactional budget return of final equity. Validate session/capital, flat positions, terminal archive/receipts, equity/Net and pending WAL; retain ambiguous allocations with diagnostics.
 - Prevent closed session identity resurrection in supervisor start/stop and worker CLI; retain existing cooldown/probation and archive history before a fresh allocation/session.
 - Offline validation and exact version evidence: `reports/paper_capital_return_fix/REPORT.md`. Candidate only in `codex/paper-capital-return`; no runtime application or budget mutation. Runtime blocker remains OPEN. CAP reopened its old identity after the recorded close and now conflicts with the terminal archive; no automatic refund/recovery is permitted.
@@ -755,3 +757,8 @@ PAPER classification repair25.10.2026: common PM2/session/terminal rules, explic
 ## Clean PAPER restart —26.10.2026 01:22Kaliningrad
 
 По повторному явному запросу пользователя новый эксперимент:initial10000USDT,безпереносасессий/Net/старыхreserve; прежняяисторияархивирована `reports/paper_clean_slate_20261025_232225`. СтарыеPAPERSTOPкарантиныснятыкакчастьreset;REALнетронут. Правкилимита10иgateсохранены. БлокерSTOP→releaseещёоткрыт. Мониторинготэтойграницы,исходныйсрок26.10 14:25UTCсохранён.
+
+### 2026-10-26 — PAPER candidate Pareto ranking
+- Rank newly admitted candidates by terminal Net percent and maximum drawdown percent using successive nondominated fronts; preserve scanner order within each front and existing-session positions.
+- Admission thresholds unchanged; save selected ranking to reports/backtest_gate/ranking.json.
+- Validation: tests/test_backtest_gate.py, 3 passed. Future profitability and additional execution-cost stress thresholds are not established.
