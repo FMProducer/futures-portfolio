@@ -4,12 +4,14 @@ import html
 import json
 import sqlite3
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 
 def export(run):
     import optuna
     from optuna import visualization as vis
+    from optuna.importance import PedAnovaImportanceEvaluator
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     output = run / 'optuna_visuals'
     output.mkdir(exist_ok=True)
@@ -23,8 +25,8 @@ def export(run):
         links = []
         with tempfile.TemporaryDirectory(prefix='optuna_plot_') as tmp:
             snapshot = Path(tmp) / 'study.db'
-            with sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True) as source:
-                with sqlite3.connect(snapshot) as destination:
+            with closing(sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True)) as source:
+                with closing(sqlite3.connect(snapshot)) as destination:
                     source.backup(destination)
             storage = optuna.storages.RDBStorage('sqlite:///' + snapshot.as_posix())
             try:
@@ -38,11 +40,13 @@ def export(run):
                 else:
                     for index, label in enumerate(('net_pct', 'max_dd_pct')):
                         target = lambda trial, i=index: trial.values[i]
+                        importance_target = lambda trial, i=index: -trial.values[0] if i == 0 else trial.values[1]
+                        varying = [name for name in complete[0].params if len({t.params.get(name) for t in complete}) > 1]
                         plots = {
                             f'history_{label}': lambda: vis.plot_optimization_history(study, target=target, target_name=label),
-                            f'importance_{label}': lambda: vis.plot_param_importances(study, target=target, target_name=label),
+                            f'importance_{label}': lambda: vis.plot_param_importances(study, target=importance_target, target_name=label, evaluator=PedAnovaImportanceEvaluator(evaluate_on_local=False)),
                             f'parallel_{label}': lambda: vis.plot_parallel_coordinate(study, target=target, target_name=label),
-                            f'contour_{label}': lambda: vis.plot_contour(study, target=target, target_name=label),
+                            f'contour_{label}': lambda: vis.plot_contour(study, params=varying[:2], target=target, target_name=label),
                         }
                         for name, plot in plots.items():
                             try:
