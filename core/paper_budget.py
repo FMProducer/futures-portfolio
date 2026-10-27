@@ -48,8 +48,8 @@ def reserve(root, ticker, requested):
         if old and not old[1]:
             return float(old[0]), False, old[2]
         cash = amount(db.execute("SELECT cash FROM account").fetchone()[0])
-        capital = min(amount(requested), cash)
-        if capital <= 0:
+        capital = amount(requested)
+        if capital <= 0 or cash < capital:
             return 0, True, None
         db.execute("UPDATE account SET cash=?", (str(cash-capital),))
         db.execute("INSERT OR REPLACE INTO allocations VALUES(?,?,0,NULL)", (ticker, str(capital)))
@@ -68,7 +68,7 @@ def bind(root, ticker, state):
         db.execute("UPDATE allocations SET session=? WHERE ticker=?", (identity, ticker))
 
 
-def release(root, ticker, state, wallet):
+def release(root, ticker, state, wallet, rotation=False):
     if not state.get("paper_close_complete") or any(Decimal(str(q)) != 0 for q in wallet.get("positions", {}).values()):
         raise ValueError("PAPER capital return requires confirmed flat close")
     equity = amount(wallet["balance"]) + amount(state.get("siphoning_reserve", 0))
@@ -76,7 +76,7 @@ def release(root, ticker, state, wallet):
         raise ValueError("PAPER closing equity mismatch")
     with sqlite3.connect(database(root)) as db:
         db.execute("BEGIN IMMEDIATE")
-        row = db.execute("SELECT released,session FROM allocations WHERE ticker=?", (ticker,)).fetchone()
+        row = db.execute("SELECT released,session,capital FROM allocations WHERE ticker=?", (ticker,)).fetchone()
         if not row or row[1] != str(state['started_at']):
             raise ValueError("PAPER release identity mismatch")
         if row[0]:
@@ -85,6 +85,26 @@ def release(root, ticker, state, wallet):
         db.execute("UPDATE account SET cash=?", (str(cash+equity),))
         db.execute("UPDATE allocations SET released=1 WHERE ticker=?", (ticker,))
         db.execute("INSERT INTO events VALUES(?,?,?,?)", (time.time(), ticker, "return", str(equity)))
+        if rotation and equity < amount(row[2]):
+            db.execute("INSERT INTO events VALUES(?,?,?,?)", (time.time(), ticker, "rotation_loss", str(equity-amount(row[2]))))
+
+
+def ticker_history(root, ticker):
+    closed, opening, loss_at = Decimal(0), None, 0.0
+    with sqlite3.connect(database(root).resolve().as_uri()+"?mode=ro", uri=True) as db:
+        for ts, kind, value in db.execute("SELECT ts,kind,amount FROM events WHERE ticker=? ORDER BY rowid", (ticker,)):
+            if kind in ("reserve", "adopt"):
+                opening = amount(value)
+            elif kind == "return":
+                if opening is None:
+                    raise ValueError("PAPER return without opening allocation")
+                closed += amount(value)-opening
+                opening = None
+            elif kind == "rotation_loss":
+                loss_at = max(loss_at, ts)
+        row = db.execute("SELECT released,session FROM allocations WHERE ticker=?", (ticker,)).fetchone()
+    return {"closed_net": float(closed), "loss_at": loss_at,
+            "active_session": row[1] if row and not row[0] else None}
 
 
 def read_budget(root):

@@ -2172,11 +2172,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 )
                             elif ignore_limits:
                                 state["initial_build_pending"] = None
+                                state.setdefault("initial_build_completed_at", time.time())
                                 state["virt_debt"] = float(post_virt + residual)
                                 state_dirty = True
                                 logger.info(f"Initial residual {float(residual):.8f} USDT moved to VIRTUAL")
 
                         if any_success:
+                            if not ignore_limits:
+                                state["last_rebalance_completed_at"] = time.time()
                             state["last_rebalance_price"] = price
                             cycles += 1
                             state["rebalance_cycles"] = cycles

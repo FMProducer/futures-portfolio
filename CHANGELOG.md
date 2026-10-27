@@ -774,3 +774,85 @@ PAPER classification repair25.10.2026: common PM2/session/terminal rules, explic
 - Rank newly admitted candidates by terminal Net percent and maximum drawdown percent using successive nondominated fronts; preserve scanner order within each front and existing-session positions.
 - Admission thresholds unchanged; save selected ranking to reports/backtest_gate/ranking.json.
 - Validation: tests/test_backtest_gate.py, 3 passed. Future profitability and additional execution-cost stress thresholds are not established.
+
+### 2026-10-27 — PAPER cumulative ticker history and loss reentry cooldown
+- Supervisor performance uses closed allocation returns plus the active session Net; exposes session_profit separately. Closed losses survive reentry within the current budget experiment.
+- A losing PAPER rotation return atomically records rotation_loss once. Admission and launch enforce toxic_cooldown_days (currently 0.1 days); released allocations are not exempt from the existing backtest gate on reentry.
+- No historical rotation-loss markers fabricated; existing positions and capital unchanged. Technical STOP blacklist behavior unchanged.
+
+### 2026-10-27 — PAPER idle-session rotation
+- A PAPER session becomes idle after three hours since completed initial build or last successful subsequent rebalance; heartbeat and process restart do not reset the clock. Persist completion timestamps; recover legacy sessions only from completed-rebalance log entries within the current identity.
+- Reassess idle sessions and new candidates in one closed-24h gate request. Keep sessions on data/replay errors; close completed gate failures. Replace a passing idle session only with a candidate that Pareto-dominates its terminal Net percent / MaxDD percent and has strictly higher cumulative PAPER Net.
+- Preserve existing flat-close, capital-return, allocation and loss-cooldown paths. No historical state rewritten, PM2 deployment, REAL action or optimization performed.
+- Validation: supervisor/budget/idle/gate run 82 passed; gate/build/resume run 21 passed; final idle boundary checks 13 passed. Tests overlap; counts must not be added as unique tests.
++# PAPER swarm: accounting, admission and idle rotation — 2026-10-27
+
+Project: C:/Python/Prosperous_Bot/futures_portfolio. All human-facing times below use Europe/Kaliningrad (UTC+02). This protocol records completed work and outstanding validation; it is not REAL authorization.
+
+## Experiment boundaries and preserved evidence
+
+- Historical monitoring exposed JCT negative SHORT quantity, negative wallet balance and false positive TPV; emergency close repeatedly failed. After a later corrected-code restart the damaged session was blocked by startup_blocked. Corrections transferred in another chat are user-reported; their independent certification is outside this protocol.
+- Other observed lifecycle failures: missing return after self-close, and reopening a closed identity (CAP, APR/IRYS in older experiments). A clean reset removes contaminated results but does not prove those causes fixed.
+- Requested resets archived states, paired wallets, budget, PAPER history/logs, observer SQLite, gate inputs and results. Archives: reports/paper_clean_slate_20261026_102947/, reports/paper_clean_slate_20261026_164255/, reports/paper_clean_slate_20261026_190524/. The final active experiment starts 26 October 21:05:24 local (19:05:24 UTC), fixed initial capital 10000 USDT.
+- Latest reset initially launched APR/AGT/INJ/PUMP/QNT: only five candidates passed; unused cash remained 5000. Subsequent natural admissions/rotations filled the swarm. Allocations are capital deployment, never profit.
+- On the earlier experiment, monitoring ended at 26 October 16:25 local, actual coverage 3h55m, not 24h. At deadline reported equity 9942.85, Net -57.15, known fees 28.93 USDT; observed drawdown 207.21 USDT. Final report reports/paper_swarm_hourly/FINAL_20261026.json was subsequently archived by resets. paper-12 is PAUSED; continuous swarm-observer remains running.
+
+## Implemented admission and ranking
+
+- Scanner: tickers.txt universe, USDT pairs, turnover >=20M USDT, blacklist exclusions, activity proxy over three hours. Its cycles are not executed strategy rebalances.
+- New-candidate backtest gate: 1440 minute bars over 24 fully closed UTC hours, current configuration, terminal model close, Net>0, MaxDD<=50%, cycles>=2 (at least one post-build rebalance).
+- Candidate ordering uses successive Pareto fronts: terminal Net percent higher, maximum drawdown percent lower; scanner order breaks ties/incomparability within a front. No new ratio threshold or arbitrary weighting introduced.
+- Sources and replay inputs persist under reports/backtest_gate/<hash>/<symbol>/klines.json and <symbol>_live.feather; effective_config.json, per-symbol decisions and data/config/source hashes accompany them. request/response/ranking.json and worker.log describe the latest request. Resets archive these data rather than discard them.
+- Additional execution-cost stress threshold is not agreed and not implemented.
+
+## Implemented cumulative history and loss cooldown
+
+- core/paper_budget.py ticker_history reconstructs closed Net from reserve/adopt -> return events in the CURRENT budget experiment. Supervisor profit adds active-session Net only for matching active allocation identity. session_profit remains separate.
+- Rotation close returning less than its allocation atomically adds one rotation_loss marker with the capital return. Idempotent release retries cannot double-credit or extend cooldown.
+- Admission and direct launch enforce toxic_cooldown_days, currently 0.1 days = 2h24m. After expiry released sessions must pass the gate as new admissions. No retrospective quarantine markers fabricated for old rotations; previous losses still count in cumulative results.
+- Existing technical STOP/common blacklist behavior was not redesigned. Proposed time/risk changes beyond the approved policy remain unadopted.
+
+## Implemented three-hour idle policy
+
+- Timer starts at completed initial build when there has been no subsequent successful rebalance, otherwise at last completed rebalance. Heartbeat and process restart do not reset it.
+- core/main.py persists initial_build_completed_at and last_rebalance_completed_at. Legacy sessions can recover completion time from Rebalance #... complete log entries within the current identity; missing or uncertain clocks block automatic idle eviction.
+- Supervisor reassesses idle sessions and new candidates together at one closed-24h endpoint.
+- Completed gate failure closes the idle session even without a replacement. Data/replay errors preserve it.
+- A passing idle session may be replaced ONLY if new terminal Net% >= old, new MaxDD% <= old, at least one strict improvement, AND new cumulative PAPER Net > old cumulative PAPER Net. A new ticker with no PAPER history has zero Net, not proven quality.
+- Existing close -> verified flat -> return -> reserve/launch ordering and losing-rotation cooldown remain authoritative.
+
+## Tests and deployment evidence
+
+- Cumulative-history/cooldown changes: 71 passed after correcting isolated test fixtures; preceding run had 3 failed/64 passed and is not a PASS.
+- Idle/supervisor/budget/gate run: 82 passed; gate/initial-build/resume run: 21 passed; final three-hour boundary and idle-policy checks: 13 passed. These runs overlap and must not be summed as unique tests. git diff --check passed.
+- Full authorized deployment 27 October around 09:14–09:15 local: supervisor and all ten current PAPER bots stopped/restarted; states and SQLite budget backed up after stopping. All ten bots and supervisor online; first supervisor cycle completed.
+- Backup and verification: reports/paper_idle_deploy_20261027_071445/manifest.json, paper_budget.sqlite, verification.json. Existing started_at and initial_tpv identities preserved across all 15 stored state records. No experiment reset during this deployment.
+- Latest read-only financial snapshot 27 October 09:38:05 local: equity 9679.61607522 USDT, accumulated reported Net -320.38392478 (-3.203839%), cash 87.0587 already included in equity. Cash is not the loss. This is a timestamped snapshot, not a current guarantee.
+- Earlier 07:42 aggregation: 22 sessions/13 tickers, 3 profitable cumulative tickers (JCT +183.49, CAP +125.79, GTC +15.21); total -275.73; IRYS -361.22 was the largest negative contribution. Prior closed losses must not disappear behind a new session.
+- No commits/pushes, REAL orders, optimization or REAL deployment performed in this work.
+
+## Remaining work and acceptance
+
+1. Observe a complete three-hour idle -> joint gate -> decision -> verified close/return -> replacement cycle.
+2. Observe loss cooldown before/after expiry, fresh reentry gate and no double return; verify losing history remains in decisions.
+3. Reconcile session fills, commissions, funding, terminal wallet and budget returns. verified Net is still UNKNOWN; reported Net is not audited Net.
+4. Verify terminal sessions never reopen under the old identity; keep the previously observed CAP issue explicit until proven resolved.
+5. Compare scanner-only and new gate/ranking on identical fixed budget and subsequent unseen periods; test whether the advantage survives several tickers/windows and expenses.
+6. Agree any execution-cost stress amounts, new PAPER risk limits and further policy parameters before implementing them.
+7. REAL remains off. Future pilot parameters 68 USDT / 1 slot / 7x cross / MaxDD50% are agreed parameters, not permission to launch; execution/recovery and accounting readiness remain outstanding.
+
+Related: [[Docs/futures-portfolio-paper-swarm-dashboard-2026-10-25]], [[Docs/changelog]].
+
+## 2026-10-27 — Daily top100 backtest universe publication
+- Added scanner/daily_universe.py: public Binance exchangeInfo + 24hr quoteVolume, top100 supported ASCII/alphanumeric USDT-margined perpetual TRADING contracts, independent of the current tickers.txt and its old universe. No minimum-volume cutoff at this daily stage; supervisor scanner retains its own filters.
+- Replay uses 24 fully closed UTC hours, current effective trading settings and the existing terminal-close gate (Net>0, MaxDD<=50%, cycles>=2). Select up to50 with Pareto terminal Net%/MaxDD%, turnover order within fronts. Fewer passing tickers means fewer lines, no padding.
+- Separate per-run raw market snapshots, minute klines/Feather, effective config, hashes, results, ranking, old/selected tickers and status under reports/daily_universe/. OS lock prevents concurrent publishers; errors, incomplete results or trading-config changes preserve old whitelist; tickers.txt replaced atomically. Explicit empty list no longer means unrestricted scanner universe.
+- First attempt stopped before publication on unsupported Unicode symbols; corrected eligibility to match the existing scanner. Final offline tests: tests/test_daily_universe.py + tests/test_backtest_gate.py,10passed. Final manual run exit0:100tested/35passed/35published,100raw kline files and100Feather files. Window26Oct07:00–27Oct07:00UTC. Report reports/daily_universe/20261027_075634_353332/, selected SHA256 4ab779abc8cb4b32122037dbd999b830b9752d7ea7aab7224d9a8a8afe092050.
+- Created ACTIVE Codex heartbeat paper-100-50, daily02:10 Europe/Kaliningrad (=00:10UTC), invoking the same script. This requires the local computer/app available; first scheduled execution not yet observed. Previous paper-12 remains paused.
+- No PM2 restart, state reset, direct position close, REAL action or optimization. Existing bots continue under approved supervisor rotation, list update alone does not force a close.
+- Documentation synchronized to Obsidian: Docs/futures-portfolio-daily-universe-2026-10-27.md; indexed in Docs/changelog.md. Protocol includes exact replay window, first failed attempt and successful retry, preserved raw/Feather inputs, published list hash, daily02:10 schedule and outstanding first scheduled-run/economic checks.
+
+## 2026-10-27 — Require full configured PAPER startup allocation
+- core/paper_budget.reserve now reserves the complete requested paper_initial_capital or defers with no cash/event/allocation mutation; min(requested,cash) partial launches removed.
+- Existing identified allocations remain resumable without top-ups, resets or wallet changes. Supervisor warning explicitly names insufficient cash for configured initial capital. Unused cash remains in the pool until a full allocation is available.
+- Existing small sessions, including NIL, are not force-closed or rewritten. No PM2 deployment or automatic repair performed by this change.

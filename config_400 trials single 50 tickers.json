@@ -1,0 +1,106 @@
+{
+  "testnet": false,
+  "limit_order_enabled": false,
+  "limit_offset_pct": 0.1,
+  "limit_timeout_sec": 30,
+  "min_notional_usdt": 7.0,
+  "paper_mode": true,
+  "max_orders_per_second": 10,
+  "min_cycles_for_rank": 15,
+  "min_cycles_for_rotation": 6,
+  "max_bots": 10,
+  "paper_mode_bots": 10,
+  "max_replace_per_cycle": 10,
+  "probation_period_days": 0.01,
+  "backtest_period_days": 0.125,
+  "supervisor_interval_days": 0.005,
+  "scanner_period_days": 0.125,
+  "replacement_efficiency_threshold_pct": 50.0,
+  "max_drawdown_limit": 200.0,
+  "max_drawdown_cooldown_days": 1.0,
+  "equity_trailing_stop_pct": 0.274422393205085,
+  "equity_trailing_stop_activation_pct": 5.23733679321035,
+  "equity_trailing_stop_timeout_sec": 24.92,
+  "toxic_cooldown_days": 0.102017762157353,
+  "use_v2_scoring": true,
+  "scoring_drawdown_weight": 2.0,
+  "telegram_enabled": false,
+  "telegram_use_queue": false,
+  "telegram_summary_interval_min": 1,
+  "portfolios": [
+    {
+      "name": "SyntheticMarketNeutral",
+      "initial_capital": 1000.0,
+      "paper_initial_capital": 1000.0,
+      "paper_account_free_margin": 1000.0,
+      "paper_min_free_margin_pct": 15.0,
+      "margin_ratio_warning": 3.0,
+      "margin_ratio_critical": 1.5,
+      "liquidation_distance_warn_pct": 0.0,
+      "liquidation_distance_crit_pct": 0.0,
+      "post_factum_liquidation_check": false,
+      "siphoning_threshold_pct": 989.933581187223,
+      "targets": {
+        "BASE_LONG": {
+          "share": 0.25,
+          "leverage": 6
+        },
+        "BASE_SHORT": {
+          "share": 0.25,
+          "leverage": 6
+        },
+        "VIRTUAL": {
+          "share": 0.5,
+          "leverage": 1
+        }
+      },
+      "trend_add_block": {
+        "pct": 0.0109721522350018,
+        "window_bars": 60.16
+      },
+      "safety_guards": {
+        "max_spread_pct": 0.15,
+        "max_price_velocity_pct": 2.06217519879794,
+        "velocity_window_sec": 59.04,
+        "trend_min_move_pct": 0.514922195821224,
+        "trend_eff_threshold": 0.582958543919554,
+        "net_move_block_pct": 1.89794004644734,
+        "net_move_window_sec": 71.44,
+        "trend_lookback_bars": 28.54
+      },
+      "fuse_enabled": false,
+      "rebalance_threshold_surplus": 0.027276688387955,
+      "rebalance_threshold_deficit": 0.0251160273176015,
+      "ticker_thresholds": {
+        "ZECUSDT": {
+          "surplus": 0.031,
+          "deficit": 0.031
+        }
+      }
+    }
+  ],
+  "rebalance_share_trail_distance": 0.0223534011574004,
+  "live_swarm": [],
+  "use_real_whitelist": false,
+  "real_whitelist": [],
+  "black_list": [],
+  "toxic_blacklist": {},
+  "toxic_blacklist_paper": {},
+  "toxic_blacklist_real": {},
+  "tickers": [
+    "AGTUSDT",
+    "ARIAUSDT",
+    "BEATUSDT",
+    "CAPUSDT",
+    "HUMAUSDT",
+    "INJUSDT",
+    "IRYSUSDT",
+    "JCTUSDT",
+    "QNTUSDT",
+    "USUSDT"
+  ],
+  "base_ticker": "ARIAUSDT",
+  "probation_paper": {},
+  "probation_real": {},
+  "paper_backtest_gate": true
+}

@@ -5,6 +5,7 @@ import os
 import time
 import math
 import random
+import re
 import sys
 import shutil
 from typing import Dict, List, Set, Any
@@ -170,7 +171,7 @@ async def stop_bot(ticker: str, is_paper: bool = False):
             from core.paper_budget import release
             release(BASE_PATH, ticker,
                     await safe_load_json(str(CORE_PATH / f"paper_state_{ticker}.json"), {}),
-                    await safe_load_json(str(CORE_PATH / f"paper_shadow_{ticker}.json"), {}))
+                    await safe_load_json(str(CORE_PATH / f"paper_shadow_{ticker}.json"), {}), rotation=True)
     except FileNotFoundError:
         logger.error(f"PM2 binary not found — cannot delete {proc_name}")
     except OSError as e:
@@ -405,6 +406,12 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
     logger.info(f"✨ Reset {'paper' if is_paper else 'real'} state files for {ticker} to clean initial values (capital: {final_capital}).")
 
 async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
+    if is_paper and config and (CORE_PATH / 'paper_budget.sqlite').exists():
+        from core.paper_budget import ticker_history
+        loss_at = ticker_history(BASE_PATH, ticker)['loss_at']
+        if loss_at and loss_at + config.get('toxic_cooldown_days', 0.1) * 86400 > time.time():
+            logger.warning(f"PAPER loss cooldown blocks launch: {ticker}")
+            return
     prefix = "paper" if is_paper else "real"
     existing = await safe_load_json(str(CORE_PATH / f"{prefix}_state_{ticker}.json"), {})
     if existing.get("startup_blocked") or existing.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
@@ -440,7 +447,7 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
         from core.paper_budget import reserve, bind
         capital, fresh, identity = reserve(BASE_PATH, ticker, config.get("portfolios", [{}])[0].get("paper_initial_capital", 1000))
         if capital <= 0:
-            logger.warning(f"PAPER budget exhausted; launch deferred: {ticker}")
+            logger.warning(f"PAPER cash below configured initial capital; launch deferred: {ticker}")
             return
         if fresh or identity is None:
             await reset_bot_state_files(ticker, True, config, capital_override=capital)
@@ -569,7 +576,9 @@ async def selective_merge_incubator(
     scanner_new = [t for t in scanner_top if t not in old_set]
 
     # 4. Формируем финал: прибыльные + незримые (оба защищены), потом конкуренция
-    final = list(profitable) + list(immature)  # Защищённые боты — всегда в рое
+    idle = {t for t in old_set if perf_map.get(t, {}).get('idle')}
+    unprofitable_mature -= idle
+    final = list(profitable) + list(immature - profitable) + list(idle - profitable - immature)
     if len(final) > max_bots:
         raise ValueError(f"Protected PAPER sessions exceed capacity: {len(final)} > {max_bots}; reconcile before rotation")
 
@@ -625,6 +634,52 @@ def _calc_rotation_score(ticker: str, p: dict, min_cycles: int) -> float:
         # Чтобы новые тикеры с proxy > 0 могли вытеснить убыточных
         return net_pnl * 0.01  # маленький отрицательный скор
 
+def paper_activity_at(root, ticker, state):
+    if state.get('initial_build_pending') or state.get('paper_close_complete') or state.get('startup_blocked'):
+        return None
+    anchor = state.get('last_rebalance_completed_at') or state.get('initial_build_completed_at')
+    start = state.get('started_at', 0)
+    if anchor is not None:
+        return anchor if isinstance(anchor, (int, float)) and math.isfinite(anchor) and anchor >= start else None
+    path = root / 'core/logs' / f'paper_{ticker}.log'
+    try:
+        for line in reversed(path.read_text(encoding='utf-8', errors='replace').splitlines()):
+            if re.search(r'Rebalance #\d+ complete\.', line):
+                at = time.mktime(time.strptime(line[:19], '%Y-%m-%d %H:%M:%S'))
+                if at >= start:
+                    return at
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def rotate_idle(final, old, candidates, performance):
+    final = list(final)
+    metrics = {r['symbol']:r.get('backtest', {}) for r in candidates}
+    for ticker in old:
+        if not performance.get(ticker, {}).get('idle'):
+            continue
+        current = metrics.get(ticker, {})
+        if 'error' in current or 'pass' not in current:
+            continue
+        if not current['pass']:
+            final = [t for t in final if t != ticker]
+            logger.info(f'PAPER idle gate rejected: {ticker}')
+            continue
+        for candidate in candidates:
+            symbol = candidate['symbol']
+            test = metrics[symbol]
+            if symbol in final or symbol in old or not test.get('pass') or 'error' in test:
+                continue
+            if (test['net_pct'] >= current['net_pct'] and test['max_dd_pct'] <= current['max_dd_pct']
+                    and (test['net_pct'] > current['net_pct'] or test['max_dd_pct'] < current['max_dd_pct'])
+                    and performance[symbol]['profit'] > performance[ticker]['profit']):
+                final = [symbol if t == ticker else t for t in final]
+                logger.info(f'PAPER idle replacement: {ticker} -> {symbol}; backtest and cumulative Net improved')
+                break
+    return final
+
+
 async def get_bot_efficiency(ticker: str, config: dict, is_real: bool = False) -> dict:
     """
     Строгий расчет эффективности на основе непрерывного трека инкубатора.
@@ -645,10 +700,19 @@ async def get_bot_efficiency(ticker: str, config: dict, is_real: bool = False) -
         }
 
     profit_usdt = float(state.get("last_profit", 0.0))
+    session_profit = profit_usdt
+    if not is_real and (CORE_PATH / "paper_budget.sqlite").exists():
+        from core.paper_budget import ticker_history
+        history = ticker_history(BASE_PATH, ticker)
+        profit_usdt = history['closed_net'] + (session_profit if history['active_session'] == str(state.get('started_at')) else 0)
     cycles = int(state.get("rebalance_cycles", 0))
+    activity = None if is_real else paper_activity_at(BASE_PATH, ticker, state)
 
     return {
         "profit": profit_usdt,
+        "session_profit": session_profit,
+        "activity_at": activity,
+        "idle": activity is not None and time.time() - activity >= 3 * 3600,
         "cycles": cycles,
         "eff": profit_usdt / max(cycles, min_cycles),
         "trailing_stop_paper_timeout_end": state.get("trailing_stop_paper_timeout_end", 0.0)
@@ -863,20 +927,28 @@ async def manage_swarm():
         from core.paper_budget import read_budget
         reserved_paper = set(read_budget(BASE_PATH)["allocations"])
     old_incubator = sorted(set(running_paper_from_pm2).union(reserved_paper))
+    if (CORE_PATH / "paper_budget.sqlite").exists():
+        from core.paper_budget import ticker_history
+        cooldown = config.get('toxic_cooldown_days', 0.1) * 86400
+        blocked = {t for t in set(old_incubator).union(r['symbol'] for r in clean_scanner)
+                   if ticker_history(BASE_PATH, t)['loss_at'] + cooldown > time.time()}
+        clean_scanner = [r for r in clean_scanner if r['symbol'] not in blocked]
+        old_incubator = [t for t in old_incubator if t not in blocked]
 
     # Фильтруем тикеры в toxic_blacklist_paper — они не должны попадать в инкубатор
     old_incubator = [t for t in old_incubator if t not in bl_paper
                      and config.get("probation_paper", {}).get(t, 0) <= time.time()]
 
+    old_perf_tasks = [get_bot_efficiency(t, config) for t in old_incubator]
+    old_perf_results = await asyncio.gather(*old_perf_tasks)
+    global_perf_map = dict(zip(old_incubator, old_perf_results))
+    idle_tickers = {t for t in old_incubator if global_perf_map[t].get('idle')}
     # Собираем метрики для старых тикеров (для оценки PnL в ротации)
     if config.get("paper_backtest_gate", False):
         from scanner.backtest_gate import filter_candidates
         before_gate = len(clean_scanner)
-        clean_scanner = await filter_candidates(BASE_PATH, clean_scanner, config, set(old_incubator))
+        clean_scanner = await filter_candidates(BASE_PATH, clean_scanner, config, set(old_incubator), reassess=idle_tickers)
         logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; closed24h, Net>0, DD<=50%, cycles>=2")
-    old_perf_tasks = [get_bot_efficiency(t, config) for t in old_incubator]
-    old_perf_results = await asyncio.gather(*old_perf_tasks)
-    global_perf_map = dict(zip(old_incubator, old_perf_results))
 
     # Selective Rotation: мержим старых + новых
     limit_bots = config.get("max_bots", 20)
@@ -886,6 +958,11 @@ async def manage_swarm():
         config=config,
         perf_map=global_perf_map,
     )
+    if idle_tickers and config.get('paper_backtest_gate', False):
+        new_tickers = [r['symbol'] for r in clean_scanner if r['symbol'] not in global_perf_map]
+        new_performance = await asyncio.gather(*(get_bot_efficiency(t, config) for t in new_tickers))
+        global_perf_map.update(zip(new_tickers, new_performance))
+        final_incubator = rotate_idle(final_incubator, old_incubator, clean_scanner, global_perf_map)
 
     logger.info(f"📋 Incubator ready: {final_incubator}")
 

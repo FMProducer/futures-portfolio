@@ -14,6 +14,26 @@ M = "futures_portfolio.supervisor.swarm_manager"
 def isolate_supervisor_log(monkeypatch):
     monkeypatch.setattr(logging.getLogger("Supervisor"), "handlers", [logging.NullHandler()])
     monkeypatch.setattr('core.paper_budget.read_budget', lambda root: {'allocations':{}})
+    monkeypatch.setattr('core.paper_budget.ticker_history', lambda root, ticker: {'closed_net':0, 'loss_at':0, 'active_session':'None'})
+
+
+@pytest.mark.asyncio
+async def test_paper_cumulative_profit_and_loss_cooldown(tmp_path, monkeypatch):
+    from futures_portfolio.supervisor import swarm_manager as manager
+    (tmp_path / 'core').mkdir()
+    (tmp_path / 'core/paper_budget.sqlite').touch()
+    monkeypatch.setattr(manager, 'CORE_PATH', tmp_path / 'core')
+    monkeypatch.setattr(manager, 'BASE_PATH', tmp_path)
+    monkeypatch.setattr('core.paper_budget.ticker_history', lambda root, ticker: {
+        'closed_net':-100, 'loss_at':1000, 'active_session':'2'})
+    monkeypatch.setattr(manager.time, 'time', lambda: 1100)
+    with patch(f'{M}.safe_load_json', AsyncMock(return_value={
+            'started_at':2, 'last_profit':20, 'rebalance_cycles':7})):
+        metrics = await get_bot_efficiency('A', {})
+        assert metrics['profit'] == -80 and metrics['session_profit'] == 20
+    with patch(f'{M}.asyncio.create_subprocess_exec', AsyncMock()) as launch:
+        await manager.start_bot('A', True, {'toxic_cooldown_days':0.1})
+        launch.assert_not_called()
 
 def test_calculate_bot_score():
     # is_in_drawdown=True -> INF

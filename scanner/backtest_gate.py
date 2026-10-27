@@ -44,7 +44,7 @@ def effective_config(config):
     return {k:config[k] for k in keys if k in config}
 
 
-async def evaluate(root, symbols, config, end):
+async def evaluate(root, symbols, config, end, report_dir=None):
     import pandas as pd
     from backtest.backtest_rebalance import run_backtest
     effective = effective_config(config)
@@ -57,7 +57,7 @@ async def evaluate(root, symbols, config, end):
     if effective.get('funding_scenario'):
         source.update(Path(effective['funding_scenario']).read_bytes())
     key = hashlib.sha256(encoded+str(end).encode()+source.digest()).hexdigest()[:20]
-    folder = root/"reports/backtest_gate"/key
+    folder = (report_dir if report_dir is not None else root/"reports/backtest_gate")/key
     folder.mkdir(parents=True, exist_ok=True)
     cfg = folder/"effective_config.json"
     cfg.write_bytes(encoded)
@@ -133,8 +133,8 @@ def rank_candidates(candidates, results, existing):
     return [r if r['symbol'] in existing else next(ordered) for r in admitted]
 
 
-async def filter_candidates(root, candidates, config, existing):
-    symbols = [r['symbol'] for r in candidates if r['symbol'] not in existing]
+async def filter_candidates(root, candidates, config, existing, reassess=()):
+    symbols = list(dict.fromkeys([r['symbol'] for r in candidates if r['symbol'] not in existing] + sorted(reassess)))
     if not symbols:
         return candidates
     end = int(time.time()//3600)*3600000
@@ -155,6 +155,12 @@ async def filter_candidates(root, candidates, config, existing):
                 await proc.wait()
             raise
     ranked = rank_candidates(candidates, results, existing)
+    for candidate in ranked:
+        if candidate['symbol'] in results:
+            candidate['backtest'] = results[candidate['symbol']]
+    for symbol in reassess:
+        if not any(r['symbol'] == symbol for r in ranked):
+            ranked.append({'symbol':symbol, 'backtest':results[symbol]})
     request.with_name('ranking.json').write_text(json.dumps(ranked, indent=2))
     return ranked
 

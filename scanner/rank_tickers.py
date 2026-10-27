@@ -139,6 +139,9 @@ class TickerScanner:
             try:
                 with open("tickers.txt", "r", encoding="utf-8") as f:
                     white_list = {line.strip() for line in f if line.strip()}
+                if not white_list:
+                    logger.warning("Empty tickers.txt; no candidates admitted.")
+                    return []
             except Exception as e:
                 logger.error(f"Failed to load tickers.txt: {e}")
 

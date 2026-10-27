@@ -56,3 +56,24 @@ async def test_gate_rejects_incomplete_window(tmp_path, monkeypatch):
     assert not result['TESTUSDT']['pass']
     assert 'Missing, duplicate or unclosed' in result['TESTUSDT']['error']
     assert not list(tmp_path.rglob('*.feather'))
+
+
+@pytest.mark.asyncio
+async def test_gate_reassesses_idle_and_new_candidates_in_one_closed_window(tmp_path, monkeypatch):
+    from futures_portfolio.scanner.backtest_gate import filter_candidates
+    from unittest.mock import AsyncMock
+    response = {'NEW':{'pass':True, 'net_pct':2, 'max_dd_pct':1},
+                'OLD':{'pass':False, 'net_pct':-1, 'max_dd_pct':2}}
+    def spawn(*args, **kwargs):
+        from pathlib import Path
+        Path(args[-1]).write_text(json.dumps(response))
+        process = AsyncMock()
+        process.wait.return_value = 0
+        return process
+    monkeypatch.setattr('asyncio.create_subprocess_exec', AsyncMock(side_effect=spawn))
+    monkeypatch.setattr('time.time', lambda: 10000)
+    ranked = await filter_candidates(tmp_path, [{'symbol':'NEW'}], {}, {'OLD'}, reassess={'OLD'})
+    request = json.loads((tmp_path/'reports/backtest_gate/request.json').read_text())
+    assert request['symbols'] == ['NEW', 'OLD'] and request['end'] == 7200000
+    assert ranked[0]['backtest']['pass']
+    assert ranked[1]['symbol'] == 'OLD' and not ranked[1]['backtest']['pass']
