@@ -19,7 +19,7 @@ class PaperClosePathTests(unittest.IsolatedAsyncioTestCase):
         self.core.mkdir()
         (self.core / "paper_budget.sqlite").touch()
         self.events = []
-        self.release = Mock(side_effect=lambda *args: self.events.append("release"))
+        self.release = Mock(side_effect=lambda *args, **kwargs: self.events.append("release"))
         self.close_code = 0
         probe = ("from importlib.machinery import PathFinder\nimport sys\nfrom pathlib import Path\n"
                  "spec = PathFinder.find_spec('core', sys.path)\n"

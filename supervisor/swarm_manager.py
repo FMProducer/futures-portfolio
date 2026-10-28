@@ -732,6 +732,13 @@ async def manage_swarm():
             raise RuntimeError("Paper-only swarm refuses to manage existing REAL bots or allocations")
         logger.info("PAPER ONLY: exchange reconciliation and REAL process management disabled.")
 
+    from core.paper_budget import reconcile_terminal_allocations
+    returned, blocked_returns = reconcile_terminal_allocations(BASE_PATH)
+    for ticker in returned:
+        logger.info(f"PAPER terminal capital returned before selection: {ticker}")
+    for ticker, reason in blocked_returns.items():
+        logger.error(f"PAPER allocation retained; reconciliation required: {ticker}: {reason}")
+
     # [P1] O(1) lookup: конвертируем list → set для проверок в runtime
     if "black_list" in config and isinstance(config["black_list"], list):
         config["black_list"] = set(config["black_list"])
@@ -837,7 +844,7 @@ async def manage_swarm():
                 if state_path.exists():
                     try:
                         s = safe_load_json_sync(str(state_path), {})
-                        if s.get("trailing_stop_triggered"):
+                        if s.get("trailing_stop_triggered") and not s.get("paper_close_complete"):
                             s["trailing_stop_triggered"] = False
                             s["trailing_stop_violation_start"] = 0.0
                             s["trailing_stop_paper_timeout_end"] = 0.0
@@ -926,7 +933,7 @@ async def manage_swarm():
     if (CORE_PATH / "paper_budget.sqlite").exists():
         from core.paper_budget import read_budget
         reserved_paper = set(read_budget(BASE_PATH)["allocations"])
-    old_incubator = sorted(set(running_paper_from_pm2).union(reserved_paper))
+    old_incubator = sorted(set(running_paper_from_pm2).union(reserved_paper) - set(returned))
     if (CORE_PATH / "paper_budget.sqlite").exists():
         from core.paper_budget import ticker_history
         cooldown = config.get('toxic_cooldown_days', 0.1) * 86400

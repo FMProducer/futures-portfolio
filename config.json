@@ -88,19 +88,16 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "AINUSDT",
     "APRUSDT",
+    "BEATUSDT",
     "BREVUSDT",
     "CTUSDT",
     "ERAUSDT",
-    "IRYSUSDT",
     "JCTUSDT",
     "REZUSDT"
   ],
   "base_ticker": "APRUSDT",
-  "probation_paper": {
-    "BEATUSDT": 1793204311.1178427
-  },
+  "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
 }

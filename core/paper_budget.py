@@ -117,3 +117,62 @@ def read_budget(root):
         excluded = sum(float(row[0]) for row in db.execute("SELECT amount FROM events WHERE kind='excluded_historical_gain'"))
     return {"initial":float(initial), "cash":float(cash), "created":created, "allocations":allocations,
             "unverified_historical_gain":excluded}
+
+
+def reconcile_terminal_allocations(root):
+    """Return proven terminal wallets independently of process presence."""
+    if not database(root).exists():
+        return [], {}
+    with sqlite3.connect(database(root).resolve().as_uri()+"?mode=ro", uri=True) as db:
+        rows = db.execute("SELECT ticker,capital,session FROM allocations WHERE released=0").fetchall()
+    returned, blocked = [], {}
+    for ticker, capital, identity in rows:
+        try:
+            if not ticker.isascii() or not ticker.isalnum() or not identity:
+                raise ValueError("Unidentified PAPER allocation")
+            number = Decimal(identity)
+            if not number.is_finite() or number <= 0:
+                raise ValueError("Invalid PAPER identity")
+            state_path = root/"core"/f"paper_state_{ticker}.json"
+            wallet_path = root/"core"/f"paper_shadow_{ticker}.json"
+            archive_path = root/"history"/f"paper_close_{ticker}_{identity}.json"
+            state_raw, wallet_raw = state_path.read_bytes(), wallet_path.read_bytes()
+            state, wallet = json.loads(state_raw), json.loads(wallet_raw)
+            if str(state.get("started_at")) != identity:
+                raise ValueError("PAPER allocation/state identity mismatch")
+            if not state.get("paper_close_complete") and not archive_path.exists():
+                continue
+            archive = json.loads(archive_path.read_bytes())
+            if archive.get("state") != state or archive.get("paper_state") != wallet or not archive.get("close_event"):
+                raise ValueError("PAPER terminal archive/state/wallet mismatch")
+            if state.get("base_ticker") != ticker or wallet.get("base_ticker") != ticker or amount(state["initial_tpv"]) != amount(capital):
+                raise ValueError("PAPER terminal ticker/capital mismatch")
+            positions = wallet.get("positions", {})
+            if not all(f"{ticker}_{leg}" in positions for leg in ("LONG", "SHORT")):
+                raise ValueError("PAPER terminal positions missing")
+            if any(not Decimal(str(q)).is_finite() or Decimal(str(q)) != 0 for q in positions.values()):
+                raise ValueError("PAPER terminal positions are not flat")
+            if any(state.get(k) for k in ("rebalance_inflight", "initial_build_pending", "startup_blocked", "cash_invariant_violation")) or state.get("funding_halt", {}).get("active"):
+                raise ValueError("PAPER terminal execution/accounting unresolved")
+            if list(state_path.parent.glob(state_path.name+".funding_intent*")):
+                raise ValueError("PAPER terminal funding intent unresolved")
+            receipts = wallet.get("share_fill_receipts", {})
+            suffix = f"{identity}:{state.get('rebalance_cycles', 0)}"
+            if archive["close_event"] not in (f"stop:{suffix}", f"trailing:{suffix}"):
+                raise ValueError("PAPER terminal archive event mismatch")
+            closing = [(key, receipt) for key, receipt in receipts.items()
+                       if receipt.get("event_id") in (f"stop:{suffix}", f"trailing:{suffix}")]
+            if not closing or any(
+                receipt.get("type") not in ("LONG", "SHORT")
+                or key != f"paper-close:{receipt['event_id']}:{receipt['type']}"
+                or receipt.get("symbol") != f"{ticker}_{receipt['type']}"
+                or str(receipt.get("reduce_only")).lower() != "true"
+                for key, receipt in closing):
+                raise ValueError("PAPER terminal closing receipts missing or inconsistent")
+            if state_path.read_bytes() != state_raw or wallet_path.read_bytes() != wallet_raw:
+                raise ValueError("PAPER terminal snapshots changed during reconciliation")
+            release(root, ticker, state, wallet)
+            returned.append(ticker)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, ArithmeticError) as error:
+            blocked[ticker] = str(error)
+    return returned, blocked

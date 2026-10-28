@@ -2244,6 +2244,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 state["last_profit"] = total_tpv_final - initial_tpv
                 state["total_pnl_pct"] = safe_calc_res.get("total_pnl_pct", 0.0)
                 state["last_update"] = time.time()
+                state["valuation_at"] = state["last_update"]
+                state["valuation_price"] = float(price)
                 state_dirty = True
 
                 # SURPLUS = Current Total Capital (including reserve) - Initial Targeted Capital
