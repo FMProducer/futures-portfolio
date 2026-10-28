@@ -148,14 +148,14 @@
       "high": 0.75
     },
     "portfolios.0.safety_guards.net_move_block_pct": {
-      "enabled": true,
+      "enabled": false,
       "type": "float",
       "value": 2.14,
       "low": 0.5,
       "high": 3.5
     },
     "portfolios.0.safety_guards.net_move_window_sec": {
-      "enabled": true,
+      "enabled": false,
       "type": "int",
       "value": 72,
       "low": 30,
@@ -193,7 +193,7 @@
     },
     "equity_trailing_stop_timeout_sec": {
       "enabled": true,
-      "type": "int",
+      "type": "float",
       "value": 40,
       "low": 20,
       "high": 60
@@ -221,7 +221,7 @@
     },
     "portfolios.0.trend_add_block.window_bars": {
       "enabled": true,
-      "type": "int",
+      "type": "float",
       "value": 60,
       "low": 30,
       "high": 90
@@ -235,7 +235,7 @@
     },
     "portfolios.0.safety_guards.velocity_window_sec": {
       "enabled": true,
-      "type": "int",
+      "type": "float",
       "value": 60,
       "low": 30,
       "high": 90

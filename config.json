@@ -90,9 +90,10 @@
   "tickers": [
     "APRUSDT",
     "BEATUSDT",
-    "BREVUSDT",
+    "CAPUSDT",
     "CTUSDT",
     "ERAUSDT",
+    "INITUSDT",
     "JCTUSDT",
     "REZUSDT"
   ],
