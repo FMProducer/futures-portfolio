@@ -948,7 +948,7 @@ async def manage_swarm():
         from scanner.backtest_gate import filter_candidates
         before_gate = len(clean_scanner)
         clean_scanner = await filter_candidates(BASE_PATH, clean_scanner, config, set(old_incubator), reassess=idle_tickers)
-        logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; closed24h, Net>0, DD<=50%, cycles>=2")
+        logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; closed48h AND last24h, each Net>0, DD<=50%, cycles>=2")
 
     # Selective Rotation: мержим старых + новых
     limit_bots = config.get("max_bots", 20)

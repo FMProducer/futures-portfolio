@@ -855,7 +855,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     if len(nmg_prices) >= 2:
                         nmg_old = nmg_prices[0]
                         nmg_move = abs(close_prices[i] - nmg_old) / nmg_old if nmg_old > 0 else 0
-                        if nmg_move > tg_nmg_pct:
+                        if tg_nmg_pct > 0 and nmg_move > tg_nmg_pct:
                             blocked = [a["key"] for a in actions]
                             actions = []
                             tg_blocked_count += 1

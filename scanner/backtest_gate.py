@@ -67,19 +67,26 @@ async def evaluate(root, symbols, config, end, report_dir=None):
         if target.exists():
             results[symbol] = json.loads(target.read_text())
             continue
-        result = {"symbol":symbol, "pass":False, "start_ms":end-86400000, "end_exclusive_ms":end,
-                  "rules":{"window_hours":24,"min_net_exclusive":0,"max_dd_pct":50,"min_cycles":2},
+        result = {"symbol":symbol, "pass":False, "start_ms":end-172800000, "end_exclusive_ms":end,
+                  "rules":{"window_hours":[48,24],"min_net_exclusive":0,"max_dd_pct":50,"min_cycles":2},
                   "capital":capital, "config_sha256":hashlib.sha256(encoded).hexdigest(),
                   "source_sha256":source.hexdigest(), "created":time.time()}
         try:
-            params = urllib.parse.urlencode({"symbol":symbol,"interval":"1m","limit":1440,"endTime":end-1})
-            url = "https://fapi.binance.com/fapi/v1/klines?"+params
-            with urllib.request.urlopen(url,timeout=30) as response:raw=response.read()
-            bars = json.loads(raw)
-            if len(bars)!=1440 or [b[0] for b in bars]!=list(range(end-86400000,end,60000)) or any(b[6]>=end for b in bars):
-                raise ValueError("Missing, duplicate or unclosed minute bars")
             data = folder/symbol
             data.mkdir(exist_ok=True)
+            bars, urls = [], []
+            for start in (end-172800000, end-86400000):
+                params = urllib.parse.urlencode({"symbol":symbol,"interval":"1m","limit":1440,
+                                                 "startTime":start,"endTime":start+86400000-1})
+                url = "https://fapi.binance.com/fapi/v1/klines?"+params
+                with urllib.request.urlopen(url,timeout=30) as response:page=response.read()
+                (data/f"klines_{start}.json").write_bytes(page)
+                chunk = json.loads(page)
+                if len(chunk)!=1440 or [b[0] for b in chunk]!=list(range(start,start+86400000,60000)) or any(b[6]>=start+86400000 for b in chunk):
+                    raise ValueError("Missing, duplicate or unclosed minute bars")
+                bars.extend(chunk)
+                urls.append(url)
+            raw = json.dumps(bars).encode()
             (data/"klines.json").write_bytes(raw)
             frame = pd.DataFrame({"time":pd.to_datetime([b[0] for b in bars],unit="ms",utc=True),
                                   **{k:[float(b[i]) for b in bars] for i,k in enumerate(("open","high","low","close","volume"),1)}})
@@ -90,11 +97,19 @@ async def evaluate(root, symbols, config, end, report_dir=None):
                            frame[['time','open','high','low','close']].itertuples(index=False,name=None))):
                 raise ValueError("Invalid OHLC or volume")
             frame.to_feather(data/f"{symbol}_live.feather")
-            replay = await run_backtest(str(cfg),str(data),live_mode=False,ticker_override=symbol,
-                                        days=1,capital_override=capital,quiet=True)
-            result.update(closed_metrics(replay,float(frame['close'].iloc[-1])))
             result["data_sha256"] = hashlib.sha256(raw).hexdigest()
-            result["source_url"] = url
+            result["source_urls"] = urls
+            result["windows"] = {}
+            for hours in (48,24):
+                replay = await run_backtest(str(cfg),str(data),live_mode=False,ticker_override=symbol,
+                                            days=hours/24,capital_override=capital,quiet=True)
+                result["windows"][str(hours)] = {
+                    **closed_metrics(replay,float(frame['close'].iloc[-1])),
+                    "start_ms":end-hours*3600000, "end_exclusive_ms":end}
+            # Keep the existing 24-hour ranking contract; 48 hours adds an admission check.
+            result.update(result["windows"]["24"])
+            result["start_ms"] = end-172800000
+            result["pass"] = all(w["pass"] for w in result["windows"].values())
         except Exception as exc:
             result["error"] = f"{type(exc).__name__}: {exc}"
         temporary = target.with_suffix('.tmp')

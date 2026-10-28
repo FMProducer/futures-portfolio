@@ -8,6 +8,37 @@ from backtest.backtest_rebalance import run_backtest
 from core.calculator import PortfolioCalculator
 
 
+@pytest.mark.asyncio
+async def test_zero_net_move_threshold_disables_guard(tmp_path):
+    prices = [100.0 + i * 0.5 for i in range(45)]
+    pd.DataFrame({k: prices for k in ("open", "high", "low", "close", "volume")}).to_feather(
+        tmp_path / "BTCUSDT_live.feather"
+    )
+    config = {
+        "max_drawdown_limit": 200,
+        "portfolios": [{
+            "initial_capital": 1000,
+            "targets": {"BASE_LONG": {"share": 0.25, "leverage": 3},
+                        "BASE_SHORT": {"share": 0.25, "leverage": 3},
+                        "VIRTUAL": {"share": 0.50, "leverage": 1}},
+            "rebalance_threshold_surplus": 0.001,
+            "rebalance_threshold_deficit": 0.001,
+            "safety_guards": {"trend_lookback_bars": 2, "trend_eff_threshold": 2,
+                              "net_move_window_sec": 60, "max_price_velocity_pct": 100},
+        }],
+    }
+    path = tmp_path / "config.json"
+    counts = {}
+    for threshold in (0, 0.01):
+        config["portfolios"][0]["safety_guards"]["net_move_block_pct"] = threshold
+        path.write_text(json.dumps(config), encoding="utf-8")
+        result = await run_backtest(str(path), str(tmp_path), days=1, quiet=True)
+        assert result is not None and result["accounting_ok"]
+        counts[threshold] = result["trend_guard_blocks"]
+    assert counts[0] == 0
+    assert counts[0.01] > 0
+
+
 @pytest.mark.parametrize("price", [80, 100, 120])
 def test_virtual_surplus_bypasses_asset_fuse(price):
     targets = {

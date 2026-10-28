@@ -8,8 +8,8 @@
   "max_orders_per_second": 10,
   "min_cycles_for_rank": 15,
   "min_cycles_for_rotation": 6,
-  "max_bots": 10,
-  "paper_mode_bots": 10,
+  "max_bots": 8,
+  "paper_mode_bots": 8,
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
@@ -64,7 +64,7 @@
         "velocity_window_sec": 59.04,
         "trend_min_move_pct": 0.514922195821224,
         "trend_eff_threshold": 0.582958543919554,
-        "net_move_block_pct": 1.89794004644734,
+        "net_move_block_pct": 0.0,
         "net_move_window_sec": 71.44,
         "trend_lookback_bars": 28.54
       },
@@ -88,19 +88,19 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "AGTUSDT",
-    "ARIAUSDT",
-    "BEATUSDT",
-    "CAPUSDT",
-    "DOODUSDT",
-    "HUMAUSDT",
+    "AINUSDT",
+    "APRUSDT",
+    "BREVUSDT",
+    "CTUSDT",
+    "ERAUSDT",
     "IRYSUSDT",
     "JCTUSDT",
-    "QNTUSDT",
-    "USUSDT"
+    "REZUSDT"
   ],
-  "base_ticker": "ARIAUSDT",
-  "probation_paper": {},
+  "base_ticker": "APRUSDT",
+  "probation_paper": {
+    "BEATUSDT": 1793204311.1178427
+  },
   "probation_real": {},
   "paper_backtest_gate": true
 }

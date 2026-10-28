@@ -177,6 +177,19 @@ def _reductions(actions):
     return [a for a in actions if a.get("is_reduction", False)]
 
 
+async def test_zero_net_move_threshold_keeps_live_rebalances_enabled():
+    config = _make_config()
+    config["portfolios"][0]["trend_add_block"]["pct"] = 0
+    counts = {}
+    for threshold in (0, 0.1):
+        config["portfolios"][0]["safety_guards"]["net_move_block_pct"] = threshold
+        with patch(f"{__name__}._make_config", return_value=copy.deepcopy(config)):
+            calls = await _run_with_prices([60000, 61400, 61400, 61400])
+        counts[threshold] = len(calls)
+    assert counts[0] >= 2
+    assert counts[0.1] == 1
+
+
 async def test_up_move_blocks_short_adds_keeps_reductions():
     # First cycle (no move yet) executes everything; after +2.33% the short add is blocked.
     per_call = await _run_with_prices([60000, 61400, 61400, 61400])

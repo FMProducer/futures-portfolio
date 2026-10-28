@@ -1170,7 +1170,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     if nmg_point:
                         nmg_old_t, nmg_old_p = nmg_point
                         net_move = abs(price - nmg_old_p) / nmg_old_p
-                        if net_move > net_move_block_pct:
+                        if net_move_block_pct > 0 and net_move > net_move_block_pct:
                             nmg_triggered = True
                             if i % 5 == 0:
                                 logger.warning(f"🛡️ Net Move Guard: {base_ticker} moved {net_move*100:.2f}% in {int(now-nmg_old_t)}s (limit {net_move_block_pct*100:.1f}%). Blocking ALL actions.")

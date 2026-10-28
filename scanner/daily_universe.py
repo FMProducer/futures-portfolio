@@ -97,7 +97,7 @@ async def main(root=ROOT):
         run = reports/datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
         run.mkdir()
         status = {'created_utc':datetime.now(timezone.utc).isoformat(),
-                  'start_ms':end-86400000, 'end_exclusive_ms':end, 'status':'running'}
+                  'start_ms':end-172800000, 'window_hours':[48,24], 'end_exclusive_ms':end, 'status':'running'}
         write_json(run/'status.json', status)
         try:
             config = json.loads((root/'config.json').read_text(encoding='utf-8'))
