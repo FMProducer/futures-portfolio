@@ -71,12 +71,7 @@
       "fuse_enabled": false,
       "rebalance_threshold_surplus": 0.027276688387955,
       "rebalance_threshold_deficit": 0.0251160273176015,
-      "ticker_thresholds": {
-        "ZECUSDT": {
-          "surplus": 0.031,
-          "deficit": 0.031
-        }
-      }
+      "ticker_thresholds": {}
     }
   ],
   "rebalance_share_trail_distance": 0.0223534011574004,

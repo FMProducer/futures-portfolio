@@ -18,8 +18,8 @@
   "replacement_efficiency_threshold_pct": 50.0,
   "max_drawdown_limit": 200.0,
   "max_drawdown_cooldown_days": 1.0,
-  "equity_trailing_stop_pct": 0.274422393205085,
-  "equity_trailing_stop_activation_pct": 5.23733679321035,
+  "equity_trailing_stop_pct": 0.2,
+  "equity_trailing_stop_activation_pct": 1.7,
   "equity_trailing_stop_timeout_sec": 24.92,
   "toxic_cooldown_days": 0.102017762157353,
   "use_v2_scoring": true,
@@ -90,9 +90,9 @@
   "tickers": [
     "APRUSDT",
     "BEATUSDT",
+    "BMTUSDT",
     "CAPUSDT",
-    "CTUSDT",
-    "ERAUSDT",
+    "GRASSUSDT",
     "INITUSDT",
     "JCTUSDT",
     "REZUSDT"
