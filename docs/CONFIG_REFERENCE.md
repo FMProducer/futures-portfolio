@@ -593,3 +593,8 @@ python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT 
 - Для сохранения распределения 33/33/34 подтверждён кандидат **0.005/0.02**: Net **+726.348822 USDT**, MaxDD **19.823219%**.
 - Исходные параметры защит сохранены из-за отсутствия улучшения Net на этапе 33/33/34, а не потому, что защиты не работают. Проверки защит при 45/45/10, совместная полная оптимизация и out-of-sample не выполнены.
 - Рабочие config/state/процессы этим документом не изменяются. Новый код funding и любое применение в paper/live требуют отдельной проверки на точной версии.
+
+
+### PAPER idle timeout
+
+`paper_idle_hours` (top-level, default `6.0`): finite positive hours without a successful post-build rebalance before PAPER idle reassessment. The clock starts at completed initial build if no subsequent rebalance exists; otherwise at the last successful rebalance. Heartbeat and restart do not reset it. Expiry triggers the existing gate/replacement rules, not unconditional closure. Read by supervisor each normal cycle; changing it does not require restarting PAPER workers. Zero and negative values are invalid, not a disable switch.

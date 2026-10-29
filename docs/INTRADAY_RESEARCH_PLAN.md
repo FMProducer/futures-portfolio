@@ -417,3 +417,8 @@ Approved: new PAPER sessions must receive their complete configured paper_initia
 4. **Значимость и начало:** минимальное преимущество с учётом погрешности/разброса, точный начальный snapshot, UTC-границы новых окон и перенос состояния при сохранении общего бюджета потерь.
 
 Срок 1 + 4 суток, предел потерь 5% и положительный абсолютный Net уже утверждены и не являются открытыми параметрами. Численные значения остальных условий не назначаются автоматически. После фиксации оставшихся условий нужен отдельный явный запрос на запуск. Исследование, оптимизация и изменение работающего роя этим документом не разрешены.
+
+
+## PAPER idle timeout change — 29.10.2026
+
+User approved increasing the working swarm idle threshold from 3 to 6 hours after observing sessions closed with only initial build and commission losses under the x3/x3 configuration. The activity anchor remains completed initial build or the last successful rebalance; heartbeat/restart does not reset the clock. No strategy settings, gate thresholds, wallets or historical results are reset. Supervisor loads the change on its next normal cycle; workers do not require restart. Already closed sessions are not resurrected. Any future fixed-policy comparison must record this rule version; this change is not authorization to start that research. Economic improvement is unverified.

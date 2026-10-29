@@ -114,3 +114,44 @@ async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypat
     assert len(list(tmp_path.rglob('klines_*.json'))) == 2
     assert (await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},end))['TESTUSDT'] == result
     assert len(requests) == 2 and len(runs) == 2
+
+
+@pytest.mark.parametrize('wrapped', [False, True])
+def test_network_retry_allows_three_retries_then_success(monkeypatch, wrapped):
+    from urllib.error import URLError
+    from unittest.mock import Mock
+    from futures_portfolio.scanner.backtest_gate import read_public_url
+    error = URLError(TimeoutError('read timeout')) if wrapped else TimeoutError('read timeout')
+    request = Mock(side_effect=[error,error,error,io.BytesIO(b'ok')])
+    sleeps = Mock()
+    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('time.sleep', sleeps)
+    assert read_public_url('https://example.test') == b'ok'
+    assert request.call_count == 4
+    assert [c.args[0] for c in sleeps.call_args_list] == [1,2,3]
+
+
+def test_network_retry_exhaustion_propagates(monkeypatch):
+    from unittest.mock import Mock
+    from futures_portfolio.scanner.backtest_gate import read_public_url
+    request = Mock(side_effect=ConnectionResetError('reset'))
+    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('time.sleep', lambda delay: None)
+    with pytest.raises(ConnectionResetError):read_public_url('https://example.test')
+    assert request.call_count == 4
+
+
+@pytest.mark.parametrize('kind', ['http','data','certificate','url'])
+def test_non_network_errors_are_not_retried(monkeypatch, kind):
+    from urllib.error import HTTPError, URLError
+    from ssl import SSLCertVerificationError
+    from unittest.mock import Mock
+    from futures_portfolio.scanner.backtest_gate import read_public_url
+    error = {'http':HTTPError('https://example.test',429,'limited',{},None),
+             'data':ValueError('invalid data'),
+             'certificate':URLError(SSLCertVerificationError('bad certificate')),
+             'url':URLError('unsupported URL')}[kind]
+    request = Mock(side_effect=error)
+    monkeypatch.setattr('urllib.request.urlopen', request)
+    with pytest.raises(type(error)):read_public_url('https://example.test')
+    assert request.call_count == 1

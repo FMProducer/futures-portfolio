@@ -10,8 +10,11 @@ def isolate_log(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('elapsed,expected', [(10799, False), (10800, True)])
-async def test_three_hour_boundary(tmp_path, monkeypatch, elapsed, expected):
+@pytest.mark.parametrize('hours,elapsed,expected', [
+    (None,10800,False), (6,21599,False), (6,21600,True),
+    (3,10800,True), (12,21600,False),
+])
+async def test_configured_idle_boundary(tmp_path, monkeypatch, hours, elapsed, expected):
     from unittest.mock import AsyncMock
     from futures_portfolio.supervisor import swarm_manager as manager
     monkeypatch.setattr(manager, 'CORE_PATH', tmp_path)
@@ -20,7 +23,19 @@ async def test_three_hour_boundary(tmp_path, monkeypatch, elapsed, expected):
     monkeypatch.setattr(manager, 'safe_load_json', AsyncMock(return_value={
         'started_at':100, 'initial_build_completed_at':200,
         'last_update':200 + elapsed, 'last_profit':0, 'rebalance_cycles':1}))
-    assert (await manager.get_bot_efficiency('A', {}))['idle'] is expected
+    config = {} if hours is None else {'paper_idle_hours':hours}
+    assert (await manager.get_bot_efficiency('A', config))['idle'] is expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('hours', [0, -1, float('nan'), float('inf')])
+async def test_invalid_idle_timeout_is_rejected(monkeypatch, hours):
+    from unittest.mock import AsyncMock
+    from futures_portfolio.supervisor import swarm_manager as manager
+    monkeypatch.setattr(manager, 'safe_load_json', AsyncMock(return_value={'started_at':1}))
+    monkeypatch.setattr(manager, 'paper_activity_at', lambda *args: None)
+    with pytest.raises(ValueError, match='paper_idle_hours'):
+        await manager.get_bot_efficiency('A', {'paper_idle_hours':hours}, is_real=True)
 
 
 def test_idle_clock_uses_completed_actions_not_heartbeat_or_restart(tmp_path):

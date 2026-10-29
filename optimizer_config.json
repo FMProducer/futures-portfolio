@@ -29,7 +29,7 @@
       },
       "max_drawdown_limit": {
         "net": 0.0,
-        "maxdd": 0.80
+        "maxdd": 0.8
       },
       "toxic_cooldown_days": {
         "net": 0.02921398394830229,
@@ -101,51 +101,51 @@
     "max_drawdown_limit": {
       "enabled": false,
       "type": "int",
-      "value": 200.0,
+      "value": 200,
       "low": 5,
       "high": 50
     },
     "equity_trailing_stop_pct": {
       "enabled": true,
       "type": "float",
-      "value": 0.3,
-      "low": 0.05,
-      "high": 0.35
+      "value": 0.2110079209267216,
+      "low": 0.18990712883404945,
+      "high": 0.2321087130193938
     },
     "equity_trailing_stop_activation_pct": {
       "enabled": true,
       "type": "float",
-      "value": 7.0,
-      "low": 0.5,
-      "high": 10.0
+      "value": 1.294906440328766,
+      "low": 1.1654157962958895,
+      "high": 1.4243970843616427
     },
     "portfolios.0.rebalance_threshold_surplus": {
       "enabled": true,
       "type": "float",
-      "value": 0.031,
-      "low": 0.01,
-      "high": 0.1
+      "value": 0.08243131107822,
+      "low": 0.07418817997039799,
+      "high": 0.090674442186042
     },
     "portfolios.0.rebalance_threshold_deficit": {
       "enabled": true,
       "type": "float",
-      "value": 0.031,
-      "low": 0.01,
-      "high": 0.1
+      "value": 0.05378063805625515,
+      "low": 0.04840257425062964,
+      "high": 0.05915870186188067
     },
     "portfolios.0.safety_guards.trend_min_move_pct": {
       "enabled": true,
       "type": "float",
-      "value": 0.5,
-      "low": 0.25,
-      "high": 0.75
+      "value": 0.3292445294617389,
+      "low": 0.296320076515565,
+      "high": 0.3621689824079128
     },
     "portfolios.0.safety_guards.trend_eff_threshold": {
       "enabled": true,
       "type": "float",
-      "value": 0.55,
-      "low": 0.25,
-      "high": 0.75
+      "value": 0.6093394728040318,
+      "low": 0.5484055255236286,
+      "high": 0.670273420084435
     },
     "portfolios.0.safety_guards.net_move_block_pct": {
       "enabled": false,
@@ -164,19 +164,19 @@
     "portfolios.0.safety_guards.trend_lookback_bars": {
       "enabled": true,
       "type": "int",
-      "value": 30,
-      "low": 10,
-      "high": 60
+      "value": 26,
+      "low": 24,
+      "high": 28
     },
     "leverage": {
-      "enabled": true,
+      "enabled": false,
       "type": "int",
-      "value": 6,
+      "value": 3,
       "low": 3,
       "high": 6
     },
     "portfolios.0.fuse_enabled": {
-      "enabled": true,
+      "enabled": false,
       "type": "categorical",
       "value": false,
       "choices": [
@@ -187,23 +187,23 @@
     "rebalance_share_trail_distance": {
       "enabled": true,
       "type": "float",
-      "value": 0.04,
-      "low": 0.02,
-      "high": 0.06
+      "value": 0.05800887342949769,
+      "low": 0.05220798608654792,
+      "high": 0.06380976077244746
     },
     "equity_trailing_stop_timeout_sec": {
       "enabled": true,
       "type": "float",
-      "value": 40,
-      "low": 20,
-      "high": 60
+      "value": 34.454466312271094,
+      "low": 31.009019681043984,
+      "high": 37.89991294349821
     },
     "toxic_cooldown_days": {
       "enabled": true,
       "type": "float",
-      "value": 0.1,
-      "low": 0.01,
-      "high": 0.15
+      "value": 0.09014340672051,
+      "low": 0.081129066048459,
+      "high": 0.099157747392561
     },
     "max_drawdown_cooldown_days": {
       "enabled": false,
@@ -215,42 +215,42 @@
     "portfolios.0.trend_add_block.pct": {
       "enabled": true,
       "type": "float",
-      "value": 0.01,
-      "low": 0.005,
-      "high": 0.03
+      "value": 0.028709024961426542,
+      "low": 0.02583812246528389,
+      "high": 0.0315799274575692
     },
     "portfolios.0.trend_add_block.window_bars": {
       "enabled": true,
       "type": "float",
-      "value": 60,
-      "low": 30,
-      "high": 90
+      "value": 53.62327119407764,
+      "low": 48.26094407466987,
+      "high": 58.985598313485404
     },
     "portfolios.0.safety_guards.max_price_velocity_pct": {
       "enabled": true,
       "type": "float",
-      "value": 2.0,
-      "low": 1.0,
-      "high": 3.0
+      "value": 1.7162537475519108,
+      "low": 1.5446283727967198,
+      "high": 1.887879122307102
     },
     "portfolios.0.safety_guards.velocity_window_sec": {
       "enabled": true,
       "type": "float",
-      "value": 60,
-      "low": 30,
-      "high": 90
+      "value": 39.74433842359656,
+      "low": 35.76990458123691,
+      "high": 43.71877226595622
     },
     "portfolios.0.liquidation_distance_crit_pct": {
-      "enabled": true,
+      "enabled": false,
       "type": "float",
       "value": 0.0,
       "low": 0.0,
       "high": 0.0
     },
     "portfolios.0.siphoning_threshold_pct": {
-      "enabled": true,
+      "enabled": false,
       "type": "float",
-      "value": 1000.05,
+      "value": 1438.3754797439933,
       "low": 500.025,
       "high": 1500.0749999999998
     }

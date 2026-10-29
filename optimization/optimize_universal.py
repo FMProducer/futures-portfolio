@@ -167,8 +167,8 @@ def metrics(result):
 def aggregate(rows):
     if not rows:
         raise ValueError("No ticker results")
-    if any(row["max_dd_pct"] > 50 or row["liquidations"] != 0 for row in rows):
-        raise ValueError("Infeasible candidate: MaxDD > 50% or modeled liquidation")
+    if any(row["max_dd_pct"] > 100 or row["liquidations"] != 0 for row in rows):
+        raise ValueError("Infeasible candidate: MaxDD > 100% or modeled liquidation")
     return statistics.median(row["net_pct"] for row in rows), max(row["max_dd_pct"] for row in rows)
 
 
@@ -423,7 +423,7 @@ def main():
         "fixed_settings": fixed_settings(candidate(config, fixed_params), space),
         "importance_method": "PED-ANOVA on completed feasible trials; Net target negated because lower is better",
         "objectives": ["maximize median net_pct", "minimize worst ticker max_dd_pct"],
-        "constraints": {"max_dd_pct_each_ticker": 50, "modeled_liquidations": 0},
+        "constraints": {"max_dd_pct_each_ticker": 100, "modeled_liquidations": 0},
         "fixed_policy": {"shares": [0.25, 0.25, 0.5], "ticker_thresholds": {},
                          "other_fields": "Unchanged from source_config; not all are modeled by run_backtest"},
         "limitations": ["In-sample search; no holdout validation", "Independent ticker replays, not a swarm simulation",

@@ -10,11 +10,10 @@ import os
 from pathlib import Path
 import sys
 import time
-import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from scanner.backtest_gate import effective_config, evaluate, rank_candidates
+from scanner.backtest_gate import effective_config, evaluate, rank_candidates, read_public_url
 
 
 def top_symbols(exchange, tickers):
@@ -105,8 +104,7 @@ async def main(root=ROOT):
             snapshots = {}
             for name, endpoint in [('exchange','exchangeInfo'), ('volumes','ticker/24hr')]:
                 url = 'https://fapi.binance.com/fapi/v1/'+endpoint
-                with urllib.request.urlopen(url, timeout=30) as response:
-                    raw = response.read()
+                raw = read_public_url(url)
                 (run/(name+'.json')).write_bytes(raw)
                 snapshots[name] = json.loads(raw)
             candidates = top_symbols(snapshots['exchange'], snapshots['volumes'])

@@ -10,18 +10,19 @@
   "min_cycles_for_rotation": 6,
   "max_bots": 8,
   "paper_mode_bots": 8,
+  "paper_idle_hours": 6.0,
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
   "supervisor_interval_days": 0.005,
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
-  "max_drawdown_limit": 200.0,
+  "max_drawdown_limit": 200,
   "max_drawdown_cooldown_days": 1.0,
-  "equity_trailing_stop_pct": 0.274422393205085,
-  "equity_trailing_stop_activation_pct": 5.23733679321035,
-  "equity_trailing_stop_timeout_sec": 24.92,
-  "toxic_cooldown_days": 0.102017762157353,
+  "equity_trailing_stop_pct": 0.2110079209267216,
+  "equity_trailing_stop_activation_pct": 1.294906440328766,
+  "equity_trailing_stop_timeout_sec": 34.454466312271094,
+  "toxic_cooldown_days": 0.09014340672051,
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
   "telegram_enabled": false,
@@ -39,15 +40,15 @@
       "liquidation_distance_warn_pct": 0.0,
       "liquidation_distance_crit_pct": 0.0,
       "post_factum_liquidation_check": false,
-      "siphoning_threshold_pct": 989.933581187223,
+      "siphoning_threshold_pct": 1438.3754797439933,
       "targets": {
         "BASE_LONG": {
           "share": 0.25,
-          "leverage": 6
+          "leverage": 3
         },
         "BASE_SHORT": {
           "share": 0.25,
-          "leverage": 6
+          "leverage": 3
         },
         "VIRTUAL": {
           "share": 0.5,
@@ -55,47 +56,37 @@
         }
       },
       "trend_add_block": {
-        "pct": 0.0109721522350018,
-        "window_bars": 60.16
+        "pct": 0.028709024961426542,
+        "window_bars": 53.62327119407764
       },
       "safety_guards": {
         "max_spread_pct": 0.15,
-        "max_price_velocity_pct": 2.06217519879794,
-        "velocity_window_sec": 59.04,
-        "trend_min_move_pct": 0.514922195821224,
-        "trend_eff_threshold": 0.582958543919554,
-        "net_move_block_pct": 0.0,
-        "net_move_window_sec": 71.44,
-        "trend_lookback_bars": 28.54
+        "max_price_velocity_pct": 1.7162537475519108,
+        "velocity_window_sec": 39.74433842359656,
+        "trend_min_move_pct": 0.3292445294617389,
+        "trend_eff_threshold": 0.6093394728040318,
+        "net_move_block_pct": 2.14,
+        "net_move_window_sec": 72,
+        "trend_lookback_bars": 26
       },
       "fuse_enabled": false,
-      "rebalance_threshold_surplus": 0.027276688387955,
-      "rebalance_threshold_deficit": 0.0251160273176015,
-      "ticker_thresholds": {
-        "ZECUSDT": {
-          "surplus": 0.031,
-          "deficit": 0.031
-        }
-      }
+      "rebalance_threshold_surplus": 0.08243131107822,
+      "rebalance_threshold_deficit": 0.05378063805625515,
+      "ticker_thresholds": {}
     }
   ],
-  "rebalance_share_trail_distance": 0.0223534011574004,
+  "rebalance_share_trail_distance": 0.05800887342949769,
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
-  "black_list": [],
+  "black_list": [
+    "JCTUSDT"
+  ],
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "APRUSDT",
-    "BEATUSDT",
-    "BMTUSDT",
-    "CAPUSDT",
-    "GRASSUSDT",
-    "INITUSDT",
-    "JCTUSDT",
-    "REZUSDT"
+    "APRUSDT"
   ],
   "base_ticker": "APRUSDT",
   "probation_paper": {},

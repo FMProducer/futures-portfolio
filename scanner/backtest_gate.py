@@ -4,11 +4,34 @@ import asyncio
 import hashlib
 import json
 import math
+import logging
+import socket
+import ssl
+import http.client
+import urllib.error
 import sys
 import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+
+
+def read_public_url(url):
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:
+                return response.read()
+        except urllib.error.HTTPError:
+            raise
+        except (TimeoutError, ConnectionError, socket.gaierror,
+                http.client.IncompleteRead, urllib.error.URLError) as error:
+            reason = error.reason if isinstance(error, urllib.error.URLError) else error
+            if isinstance(reason, ssl.SSLCertVerificationError) or not isinstance(
+                    reason, (OSError, http.client.IncompleteRead)) or attempt == 3:
+                raise
+            logging.getLogger(__name__).warning(
+                "Public API network retry %s/3: %s (%s)", attempt+1, url, type(reason).__name__)
+            time.sleep(attempt+1)
 
 
 def closed_metrics(result, price):
@@ -79,7 +102,7 @@ async def evaluate(root, symbols, config, end, report_dir=None):
                 params = urllib.parse.urlencode({"symbol":symbol,"interval":"1m","limit":1440,
                                                  "startTime":start,"endTime":start+86400000-1})
                 url = "https://fapi.binance.com/fapi/v1/klines?"+params
-                with urllib.request.urlopen(url,timeout=30) as response:page=response.read()
+                page = read_public_url(url)
                 (data/f"klines_{start}.json").write_bytes(page)
                 chunk = json.loads(page)
                 if len(chunk)!=1440 or [b[0] for b in chunk]!=list(range(start,start+86400000,60000)) or any(b[6]>=start+86400000 for b in chunk):

@@ -69,7 +69,11 @@ class UniversalOptimizerTests(unittest.TestCase):
                 ((-10, 20), (5, 50), (1000, 30))]
         self.assertEqual(aggregate(rows), (5, 50))
         rows[0]["max_dd_pct"] = 50.01
-        with self.assertRaises(ValueError):
+        self.assertEqual(aggregate(rows), (5, 50.01))
+        rows[0]["max_dd_pct"] = 100
+        self.assertEqual(aggregate(rows), (5, 100))
+        rows[0]["max_dd_pct"] = 100.01
+        with self.assertRaisesRegex(ValueError, "MaxDD > 100%"):
             aggregate(rows)
         rows[0]["max_dd_pct"] = 20
         rows[0]["liquidations"] = 1
