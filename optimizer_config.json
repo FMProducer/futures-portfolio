@@ -122,16 +122,16 @@
     "portfolios.0.rebalance_threshold_surplus": {
       "enabled": true,
       "type": "float",
-      "value": 0.08243131107822,
-      "low": 0.07418817997039799,
-      "high": 0.090674442186042
+      "value": 0.04,
+      "low": 0.03,
+      "high": 0.05
     },
     "portfolios.0.rebalance_threshold_deficit": {
       "enabled": true,
       "type": "float",
-      "value": 0.05378063805625515,
-      "low": 0.04840257425062964,
-      "high": 0.05915870186188067
+      "value": 0.04,
+      "low": 0.03,
+      "high": 0.05
     },
     "portfolios.0.safety_guards.trend_min_move_pct": {
       "enabled": true,
@@ -178,7 +178,7 @@
     "portfolios.0.fuse_enabled": {
       "enabled": false,
       "type": "categorical",
-      "value": false,
+      "value": true,
       "choices": [
         false,
         true

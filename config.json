@@ -43,15 +43,15 @@
       "siphoning_threshold_pct": 1438.3754797439933,
       "targets": {
         "BASE_LONG": {
-          "share": 0.25,
+          "share": 0.23,
           "leverage": 3
         },
         "BASE_SHORT": {
-          "share": 0.25,
+          "share": 0.23,
           "leverage": 3
         },
         "VIRTUAL": {
-          "share": 0.5,
+          "share": 0.54,
           "leverage": 1
         }
       },
@@ -69,9 +69,9 @@
         "net_move_window_sec": 72,
         "trend_lookback_bars": 26
       },
-      "fuse_enabled": false,
-      "rebalance_threshold_surplus": 0.08243131107822,
-      "rebalance_threshold_deficit": 0.05378063805625515,
+      "fuse_enabled": true,
+      "rebalance_threshold_surplus": 0.04,
+      "rebalance_threshold_deficit": 0.04,
       "ticker_thresholds": {}
     }
   ],
@@ -79,14 +79,19 @@
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
-  "black_list": [
-    "JCTUSDT"
-  ],
+  "black_list": [],
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "APRUSDT"
+    "AINUSDT",
+    "APRUSDT",
+    "APTUSDT",
+    "BLURUSDT",
+    "NEARUSDT",
+    "PUMPUSDT",
+    "RAYSOLUSDT",
+    "VVVUSDT"
   ],
   "base_ticker": "APRUSDT",
   "probation_paper": {},
