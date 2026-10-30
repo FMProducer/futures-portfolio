@@ -34,8 +34,8 @@
       "name": "SyntheticMarketNeutral",
       "initial_capital": 1000.0,
       "paper_initial_capital": 1000.0,
-      "paper_account_free_margin": 1000.0,
-      "cash_reserve_usdt": 60000,
+      "paper_account_free_margin": 60000.0,
+      "cash_reserve_usdt": 0,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
@@ -87,18 +87,16 @@
   "toxic_blacklist_real": {},
   "tickers": [
     "APRUSDT",
-    "BLURUSDT",
-    "BULLAUSDT",
-    "GTCUSDT",
-    "LITUSDT",
-    "LSKUSDT",
+    "ENAUSDT",
+    "ICPUSDT",
+    "INITUSDT",
     "NILUSDT",
-    "QUSDT"
+    "QNTUSDT",
+    "QUSDT",
+    "ZAMAUSDT"
   ],
   "base_ticker": "APRUSDT",
-  "probation_paper": {
-    "PARTIUSDT": 1793386119.363866
-  },
+  "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
 }
