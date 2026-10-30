@@ -220,6 +220,41 @@ async def test_backtest_liquidation_config_switches(tmp_path, overrides, expecte
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("side, bar1, expected_liq_price", [
+    ("short", {"high": 135.0, "low": 105.0, "close": 110.0}, 135.0),
+    ("long", {"high": 105.0, "low": 60.0, "close": 95.0}, 60.0),
+])
+async def test_hard_liquidation_uses_adverse_bar_extreme(tmp_path, side, bar1, expected_liq_price):
+    """Intrabar wick through the MM level liquidates even when the bar close is safe.
+    3x leg on 1000 USDT at entry 100: short liq level 4000/30.12=132.8, long 2000/29.88=66.9."""
+    config = _flat_config()
+    portfolio = config["portfolios"][0]
+    portfolio.update(liquidation_distance_crit_pct=0.0, liquidation_distance_warn_pct=0.0)
+    portfolio["targets"] = {
+        "BASE_LONG": {"share": 1.0 if side == "long" else 0.0, "leverage": 3.0},
+        "BASE_SHORT": {"share": 1.0 if side == "short" else 0.0, "leverage": 3.0},
+        "VIRTUAL": {"share": 0.0},
+    }
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    pd.DataFrame({
+        "open": [100.0] * 3,
+        "high": [100.0, bar1["high"], 100.0],
+        "low": [100.0, bar1["low"], 100.0],
+        "close": [100.0, bar1["close"], 100.0],
+        "volume": [1.0] * 3,
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    res = await run_backtest(str(config_file), str(tmp_path), days=0.1,
+                            commission=0.0, slippage=0.0, quiet=True)
+    assert res is not None and res["accounting_ok"]
+    liqs = [e for e in res["events"] if e["kind"] == "liquidation"]
+    assert len(liqs) == 1 and liqs[0]["bar"] == 1
+    assert "HARD CROSS LIQUIDATION" in liqs[0]["detail"]
+    assert liqs[0]["price"] == pytest.approx(expected_liq_price)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("default_price", [80.0, 70.0])
 async def test_portfolio_default_returns_result_at_stop_bar(tmp_path, capsys, default_price):
     config = _flat_config()

@@ -582,7 +582,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             threshold_deficit = float(t_deficit)
             
         siphoning_threshold_pct: float = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
-        reinvestment_ratio: float = portfolio_cfg.get("reinvestment_ratio", 0.0)
+        # config ships reinvestment_ratio as null; 0 = reinvest nothing
+        reinvestment_ratio: float = float(portfolio_cfg.get("reinvestment_ratio") or 0.0)
         trail_distance: float = float(config.get("rebalance_share_trail_distance", 0.0))
         if not math.isfinite(trail_distance) or trail_distance < 0:
             raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -599,6 +600,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         max_drawdown_limit_pct: float = config.get("max_drawdown_limit", 100.0)  # по умолчанию 100% = отключён
 
         close_prices: npt.NDArray[np.float64] = df['close'].values.astype(np.float64)
+        # adverse-side extremes: exchanges mark liquidation continuously, not only at close
+        high_prices: npt.NDArray[np.float64] = df['high'].values.astype(np.float64)
+        low_prices: npt.NDArray[np.float64] = df['low'].values.astype(np.float64)
         step_sizes = {base_ticker: 0.001}
 
         sim = MarketOrderSlippageSimulator(commission_pct=commission, slippage_pct=slippage)
@@ -1292,13 +1296,20 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
             # --- 3. Post-Factum Cross-Margin Liquidation Check (Абсолютный Фоллбэк) ---
             if state.pos_long > 0 or state.pos_short > 0:
-                upnl_l = state.pos_long * (mid_price - state.long_entry_price) if state.pos_long > 0 else Decimal('0')
-                upnl_s = state.pos_short * (state.short_entry_price - mid_price) if state.pos_short > 0 else Decimal('0')
-                if post_factum_liquidation_check and state.hard_liquidation_triggered(mid_price, mmr):
-                    logger.warning(f"Bar {i}: HARD CROSS LIQUIDATION! Весь баланс суб-аккаунта уничтожен.")
+                # Exchanges mark liquidation continuously: the adverse bar extreme
+                # (high for net-short, low for net-long) is the worst TPV/MM point of the bar.
+                if state.pos_short >= state.pos_long:
+                    adverse_price = Decimal(str(max(high_prices[i], close_prices[i])))
+                else:
+                    adverse_price = Decimal(str(min(low_prices[i], close_prices[i])))
+                if post_factum_liquidation_check and state.hard_liquidation_triggered(adverse_price, mmr):
+                    liq_price = adverse_price
+                    upnl_l = state.pos_long * (liq_price - state.long_entry_price) if state.pos_long > 0 else Decimal('0')
+                    upnl_s = state.pos_short * (state.short_entry_price - liq_price) if state.pos_short > 0 else Decimal('0')
+                    logger.warning(f"Bar {i}: HARD CROSS LIQUIDATION at {float(liq_price)}! Весь баланс суб-аккаунта уничтожен.")
 
                     # The whole futures account (including the VIRTUAL cash bucket) is wiped.
-                    wiped_tpv = state.get_tpv(mid_price)
+                    wiped_tpv = state.get_tpv(liq_price)
                     state.realized_total += upnl_l + upnl_s
                     state.val_cash = Decimal('0')
                     state.virt_debt = Decimal('0')
@@ -1308,14 +1319,15 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.short_entry_price = Decimal('0')
                     state.liquidation_loss_total += wiped_tpv
                     state.liquidations_counter += 1
-                    state.check_accounting(mid_price, i, "hard_liquidation")
+                    state.check_accounting(liq_price, i, "hard_liquidation")
                     if state.share_trail is not None:
                         share_trail.reset_all(state.share_trail)
-                        state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
+                        state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(liq_price))),
                                         "hard liquidation wipe")
                     state.dormant_capital = Decimal(str(state.siphoning_reserve))
                     state.cooldown_until_bar = i + cooldown_bars_duration
-                    state.log_event(i, "liquidation", float(state.dormant_capital), "HARD CROSS LIQUIDATION")
+                    state.log_event(i, "liquidation", float(state.dormant_capital), "HARD CROSS LIQUIDATION",
+                                    price=float(liq_price))
                     state.log_event(i, "cooldown_start", float(state.dormant_capital),
                                     "hard liquidation", until_bar=int(state.cooldown_until_bar),
                                     reason="liquidation")
