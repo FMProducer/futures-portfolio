@@ -228,6 +228,16 @@
 - **Единицы:** USDT. Увеличение — все %-пороги соответствуют большим абсолютным суммам; PnL считается от новой базы. Уменьшение — наоборот. Отрицательное/0: `main.py:615` требует `target_initial > 0` для ребазирования; `total_pnl_pct` защищён `if initial_capital > 0` (`calculator.py:69`).
 - **Режимы:** live, supervisor, aggregator/analyzer, backtest.
 
+### `portfolios[].cash_reserve_usdt`
+
+- Optional additional funded USDT per bot, default `0`. Must be finite and nonnegative.
+- `initial_capital` / `paper_initial_capital` remain the trading capital. The initial wallet and PnL baseline include trading capital plus reserve. Target shares are scaled by trading capital / total wallet, preserving initial exposure.
+- Example: trading capital `200`, reserve `461`, targets `0.5 / 0.5 / 0` and leverage `3 / 3 / 1` produce a `661` USDT wallet and about `300` USDT initial notional on each futures leg. Fees, slippage and quantity rounding affect exact filled margins.
+- The reserve stays CASH when VIRTUAL share is zero, participates in subsequent wallet-relative rebalancing, and is included in collateral. It is not a separate protected savings account and does not guarantee survival.
+- Backtest `capital_override` overrides trading capital; reserve is added once. Scanner reports and PAPER supervisor allocations include the reserve. Reserve changes during a running session require a funded new session; no automatic top-up is performed.
+- Liquidation checks retain their existing switches. To reproduce the USUSDT research with model-liquidation detection, use `post_factum_liquidation_check: true`, warning/critical distance `0 / 0`. With checks disabled, zero counters do not establish liquidation safety. The constant backtest MMR is not a historical exchange-tier model.
+- The 460/461 USDT boundary was reproduced on USUSDT, 2026-09-30 11:00 through 2026-10-28 10:59 UTC. It is not a universal reserve recommendation. Offline runtime tests do not establish LIVE readiness; no running state is migrated automatically.
+
 ### `portfolios[].paper_initial_capital`
 - **Текущее значение:** `1000.0` | **Тип:** float, USDT
 - **Чтение:** `core/main.py:308, 561` (default 100.0) — база PnL в PAPER-режиме (SSOT: paper использует этот, real — `initial_capital`, комментарий `main.py:306`); `swarm_manager.py:306` (fallback на `initial_capital`, затем 115.0) — сброс paper-state; `backtest_rebalance.py:324` (default = `initial_capital`). Режимы: paper, supervisor, backtest. Диапазон в коде не проверяется.

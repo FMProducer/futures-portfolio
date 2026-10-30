@@ -142,6 +142,22 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(value=value), self.assertRaisesRegex(ValueError, "Invalid starting capital"):
                 await self.ns["reset_bot_state_files"]("QUSDT", True, self.config, capital_override=value)
 
+    async def test_cash_reserve_is_reserved_from_pool_and_not_created_by_reset(self):
+        self.config['portfolios'][0].update(paper_initial_capital=200, initial_capital=200,
+            cash_reserve_usdt=461, targets={
+                'BASE_LONG': {'share': .5, 'leverage': 3},
+                'BASE_SHORT': {'share': .5, 'leverage': 3},
+                'VIRTUAL': {'share': 0, 'leverage': 1}})
+        self.seed(equity=661)
+        funded = json.loads(self.state_path.read_text())
+        funded['initial_tpv'] = 661
+        self.state_path.write_text(json.dumps(funded))
+        initialize(self.root, 1, 661, {'QUSDT': json.loads(self.state_path.read_text())})
+        await self.ns['start_bot']('QUSDT', True, self.config)
+        self.assert_fresh(661)
+        self.assertEqual(read_budget(self.root)['allocations'], {'QUSDT': 661})
+        self.assertEqual(read_budget(self.root)['cash'], 0)
+
     async def test_smaller_allocation_keeps_actual_baseline_and_ath_in_bot(self):
         source = Path(__file__).resolve().parents[1] / "core/main.py"
         tree = ast.parse(source.read_text(encoding="utf-8"))

@@ -538,7 +538,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         # Инъекция параметров Кросс-Маржи из конфигурации
         paper_initial_capital: float = portfolio_cfg.get("paper_initial_capital", initial_capital)
         
-        targets: Dict[str, Any] = portfolio_cfg["targets"]
+        from core.capital import capital_with_reserve
+        trading_initial_capital = initial_capital
+        initial_capital, targets = capital_with_reserve(portfolio_cfg, trading_initial_capital)
+        cash_reserve_usdt = initial_capital - trading_initial_capital
         ticker_thresholds = portfolio_cfg.get("ticker_thresholds", {})
         
         if threshold_surplus_override is not None:
@@ -1140,7 +1143,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                         missing=missing)
                     else:
                         state.initial_build_pending = None
-                        if residual > 0:
+                        if residual > 0 and not (cash_reserve_usdt > 0 and target_v_share == 0):
                             moved = state.designate_virtual(residual)
                             state.log_event(i, "initial_residual_to_virtual",
                                             float(state.get_tpv(mid_price)),
@@ -1498,6 +1501,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "rebalances": state.rebalance_log,
             "siphoning_log": state.siphoning_log,
             "initial_capital": float(initial_capital),
+            "trading_initial_capital": float(trading_initial_capital),
+            "cash_reserve_usdt": float(cash_reserve_usdt),
             "final_equity": float(final_tpv_with_reserve),
             "final_tpv": float(final_tpv_with_reserve),
             "final_unrealized_pnl": float(final_unrealized),

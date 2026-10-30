@@ -34,24 +34,25 @@
       "initial_capital": 1000.0,
       "paper_initial_capital": 1000.0,
       "paper_account_free_margin": 1000.0,
+      "cash_reserve_usdt": 2305,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
       "liquidation_distance_warn_pct": 0.0,
       "liquidation_distance_crit_pct": 0.0,
-      "post_factum_liquidation_check": false,
+      "post_factum_liquidation_check": true,
       "siphoning_threshold_pct": 1438.3754797439933,
       "targets": {
         "BASE_LONG": {
-          "share": 0.23,
+          "share": 0.5,
           "leverage": 3
         },
         "BASE_SHORT": {
-          "share": 0.23,
+          "share": 0.5,
           "leverage": 3
         },
         "VIRTUAL": {
-          "share": 0.54,
+          "share": 0.0,
           "leverage": 1
         }
       },
@@ -84,14 +85,14 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "AINUSDT",
     "APRUSDT",
-    "APTUSDT",
-    "BLURUSDT",
-    "NEARUSDT",
-    "PUMPUSDT",
-    "RAYSOLUSDT",
-    "VVVUSDT"
+    "BULLAUSDT",
+    "GTCUSDT",
+    "LITUSDT",
+    "LSKUSDT",
+    "NILUSDT",
+    "PARTIUSDT",
+    "QUSDT"
   ],
   "base_ticker": "APRUSDT",
   "probation_paper": {},

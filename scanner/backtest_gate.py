@@ -95,6 +95,9 @@ async def evaluate(root, symbols, config, end, report_dir=None):
                   "capital":capital, "config_sha256":hashlib.sha256(encoded).hexdigest(),
                   "source_sha256":source.hexdigest(), "created":time.time()}
         try:
+            if effective["portfolios"][0].get("cash_reserve_usdt", 0):
+                from core.capital import capital_with_reserve
+                result["capital"], _ = capital_with_reserve(effective["portfolios"][0], capital)
             data = folder/symbol
             data.mkdir(exist_ok=True)
             bars, urls = [], []

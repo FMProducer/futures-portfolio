@@ -18,6 +18,7 @@ load_dotenv()
 
 from core.connector import BinanceConnector
 from core.calculator import PortfolioCalculator, initial_notional_after_fee
+from core.capital import capital_with_reserve
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
@@ -487,6 +488,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         target_initial_cap = float(portfolio_cfg.get("paper_initial_capital", 100.0))
     else:
         target_initial_cap = float(portfolio_cfg.get("initial_capital", 86.0))
+    configured_cash_reserve = portfolio_cfg.get("cash_reserve_usdt", 0)
+    target_initial_cap, targets = capital_with_reserve(portfolio_cfg, target_initial_cap)
     
     max_capital_usdt = portfolio_cfg.get("max_capital_usdt", target_initial_cap)
 
@@ -524,6 +527,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         # (which runs after this point) must restore the real pair first.
         logger.critical(f"🚨 Strategy snapshot is not a JSON object: {state_file_path}")
         state = default_state
+
+    if configured_cash_reserve:
+        funded_baseline = float(state.get("initial_tpv", 0))
+        if funded_baseline > 0 and not math.isclose(funded_baseline, target_initial_cap, abs_tol=1e-8):
+            raise ValueError("CASH reserve requires a funded new session; existing baseline differs")
+        if not paper_mode and funded_baseline <= 0:
+            free_balance = float(await connector.get_free_balance())
+            if not math.isfinite(free_balance) or free_balance < target_initial_cap:
+                raise ValueError("Insufficient confirmed futures balance for trading capital plus CASH reserve")
 
     # Safe load of the two-sided share-trailing state: missing/corrupt rows fall back to unarmed.
     state["share_trail"] = share_trail.load_state(state.get("share_trail"))
@@ -1003,7 +1015,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         # Unblock the Event Loop only if file changed
                         current_config = await asyncio.to_thread(sync_read_json, config_path)
                         last_config_mtime = current_mtime
-                        portfolio_cfg = current_config["portfolios"][0]
+                        candidate_portfolio = current_config["portfolios"][0]
+                        if candidate_portfolio.get("cash_reserve_usdt", 0) != configured_cash_reserve:
+                            raise ValueError("Changing CASH reserve requires a funded new session")
+                        portfolio_cfg = candidate_portfolio
                         targets = portfolio_cfg["targets"]
                         t_surplus = portfolio_cfg.get("rebalance_threshold_surplus", portfolio_cfg.get("rebalance_threshold", 0.02))
                         t_deficit = portfolio_cfg.get("rebalance_threshold_deficit", t_surplus)
@@ -1025,6 +1040,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                             target_initial = float(portfolio_cfg.get("paper_initial_capital", 100.0))
                         else:
                             target_initial = float(portfolio_cfg.get("initial_capital", 86.0))
+                        target_initial, targets = capital_with_reserve(portfolio_cfg, target_initial)
 
                         max_capital_usdt = portfolio_cfg.get("max_capital_usdt", target_initial)
                         max_drawdown_limit = current_config.get("max_drawdown_limit", 0.5)
@@ -1288,7 +1304,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 if state.get("live_funding") is None and (virt_qty == 0 or initial_tpv == 0):
                     if initial_tpv == 0:
                         # For shared accounts, we MUST use assigned initial_capital as base
-                        initial_tpv = portfolio_cfg.get("initial_capital", paper_state["balance"])
+                        initial_tpv = (target_initial_cap if configured_cash_reserve else
+                                       portfolio_cfg.get("initial_capital", paper_state["balance"]))
                         reference_tpv = initial_tpv
                         logger.info(f"Initialized TPV base: {initial_tpv:.2f} (Isolated Shadow Balance)")
 
@@ -2173,9 +2190,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                             elif ignore_limits:
                                 state["initial_build_pending"] = None
                                 state.setdefault("initial_build_completed_at", time.time())
-                                state["virt_debt"] = float(post_virt + residual)
+                                keep_cash = configured_cash_reserve > 0 and float(targets["VIRTUAL"]["share"]) == 0
+                                state["virt_debt"] = float(post_virt if keep_cash else post_virt + residual)
                                 state_dirty = True
-                                logger.info(f"Initial residual {float(residual):.8f} USDT moved to VIRTUAL")
+                                logger.info(f"Initial residual {float(residual):.8f} USDT: {'kept in CASH' if keep_cash else 'moved to VIRTUAL'}")
 
                         if any_success:
                             if not ignore_limits:
@@ -2366,6 +2384,8 @@ async def emergency_stop(connector: BinanceConnector, config_path: str, state_fi
     base_ticker = ticker_override if ticker_override else config.get("base_ticker", "BTCUSDT")
     portfolio_cfg = config.get("portfolios", [{}])[0]
     initial_capital = portfolio_cfg.get("initial_capital", 60.0)
+    if portfolio_cfg.get("cash_reserve_usdt", 0):
+        initial_capital, _ = capital_with_reserve(portfolio_cfg, initial_capital)
 
     if paper_mode:
         from core.paper_close import close_wallet

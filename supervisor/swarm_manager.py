@@ -334,6 +334,9 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
         config_capital = portfolio_cfg.get("initial_capital", 80.0)
         base_state_file = f"real_state_{ticker}.json"
         shadow_state_file = f"shadow_state_{ticker}.json"
+    if portfolio_cfg.get("cash_reserve_usdt", 0):
+        from core.capital import capital_with_reserve
+        config_capital, _ = capital_with_reserve(portfolio_cfg, config_capital)
 
     base_state_path = CORE_PATH / base_state_file
     shadow_state_path = CORE_PATH / shadow_state_file
@@ -445,7 +448,12 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
             await reset_bot_state_files(ticker, False, config)
     if is_paper and config and (CORE_PATH / "paper_budget.sqlite").exists():
         from core.paper_budget import reserve, bind
-        capital, fresh, identity = reserve(BASE_PATH, ticker, config.get("portfolios", [{}])[0].get("paper_initial_capital", 1000))
+        portfolio = config.get("portfolios", [{}])[0]
+        required_capital = portfolio.get("paper_initial_capital", 1000)
+        if portfolio.get("cash_reserve_usdt", 0):
+            from core.capital import capital_with_reserve
+            required_capital, _ = capital_with_reserve(portfolio, required_capital)
+        capital, fresh, identity = reserve(BASE_PATH, ticker, required_capital)
         if capital <= 0:
             logger.warning(f"PAPER cash below configured initial capital; launch deferred: {ticker}")
             return

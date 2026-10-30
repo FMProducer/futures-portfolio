@@ -9,6 +9,41 @@ from futures_portfolio.core.executor import PortfolioExecutor
 
 
 @pytest.mark.asyncio
+async def test_paper_cash_reserve_does_not_expand_initial_positions_or_become_virtual():
+    config = author._make_config(equity_trailing_stop_activation_pct=9000.0, max_drawdown_limit=200.0)
+    portfolio = config['portfolios'][0]
+    portfolio.update(initial_capital=200, paper_initial_capital=200, cash_reserve_usdt=461,
+                     siphoning_threshold_pct=1000, reinvestment_ratio=0)
+    portfolio['targets'] = {
+        'BASE_LONG': {'share': .5, 'leverage': 3},
+        'BASE_SHORT': {'share': .5, 'leverage': 3},
+        'VIRTUAL': {'share': 0, 'leverage': 1},
+    }
+    state = author._make_state(virt_qty=0, virt_debt=0, rebalance_cycles=0,
+                               initial_tpv=661, reference_tpv=661, tpv_ath=661)
+    paper = author._make_paper_state(balance=661)
+    saves, _, _ = await author._run_rebalance(config, state, paper, loop_limit=2,
+                                              calculator_class=PortfolioCalculator)
+    final = [value for path, value in saves if path == 'paper_state.json'][-1]
+    final_state = [value for path, value in saves if path == 'state.json'][-1]
+    assert final_state['virt_debt'] == 0
+    assert final_state.get('cash_invariant_violation') is None
+    assert final['positions']['BTCUSDT_LONG'] * 60000 / 3 == pytest.approx(100, abs=21)
+    assert final['positions']['BTCUSDT_SHORT'] * 60000 / 3 == pytest.approx(100, abs=21)
+    assert final_state['initial_tpv'] == 661
+
+
+@pytest.mark.asyncio
+async def test_reserve_cannot_be_added_to_existing_unfunded_session():
+    config = author._make_config()
+    config['portfolios'][0].update(initial_capital=200, paper_initial_capital=200, cash_reserve_usdt=461)
+    state = author._make_state(initial_tpv=200, reference_tpv=200, tpv_ath=200)
+    paper = author._make_paper_state(balance=200)
+    with pytest.raises(ValueError, match='funded new session'):
+        await author._run_rebalance(config, state, paper, loop_limit=1)
+
+
+@pytest.mark.asyncio
 async def test_real_paper_initial_restart_only_missing_leg():
     config = author._make_config(equity_trailing_stop_activation_pct=9000.0,
                                  max_drawdown_limit=200.0)
