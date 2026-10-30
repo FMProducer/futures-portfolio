@@ -249,10 +249,14 @@ async def test_execute_actions_surplus_first(executor, mock_connector):
     
     async def mock_execute_single_action(action, price, paper_mode, portfolio_cfg, step_sizes, paper_state, mid_prices=None):
         execution_order.append(action["symbol"])
-        return {"status": "SUCCESS", "symbol": action["symbol"]}
+        return {"status": "SUCCESS", "symbol": action["symbol"], "type": "LONG",
+                "execution_id": "test:" + action["symbol"], "reduce_only": action['is_reduction'],
+                "qty": abs(action['diff_usdt']) / price, "price": price,
+                "commission": abs(action['diff_usdt']) * .0004,
+                "trade_pnl": 100 if action['is_reduction'] else 0}
 
     with patch.object(PortfolioExecutor, "_execute_single_action", side_effect=mock_execute_single_action):
-        await executor.execute_actions(actions, price=60000.0, paper_mode=True)
+        await executor.execute_actions(actions, price=60000.0, paper_mode=True, cash_budget=Decimal('1000'))
     
     # BTCUSDT (reduction) should be first
     assert execution_order == ["BTCUSDT_LONG", "ETHUSDT_LONG"]

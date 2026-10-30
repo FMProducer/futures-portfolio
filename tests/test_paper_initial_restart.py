@@ -66,11 +66,11 @@ async def test_real_paper_initial_restart_only_missing_leg():
         real = PortfolioExecutor(connector, *args, **kwargs)
         wrapper = MagicMock()
 
-        async def execute(actions, price, paper_mode, cfg, sizes, ps):
+        async def execute(actions, price, paper_mode, cfg, sizes, ps, **budget_args):
             calls.append([a['key'] for a in actions])
             failed_phase = phase['reject_short']
             valid = [a for a in actions if not (failed_phase and a['key'] == 'BASE_SHORT')]
-            results = await real.execute_actions(valid, price, paper_mode, cfg, sizes, ps)
+            results = await real.execute_actions(valid, price, paper_mode, cfg, sizes, ps, **budget_args)
             result_facts.extend(copy.deepcopy(results))
             iterator = iter(results)
             return [({'status': 'ERROR', 'message': 'review-injected rejection'}

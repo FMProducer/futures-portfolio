@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from core.connector import BinanceConnector
 
 from core.calculator import book_vwap
+from core import profit_budget
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,16 @@ getcontext().prec = 28
 getcontext().rounding = ROUND_HALF_EVEN
 
 PAPER_COMMISSION_RATE = Decimal('0.0004')
+
+
+def financials_confirmed(trades, executed_qty):
+    try:
+        return bool(trades) and sum(Decimal(str(t['qty'])) for t in trades) == executed_qty and all(
+            t.get('commissionAsset') == 'USDT' and Decimal(str(t['commission'])).is_finite()
+            and Decimal(str(t['commission'])) >= 0 and Decimal(str(t['realizedPnl'])).is_finite()
+            for t in trades)
+    except (KeyError, ValueError, TypeError, InvalidOperation):
+        return False
 
 def validate_paper_positions(paper_state):
     positions = paper_state.get("positions")
@@ -143,6 +154,7 @@ class PortfolioExecutor:
             # Fetch actual trades to get real realized PnL and commission
             real_pnl = Decimal('0.0')
             real_commission = Decimal('0.0')
+            trades = []
             try:
                 # Даем бирже время на расчет трейдов
                 await asyncio.sleep(0.5)
@@ -160,6 +172,7 @@ class PortfolioExecutor:
                 "executed_qty": executed_qty,
                 "avg_price": avg_price,
                 "realized_pnl": real_pnl,
+                "financials_confirmed": financials_confirmed(trades, executed_qty),
                 "commission": real_commission
             }
         except Exception as e:
@@ -245,6 +258,7 @@ class PortfolioExecutor:
                     # --- REAL DATA SYNC ---
                     real_pnl = Decimal('0.0')
                     real_commission = Decimal('0.0')
+                    trades = []
                     try:
                         await asyncio.sleep(0.5)
                         trades = await self.connector.get_order_trades(symbol, order_id)
@@ -258,6 +272,7 @@ class PortfolioExecutor:
                         "executed_qty": filled_qty,
                         "avg_price": avg_fill_price,
                         "realized_pnl": real_pnl,
+                        "financials_confirmed": financials_confirmed(trades, filled_qty),
                         "commission": real_commission,
                         "order_type": "LIMIT_MAKER",
                         # orderId: stable execution identity for the fill-receipt journal
@@ -296,6 +311,7 @@ class PortfolioExecutor:
                     remaining_qty = Decimal('0')
             market_pnl = Decimal('0.0')
             market_comm = Decimal('0.0')
+            market_financials_confirmed = True
             total_executed = filled_qty
             
             if remaining_qty > 0:
@@ -305,12 +321,14 @@ class PortfolioExecutor:
                         position_side=position_side, min_notional=min_notional, price=mid_price
                     )
                     if market_result["status"] == "SUCCESS":
+                        market_financials_confirmed = market_result.get("financials_confirmed") is True
                         total_executed += Decimal(str(market_result["executed_qty"]))
                         market_pnl = Decimal(str(market_result["realized_pnl"]))
                         market_comm = Decimal(str(market_result["commission"]))
 
             limit_pnl = Decimal('0.0')
             limit_comm = Decimal('0.0')
+            trades = []
             if filled_qty > 0:
                 try:
                     await asyncio.sleep(0.3)
@@ -325,6 +343,8 @@ class PortfolioExecutor:
                 "executed_qty": total_executed,
                 "realized_pnl": limit_pnl + market_pnl,
                 "commission": limit_comm + market_comm,
+                "financials_confirmed": (market_financials_confirmed and
+                    (filled_qty == 0 or financials_confirmed(trades, filled_qty))),
                 # orderId: stable execution identity for the fill-receipt journal
                 "result": order
             }
@@ -407,6 +427,7 @@ class PortfolioExecutor:
             return {
                 "type": "VIRTUAL_ORDER",
                 "status": "SUCCESS",
+                "execution_id": "virtual:" + uuid4().hex,
                 "diff_usdt": diff_usdt,
                 "side": side
             }
@@ -544,6 +565,7 @@ class PortfolioExecutor:
                         "price": float(avg_price),
                         "status": "SUCCESS",
                         "execution_pending": (not limit_enabled and res.get("result", {}).get("status") != "FILLED"),
+                        "financials_confirmed": res.get("financials_confirmed") is True,
                         "reduce_only": reduce_only,
                         "trade_pnl": float(trade_pnl),
                         "commission": float(commission)
@@ -562,12 +584,9 @@ class PortfolioExecutor:
                     "commission": float(commission)
                 }
 
-    async def execute_actions(self, actions: List[Dict[str, Any]], price: float, paper_mode: bool = True, portfolio_cfg: Optional[Dict[str, Any]] = None, step_sizes: Optional[Dict[str, float]] = None, paper_state: Optional[Dict] = None, cash_budget: Optional[Decimal] = None) -> List[Dict[str, Any]]:
+    async def execute_actions(self, actions: List[Dict[str, Any]], price: float, paper_mode: bool = True, portfolio_cfg: Optional[Dict[str, Any]] = None, step_sizes: Optional[Dict[str, float]] = None, paper_state: Optional[Dict] = None, cash_budget: Optional[Decimal] = None, initial_build: bool = False) -> List[Dict[str, Any]]:
         """
-        Векторизованное (конкурентное) выполнение действий по ребалансировке с принудительным Market-only исполнением.
-        SURPLUS-FIRST: Reductions (SELLs) are executed before Expansions (BUYs).
-        B7 FIX: Используем mid_price (bid+ask)/2 для конвертации diff_usdt в qty,
-        чтобы устранить рассинхрон между LONG и SHORT позициями.
+        Execute reductions first, then additions funded by confirmed net sale profit.
         """
         if not actions:
             return []
@@ -602,89 +621,71 @@ class PortfolioExecutor:
         # Mapping for result tracking to maintain original order
         results_map = {}
 
-        if paper_mode:
-            batch_state = deepcopy(paper_state)
-            if batch_state is not None:
-                validate_paper_positions(batch_state)
-            budget = Decimal(str(cash_budget)) if cash_budget is not None else None
-            wallet = Decimal(str(paper_state["balance"])) if budget is not None else Decimal('0')
-            for action in reductions + expansions:
-                approved = dict(action)
-                virtual = action.get("type") == "VIRTUAL_ORDER"
-                leg = action.get("position_side", "LONG")
-                symbol = action.get("base_symbol") or action.get("symbol", "").split("_")[0]
-                lev = Decimal(str((portfolio_cfg or {}).get("targets", {}).get(f"BASE_{leg}", {}).get("leverage", action.get("leverage", 1))))
-                if budget is not None and not action.get("is_reduction"):
-                    # Wallet persistence rounds to 1e-4; reserve one unit against rounding up the debit.
-                    spendable = max(Decimal('0'), budget - Decimal('0.0001'))
-                    limit = spendable if virtual else spendable / (Decimal('1') / lev + PAPER_COMMISSION_RATE)
-                    approved["diff_usdt"] = float(min(abs(Decimal(str(action["diff_usdt"]))), limit))
-                    approved["approved_usdt"] = approved["diff_usdt"]
-                    if approved["diff_usdt"] <= 0:
-                        results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient strategy CASH including commission"}
-                        continue
-                try:
-                    result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)
-                except Exception as exc:
-                    result = {"status": "ERROR", "message": str(exc)}
-                results_map[id(action)] = result
-                if result.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
+        batch_state = deepcopy(paper_state) if paper_state is not None else {}
+        if paper_mode and paper_state is not None:
+            validate_paper_positions(batch_state)
+        budget = Decimal(str(cash_budget)) if cash_budget is not None else Decimal('0')
+        if not budget.is_finite():
+            raise ValueError("Execution CASH budget must be finite")
+        wallet = Decimal(str(batch_state.get("balance", 0)))
+        for action in reductions + expansions:
+            approved = dict(action)
+            virtual = action.get("type") == "VIRTUAL_ORDER"
+            leg = action.get("position_side", "LONG")
+            symbol = action.get("base_symbol") or action.get("symbol", "").split("_")[0]
+            lev = Decimal(str((portfolio_cfg or {}).get("targets", {}).get(f"BASE_{leg}", {}).get("leverage", action.get("leverage", 1))))
+            if virtual:
+                lev = Decimal('1')
+            if not action.get("is_reduction"):
+                profit_funds = profit_budget.available(batch_state)
+                if profit_budget.ledger(batch_state)["blocked"]:
+                    profit_funds = Decimal('0')
+                elif initial_build:
+                    profit_funds = max(Decimal('0'), budget)
+                fee = PAPER_COMMISSION_RATE if paper_mode else (portfolio_cfg or {}).get("fuse_gate", {}).get(leg, {}).get("taker_fee")
+                if not virtual and (fee is None or not Decimal(str(fee)).is_finite() or not 0 <= Decimal(str(fee)) < 1):
+                    results_map[id(action)] = {"status": "SKIPPED", "message": "Unconfirmed expansion commission"}
                     continue
-                if virtual:
-                    if budget is not None:
-                        budget -= Decimal(str(result["diff_usdt"]))
+                # Wallet persistence rounds to 1e-4; reserve one unit against rounding up the debit.
+                spendable = max(Decimal('0'), min(budget, profit_funds) - Decimal('0.0001'))
+                limit = spendable if virtual else spendable / (Decimal('1') / lev + Decimal(str(fee)))
+                approved["diff_usdt"] = float(min(abs(Decimal(str(action["diff_usdt"]))), limit))
+                approved["approved_usdt"] = approved["diff_usdt"]
+                if approved["diff_usdt"] <= 0:
+                    results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient confirmed sale profit or CASH"}
                     continue
-                qty = Decimal(str(result.get("qty", 0)))
-                if batch_state is not None and qty > 0:
-                    leg = result.get("type", leg)
-                    pos_key = result.get("symbol", f"{symbol}_{leg}")
-                    old_qty = Decimal(str(batch_state["positions"].get(pos_key, 0)))
-                    new_qty = old_qty - qty if result.get("reduce_only") else old_qty + qty
-                    if not new_qty.is_finite() or new_qty < 0:
-                        raise ValueError("Invalid PAPER fill quantity")
-                    batch_state["positions"][pos_key] = str(new_qty)
-                if budget is None:
-                    continue
-                fill_price = Decimal(str(result.get("price", mid_prices.get(symbol, price))))
-                commission = Decimal(str(result.get("commission", 0)))
-                pnl = Decimal(str(result.get("trade_pnl", 0)))
-                next_wallet = (wallet + pnl - commission).quantize(Decimal('0.0001'))
-                budget += next_wallet - wallet
-                wallet = next_wallet
-                if result.get("reduce_only"):
-                    entry = Decimal(str(paper_state.get(f"{leg.lower()}_entry_price", price)))
-                    budget += qty * entry / lev
-                else:
-                    budget -= qty * fill_price / lev
-                if budget < 0:
-                    logger.error("Paper execution exhausted CASH; blocking remaining increases")
-            return [results_map[id(action)] for action in actions]
-
-        for group in [reductions, expansions]:
-            if not group:
+            try:
+                result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)
+            except Exception as exc:
+                result = {"status": "ERROR", "message": str(exc)}
+            results_map[id(action)] = result
+            if result.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
                 continue
-
-            # Map action IDs to their results
-            group_action_ids = [id(a) for a in group]
-            tasks = [
-                self._execute_single_action(action, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, paper_state, mid_prices)
-                for action in group
-            ]
-
-            group_results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            for action_id, r in zip(group_action_ids, group_results):
-                if isinstance(r, Exception):
-                    logger.error(f"Action execution failed with exception: {r}")
-                    results_map[action_id] = {"status": "ERROR", "message": str(r)}
-                else:
-                    results_map[action_id] = r
-
-        # Reconstruct results in original order
-        final_results = [results_map[id(a)] for a in actions]
-        success_count = sum(1 for r in final_results if r.get("status") in ["SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"])
-
-        if len(actions) > 0:
-            logger.info(f"Executed {success_count}/{len(actions)} actions in two phases (Surplus-First).")
-
-        return final_results
+            if not profit_budget.record_fill(batch_state, result, lev, initial_build, require_confirmed=not paper_mode):
+                continue
+            if virtual:
+                budget -= Decimal(str(result["diff_usdt"]))
+                continue
+            qty = Decimal(str(result.get("qty", 0)))
+            if paper_mode and paper_state is not None and qty > 0:
+                leg = result.get("type", leg)
+                pos_key = result.get("symbol", f"{symbol}_{leg}")
+                old_qty = Decimal(str(batch_state["positions"].get(pos_key, 0)))
+                new_qty = old_qty - qty if result.get("reduce_only") else old_qty + qty
+                if not new_qty.is_finite() or new_qty < 0:
+                    raise ValueError("Invalid PAPER fill quantity")
+                batch_state["positions"][pos_key] = str(new_qty)
+            fill_price = Decimal(str(result.get("price", mid_prices.get(symbol, price))))
+            commission = Decimal(str(result.get("commission", 0)))
+            pnl = Decimal(str(result.get("trade_pnl", 0)))
+            next_wallet = (wallet + pnl - commission).quantize(Decimal('0.0001'))
+            budget += next_wallet - wallet
+            wallet = next_wallet
+            if result.get("reduce_only"):
+                entry = Decimal(str((paper_state or {}).get(f"{leg.lower()}_entry_price", 0)))
+                budget += qty * entry / lev
+            else:
+                budget -= qty * fill_price / lev
+            if budget < 0:
+                logger.error("Paper execution exhausted CASH; blocking remaining increases")
+        return [results_map[id(action)] for action in actions]

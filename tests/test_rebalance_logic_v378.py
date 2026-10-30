@@ -108,7 +108,7 @@ def test_rebalance_logic_v378():
     res = calc.calculate_rebalance(targets, threshold, threshold, current_equity=calc.tpv)
     assert len(res["actions"]) == 0 
 
-    print("--- CASE 4: Priority BUY (Futures get cash first) ---")
+    print("--- CASE 4: Priority BUY (Futures get confirmed profit first) ---")
     calc = PortfolioCalculator(
         positions={"BTCUSDT_LONG": 145.0, "BTCUSDT_SHORT": -100.0}, # Short deficit: 100*1/5 = 20 (Target 36)
         spot_price=1.0,
@@ -137,6 +137,7 @@ def test_rebalance_logic_v378():
 
     # Available Cash is 7. V needs 15, S needs 16.
     calc.val_cash = Decimal('7.0')
+    calc.profit_budget = Decimal('7.0')
     res = calc.calculate_rebalance(targets, threshold, threshold, current_equity=calc.tpv)
     actions = res["actions"]
     print(f"DEBUG Case 4 Shares: L:{res['share_long_pct']}% S:{res['share_short_pct']}% V:{res['share_virt_pct']}% C:{res['share_cash_pct']}%")

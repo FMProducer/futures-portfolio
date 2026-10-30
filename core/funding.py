@@ -279,6 +279,9 @@ def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
     persistence time.  Shortfall is detected on raw (unrounded) V.
     """
     amount = Decimal(str(signed_amount))
+    if amount < 0:
+        from core.profit_budget import charge
+        charge(paper_wallet, -amount)
 
     wallet_val = Decimal(str(paper_wallet.get("balance", 0)))
     v_val = Decimal(str(strategy_state.get("virt_debt", 0)))
@@ -303,6 +306,9 @@ def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
 def apply_funding_backtest(signed_amount: Decimal, state) -> Dict:
     """Apply one funding event to BacktestState (V-only, full precision)."""
     amount = Decimal(str(signed_amount))
+    if amount < 0 and hasattr(state, "profit_book"):
+        from core.profit_budget import charge
+        charge(state.profit_book, -amount)
     v_before = state.virt_debt
     state.virt_debt += amount
     state.funding_paid -= amount
@@ -319,6 +325,9 @@ def apply_funding_backtest(signed_amount: Decimal, state) -> Dict:
 def pay_funding_legacy(state, amount: Decimal) -> Decimal:
     """Old CASH-first waterfall.  Do NOT mix with signed_actual events."""
     amount = Decimal(str(amount))
+    if amount > 0 and hasattr(state, "profit_book"):
+        from core.profit_budget import charge
+        charge(state.profit_book, amount)
     if amount > 0 and amount > state.val_cash:
         state.funding_from_virtual += state.release_virtual(amount - state.val_cash)
     state.val_cash -= amount

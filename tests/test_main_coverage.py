@@ -25,6 +25,12 @@ from futures_portfolio.core.main import rebalance_loop, _paper_collateral, _pape
 M = "futures_portfolio.core.main"
 
 
+@pytest.fixture(autouse=True)
+def isolate_supervisor_side_effects():
+    with patch(f"{M}.emit_signal"), patch(f"{M}.self_kill_pm2", AsyncMock()):
+        yield
+
+
 def _make_config(**overrides):
     cfg = {
         "paper_mode": True,
@@ -153,6 +159,8 @@ async def _run_rebalance(config, state, paper_state, connector=None,
     calc_mock.val_cash = Decimal(str(calc_val_cash)) if calc_val_cash is not None else Decimal('0')
 
     with patch(f"{M}.safe_load_json_sync", return_value=config), \
+         patch(f"{M}.emit_signal"), \
+         patch(f"{M}.self_kill_pm2", AsyncMock()), \
          patch("builtins.open", mock_open(read_data=config_file)), \
          patch("os.path.getmtime", return_value=123), \
          patch(f"{M}.load_json", AsyncMock(side_effect=load_side_effect)), \

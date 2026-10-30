@@ -31,6 +31,7 @@ async def test_runtime_duplicate_fill_and_disk_checkpoint(mock_config, mock_conn
         "state.json": {"base_ticker": "BTCUSDT", "initial_tpv": 1000., "tpv_ath": 1000.,
                        "virt_debt": 200., "share_trail": trail, "rebalance_cycles": 1},
         "paper_state.json": {"base_ticker": "BTCUSDT", "balance": 1000.,
+                             "profit_budget": {"balance": "100", "receipts": {}, "blocked": False},
                              "positions": {"BTCUSDT_LONG": 1., "BTCUSDT_SHORT": 1.},
                              "long_entry_price": 100., "short_entry_price": 100., "last_price": 100.}}
     fill = dict(status="SUCCESS", type="LONG", symbol="BTCUSDT_LONG", side="BUY", qty=.1,

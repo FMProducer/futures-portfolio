@@ -20,7 +20,8 @@ def setup_executor(price=1339.88):
 
 CFG = {'min_notional_usdt': 6, 'targets': {'BASE_LONG': {'leverage': 7}, 'BASE_SHORT': {'leverage': 7}}}
 PAPER = {'balance': 1000, 'positions': {'ZECUSDT_LONG': 1, 'ZECUSDT_SHORT': 1},
-         'long_entry_price': 1339.88, 'short_entry_price': 1339.88}
+         'long_entry_price': 1339.88, 'short_entry_price': 1339.88,
+         'profit_budget': {'balance': '50', 'receipts': {}, 'blocked': False}}
 
 
 @pytest.mark.asyncio
@@ -63,18 +64,19 @@ async def test_failed_reduction_creates_no_buying_budget(status):
 
 
 @pytest.mark.asyncio
-async def test_partial_reduction_credits_only_actual_margin_and_pnl_net_fee():
-    executor = setup_executor(1400)
+async def test_partial_reduction_credits_only_actual_profit_net_fee():
+    executor = setup_executor(1300)
     original = executor._execute_single_action
     async def partial(a, *args):
         if a['is_reduction']:
-            return {'status': 'SUCCESS', 'qty': .01, 'price': 1400, 'reduce_only': True,
-                    'commission': .0056, 'trade_pnl': -.6012, 'type': 'SHORT'}
+            return {'status': 'SUCCESS', 'qty': .1, 'price': 1300, 'reduce_only': True,
+                    'execution_id': 'test:partial', 'commission': .052, 'trade_pnl': 3.988, 'type': 'SHORT'}
         return await original(a, *args)
     with patch.object(executor, '_execute_single_action', side_effect=partial):
         results = await executor.execute_actions([action('SHORT', 1000, True), action()],
-            1400, True, CFG, {'ZECUSDT': .001}, PAPER, cash_budget=D('0'))
-    actual_proceeds = D('.01') * D('1339.88') / 7 - D('.6012') - D('.0056')
+            1300, True, CFG, {'ZECUSDT': .001},
+            dict(PAPER, profit_budget={'balance': '0', 'receipts': {}, 'blocked': False}), cash_budget=D('0'))
+    actual_proceeds = D('3.988') - D('.052')
     fill = results[1]
     assert fill['status'] == 'SUCCESS'
     cost = D(str(fill['qty'])) * D(str(fill['price'])) / 7 + D(str(fill['commission']))

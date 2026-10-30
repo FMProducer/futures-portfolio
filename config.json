@@ -14,6 +14,7 @@
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
+  "backtest_days": 28,
   "supervisor_interval_days": 0.005,
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
@@ -34,7 +35,7 @@
       "initial_capital": 1000.0,
       "paper_initial_capital": 1000.0,
       "paper_account_free_margin": 1000.0,
-      "cash_reserve_usdt": 2305,
+      "cash_reserve_usdt": 60000,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
@@ -86,16 +87,18 @@
   "toxic_blacklist_real": {},
   "tickers": [
     "APRUSDT",
+    "BLURUSDT",
     "BULLAUSDT",
     "GTCUSDT",
     "LITUSDT",
     "LSKUSDT",
     "NILUSDT",
-    "PARTIUSDT",
     "QUSDT"
   ],
   "base_ticker": "APRUSDT",
-  "probation_paper": {},
+  "probation_paper": {
+    "PARTIUSDT": 1793386119.363866
+  },
   "probation_real": {},
   "paper_backtest_gate": true
 }

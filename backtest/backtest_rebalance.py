@@ -19,12 +19,14 @@ try:
     from core.calculator import PortfolioCalculator
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
+    from core import profit_budget
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from core.calculator import PortfolioCalculator
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
+    from core import profit_budget
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("Backtest")
@@ -124,6 +126,8 @@ class BacktestState:
     cash_invariant_violation: Optional[Dict[str, Any]] = None
     initial_formation: Optional[Dict[str, Any]] = None
     initial_build_pending: Optional[Dict[str, Any]] = None
+    profit_book: Dict[str, Any] = field(default_factory=dict)
+    initial_build_active: bool = True
 
     # Leverage values from config (added to fix hardcoded 5x in TPV calc)
     l_lev: Decimal = Decimal('5')
@@ -317,12 +321,24 @@ class BacktestState:
     def log_fill(self, bar: int, side: str, leg: str, qty: Decimal, price: Decimal,
                   commission: Decimal, realized_pnl: Decimal, tpv: float,
                   mid_price: Optional[Decimal] = None, leverage: Optional[Decimal] = None,
-                  trigger: str = "rebalance", cycle_id: Optional[int] = None) -> None:
+                  trigger: str = "rebalance", cycle_id: Optional[int] = None,
+                  initial_build: bool = False, transfer_usdt: Decimal = Decimal('0')) -> None:
         self.fill_count += 1
         if leg == "VIRTUAL":
             self.internal_transfer_count += 1
         self.commission_paid += Decimal(str(commission))
         self.realized_total += Decimal(str(realized_pnl))
+        budget_before = profit_budget.balance(self.profit_book)
+        if trigger == "rebalance":
+            virtual = leg == "VIRTUAL"
+            profit_budget.record_fill(self.profit_book, {
+                "execution_id": f"backtest:{self.base_ticker}:{self.fill_count}",
+                "status": "SUCCESS", "type": "VIRTUAL_ORDER" if virtual else leg.replace("BASE_", ""),
+                "symbol": self.base_ticker, "side": side, "qty": str(qty), "price": str(price),
+                "commission": str(commission), "trade_pnl": str(realized_pnl),
+                "reduce_only": (leg == "BASE_LONG" and side == "SELL") or (leg == "BASE_SHORT" and side == "BUY"),
+                "diff_usdt": str(transfer_usdt) if virtual else None,
+            }, leverage or 1, initial_build)
         if mid_price is not None:
             self.slippage_paid += abs(Decimal(str(qty))) * abs(Decimal(str(price)) - Decimal(str(mid_price)))
         if len(self.fills) >= self.MAX_FILLS:
@@ -340,6 +356,9 @@ class BacktestState:
             "trigger": trigger,
             "rebalance_id": int(cycle_id) if cycle_id is not None else int(self.cycles),
             "tpv": float(tpv),
+            "profit_budget_before": float(budget_before),
+            "profit_budget_after": float(profit_budget.balance(self.profit_book)),
+            "initial_build": initial_build,
         })
 
     def log_event(self, bar: int, kind: str, tpv: float, detail: str = "", **extra: Any) -> None:
@@ -542,6 +561,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         trading_initial_capital = initial_capital
         initial_capital, targets = capital_with_reserve(portfolio_cfg, trading_initial_capital)
         cash_reserve_usdt = initial_capital - trading_initial_capital
+        share_basis_scale = trading_initial_capital / initial_capital
         ticker_thresholds = portfolio_cfg.get("ticker_thresholds", {})
         
         if threshold_surplus_override is not None:
@@ -618,7 +638,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         if trail_distance > 0:
             state.share_trail = share_trail.fresh_state()
             state.share_trail_spec = share_trail.spec_fingerprint(
-                trail_distance, targets, threshold_surplus, threshold_deficit)
+                trail_distance * share_basis_scale, targets,
+                threshold_surplus * share_basis_scale, threshold_deficit * share_basis_scale)
 
         start_price = Decimal(str(close_prices[0]))
         state.last_rebalance_price = start_price
@@ -757,6 +778,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 state.tpv_ath = max(float(state.dormant_capital), float(state.initial_capital))
                 state.trailing_stop_violation_start = 0.0
                 state.trailing_stop_triggered = False
+                state.profit_book = {}
+                state.initial_build_active = True
                 state.last_rebalance_price = mid_price
 
                 # Re-init virtual leg
@@ -795,6 +818,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 last_rebalance_price=float(state.last_rebalance_price),
                 commission_pct=float(sim.commission_pct),
                 slippage_pct=float(sim.slippage_pct),
+                profit_budget=profit_budget.balance(state.profit_book),
+                initial_build=state.initial_build_active,
             )
 
             # Trailing diagnostics: arm/reset events and generated signals
@@ -809,6 +834,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 fuse_enabled=fuse_enabled,
                 share_trail=state.share_trail,
                 trail_distance=trail_distance,
+                share_basis_scale=share_basis_scale,
             )
             actions = calc_res["actions"]
 
@@ -914,12 +940,12 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
             if actions:
                 is_initial_formation = (
-                    state.cycles == 0
+                    state.initial_build_active
                     and state.pos_long == 0
                     and state.pos_short == 0
                 )
                 was_initial_pending = bool(state.initial_build_pending)
-                fills_before = len(state.fills)
+                fills_before = state.fill_count
                 tpv_before = state.get_tpv(mid_price)
                 reductions = [a for a in actions if a.get("is_reduction", False)]
                 expansions = [a for a in actions if not a.get("is_reduction", False)]
@@ -960,7 +986,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_fill(i, "RELEASE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'),
                                        Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
                                        mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance",
-                                       cycle_id=state.cycles + 1)
+                                       cycle_id=state.cycles + 1, transfer_usdt=-released)
                         record(act, "filled" if released >= requested_usdt else "partial", released,
                                "capped_by_virtual_balance" if released < requested_usdt else "")
                         state.check_accounting(mid_price, i, "release_virtual")
@@ -1024,6 +1050,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
                 expansions.sort(key=lambda x: x["key"] == "VIRTUAL")
                 remaining_funds = max(Decimal('0'), state.val_cash)
+                building = is_initial_formation or was_initial_pending
+                if not building:
+                    remaining_funds = min(remaining_funds, profit_budget.available(state.profit_book))
 
                 for act in expansions:
                     key = act["key"]
@@ -1039,7 +1068,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         continue
 
                     if key == "VIRTUAL":
-                        designated = state.designate_virtual(requested_usdt)
+                        designated = state.designate_virtual(min(requested_usdt, remaining_funds))
                         if designated <= Decimal('0'):
                             state.skipped_expansions_counter += 1
                             record(act, "skipped", reason="no_free_cash")
@@ -1050,7 +1079,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_fill(i, "DESIGNATE", "VIRTUAL", Decimal('0'), mid_price, Decimal('0'),
                                        Decimal('0'), float(state.get_tpv_fast(float(mid_price))),
                                        mid_price=mid_price, leverage=Decimal('1'), trigger="rebalance",
-                                       cycle_id=state.cycles + 1)
+                                       cycle_id=state.cycles + 1, transfer_usdt=designated,
+                                       initial_build=building)
                         remaining_funds -= designated
                         record(act, "filled" if designated >= requested_usdt else "partial", designated,
                                "capped_by_free_cash" if designated < requested_usdt else "")
@@ -1104,7 +1134,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     remaining_funds -= required_cash
                     state.log_fill(i, side, key, qty, exec_price, commission, Decimal('0'),
                                    float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
-                                   leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
+                                   leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1,
+                                   initial_build=building)
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
                     if state.share_trail is not None:
                         # confirmed fill (full or partial) consumes the ADD signal
@@ -1143,6 +1174,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                         missing=missing)
                     else:
                         state.initial_build_pending = None
+                        state.initial_build_active = False
                         if residual > 0 and not (cash_reserve_usdt > 0 and target_v_share == 0):
                             moved = state.designate_virtual(residual)
                             state.log_event(i, "initial_residual_to_virtual",
@@ -1164,9 +1196,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     }
                     state.check_accounting(mid_price, i, "initial_formation")
 
-                state.cycles += 1
-                state.last_rebalance_price = mid_price
-                if len(state.fills) > fills_before:
+                if state.fill_count > fills_before:
+                    state.cycles += 1
+                    state.last_rebalance_price = mid_price
                     exchange_records = [r for r in execution_records if r["key"] != "VIRTUAL"]
                     state.rebalance_log.append({
                         "step": i, "cycle_id": state.cycles, "price": float(mid_price),
@@ -1304,6 +1336,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 if siphon_amount > 0.1:
                     state.siphoning_reserve += Decimal(str(siphon_amount))
                     state.val_cash -= Decimal(str(siphon_amount))
+                    profit_budget.charge(state.profit_book, siphon_amount)
                     total_tpv_with_reserve -= siphon_amount
                     state.siphoning_log.append({
                         "bar": int(i), "amount": float(siphon_amount),
@@ -1503,6 +1536,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "initial_capital": float(initial_capital),
             "trading_initial_capital": float(trading_initial_capital),
             "cash_reserve_usdt": float(cash_reserve_usdt),
+            "profit_budget": state.profit_book.get("profit_budget"),
             "final_equity": float(final_tpv_with_reserve),
             "final_tpv": float(final_tpv_with_reserve),
             "final_unrealized_pnl": float(final_unrealized),
@@ -1531,6 +1565,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "targets": {k: {"share": float(v.get("share", 0.0)), "leverage": float(v.get("leverage", 1))}
                             for k, v in targets.items()},
                 "thresholds": {"surplus": float(threshold_surplus), "deficit": float(threshold_deficit)},
+                "share_basis_scale": share_basis_scale,
+                "effective_share_thresholds": {"surplus": threshold_surplus * share_basis_scale,
+                                               "deficit": threshold_deficit * share_basis_scale},
                 "siphoning_threshold_pct": float(siphoning_threshold_pct),
                 "reinvestment_ratio": float(reinvestment_ratio),
                 "funding_rate_per_day": float(daily_funding_rate),
@@ -1558,20 +1595,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.json")
     parser.add_argument("--ticker", default=None)
-    parser.add_argument("--days", type=float, default=1.0)
+    parser.add_argument("--days", type=float, default=None)
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--capital", type=float, default=None)
     parser.add_argument("--threshold-surplus", type=float, default=None)
     parser.add_argument("--threshold-deficit", type=float, default=None)
-    parser.add_argument("--since", default="2026-03-30 07:00",
-                        help="backtest start (UTC). Standard BTCUSDT window: 2026-03-30 07:00. "
-                             "Pass empty string '' to fall back to pure --days mode.")
-    parser.add_argument("--until", default="2026-10-18 20:59",
-                        help="hard end boundary (UTC). Standard: 2026-10-18 20:59 (end of local data). "
-                             "Pass empty string '' to run to end of data.")
+    parser.add_argument("--since", default=None, help="backtest start (UTC); overrides the trailing days window")
+    parser.add_argument("--until", default=None, help="backtest end (UTC); defaults to the end of local data")
     args = parser.parse_args()
+    if args.days is None:
+        with open(args.config, encoding="utf-8") as f:
+            args.days = float(json.load(f).get("backtest_days", 1.0))
+    if not math.isfinite(args.days) or args.days <= 0:
+        parser.error("backtest days must be finite and positive")
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-    since = args.since.strip() or None
+    since = args.since.strip() or None if args.since is not None else None
     until = args.until.strip() if args.until else None
     import re
     def _norm_wd(s: str) -> str:

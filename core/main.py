@@ -22,7 +22,7 @@ from core.capital import capital_with_reserve
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
-from core import share_trail
+from core import share_trail, profit_budget
 
 from pathlib import Path
 
@@ -289,6 +289,7 @@ async def _run_live_funding_closes(connector, executor, halt_obj, state, paper_s
 def _apply_clean_slate(state: dict, paper_state: dict, base_ticker: str, target_cap: float, logger: logging.Logger) -> None:
     """Enforces clean slate: resets phantom balances and state to target_initial_cap."""
     paper_state['balance'] = target_cap
+    paper_state.pop('profit_budget', None)
     paper_state['long_entry_price'] = 0.0
     paper_state['short_entry_price'] = 0.0
     paper_state['positions'] = {f"{base_ticker}_LONG": 0.0, f"{base_ticker}_SHORT": 0.0}
@@ -684,6 +685,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         isinstance(state.get("funding_halt"), dict)
         and state.get("funding_halt", {}).get("active", False)
     )
+    if profit_budget.ledger(paper_state)["blocked"] and not _funding_halt_active:
+        state["startup_blocked"] = True
+        state["profit_budget_halt"] = profit_budget.ledger(paper_state).get("reason")
+        await save_json(state_file_path, state)
+        raise ValueError("Profit budget requires reconciliation before trading")
 
     # Ensure balance exists (Shadow Balance Migration Guard)
     if "balance" not in paper_state:
@@ -1489,6 +1495,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     abs(positions.get(f"{base_ticker}_LONG", 0)) + abs(positions.get(f"{base_ticker}_SHORT", 0)) == 0
                     or bool(initial_build_pending)
                 )
+                initial_build = bool(initial_build_pending) or (ignore_limits and cycles == 0)
                 
                 # Fetch min_notional once to reuse
                 config_min = portfolio_cfg.get("min_notional_usdt", current_config.get("min_notional_usdt"))
@@ -1518,6 +1525,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     # live FUSE gate must price real closing costs, not zero
                     commission_pct=float(PAPER_COMMISSION_RATE),
                     fuse_fill=fuse_fill,
+                    profit_budget=profit_budget.balance(paper_state),
+                    initial_build=initial_build,
                 )
                 if not paper_mode:
                     # mandatory live re-gate for the limit path: a missing rate stays None so the
@@ -1943,7 +1952,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         asyncio.create_task(notifier.send_message(rebalance_msg))
 
                         # 1. Execute actions concurrently
-                        budget_args = {"cash_budget": calc.val_cash} if paper_mode and not ignore_limits else {}
+                        budget_args = {"cash_budget": calc.val_cash, "initial_build": initial_build}
                         if not paper_mode:
                             from uuid import uuid4
                             for action in fused_actions:
@@ -1976,6 +1985,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 # [V3.8.3] LOGGING & ACCOUNTING FOR VIRTUAL SPOT POSITION (1x Leverage)
                                 # -------------------------------------------------------------------------
                                 if res.get("type") == "VIRTUAL_ORDER":
+                                    if not profit_budget.record_fill(paper_state, res, 1, initial_build):
+                                        continue
                                     any_success = True
                                     diff_usdt = Decimal(str(res.get("diff_usdt", 0.0)))
 
@@ -2048,6 +2059,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                                                  or (pos_side == "SHORT" and side == "BUY"))):
                                     raise ValueError("Invalid PAPER fill quantity or identity")
 
+                                if not profit_budget.record_fill(paper_state, res,
+                                        targets[f"BASE_{pos_side}"]["leverage"], initial_build,
+                                        require_confirmed=not paper_mode):
+                                    continue
+
                                 # Расчет средней цены входа (только при увеличении позиции)
                                 if not reduce_only and (old_qty + qty) > 0:
                                     dec_price = Decimal(str(res.get("price", price)))
@@ -2109,9 +2125,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                             else:
                                 logger.warning(f"❌ {side} {key} execution status: {status}. Message: {res.get('message')}")
 
+                        if profit_budget.ledger(paper_state)["blocked"]:
+                            state["startup_blocked"] = True
+                            state["profit_budget_halt"] = profit_budget.ledger(paper_state).get("reason")
+                            await save_json(paper_state_file_path, paper_state)
+                            await save_json(state_file_path, state)
+
                         if not paper_mode:
                             await save_json(paper_state_file_path, paper_state)
-                            uncertain = (len(exec_results) != len(fused_actions) or any(
+                            uncertain = (profit_budget.ledger(paper_state)["blocked"] or len(exec_results) != len(fused_actions) or any(
                                 result.get("execution_pending") or result.get("status") not in
                                 {"SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK", "SKIPPED", "NO_ORDER"}
                                 for result in exec_results))
@@ -2279,6 +2301,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         siphoning_reserve += siphon_amount
                         # ALWAYS subtract from shadow balance to track isolated per-bot equity
                         paper_state["balance"] -= siphon_amount
+                        profit_budget.charge(paper_state, siphon_amount)
                         paper_state_dirty = True
 
                         state["siphoning_reserve"] = siphoning_reserve

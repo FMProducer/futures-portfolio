@@ -59,7 +59,7 @@ def test_virtual_surplus_bypasses_asset_fuse(price):
 
 @pytest.mark.parametrize("leg", ["LONG", "SHORT"])
 @pytest.mark.parametrize("cash", [100, 500])
-def test_futures_deficit_gets_cash_before_virtual(leg, cash):
+def test_futures_deficit_gets_profit_budget_before_virtual(leg, cash):
     targets = {
         "BASE_LONG": {"share": 0.35, "leverage": 1},
         "BASE_SHORT": {"share": 0.35, "leverage": 1},
@@ -70,7 +70,7 @@ def test_futures_deficit_gets_cash_before_virtual(leg, cash):
                    "BTCUSDT_SHORT": 1 if leg == "SHORT" else 7},
         spot_price=100, real_equity=800 + cash, virt_qty=0, virt_debt=100,
         long_entry_price=100, short_entry_price=100,
-        last_rebalance_price=150, targets=targets,
+        last_rebalance_price=150, targets=targets, profit_budget=cash,
     )
     actions = calc.calculate_rebalance(targets, 0.02, 0.04, calc.tpv)["actions"]
     assert not any(a["is_reduction"] for a in actions)
