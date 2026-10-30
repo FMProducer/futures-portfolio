@@ -142,13 +142,13 @@ async def evaluate(root, symbols, config, end, report_dir=None):
     return results
 
 
-def rank_candidates(candidates, results, existing):
+def rank_candidates(candidates, results, existing, require_pass=True):
     admitted = []
     for candidate in candidates:
         symbol = candidate['symbol']
         if symbol in existing:
             admitted.append(candidate)
-        elif results[symbol].get('pass'):
+        elif results[symbol].get('pass') or not require_pass:
             metrics = results[symbol]
             if not all(math.isfinite(metrics[k]) for k in ('net_pct', 'max_dd_pct')):
                 raise ValueError("Nonfinite candidate ranking metrics")

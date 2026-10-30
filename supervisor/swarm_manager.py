@@ -708,14 +708,14 @@ async def get_bot_efficiency(ticker: str, config: dict, is_real: bool = False) -
     cycles = int(state.get("rebalance_cycles", 0))
     activity = None if is_real else paper_activity_at(BASE_PATH, ticker, state)
     idle_hours = float(config.get("paper_idle_hours", 6.0))
-    if not math.isfinite(idle_hours) or idle_hours <= 0:
-        raise ValueError("paper_idle_hours must be finite and positive")
+    if not math.isfinite(idle_hours) or idle_hours < 0:
+        raise ValueError("paper_idle_hours must be finite and non-negative")
 
     return {
         "profit": profit_usdt,
         "session_profit": session_profit,
         "activity_at": activity,
-        "idle": activity is not None and time.time() - activity >= idle_hours * 3600,
+        "idle": idle_hours > 0 and activity is not None and time.time() - activity >= idle_hours * 3600,
         "cycles": cycles,
         "eff": profit_usdt / max(cycles, min_cycles),
         "trailing_stop_paper_timeout_end": state.get("trailing_stop_paper_timeout_end", 0.0)

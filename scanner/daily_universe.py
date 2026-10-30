@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from scanner.backtest_gate import effective_config, evaluate, rank_candidates, read_public_url
 
 
-def top_symbols(exchange, tickers):
+def top_symbols(exchange, tickers, previous=()):
     eligible = {s['symbol'] for s in exchange['symbols']
                 if s.get('contractType') == 'PERPETUAL' and s.get('status') == 'TRADING'
                 and s.get('quoteAsset') == 'USDT' and s.get('marginAsset') == 'USDT'}
@@ -38,6 +38,7 @@ def top_symbols(exchange, tickers):
     ordered = sorted(volumes, key=lambda s: (-volumes[s], s))[:100]
     if len(ordered) != 100:
         raise ValueError('Fewer than 100 eligible liquid contracts')
+    ordered += sorted(set(previous).intersection(volumes).difference(ordered), key=lambda s: (-volumes[s], s))
     return [{'symbol':s, 'quote_volume_24h':volumes[s]} for s in ordered]
 
 
@@ -64,6 +65,28 @@ def write_json(path, data):
     temporary.replace(path)
 
 
+def admission_history(root, symbols):
+    history = {}
+    for status_path in sorted((root/'reports/daily_universe').glob('*/status.json')):
+        status = json.loads(status_path.read_text(encoding='utf-8'))
+        if status.get('status') != 'published':
+            continue
+        result_path = status_path.with_name('results.json')
+        if not result_path.exists():
+            continue
+        results = json.loads(result_path.read_text(encoding='utf-8'))
+        for symbol in symbols:
+            result = results.get(symbol, {})
+            windows = result.get('windows', {})
+            if (result.get('pass') is True and not result.get('error')
+                    and all(windows.get(w, {}).get('pass') is True for w in ('48','24'))):
+                end = result.get('end_exclusive_ms', status.get('end_exclusive_ms', 0))
+                if end >= history.get(symbol, {}).get('end_exclusive_ms', -1):
+                    history[symbol] = {'report':str(result_path), 'end_exclusive_ms':end,
+                                       'result_sha256':hashlib.sha256(result_path.read_bytes()).hexdigest()}
+    return history
+
+
 def publish(root, run, candidates, results, config):
     if set(results) != {r['symbol'] for r in candidates}:
         raise ValueError('Incomplete backtest universe')
@@ -73,10 +96,28 @@ def publish(root, run, candidates, results, config):
     current = json.loads((root/'config.json').read_text(encoding='utf-8'))
     if effective_config(current) != effective_config(config):
         raise ValueError('Trading configuration changed during evaluation')
-    ranked = rank_candidates(candidates, results, set())
-    selected = [r['symbol'] for r in ranked[:50]]
     target = root/'tickers.txt'
     previous = target.read_bytes() if target.exists() else b''
+    input_path = run/'tickers.input.txt'
+    if input_path.exists() and input_path.read_bytes() != previous:
+        raise ValueError('Candidate list changed during evaluation')
+    old_symbols = set(previous.decode('utf-8-sig').split())
+    history = admission_history(root, old_symbols)
+    fresh = rank_candidates(candidates, results, set())
+    fresh_symbols = {r['symbol'] for r in fresh}
+    retained = rank_candidates([r for r in candidates if r['symbol'] in old_symbols
+                               and r['symbol'] in history and r['symbol'] not in fresh_symbols],
+                              results, set(), require_pass=False)
+    ranked = fresh + retained
+    selected = [r['symbol'] for r in ranked[:50]]
+    write_json(run/'results.json', results)
+    admissions = {symbol: {'basis':'fresh_pass' if symbol in fresh_symbols else 'historical_pass',
+                          'last_pass': {'report':str(run/'results.json'),
+                                        'end_exclusive_ms':results[symbol].get('end_exclusive_ms'),
+                                        'result_sha256':hashlib.sha256((run/'results.json').read_bytes()).hexdigest()}
+                          if symbol in fresh_symbols else history[symbol]}
+                  for symbol in selected}
+    write_json(run/'admissions.json', admissions)
     (run/'tickers.before.txt').write_bytes(previous)
     content = ''.join(s+'\n' for s in selected).encode('utf-8')
     (run/'tickers.selected.txt').write_bytes(content)
@@ -84,7 +125,8 @@ def publish(root, run, candidates, results, config):
     temporary = target.with_suffix('.tmp')
     temporary.write_bytes(content)
     temporary.replace(target)
-    return {'selected':selected, 'passed':len(ranked), 'tested':len(results),
+    return {'selected':selected, 'passed':sum(bool(r.get('pass')) for r in results.values()),
+            'pool_size':len(selected), 'retained_historical':sum(t not in fresh_symbols for t in selected), 'list_role':'cumulative_passed_pool', 'tested':len(results),
             'tickers_sha256':hashlib.sha256(content).hexdigest()}
 
 
@@ -101,14 +143,21 @@ async def main(root=ROOT):
         try:
             config = json.loads((root/'config.json').read_text(encoding='utf-8'))
             write_json(run/'effective_config.json', effective_config(config))
+            previous_bytes = (root/'tickers.txt').read_bytes() if (root/'tickers.txt').exists() else b''
+            previous = list(dict.fromkeys(previous_bytes.decode('utf-8-sig').split()))
+            if len(previous)>50:
+                raise ValueError('Previous pool exceeds 50 symbols')
+            (run/'tickers.input.txt').write_bytes(previous_bytes)
             snapshots = {}
             for name, endpoint in [('exchange','exchangeInfo'), ('volumes','ticker/24hr')]:
                 url = 'https://fapi.binance.com/fapi/v1/'+endpoint
                 raw = read_public_url(url)
                 (run/(name+'.json')).write_bytes(raw)
                 snapshots[name] = json.loads(raw)
-            candidates = top_symbols(snapshots['exchange'], snapshots['volumes'])
+            candidates = top_symbols(snapshots['exchange'], snapshots['volumes'], previous)
             write_json(run/'candidates.json', candidates)
+            write_json(run/'union.json', {'previous':previous, 'unique_tested':len(candidates),
+                       'unavailable_previous':sorted(set(previous)-{r['symbol'] for r in candidates})})
             results = await evaluate(root, [r['symbol'] for r in candidates], config, end,
                                      report_dir=run/'backtests')
             write_json(run/'results.json', results)

@@ -422,3 +422,15 @@ Approved: new PAPER sessions must receive their complete configured paper_initia
 ## PAPER idle timeout change — 29.10.2026
 
 User approved increasing the working swarm idle threshold from 3 to 6 hours after observing sessions closed with only initial build and commission losses under the x3/x3 configuration. The activity anchor remains completed initial build or the last successful rebalance; heartbeat/restart does not reset the clock. No strategy settings, gate thresholds, wallets or historical results are reset. Supervisor loads the change on its next normal cycle; workers do not require restart. Already closed sessions are not resurrected. Any future fixed-policy comparison must record this rule version; this change is not authorization to start that research. Economic improvement is unverified.
+
+
+## Daily candidate watch pool — 30.10.2026
+
+User approved a broad 50-symbol watch pool from the daily top100 eligible contracts by rolling quoteVolume. Daily publication now ranks all complete replay results with the existing latest24h Pareto Net%/MaxDD ranking, regardless of admission pass. Original 48h/24h pass flags remain unchanged; pool_size and list_role=candidate_pool are reported separately from passed. Strict supervisor admission for new PAPER sessions remains unchanged. Data/replay errors and incomplete runs still prevent publication. Existing 100-symbol results for the current effective config were republished as a 50-symbol pool with source_report provenance; no new replay was claimed or run. Automatic daily task updated. Tests:22passed. No worker restart or strategy parameter change.
+
+
+## Cumulative previously-passed pool — 30.10.2026, supersedes broad pool
+
+User approved daily union of fresh top100 eligible symbols by rolling quoteVolume and the previous pool up to50, without duplicates (100–150). Previously listed symbols no longer supported/tradable are diagnosed as unavailable and not retained. All union members use the same 48h and last24h windows. Fresh dual-pass candidates take priority; remaining places may retain only previous members with a proven dual-pass in a published historical run. Never-passed candidates are excluded. Both groups use existing latest24h Pareto ranking; no comparison of stale Net to fresh Net. admissions.json identifies fresh/historical basis and last successful report/hash/window. Current pass flags are not rewritten. Errors or incomplete coverage still prevent publication; changed list during a run also blocks it. Strict supervisor admission is unchanged.
+
+Migration of the temporary broad50 used its existing complete100-symbol results with matching effective config and full coverage:18selected =8fresh passes +10proven historical members; no new replay claimed. Source report and old list preserved.26 offline tests passed. Daily automation updated. No worker restart, state reset or strategy threshold change. Next natural daily union run remains runtime-unverified.

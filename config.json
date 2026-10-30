@@ -10,7 +10,7 @@
   "min_cycles_for_rotation": 6,
   "max_bots": 8,
   "paper_mode_bots": 8,
-  "paper_idle_hours": 6.0,
+  "paper_idle_hours": 0,
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,

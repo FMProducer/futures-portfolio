@@ -12,7 +12,7 @@ def isolate_log(monkeypatch):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('hours,elapsed,expected', [
     (None,10800,False), (6,21599,False), (6,21600,True),
-    (3,10800,True), (12,21600,False),
+    (3,10800,True), (12,21600,False), (0,0,False), (0,864000,False),
 ])
 async def test_configured_idle_boundary(tmp_path, monkeypatch, hours, elapsed, expected):
     from unittest.mock import AsyncMock
@@ -28,7 +28,7 @@ async def test_configured_idle_boundary(tmp_path, monkeypatch, hours, elapsed, e
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('hours', [0, -1, float('nan'), float('inf')])
+@pytest.mark.parametrize('hours', [-1, float('nan'), float('inf')])
 async def test_invalid_idle_timeout_is_rejected(monkeypatch, hours):
     from unittest.mock import AsyncMock
     from futures_portfolio.supervisor import swarm_manager as manager
