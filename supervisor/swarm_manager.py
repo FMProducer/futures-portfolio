@@ -535,10 +535,13 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
 
     # Add PM2 restart limits to prevent infinite restart loops
     # max_restarts=10, min_uptime=60s (60000ms)
-    cmd = f'pm2 start core/main.py --name "{proc_name}" --cwd "{BASE_PATH}" --update-env --interpreter "{sys.executable}" --instances 1 --max-restarts 10 --min-uptime 60000 -- --config config.json --ticker {ticker} {mode_flag}'
-    await (await asyncio.create_subprocess_shell(
-        cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
-    )).wait()
+    cmd = f'pm2 start core/main.py --name "{proc_name}" --cwd "{BASE_PATH}" --update-env --interpreter "{sys.executable}" --instances 1 --max-restarts 10 --restart-delay 5000 -- --config config.json --ticker {ticker} {mode_flag}'
+    process = await asyncio.create_subprocess_shell(
+        cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE
+    )
+    _, error = await process.communicate()
+    if process.returncode:
+        raise RuntimeError(f"PM2 start failed for {proc_name} (exit {process.returncode}): {error.decode(errors='replace')[-2000:]}")
 
 def calculate_bot_score(ticker: str, p: dict, is_running_real: bool, is_in_drawdown: bool, min_cycles_required: int) -> float:
     """
