@@ -30,6 +30,6 @@ python.exe backtest\backtest_rebalance.py --config config.json --ticker QNTUSDT 
 python.exe backtest\backtest_rebalance.py --config config.json --ticker RENDERUSDT Profit: +5.41% | MaxDD: 4.62% | Cycles: 13
 python.exe backtest\backtest_rebalance.py --config config.json --ticker REZUSDT    Profit: +4.37% | MaxDD: 16.75% | Cycles: 20
 python.exe backtest\backtest_rebalance.py --config config.json --ticker RLCUSDT    Profit: +0.18% | MaxDD: 5.95% | Cycles: 8
-python.exe backtest\backtest_rebalance.py --config config.json --cker USELESSUSDT Profit: +25.11% | MaxDD: 11.17% | Cycles: 28
+python.exe backtest\backtest_rebalance.py --config config.json --ticker USELESSUSDT Profit: +25.11% | MaxDD: 11.17% | Cycles: 28
 python.exe backtest\backtest_rebalance.py --config config.json --ticker USUSDT     Profit: +1.45% | MaxDD: 0.80% | Cycles: 38
 python.exe backtest\backtest_rebalance.py --config config.json --ticker VVVUSDT    Profit: +5.59% | MaxDD: 10.67% | Cycles: 16
