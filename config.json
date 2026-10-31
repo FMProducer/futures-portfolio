@@ -86,14 +86,10 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "AINUSDT",
-    "BLURUSDT",
     "BULLAUSDT",
-    "JCTUSDT",
-    "LSKUSDT",
-    "PARTIUSDT"
+    "LSKUSDT"
   ],
-  "base_ticker": "AINUSDT",
+  "base_ticker": "BULLAUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
