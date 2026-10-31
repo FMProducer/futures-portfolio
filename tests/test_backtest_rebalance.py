@@ -87,7 +87,7 @@ def test_negative_funding_credits_cash_without_virtual_transfer():
     assert state.get_tpv(Decimal('100')) == before + Decimal('1.00')
 
 
-def test_cross_margin_guard_uses_tpv_and_ignores_legacy_external_margin():
+def test_cross_margin_guard_counts_external_free_margin():
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('0.50'), base_ticker="BTCUSDT",
                           l_lev=Decimal('5'), s_lev=Decimal('5'))
@@ -101,7 +101,43 @@ def test_cross_margin_guard_uses_tpv_and_ignores_legacy_external_margin():
 
     state.virt_debt = Decimal('4')
     state.account_free_margin = Decimal('1000')
+    # external free margin backs the account: collateral 4.2 + 1000 >> MM -> far from liquidation
     assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004')) > Decimal('8')
+
+
+def test_external_free_margin_backs_liquidation_model():
+    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0'),
+                          base_ticker="BTCUSDT", l_lev=Decimal('3'), s_lev=Decimal('3'))
+    state.pos_short = Decimal('30')
+    state.short_entry_price = Decimal('100')  # margin 1000 on 30 units at 3x
+    # bare portfolio is already past the MM level: TPV(135) = -50 < MM(135) = 16.2
+    assert state.get_tpv(Decimal('135')) <= state.maintenance_margin(Decimal('135'), Decimal('0.004'))
+    assert state.hard_liquidation_triggered(Decimal('135'), Decimal('0.004')) is True
+    state.account_free_margin = Decimal('100000')
+    assert state.hard_liquidation_triggered(Decimal('135'), Decimal('0.004')) is False
+    assert state.cross_margin_distance_pct(Decimal('135'), Decimal('0.004')) > Decimal('99')
+
+
+@pytest.mark.asyncio
+async def test_cash_reserve_is_external_account_margin(tmp_path):
+    config = _flat_config()
+    config["portfolios"][0]["cash_reserve_usdt"] = 100000
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0] * 3
+    pd.DataFrame({
+        "open": prices, "high": prices, "low": prices, "close": prices,
+        "volume": [1.0] * len(prices),
+    }).to_feather(tmp_path / "BTCUSDT_live.feather")
+
+    res = await run_backtest(str(config_file), str(tmp_path), days=0.1,
+                             commission=0.0, slippage=0.0, quiet=True)
+    assert res is not None and res["accounting_ok"]
+    # portfolio base stays the trading capital; the reserve is account free margin
+    assert res["initial_capital"] == 1000 and res["trading_initial_capital"] == 1000
+    assert res["cash_reserve_usdt"] == 100000
+    assert res["settings"]["account_free_margin"] == 100000
+    assert res["settings"]["share_basis_scale"] == 1.0
 
 
 def test_cross_margin_guard_zero_collateral_has_no_division():

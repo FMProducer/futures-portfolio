@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import math
+import copy
 import logging
 import argparse
 import traceback
@@ -89,7 +90,7 @@ class BacktestState:
     initial_capital: Decimal
     base_ticker: str
     val_cash: Decimal
-    account_free_margin: Decimal = Decimal('0')  # legacy zero; external collateral is excluded from A2a guard
+    account_free_margin: Decimal = Decimal('0')  # external account free margin; backs the liquidation model, excluded from portfolio TPV
     pos_long: Decimal = Decimal('0')
     pos_short: Decimal = Decimal('0')
     virt_qty: Decimal = Decimal('0')
@@ -306,10 +307,12 @@ class BacktestState:
         return (abs(self.pos_long) + abs(self.pos_short)) * price * mmr
 
     def hard_liquidation_triggered(self, price: Decimal, mmr: Decimal) -> bool:
-        return (self.pos_long > 0 or self.pos_short > 0) and self.get_tpv(price) <= self.maintenance_margin(price, mmr)
+        # account-level collateral: portfolio TPV plus external free margin
+        return (self.pos_long > 0 or self.pos_short > 0) and self.get_tpv(price) + self.account_free_margin <= self.maintenance_margin(price, mmr)
 
     def cross_margin_distance_pct(self, price: Decimal, mmr: Decimal) -> Decimal:
-        total_margin_balance = self.get_tpv(price)
+        # account-level collateral: portfolio TPV plus external free margin
+        total_margin_balance = self.get_tpv(price) + self.account_free_margin
         if total_margin_balance <= 0:
             return Decimal('-100')
         total_mm = self.maintenance_margin(price, mmr)
@@ -557,11 +560,15 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         # Инъекция параметров Кросс-Маржи из конфигурации
         paper_initial_capital: float = portfolio_cfg.get("paper_initial_capital", initial_capital)
         
-        from core.capital import capital_with_reserve
         trading_initial_capital = initial_capital
-        initial_capital, targets = capital_with_reserve(portfolio_cfg, trading_initial_capital)
-        cash_reserve_usdt = initial_capital - trading_initial_capital
-        share_basis_scale = trading_initial_capital / initial_capital
+        # cash_reserve_usdt is account-level free margin, not portfolio capital: the
+        # portfolio stays accounted on trading capital; the reserve only backs the
+        # cross-margin liquidation model (external collateral).
+        cash_reserve_usdt = float(portfolio_cfg.get("cash_reserve_usdt", 0.0) or 0.0)
+        if not math.isfinite(cash_reserve_usdt) or cash_reserve_usdt < 0:
+            raise ValueError("cash_reserve_usdt must be a finite nonnegative USDT amount")
+        targets = copy.deepcopy(portfolio_cfg["targets"])
+        share_basis_scale = 1.0
         ticker_thresholds = portfolio_cfg.get("ticker_thresholds", {})
         
         if threshold_surplus_override is not None:
@@ -637,6 +644,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             s_lev=s_lev,
             funding_model=funding_model,
             ledger_base=Decimal(str(initial_capital)),
+            account_free_margin=Decimal(str(cash_reserve_usdt)),
         )
 
         if trail_distance > 0:
@@ -1179,7 +1187,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     else:
                         state.initial_build_pending = None
                         state.initial_build_active = False
-                        if residual > 0 and not (cash_reserve_usdt > 0 and target_v_share == 0):
+                        # reserve is external account margin: a portfolio residual always
+                        # goes to VIRTUAL so CASH ends the initial build at zero.
+                        if residual > 0:
                             moved = state.designate_virtual(residual)
                             state.log_event(i, "initial_residual_to_virtual",
                                             float(state.get_tpv(mid_price)),
@@ -1313,6 +1323,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.realized_total += upnl_l + upnl_s
                     state.val_cash = Decimal('0')
                     state.virt_debt = Decimal('0')
+                    state.account_free_margin = Decimal('0')
                     state.pos_long = Decimal('0')
                     state.long_entry_price = Decimal('0')
                     state.pos_short = Decimal('0')
@@ -1444,7 +1455,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             current_tpv = state.get_tpv(mid_price)
             state.check_accounting(mid_price, i, "bar_close")
             state.history.append(float(current_tpv + state.siphoning_reserve))
-            if current_tpv <= 0:
+            # Account default is account-level: external free margin keeps the account
+            # solvent while the 1000-portfolio book can run negative on MTM losses.
+            if current_tpv + state.account_free_margin <= 0:
                 status = "portfolio_default"
                 stopped_bar = i
                 state.log_event(i, status, float(current_tpv), "TPV <= 0")
@@ -1594,7 +1607,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "min_notional_usdt": float(min_notional_usdt),
                 "share_trail_distance": float(trail_distance),
                 "trend_add_block": portfolio_cfg.get("trend_add_block"),
-                "account_free_margin": 0.0,
+                "account_free_margin": float(cash_reserve_usdt),
             },
             "data_window": data_window
         }

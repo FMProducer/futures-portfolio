@@ -36,20 +36,23 @@ def test_cash_reserve_rejects_invalid_values(bad):
 
 
 @pytest.mark.asyncio
-async def test_backtest_keeps_reserve_in_cash_and_counts_it_once(tmp_path):
+async def test_backtest_keeps_reserve_external_to_portfolio(tmp_path):
     cfg = {"base_ticker": "TESTUSDT", "min_notional_usdt": 1, "portfolios": [portfolio()]}
     path = tmp_path / "config.json"
     path.write_text(json.dumps(cfg))
     pd.DataFrame({k: [100.] * 5 for k in ["open", "high", "low", "close", "volume"]}).to_feather(tmp_path / "TESTUSDT_live.feather")
     result = await run_backtest(str(path), str(tmp_path), days=5/1440, commission=0, slippage=0, quiet=True)
     assert result and result["accounting_ok"] and not result["cash_invariant_violation"]
-    assert result["initial_capital"] == 661
+    # portfolio is accounted on the trading base; the reserve is external account
+    # free margin that only backs the liquidation model
+    assert result["initial_capital"] == 200
     assert result["trading_initial_capital"] == 200
     assert result["cash_reserve_usdt"] == 461
+    assert result["settings"]["account_free_margin"] == 461
     formation = result["initial_formation"]
     assert formation["long_margin"] == pytest.approx(100)
     assert formation["short_margin"] == pytest.approx(100)
-    assert formation["cash"] == pytest.approx(461)
+    assert formation["cash"] == 0
     assert formation["virtual"] == 0
     assert json.loads(path.read_text()) == cfg
 
