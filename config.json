@@ -20,8 +20,8 @@
   "replacement_efficiency_threshold_pct": 50.0,
   "max_drawdown_limit": 50.0,
   "max_drawdown_cooldown_days": 0.09,
-  "equity_trailing_stop_pct": 0.2110079209267216,
-  "equity_trailing_stop_activation_pct": 1.294906440328766,
+  "equity_trailing_stop_pct": 0.26,
+  "equity_trailing_stop_activation_pct": 1.55,
   "equity_trailing_stop_timeout_sec": 34.454466312271094,
   "toxic_cooldown_days": 0.09014340672051,
   "use_v2_scoring": true,
@@ -34,8 +34,8 @@
       "name": "SyntheticMarketNeutral",
       "initial_capital": 1000.0,
       "paper_initial_capital": 1000.0,
-      "paper_account_free_margin": 1000.0,
-      "cash_reserve_usdt": 100000,
+      "paper_account_free_margin": 100000.0,
+      "cash_reserve_usdt": 100000.0,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
@@ -58,7 +58,7 @@
         }
       },
       "trend_add_block": {
-        "pct": 0.028709024961426542,
+        "pct": 0.02583812246528389,
         "window_bars": 53.62327119407764
       },
       "safety_guards": {
@@ -86,16 +86,14 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "APRUSDT",
-    "ENAUSDT",
-    "ICPUSDT",
-    "INITUSDT",
-    "NILUSDT",
-    "QNTUSDT",
-    "QUSDT",
-    "ZAMAUSDT"
+    "AINUSDT",
+    "BLURUSDT",
+    "BULLAUSDT",
+    "JCTUSDT",
+    "LSKUSDT",
+    "PARTIUSDT"
   ],
-  "base_ticker": "APRUSDT",
+  "base_ticker": "AINUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true

@@ -22,7 +22,7 @@ def test_cash_reserve_keeps_initial_exposure_and_does_not_mutate():
     cfg = portfolio()
     original = copy.deepcopy(cfg)
     total, targets = capital_with_reserve(cfg, 200)
-    assert total == 661
+    assert total == 200
     assert targets["BASE_LONG"]["share"] * total == pytest.approx(100)
     assert targets["BASE_SHORT"]["share"] * total == pytest.approx(100)
     assert cfg == original

@@ -495,7 +495,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         target_initial_cap = float(portfolio_cfg.get("paper_initial_capital", 100.0))
     else:
         target_initial_cap = float(portfolio_cfg.get("initial_capital", 86.0))
-    configured_cash_reserve = portfolio_cfg.get("cash_reserve_usdt", 0)
+    configured_cash_reserve = 0  # External account margin is never portfolio CASH.
     target_initial_cap, targets = capital_with_reserve(portfolio_cfg, target_initial_cap)
     
     max_capital_usdt = portfolio_cfg.get("max_capital_usdt", target_initial_cap)
@@ -1028,7 +1028,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         current_config = await asyncio.to_thread(sync_read_json, config_path)
                         last_config_mtime = current_mtime
                         candidate_portfolio = current_config["portfolios"][0]
-                        if candidate_portfolio.get("cash_reserve_usdt", 0) != configured_cash_reserve:
+                        if candidate_portfolio.get("cash_reserve_usdt", 0) != portfolio_cfg.get("cash_reserve_usdt", 0):
                             raise ValueError("Changing CASH reserve requires a funded new session")
                         portfolio_cfg = candidate_portfolio
                         targets = portfolio_cfg["targets"]

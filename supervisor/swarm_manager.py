@@ -329,7 +329,7 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
     динамическое ребазирование капитала для предотвращения инфляции баланса.
     """
     portfolio_cfg = config.get("portfolios", [{}])[0]
-    
+
     if is_paper:
         config_capital = portfolio_cfg.get("paper_initial_capital", portfolio_cfg.get("initial_capital", 115.0))
         base_state_file = f"paper_state_{ticker}.json"
@@ -350,6 +350,18 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
     old_state = await safe_load_json(str(base_state_path), {})
     if old_state.get("startup_blocked") or old_state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
         raise ValueError(f"State reset requires manual reconciliation: {ticker}")
+
+    # For paper mode: also release the budget allocation so it can be freshly reserved
+    if is_paper and (CORE_PATH / "paper_budget.sqlite").exists():
+        from core.paper_budget import release, ticker_history
+        # Create a mock wallet with flat positions for clean release
+        mock_wallet = {"balance": config_capital, "positions": {f"{ticker}_LONG": 0.0, f"{ticker}_SHORT": 0.0}}
+        mock_state = {"paper_close_complete": True, "last_tpv": config_capital, "siphoning_reserve": 0.0, "started_at": old_state.get("started_at", time.time())}
+        try:
+            release(BASE_PATH, ticker, mock_state, mock_wallet, rotation=True)
+            logger.info(f"🔄 Released paper budget allocation for {ticker} during state reset")
+        except Exception as e:
+            logger.warning(f"Could not release paper budget for {ticker}: {e}")
     
     # Динамическое ребазирование: сохраняем накопленный или урезанный стопом капитал
     final_capital = float(old_state.get("last_tpv", config_capital)) if old_state else config_capital

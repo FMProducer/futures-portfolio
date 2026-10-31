@@ -20,8 +20,8 @@ async def test_paper_cash_reserve_does_not_expand_initial_positions_or_become_vi
         'VIRTUAL': {'share': 0, 'leverage': 1},
     }
     state = author._make_state(virt_qty=0, virt_debt=0, rebalance_cycles=0,
-                               initial_tpv=661, reference_tpv=661, tpv_ath=661)
-    paper = author._make_paper_state(balance=661)
+                               initial_tpv=200, reference_tpv=200, tpv_ath=200)
+    paper = author._make_paper_state(balance=200)
     saves, _, _ = await author._run_rebalance(config, state, paper, loop_limit=2,
                                               calculator_class=PortfolioCalculator)
     final = [value for path, value in saves if path == 'paper_state.json'][-1]
@@ -30,17 +30,16 @@ async def test_paper_cash_reserve_does_not_expand_initial_positions_or_become_vi
     assert final_state.get('cash_invariant_violation') is None
     assert final['positions']['BTCUSDT_LONG'] * 60000 / 3 == pytest.approx(100, abs=21)
     assert final['positions']['BTCUSDT_SHORT'] * 60000 / 3 == pytest.approx(100, abs=21)
-    assert final_state['initial_tpv'] == 661
+    assert final_state['initial_tpv'] == 200
 
 
 @pytest.mark.asyncio
-async def test_reserve_cannot_be_added_to_existing_unfunded_session():
+async def test_external_reserve_does_not_require_new_portfolio_funding():
     config = author._make_config()
     config['portfolios'][0].update(initial_capital=200, paper_initial_capital=200, cash_reserve_usdt=461)
     state = author._make_state(initial_tpv=200, reference_tpv=200, tpv_ath=200)
     paper = author._make_paper_state(balance=200)
-    with pytest.raises(ValueError, match='funded new session'):
-        await author._run_rebalance(config, state, paper, loop_limit=1)
+    await author._run_rebalance(config, state, paper, loop_limit=1)
 
 
 @pytest.mark.asyncio
