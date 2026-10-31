@@ -45,15 +45,15 @@
       "siphoning_threshold_pct": 1438.3754797439933,
       "targets": {
         "BASE_LONG": {
-          "share": 0.5,
+          "share": 0.333,
           "leverage": 3
         },
         "BASE_SHORT": {
-          "share": 0.5,
+          "share": 0.333,
           "leverage": 3
         },
         "VIRTUAL": {
-          "share": 0.0,
+          "share": 0.334,
           "leverage": 1
         }
       },
