@@ -106,6 +106,7 @@ class BacktestState:
     dormant_capital: Decimal = Decimal('0')
     
     tpv_ath: float = 0.0
+    realized_ath: float = 0.0
     trailing_stop_violation_start: float = 0.0
     trailing_stop_triggered: bool = False
     last_rebalance_price: Decimal = Decimal('0')
@@ -645,6 +646,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             funding_model=funding_model,
             ledger_base=Decimal(str(initial_capital)),
             account_free_margin=Decimal(str(cash_reserve_usdt)),
+            realized_ath=float(initial_capital),
         )
 
         if trail_distance > 0:
@@ -781,6 +783,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                 rebased=float(state.dormant_capital),
                                 reserve_reset=float(state.siphoning_reserve))
                 state.initial_capital = state.dormant_capital
+                state.realized_ath = float(state.dormant_capital)
                 state.pos_long = Decimal('0')
                 state.pos_short = Decimal('0')
                 state.virt_qty = Decimal('0')
@@ -1368,10 +1371,15 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
             # --- 4b. Max Drawdown Limit (Emergency Stop) ---
             if max_drawdown_limit_pct < 100.0:
-                _dd_base = state.tpv_ath if state.tpv_ath > 0 else initial_capital_f
+                # Realized (ledger) equity trigger: an MTM trough is not a stop,
+                # a realized loss is — flattening at the MTM bottom just locks the loss in.
+                _re_eq = float(tpv_f - float(state.unrealized(mid_price)))
+                if _re_eq > state.realized_ath:
+                    state.realized_ath = _re_eq
+                _dd_base = state.realized_ath if state.realized_ath > 0 else initial_capital_f
                 drawdown_threshold = _dd_base * (1.0 - max_drawdown_limit_pct / 100.0)
-                if total_tpv_with_reserve < drawdown_threshold:
-                    logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! TPV={total_tpv_with_reserve:.2f} < threshold={drawdown_threshold:.2f} ({max_drawdown_limit_pct}% DD from ATH={_dd_base:.2f}). Entering {max_drawdown_cooldown_days}d cooldown.")
+                if _re_eq < drawdown_threshold:
+                    logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! realized={_re_eq:.2f} < threshold={drawdown_threshold:.2f} ({max_drawdown_limit_pct}% DD from realized ATH={_dd_base:.2f}). Entering {max_drawdown_cooldown_days}d cooldown.")
                     state.trailing_stop_triggered = True
                     state.stops_counter += 1
                     # Закрыть все позиции по текущей цене
