@@ -53,6 +53,10 @@ logger = setup_logger()
 
 CONFIG_PATH = str(BASE_PATH / "config.json")
 
+# Restart guard: track last start time per ticker to prevent rapid restarts
+_RESTART_COOLDOWN_SEC = 30
+_last_start_time: dict[str, float] = {}
+
 async def get_running_bots_info() -> Dict[str, dict]:
     try:
         proc = await asyncio.create_subprocess_shell(
@@ -488,7 +492,24 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
             if not state_path.exists():
                 await reset_bot_state_files(ticker, is_paper=False, config=config)
 
-    cmd = f'pm2 start core/main.py --name "{proc_name}" --cwd "{BASE_PATH}" --update-env --interpreter "{sys.executable}" --instances 1 -- --config config.json --ticker {ticker} {mode_flag}'
+    # Restart guard: prevent rapid restarts for same ticker
+    now = time.time()
+    key = f"{'p' if is_paper else 'r'}_{ticker}"
+    last = _last_start_time.get(key, 0)
+    if now - last < _RESTART_COOLDOWN_SEC:
+        logger.warning(f"⏭️ Start guard: skipping {proc_name}, last start {now - last:.1f}s ago")
+        return
+    _last_start_time[key] = now
+
+    # Check if process already exists in PM2 (avoid duplicate starts)
+    running = await get_running_bots_info()
+    if key in running:
+        logger.warning(f"⏭️ Process {proc_name} already running in PM2, skipping start")
+        return
+
+    # Add PM2 restart limits to prevent infinite restart loops
+    # max_restarts=10, min_uptime=60s (60000ms)
+    cmd = f'pm2 start core/main.py --name "{proc_name}" --cwd "{BASE_PATH}" --update-env --interpreter "{sys.executable}" --instances 1 --max-restarts 10 --min-uptime 60000 -- --config config.json --ticker {ticker} {mode_flag}'
     await (await asyncio.create_subprocess_shell(
         cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
     )).wait()

@@ -81,18 +81,25 @@ def main():
     sys.path.insert(0, str(root))
     folder = root / "reports/paper_swarm_continuous"
     folder.mkdir(parents=True, exist_ok=True)
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
+    logger = logging.getLogger("swarm-observer")
+
     with sqlite3.connect(folder / "observations.sqlite") as db:
         db.execute("PRAGMA journal_mode=WAL")
         db.execute("PRAGMA synchronous=FULL")
         while True:
-            summary = sample(db, root)
             try:
-                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-                with opener.open("http://127.0.0.1:8080/health", timeout=5) as response:
-                    summary["dashboard"] = json.load(response)
-            except Exception as exc:
-                summary["dashboard_error"] = str(exc)
-            print(json.dumps({"ts": time.time(), **summary}, ensure_ascii=True), flush=True)
+                summary = sample(db, root)
+                try:
+                    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                    with opener.open("http://127.0.0.1:8080/health", timeout=5) as response:
+                        summary["dashboard"] = json.load(response)
+                except Exception as exc:
+                    summary["dashboard_error"] = str(exc)
+                print(json.dumps({"ts": time.time(), **summary}, ensure_ascii=True), flush=True)
+            except Exception as e:
+                logger.error(f"Observer cycle failed: {e}")
             if args.once:
                 return
             time.sleep(5)

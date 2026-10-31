@@ -44,21 +44,27 @@ def emit_signal(signal_type: str, ticker: str, is_paper: bool) -> None:
         logging.error(f"Failed to emit signal {signal_type} for {ticker}: {e}")
 
 async def self_kill_pm2(ticker: str, is_paper: bool) -> None:
-    """Удаляет себя из PM2 перед выходом, чтобы предотвратить autorestart. Асинхронная версия."""
+    """Останавливает себя в PM2 перед выходом, чтобы предотвратить autorestart.
+    Использует stop вместо delete, чтобы процесс остался в списке PM2 для диагностики.
+    С retry логикой для надежности."""
     prefix = "paper" if is_paper else "real"
     proc_name = f"{prefix}-{ticker.replace('USDT', '').lower()}"
-    try:
-        import sys
-        cmd = f"pm2 delete {proc_name}"
-        proc = await asyncio.create_subprocess_shell(
-            cmd,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-        await asyncio.wait_for(proc.communicate(), timeout=5)
-        logging.info(f"PM2 self-kill: deleted {proc_name}")
-    except Exception as e:
-        logging.warning(f"PM2 self-kill failed for {proc_name}: {e}")
+    for attempt in range(3):
+        try:
+            cmd = f"pm2 stop {proc_name}"
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await asyncio.wait_for(proc.communicate(), timeout=5)
+            logging.info(f"PM2 self-kill: stopped {proc_name}")
+            return
+        except Exception as e:
+            logging.warning(f"PM2 self-kill attempt {attempt+1}/3 failed for {proc_name}: {e}")
+            if attempt < 2:
+                await asyncio.sleep(1 * (attempt + 1))
+    logging.error(f"PM2 self-kill failed after 3 attempts for {proc_name}")
 
 def live_refusal_in_paper(base_ticker: str) -> str:
     """Single wording for the launch contract, shared by CLI and loop refusal."""

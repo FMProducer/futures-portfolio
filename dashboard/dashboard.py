@@ -58,6 +58,10 @@ from flask import (
 # ─── App factory ──────────────────────────────────────────────
 
 
+# Rate limiting for PM2 restart actions (30 seconds cooldown per process)
+_PM2_RESTART_COOLDOWN = 30
+_last_pm2_restart: dict[str, float] = {}
+
 def create_app():
     app = Flask(
         __name__,
@@ -299,6 +303,14 @@ def create_app():
     # ─── Control helpers ───────────────────────────────────────
 
     def _execute_pm2_action(action, target, ticker=None):
+        # Rate limiting for restart action
+        if action == "pm2_restart":
+            now = time.time()
+            last = _last_pm2_restart.get(target, 0)
+            if now - last < _PM2_RESTART_COOLDOWN:
+                return {"error": f"Rate limited: {target} restarted {now - last:.1f}s ago, wait {_PM2_RESTART_COOLDOWN}s"}
+            _last_pm2_restart[target] = now
+
         try:
             if action == "pm2_start" and ticker:
                 cmd = [
@@ -306,6 +318,8 @@ def create_app():
                     "--name", f"paper-{ticker.lower()}",
                     "--cwd", str(PROJECT_PATH),
                     "--interpreter", "python",
+                    "--max-restarts", "10",
+                    "--min-uptime", "60000",
                     "--", "--config", "config.json",
                     "--ticker", ticker,
                 ]
