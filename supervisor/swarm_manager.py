@@ -423,6 +423,20 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
     existing = await safe_load_json(str(CORE_PATH / f"{prefix}_state_{ticker}.json"), {})
     if existing.get("startup_blocked") or existing.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
         raise ValueError(f"Bot launch requires manual reconciliation: {ticker}")
+
+    # Detect cash_reserve mismatch: old state has different initial_tpv than config expects
+    if is_paper and config and existing:
+        portfolio = config.get("portfolios", [{}])[0]
+        expected_capital = portfolio.get("paper_initial_capital", 1000)
+        if portfolio.get("cash_reserve_usdt", 0):
+            from core.capital import capital_with_reserve
+            expected_capital, _ = capital_with_reserve(portfolio, expected_capital)
+        old_initial = float(existing.get("initial_tpv", 0))
+        if old_initial > 0 and not math.isclose(old_initial, expected_capital, abs_tol=1e-6):
+            logger.warning(f"🔄 Cash reserve mismatch for {ticker}: state has {old_initial}, config expects {expected_capital}. Forcing state reset.")
+            await reset_bot_state_files(ticker, True, config)
+            existing = {}  # Treat as fresh start
+
     proc_name = f"{prefix}-{ticker.replace('USDT', '').lower()}"
     mode_flag = "--paper" if is_paper else "--real"
     if config and (existing.get("trailing_stop_triggered") or existing.get("paper_close_complete")):
