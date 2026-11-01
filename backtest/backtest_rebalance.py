@@ -17,14 +17,14 @@ import traceback
 from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation, getcontext
 
 try:
-    from core.calculator import PortfolioCalculator
+    from core.calculator import PortfolioCalculator, select_tick_actions
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
     from core import profit_budget, siphoning
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from core.calculator import PortfolioCalculator
+    from core.calculator import PortfolioCalculator, select_tick_actions
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
     from core import profit_budget, siphoning
@@ -98,6 +98,7 @@ class BacktestState:
     long_entry_price: Decimal = Decimal('0')
     short_entry_price: Decimal = Decimal('0')
     siphoning_reserve: Decimal = Decimal('0')
+    rebalance_preferred_key: Optional[str] = None
     cycles: int = 0
     skipped_expansions_counter: int = 0
     liquidations_counter: int = 0
@@ -965,6 +966,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     if a.get("key") in missing and not a.get("is_reduction", False)
                 ]
 
+            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key)
+
             if actions:
                 is_initial_formation = (
                     state.initial_build_active
@@ -1064,6 +1067,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl,
                                        float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
                                        leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
+                    state.rebalance_preferred_key = "BASE_SHORT" if key == "BASE_LONG" else "BASE_LONG"
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
                     if state.share_trail is not None:
                         # confirmed fill (full or partial) consumes the REDUCE signal
@@ -1163,6 +1167,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                    float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
                                    leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1,
                                    initial_build=building)
+                    state.rebalance_preferred_key = "BASE_SHORT" if key == "BASE_LONG" else "BASE_LONG"
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
                     if state.share_trail is not None:
                         # confirmed fill (full or partial) consumes the ADD signal

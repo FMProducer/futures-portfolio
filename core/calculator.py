@@ -429,3 +429,12 @@ class PortfolioCalculator:
             "share_virt_pct": float(self.share_virt_pct),
             "share_cash_pct": float(self.share_cash_pct)
         }
+
+
+def select_tick_actions(actions, initial_build, preferred_side=None):
+    futures = [a for a in actions if a.get("key") in ("BASE_LONG", "BASE_SHORT")]
+    if initial_build or len({a.get("key") for a in futures}) < 2:
+        return actions
+    reductions = [a for a in futures if a.get("is_reduction")]
+    chosen = next((a for a in futures if not reductions and a.get("key") == preferred_side), (reductions or futures)[0])
+    return [a for a in actions if a.get("key") not in ("BASE_LONG", "BASE_SHORT") or a is chosen]

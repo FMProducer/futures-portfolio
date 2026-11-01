@@ -17,7 +17,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 load_dotenv()
 
 from core.connector import BinanceConnector
-from core.calculator import PortfolioCalculator, initial_notional_after_fee
+from core.calculator import PortfolioCalculator, initial_notional_after_fee, select_tick_actions
 from core.capital import capital_with_reserve
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
@@ -1938,6 +1938,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 f"Cash invariant violation active: blocked {len(blocked_increases)} increase action(s)."
                             )
 
+                    fused_actions = select_tick_actions(fused_actions, initial_build, ("BASE_" + state["rebalance_preferred_side"]) if state.get("rebalance_preferred_side") else None)
                     if fused_actions:
                         # Log specific trigger reasons
                         for action in fused_actions:
@@ -2050,6 +2051,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                         logger.info("Duplicate confirmed fill ignored before position/cash update")
                                         continue
                                 any_success = True
+
+                                if not initial_build and pos_side in ("LONG", "SHORT"):
+                                    state["rebalance_preferred_side"] = "SHORT" if pos_side == "LONG" else "LONG"
+                                    state_dirty = True
 
                                 trade_pnl = Decimal(str(res.get("trade_pnl", 0.0)))
                                 commission = Decimal(str(res.get("commission", 0.0)))
