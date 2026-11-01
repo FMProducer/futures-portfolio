@@ -20,7 +20,7 @@
   "replacement_efficiency_threshold_pct": 50.0,
   "max_drawdown_limit": 100.0,
   "max_drawdown_cooldown_days": 0.09,
-  "equity_trailing_stop_pct": 0.3,
+  "equity_trailing_stop_pct": 0.30,
   "equity_trailing_stop_activation_pct": 1.55,
   "equity_trailing_stop_timeout_sec": 34.454466312271094,
   "toxic_cooldown_days": 0.09014340672051,
