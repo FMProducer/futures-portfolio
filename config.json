@@ -44,7 +44,7 @@
       "liquidation_distance_warn_pct": 40.0,
       "liquidation_distance_crit_pct": 25.0,
       "post_factum_liquidation_check": true,
-      "siphoning_threshold_pct": 1438.3754797439933,
+      "siphoning_threshold_pct": 15.0,
       "targets": {
         "BASE_LONG": {
           "share": 0.333,
@@ -83,15 +83,25 @@
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
-  "black_list": [],
+  "black_list": [
+    "BTCUSDT"
+  ],
   "toxic_blacklist": {},
-  "toxic_blacklist_paper": {},
+  "toxic_blacklist_paper": {
+    "BTCUSDT": 1793510603.1503744
+  },
   "toxic_blacklist_real": {},
   "tickers": [
-    "BULLAUSDT",
-    "LSKUSDT"
+    "1000PEPEUSDT",
+    "AIOTUSDT",
+    "BLESSUSDT",
+    "ENAUSDT",
+    "EVAAUSDT",
+    "LITUSDT",
+    "PROMUSDT",
+    "SPKUSDT"
   ],
-  "base_ticker": "BULLAUSDT",
+  "base_ticker": "1000PEPEUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true

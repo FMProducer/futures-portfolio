@@ -50,6 +50,27 @@ def test_backtest_state():
     assert state.get_tpv(Decimal('200')) == state.get_tpv(Decimal('105'))
 
 
+def test_siphon_from_virtual_pays_v_not_cash():
+    """V-first siphon: VIRTUAL pays the SAFE take, CASH and L/S stay untouched."""
+    state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('666'),
+                          virt_debt=Decimal('334'), base_ticker="BTCUSDT")
+    before = state.get_tpv(Decimal('100'))
+    took = state.siphon_from_virtual(Decimal('300'))
+    assert took == Decimal('300')
+    assert state.siphoning_reserve == Decimal('300')   # money lands in SAFE
+    assert state.val_cash == Decimal('666')            # CASH untouched
+    assert state.virt_debt == Decimal('34')            # V: 3.4% of 1000
+    assert state.get_tpv(Decimal('100')) == before - Decimal('300')
+    # portfolio + reserve capital is conserved
+    assert state.get_tpv(Decimal('100')) + state.siphoning_reserve == before
+
+    # clamp edge: siphon can never exceed available V
+    took2 = state.siphon_from_virtual(Decimal('500'))
+    assert took2 == Decimal('34')
+    assert state.virt_debt == Decimal('0')
+    assert state.val_cash == Decimal('666')
+
+
 def test_funding_waterfall_preserves_tpv_on_virtual_transfer():
     """B1 V-only: funding debits V, CASH unchanged."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),

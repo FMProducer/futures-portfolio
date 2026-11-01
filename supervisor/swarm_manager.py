@@ -19,6 +19,7 @@ load_dotenv()
 from scanner.rank_tickers import main as run_scanner
 from core.storage import safe_load_json, safe_save_json, safe_load_json_sync, safe_save_json_sync
 from core.connector import BinanceConnector
+from core import siphoning
 
 # Настройка логирования
 BASE_PATH = Path(__file__).resolve().parent.parent
@@ -435,6 +436,17 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
     existing = await safe_load_json(str(CORE_PATH / f"{prefix}_state_{ticker}.json"), {})
     if existing.get("startup_blocked") or existing.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
         raise ValueError(f"Bot launch requires manual reconciliation: {ticker}")
+    if config and existing.get("stop_reason") == "siphon":
+        credit_id = f"{prefix}:{ticker}:{existing.get('started_at')}:{existing.get('rebalance_cycles')}"
+        if credit_id not in config.get("siphoning_credits", {}):
+            signals_dir = BASE_PATH / "signals"
+            signals_dir.mkdir(exist_ok=True)
+            (signals_dir / f"siphon_{prefix}_{ticker}.flag").touch()
+            logger.info(f"SAFE credit pending; preserving closed session before clean restart: {ticker}")
+            return
+    if time.time() < float(existing.get("restart_not_before", 0)):
+        logger.info(f"SAFE cooldown active; clean restart deferred: {ticker}")
+        return
 
     # Detect cash_reserve mismatch: old state has different initial_tpv than config expects
     if is_paper and config and existing:
@@ -865,16 +877,36 @@ async def manage_swarm():
                     f"(expires {time.ctime(now_ts + toxic_cooldown_sec)})"
                 )
 
-            elif signal_type == "exit":
+            elif signal_type in ("exit", "siphon"):
                 # Прибыльный исход (Пробация) → probation (мягкий cooldown, без перманентного бана)
                 prob_key = "probation_paper" if mode_tag == "paper" else "probation_real"
-                if prob_key not in config:
-                    config[prob_key] = {}
-                config[prob_key][ticker] = now_ts + probation_cooldown_sec
+                probation = prob_paper if mode_tag == "paper" else prob_real
+                cooldown_sec = toxic_cooldown_sec if signal_type == "siphon" else probation_cooldown_sec
+                probation[ticker] = now_ts + cooldown_sec
+                config[prob_key] = probation
+
+                if signal_type == "siphon":
+                    closed = await safe_load_json(str(CORE_PATH / f"{mode_tag}_state_{ticker}.json"), {})
+                    if (not closed.get("trailing_stop_triggered") or closed.get("startup_blocked")
+                            or closed.get("rebalance_inflight") or (closed.get("funding_halt") or {}).get("active")):
+                        raise ValueError(f"SAFE credit requires a reconciled terminal session: {ticker}")
+                    if mode_tag == "paper":
+                        wallet = await safe_load_json(str(CORE_PATH / f"paper_shadow_{ticker}.json"), {})
+                        if (not closed.get("paper_close_complete") or "positions" not in wallet
+                                or any(float(qty) != 0 for qty in wallet["positions"].values())):
+                            raise ValueError(f"SAFE credit requires verified flat PAPER positions: {ticker}")
+                    else:
+                        positions = await connector.get_positions()
+                        if any(float(p["qty"]) != 0 for key,p in positions.items() if key.split("_")[0] == ticker):
+                            raise ValueError(f"SAFE credit requires verified flat REAL positions: {ticker}")
+                    siphoning.credit_reserve(config, mode_tag, ticker, closed)
+                    await safe_save_json(CONFIG_PATH, {**config,
+                        "black_list": sorted(config.get("black_list", [])),
+                        "live_swarm": sorted(config.get("live_swarm", []))})
 
                 logger.info(
                     f"✅ EXIT signal: {ticker} ({mode_tag}) → {prob_key} "
-                    f"(expires {time.ctime(now_ts + probation_cooldown_sec)})"
+                    f"(expires {time.ctime(now_ts + cooldown_sec)})"
                 )
             else:
                 logger.warning(f"⚠️ Unknown signal type '{signal_type}' for {ticker}. Ignoring.")

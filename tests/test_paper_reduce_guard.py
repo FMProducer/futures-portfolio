@@ -192,7 +192,7 @@ async def test_real_executor_main_storage_reload_and_receipt_retry(tmp_path):
     config = author._make_config(base_ticker="JCTUSDT", equity_trailing_stop_activation_pct=9000,
         max_drawdown_limit=200, rebalance_share_trail_distance=0)
     config["portfolios"][0].update(deepcopy(CFG), initial_capital=1000, paper_initial_capital=1000,
-        siphoning_threshold_pct=1000.05, reinvestment_ratio=0, liquidation_distance_crit_pct=0,
+        siphoning_threshold_pct=0, reinvestment_ratio=1, liquidation_distance_crit_pct=0,
         liquidation_distance_warn_pct=0)
     config_path, state_path, wallet_path = [tmp_path / name for name in ("config.json", "state.json", "wallet.json")]
     state = author._make_state(base_ticker="JCTUSDT", initial_tpv=1000, reference_tpv=1000,

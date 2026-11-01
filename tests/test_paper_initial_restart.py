@@ -13,7 +13,7 @@ async def test_paper_cash_reserve_does_not_expand_initial_positions_or_become_vi
     config = author._make_config(equity_trailing_stop_activation_pct=9000.0, max_drawdown_limit=200.0)
     portfolio = config['portfolios'][0]
     portfolio.update(initial_capital=200, paper_initial_capital=200, cash_reserve_usdt=461,
-                     siphoning_threshold_pct=1000, reinvestment_ratio=0)
+                     siphoning_threshold_pct=0, reinvestment_ratio=1)
     portfolio['targets'] = {
         'BASE_LONG': {'share': .5, 'leverage': 3},
         'BASE_SHORT': {'share': .5, 'leverage': 3},
@@ -48,7 +48,7 @@ async def test_real_paper_initial_restart_only_missing_leg():
                                  max_drawdown_limit=200.0)
     portfolio = config['portfolios'][0]
     portfolio.update(initial_capital=1000.0, paper_initial_capital=1000.0,
-                     siphoning_threshold_pct=1000.0, reinvestment_ratio=0.0)
+                     siphoning_threshold_pct=0.0, reinvestment_ratio=1.0)
     portfolio['targets'] = {
         'BASE_LONG': {'share': .33, 'leverage': 7},
         'BASE_SHORT': {'share': .33, 'leverage': 7},

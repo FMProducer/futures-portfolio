@@ -20,14 +20,14 @@ try:
     from core.calculator import PortfolioCalculator
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
-    from core import profit_budget
+    from core import profit_budget, siphoning
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from core.calculator import PortfolioCalculator
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
-    from core import profit_budget
+    from core import profit_budget, siphoning
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("Backtest")
@@ -226,6 +226,17 @@ class BacktestState:
         amount = min(abs(Decimal(str(amount))), self.virt_debt)
         self.virt_debt -= amount
         self.val_cash += amount
+        return amount
+
+    def siphon_from_virtual(self, amount: Decimal) -> Decimal:
+        """SAFE siphon: VIRTUAL leg (virt_debt) pays, CASH (val_cash) and L/S untouched.
+
+        Clamped to available V; the amount moves into siphoning_reserve."""
+        amount = min(abs(Decimal(str(amount))), max(Decimal('0'), self.virt_debt))
+        if amount <= 0:
+            return Decimal('0')
+        self.virt_debt -= amount
+        self.siphoning_reserve += amount
         return amount
 
     # B1: V-only funding (spec §4).  CASH-first legacy kept for baseline reproduction.
@@ -592,6 +603,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         siphoning_threshold_pct: float = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
         # config ships reinvestment_ratio as null; 0 = reinvest nothing
         reinvestment_ratio: float = float(portfolio_cfg.get("reinvestment_ratio") or 0.0)
+        siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0), reinvestment_ratio)
         trail_distance: float = float(config.get("rebalance_share_trail_distance", 0.0))
         if not math.isfinite(trail_distance) or trail_distance < 0:
             raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -770,27 +782,27 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 continue
 
             if i == state.cooldown_until_bar and state.cooldown_until_bar > 0:
-                if state.dormant_capital < Decimal('5.0'):
-                    logger.critical(f"Bar {i}: Capital too low to restart ({state.dormant_capital:.2f}). Backtest effectively dead.")
+                active_restart_capital = state.dormant_capital - state.siphoning_reserve
+                if active_restart_capital < Decimal('5.0'):
+                    logger.critical(f"Bar {i}: Capital too low to restart ({active_restart_capital:.2f}). Backtest effectively dead.")
                     state.log_event(i, "cooldown_dead", float(state.dormant_capital), "capital below 5 USDT")
                     state.cooldown_until_bar = len(df) + 1  # Dead forever
                     state.history.append(float(state.dormant_capital))
                     continue
 
-                logger.info(f"Bar {i}: Cooldown finished. Reviving bot. Rebased capital: {state.dormant_capital:.2f}")
+                logger.info(f"Bar {i}: Cooldown finished. Reviving bot. Rebased capital: {active_restart_capital:.2f}")
                 state.log_event(i, "cooldown_end", float(state.dormant_capital),
                                 f"rebased {state.dormant_capital:.2f}",
-                                rebased=float(state.dormant_capital),
-                                reserve_reset=float(state.siphoning_reserve))
-                state.initial_capital = state.dormant_capital
-                state.realized_ath = float(state.dormant_capital)
+                                rebased=float(active_restart_capital),
+                                reserve_retained=float(state.siphoning_reserve))
+                state.initial_capital = active_restart_capital
+                state.realized_ath = float(active_restart_capital)
                 state.pos_long = Decimal('0')
                 state.pos_short = Decimal('0')
                 state.virt_qty = Decimal('0')
                 state.long_entry_price = Decimal('0')
                 state.short_entry_price = Decimal('0')
-                state.siphoning_reserve = Decimal('0')
-                state.tpv_ath = max(float(state.dormant_capital), float(state.initial_capital))
+                state.tpv_ath = float(active_restart_capital)
                 state.trailing_stop_violation_start = 0.0
                 state.trailing_stop_triggered = False
                 state.profit_book = {}
@@ -805,7 +817,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 state.val_cash = state.initial_capital - virt_cost
                 state.ledger_base = (
                     state.initial_capital - state.realized_total + state.commission_paid
-                    + state.funding_paid + state.liquidation_loss_total
+                    + state.funding_paid + state.liquidation_loss_total + state.siphoning_reserve
                 )
                 state.cooldown_until_bar = 0
                 if state.share_trail is not None:
@@ -1322,11 +1334,12 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     logger.warning(f"Bar {i}: HARD CROSS LIQUIDATION at {float(liq_price)}! Весь баланс суб-аккаунта уничтожен.")
 
                     # The whole futures account (including the VIRTUAL cash bucket) is wiped.
-                    wiped_tpv = state.get_tpv(liq_price)
+                    wiped_tpv = state.get_tpv(liq_price) + state.siphoning_reserve
                     state.realized_total += upnl_l + upnl_s
                     state.val_cash = Decimal('0')
                     state.virt_debt = Decimal('0')
                     state.account_free_margin = Decimal('0')
+                    state.siphoning_reserve = Decimal('0')
                     state.pos_long = Decimal('0')
                     state.long_entry_price = Decimal('0')
                     state.pos_short = Decimal('0')
@@ -1353,21 +1366,41 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             tpv_f = state.get_tpv_fast(float(mid_price))
             total_tpv_with_reserve = tpv_f + float(state.siphoning_reserve)
             initial_capital_f = float(state.initial_capital)
-            total_surplus = total_tpv_with_reserve - initial_capital_f
-            siphoning_threshold_abs = initial_capital_f * (siphoning_threshold_pct / 100.0)
-
-            if total_surplus > float(state.siphoning_reserve) + max(0.1, siphoning_threshold_abs):
-                new_profit = total_surplus - float(state.siphoning_reserve)
-                siphon_amount = new_profit * (1 - reinvestment_ratio)
-                if siphon_amount > 0.1:
-                    state.siphoning_reserve += Decimal(str(siphon_amount))
-                    state.val_cash -= Decimal(str(siphon_amount))
-                    profit_budget.charge(state.profit_book, siphon_amount)
-                    total_tpv_with_reserve -= siphon_amount
-                    state.siphoning_log.append({
-                        "bar": int(i), "amount": float(siphon_amount),
-                        "reserve": float(state.siphoning_reserve),
-                    })
+            siphon_amount = siphoning.calculate_amount(
+                state.get_tpv(mid_price), trading_initial_capital, state.virt_debt,
+                siphoning_threshold_pct, reinvestment_ratio)
+            if siphon_amount > Decimal('0.1'):
+                virtual_before = state.virt_debt
+                took = state.siphon_from_virtual(siphon_amount)
+                state.account_free_margin += took
+                portfolio_cfg["cash_reserve_usdt"] = float(state.account_free_margin)
+                profit_budget.charge(state.profit_book, float(took))
+                state.initial_capital = Decimal(str(trading_initial_capital))
+                state.realized_ath = max(0.0, state.realized_ath - float(took))
+                tpv_f = float(state.get_tpv(mid_price))
+                initial_capital_f = float(state.initial_capital)
+                state.check_accounting(mid_price, i, "siphon_virtual")
+                state.siphoning_log.append({
+                    "bar": int(i), "amount": float(took), "reserve": float(state.siphoning_reserve),
+                    "initial_capital": trading_initial_capital, "active_tpv": tpv_f,
+                    "active_pnl": tpv_f - trading_initial_capital,
+                    "virtual_before": float(virtual_before), "virtual_after": float(state.virt_debt),
+                })
+                logger.info(f"Bar {i}: SAFE siphoned {took:.4f} from VIRTUAL; active TPV={tpv_f:.4f}, SAFE={state.siphoning_reserve:.4f}")
+                for leg, qty in (("BASE_LONG", state.pos_long), ("BASE_SHORT", state.pos_short)):
+                    state.close_position_for_funding_shortfall(
+                        leg, qty, mid_price, sim, i, trigger="siphon_stop")
+                state.check_accounting(mid_price, i, "siphon_stop")
+                if state.share_trail is not None:
+                    share_trail.reset_all(state.share_trail)
+                state.trailing_stop_triggered = True
+                state.dormant_capital = state.get_tpv(mid_price) + state.siphoning_reserve
+                state.cooldown_until_bar = i + cooldown_bars_duration
+                state.log_event(i, "siphon_stop", float(state.dormant_capital), "SAFE session closed")
+                state.log_event(i, "cooldown_start", float(state.dormant_capital), "SAFE session closed",
+                                until_bar=int(state.cooldown_until_bar), reason="siphon_stop")
+                state.history.append(float(state.dormant_capital))
+                continue
 
             # --- 4b. Max Drawdown Limit (Emergency Stop) ---
             if max_drawdown_limit_pct < 100.0:
@@ -1421,8 +1454,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     continue
 
             # --- 4c. Trailing Stop ---
-            if total_tpv_with_reserve > state.tpv_ath:
-                state.tpv_ath = total_tpv_with_reserve
+            if tpv_f > state.tpv_ath:
+                state.tpv_ath = tpv_f
                 # Floor: tpv_ath cannot be below initial_capital
                 if state.tpv_ath < initial_capital_f:
                     state.tpv_ath = initial_capital_f
@@ -1430,7 +1463,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
             if (trailing_stop_pct > 0
                     and state.tpv_ath > initial_capital_f * (1 + trailing_stop_activation_pct / 100.0)):
-                drawdown_from_ath = (1 - total_tpv_with_reserve / state.tpv_ath) * 100.0
+                drawdown_from_ath = (1 - tpv_f / state.tpv_ath) * 100.0
                 if drawdown_from_ath >= trailing_stop_pct:
                     if state.trailing_stop_violation_start == 0:
                         state.trailing_stop_violation_start = float(i)
@@ -1568,7 +1601,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "siphoning_log": state.siphoning_log,
             "initial_capital": float(initial_capital),
             "trading_initial_capital": float(trading_initial_capital),
-            "cash_reserve_usdt": float(cash_reserve_usdt),
+            "cash_reserve_usdt": float(state.account_free_margin),
             "profit_budget": state.profit_book.get("profit_budget"),
             "final_equity": float(final_tpv_with_reserve),
             "final_tpv": float(final_tpv_with_reserve),

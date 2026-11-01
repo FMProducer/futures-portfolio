@@ -21,7 +21,7 @@ async def test_runtime_duplicate_fill_and_disk_checkpoint(mock_config, mock_conn
                max_drawdown_limit=200)
     portfolio = cfg["portfolios"][0]
     portfolio.update(initial_capital=1000., paper_initial_capital=1000., max_capital_usdt=1000.,
-                     siphoning_threshold_pct=1000., reinvestment_ratio=0., fuse_enabled=False)
+                     siphoning_threshold_pct=0., reinvestment_ratio=1., fuse_enabled=False)
     mock_connector.get_mark_prices.return_value = {"BTCUSDT": 100.}
     mock_connector.get_futures_prices.return_value = {"BTCUSDT": 100.}
     mock_connector.get_order_book.return_value = {"bids": [["100", "10"]], "asks": [["100", "10"]]}

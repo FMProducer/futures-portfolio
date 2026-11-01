@@ -38,7 +38,7 @@ def _blocking_config():
     )
     p = config["portfolios"][0]
     p.update(initial_capital=1000.0, paper_initial_capital=1000.0,
-             siphoning_threshold_pct=1000.0, reinvestment_ratio=0.0)
+             siphoning_threshold_pct=0.0, reinvestment_ratio=1.0)
     p["targets"] = {
         "BASE_LONG":  {"share": 0.33, "leverage": 7},
         "BASE_SHORT": {"share": 0.33, "leverage": 7},

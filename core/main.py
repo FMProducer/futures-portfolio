@@ -22,7 +22,7 @@ from core.capital import capital_with_reserve
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
-from core import share_trail, profit_budget
+from core import share_trail, profit_budget, siphoning
 
 from pathlib import Path
 
@@ -95,8 +95,12 @@ def _paper_collateral(paper_state: dict, base_ticker: str, price: float,
 
 
 def _paper_guard_metrics(paper_state: dict, base_ticker: str, price: float,
-                         calc_tpv: Decimal, logger: logging.Logger) -> tuple:
+                         calc_tpv: Decimal, logger: logging.Logger, account_free_margin=0) -> tuple:
     collateral = _paper_collateral(paper_state, base_ticker, price, calc_tpv, logger)
+    reserve = Decimal(str(account_free_margin))
+    if not reserve.is_finite() or reserve < 0:
+        raise ValueError("PAPER free margin must be finite and nonnegative")
+    collateral += reserve
     long_qty = abs(Decimal(str(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))))
     short_qty = abs(Decimal(str(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))))
     maintenance = (long_qty + short_qty) * Decimal(str(price)) * Decimal('0.004')
@@ -486,6 +490,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
     siphoning_threshold_pct = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
     reinvestment_ratio = portfolio_cfg.get("reinvestment_ratio", 0.0)
+    siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0), reinvestment_ratio)
     trail_distance = float(config.get("rebalance_share_trail_distance", 0.0))
     if not math.isfinite(trail_distance) or trail_distance < 0:
         raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -1028,7 +1033,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         current_config = await asyncio.to_thread(sync_read_json, config_path)
                         last_config_mtime = current_mtime
                         candidate_portfolio = current_config["portfolios"][0]
-                        if candidate_portfolio.get("cash_reserve_usdt", 0) != portfolio_cfg.get("cash_reserve_usdt", 0):
+                        siphoning.validate_config(candidate_portfolio.get("siphoning_threshold_pct", 0),
+                                                  candidate_portfolio.get("targets", {}).get("VIRTUAL", {}).get("share", 0),
+                                                  candidate_portfolio.get("reinvestment_ratio", 0))
+                        if (candidate_portfolio.get("cash_reserve_usdt", 0) != portfolio_cfg.get("cash_reserve_usdt", 0)
+                                and not siphoning.funded_reserve_change(config, current_config)):
                             raise ValueError("Changing CASH reserve requires a funded new session")
                         portfolio_cfg = candidate_portfolio
                         targets = portfolio_cfg["targets"]
@@ -1605,7 +1614,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 if paper_mode:
                     collateral, maintenance, distance = _paper_guard_metrics(
-                        paper_state, base_ticker, price, calc.tpv, logger
+                        paper_state, base_ticker, price, calc.tpv, logger,
+                        portfolio_cfg.get("paper_account_free_margin", 0)
                     )
                     predictive_liquidation = liquidation_distance_crit != 0 and distance <= liquidation_distance_crit
                     hard_liquidation = (not predictive_liquidation and post_factum_liquidation_check
@@ -1902,7 +1912,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     v_target = Decimal(str(targets['VIRTUAL']['share']))
 
                     h_msg = (
-                        f"Heartbeat: TPV={tpv_total:.2f}{res_str} | PnL={total_pnl:+.2f} | {base_ticker}={price:.6g} | "
+                        f"Heartbeat: TPV={tpv_active:.2f}{res_str} | PnL={total_pnl:+.2f} | {base_ticker}={price:.6g} | "
                         f"L:{l_p:.1f}% [{get_dev(Decimal(str(l_p))/100, l_target):+.1f}%] {{{v_l:+.2f}$}} | "
                         f"S:{s_p:.1f}% [{get_dev(Decimal(str(s_p))/100, s_target):+.1f}%] {{{v_s:+.2f}$}} | "
                         f"V:{v_p:.1f}% [{get_dev(Decimal(str(v_p))/100, v_target):+.1f}%] {{{v_v:+.2f}$}} | "
@@ -2266,7 +2276,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 safe_real_equity_adj = float(Decimal(str(safe_real_equity)) - safe_virt_debt)
                 if safe_real_equity_adj < 0: safe_real_equity_adj = 0.0
 
-                safe_calc = PortfolioCalculator(
+                safe_calc_kwargs = dict(
                     positions=safe_positions,
                     spot_price=price,
                     real_equity=safe_real_equity_adj,
@@ -2281,6 +2291,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     last_rebalance_price=state.get("last_rebalance_price", 0.0),
                     min_notional=active_min_notional
                 )
+                safe_calc = PortfolioCalculator(**safe_calc_kwargs)
                 safe_calc_res = safe_calc.calculate_rebalance(targets, 0.0, 0.0, safe_calc.tpv, True)
 
                 total_tpv_final = safe_calc_res["total_tpv"]
@@ -2294,26 +2305,37 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 state["valuation_price"] = float(price)
                 state_dirty = True
 
-                # SURPLUS = Current Total Capital (including reserve) - Initial Targeted Capital
-                total_surplus: float = total_tpv_final - initial_tpv
-                siphoning_threshold_abs: float = initial_tpv * (siphoning_threshold_pct / 100)
-
-                # Siphon only if total_surplus > existing reserve (meaning there is NEW profit)
-                if total_surplus > siphoning_reserve + max(0.1, siphoning_threshold_abs):
-                    new_profit = total_surplus - siphoning_reserve
-                    siphon_amount: float = new_profit * (1 - reinvestment_ratio)
-                    
-                    if siphon_amount > 0.1:
-                        siphoning_reserve += siphon_amount
-                        # ALWAYS subtract from shadow balance to track isolated per-bot equity
-                        paper_state["balance"] -= siphon_amount
-                        profit_budget.charge(paper_state, siphon_amount)
-                        paper_state_dirty = True
-
-                        state["siphoning_reserve"] = siphoning_reserve
-                        state_dirty = True
-                        logger.info(f"💰 SAFE ACTIVATED: Siphoned {siphon_amount:.4f} USDT. New Reserve: {siphoning_reserve:.2f}")
-                        asyncio.create_task(notifier.send_message(f"💰 <b>SAFE</b>: +{siphon_amount:.4f} USDT (Surplus)"))
+                amount = siphoning.calculate_amount(safe_calc.tpv, target_initial_cap,
+                    state.get("virt_debt", 0), siphoning_threshold_pct, reinvestment_ratio)
+                if amount > Decimal('0.1'):
+                    state["virt_debt"] = float(Decimal(str(state.get("virt_debt", 0))) - amount)
+                    paper_state["balance"] = float(Decimal(str(paper_state["balance"])) - amount)
+                    siphoning_reserve = float(Decimal(str(siphoning_reserve)) + amount)
+                    profit_budget.charge(paper_state, amount)
+                    initial_tpv = reference_tpv = target_initial_cap
+                    state.update(initial_tpv=initial_tpv, reference_tpv=reference_tpv,
+                                 siphoning_reserve=siphoning_reserve)
+                    safe_calc_kwargs.update(virt_debt=state["virt_debt"], siphoning_reserve=siphoning_reserve,
+                                            initial_capital=initial_tpv)
+                    safe_calc = PortfolioCalculator(**safe_calc_kwargs)
+                    safe_calc_res = safe_calc.calculate_rebalance(targets, 0.0, 0.0, safe_calc.tpv, True)
+                    total_tpv_final = float(safe_calc.total_tpv)
+                    state.update(last_tpv=total_tpv_final, last_profit=total_tpv_final-initial_tpv,
+                                 total_pnl_pct=(total_tpv_final/initial_tpv-1)*100)
+                    paper_state_dirty = state_dirty = True
+                    logger.info(f"SAFE siphoned {amount:.4f} from VIRTUAL; active TPV={safe_calc.tpv:.4f}, SAFE={siphoning_reserve:.4f}")
+                    asyncio.create_task(notifier.send_message(f"💰 <b>SAFE</b>: +{amount:.4f} USDT (Surplus)"))
+                    state.update(trailing_stop_triggered=True, stop_reason="siphon",
+                                 siphon_amount=float(amount), rebalance_cycles=cycles, initial_build_pending=None,
+                                 restart_not_before=time.time() + float(current_config.get("toxic_cooldown_days", 0.1)) * 86400)
+                    from core.funding import save_funding_boundary, load_funding_state
+                    journal, halt = load_funding_state(state)
+                    save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                    await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
+                                         logger, ticker_override=base_ticker, paper_mode=paper_mode, close_only=True)
+                    emit_signal("siphon", base_ticker, paper_mode)
+                    await self_kill_pm2(base_ticker, paper_mode)
+                    return
 
                 # Update reporting value in summary to account for new reserve
                 final_reported_tpv = total_tpv_final
@@ -2322,9 +2344,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     summary_msg = (
                         f"<b>✅ Rebalance #{cycles} Complete</b>: <code>{base_ticker}</code>\n"
                         f"New Shares: L:{safe_calc_res['share_long_pct']:.1f}% S:{safe_calc_res['share_short_pct']:.1f}% V:{safe_calc_res['share_virt_pct']:.1f}%\n"
-                        f"TPV: <code>{total_tpv_final:.2f} USDT</code>"
+                        f"TPV: <code>{float(safe_calc.tpv):.2f} USDT</code> | SAFE: {siphoning_reserve:.2f}"
                     )
-                    logger.info(f"Rebalance #{cycles} complete. TPV: {total_tpv_final:.2f}")
+                    logger.info(f"Rebalance #{cycles} complete. TPV: {float(safe_calc.tpv):.2f} | SAFE: {siphoning_reserve:.2f}")
                     
                     # [V3.9.0] Silence Telegram for Rebalance #1 (Baseline formation) to avoid startup spam
                     if cycles > 1:
@@ -2393,7 +2415,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 if (i + status_offset) % 100 == 0:
                     total_pnl_final = safe_calc_res.get("total_pnl", total_tpv_final - initial_tpv)
-                    logger.info(f"Heartbeat: TPV={total_tpv_final:.2f} | PnL={total_pnl_final:+.2f} | {base_ticker}={price:.6g} | Cycles={cycles}")
+                    logger.info(f"Heartbeat: TPV={float(safe_calc.tpv):.2f} | SAFE={siphoning_reserve:.2f} | PnL={total_pnl_final:+.2f} | {base_ticker}={price:.6g} | Cycles={cycles}")
 
             except Exception as e:
                 if paper_mode and isinstance(e, ValueError) and str(e).startswith("Invalid PAPER"):
