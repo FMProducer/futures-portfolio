@@ -1,6 +1,10 @@
 {
  "symbol": "ZECUSDT",
+<<<<<<< HEAD
  "source": "fapi.binance.com /fapi/v1/fundingRate (paginated, de-duped)",
+=======
+ "source": "fapi.binance.com /fapi/v1/fundingRate (paginated, de-duped by fundingTime)",
+>>>>>>> 6c64c9059d49edbad56e0bfaa316a4ef98a6941b
  "events": [
   {
    "ts": 1760832000.001,
