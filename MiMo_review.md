@@ -251,3 +251,58 @@ Asset Change +388.70% (с подушкой), Trend-add blocks 282
 Оговорки: референс-номинал 2000 фиксированный (в бэктесте фактический номинал позиций гуляет — журнал это аппроксимация, консистентная с legacy-моделью); журнал валиден для конфига с funding_model=signed_actual и текущего ZECUSDT_live.feather (1-мин, год); файлы data/funding_*.json — untracked/gitignored, в коммиты не попадут без явной просьбы.
 Что пропущено/не проверено: кросс-чек суммы funding_paid в бэктесте против журнала (по событиям apply — engine-механика, проверено загрузкой и завершением рана; детального сверки funding_paid vs Σsigned не делал).
 Оставшиеся риски: отрицательный год фандинга сделал журнал нисходящим кредитом (+169.83) — в позитивных фазах (лето 2025 было −0.4%/8h) он был бы расходами; референс 2000 USDT — допущение, при другой цели по номиналу журнал пересобирается одной строкой (mk_funding_journal.py).
+
+
+
+
+Objective
+- Optimize backtest strategy parameters across multiple ticker universes (35, 26/39, and their 66-ticker union) to maximize total P&L under account-level MaxDD constraints, using 30-day historical windows; and download historical funding rates for ZECUSDT to enable funding_model=signed_actual backtests.
+- Original prior task: fix cash_reserve_usdt semantics (reserve = external account free margin, portfolio accounted from 1000 trading capital) and eliminate -100% liquidations — COMPLETED and merged.
+Important Details
+- Code (realized-trigger max-DD fix): committed in opt/maxdd-limit-pnl (commit 0a97649 "docs: maxdd fix"), merged into master via PR #5 (613c28f); present in all descendant branches including current zec-liquidation-test and master (advanced to 6f4d709 externally).
+- max_drawdown_limit diagnosis: the 30/365-day cooldown timer works correctly when enabled; restarts the user saw came from equity trailing stops (toxic_cooldown 0.09d), not max-DD. The trigger was effectively disabled (limit 99.99/999.99 ≥ 100 → guard skipped at backtest_rebalance.py:1370).
+- Realized trigger (realized_ath field): max-DD stop now triggers on realized ledger equity (TPV − unrealized), not MTM TPV; MTM-based stop sold at bottoms and killed P&L. With realized trigger, limit 15/50 → 0 stops in sample, P&L = baseline (+2338.10 USDT ≈ user's +2337.88).
+- config.json mutates externally (optimizer) throughout the session — pin sha before each run. Branches also switch externally (was master → zec-liquidation-test → master at 6f4d709).
+- Data window: existing 35-ticker feathers = 46080 rows, 2026-09-26 11:00 → 2026-10-28 10:59. New tickers (31 total downloaded) = 45420 rows, ending 2026-10-27 23:59 (the 10-28 daily archive is 404 at the publisher; 10-29/10-30 exist but weren't used).
+- 30-day window = last 43200 bars. Aligned all-ticker window used for union search: 2026-09-29 23:00 → 2026-10-27 23:59 (data54, 45420-row files).
+- Account-level MaxDD (DDacc) computed as max drawdown of equity_curve + 100000 (cushion); IRYSUSDT portfolio-basis MaxDD ~4780% is an artifact of the 1000-USDT basis (0.02→0.5 price spike, 130k units × 3x), account-basis 49.5%.
+- Search grids (4 params): toxic_cooldown_days 0.0811/0.0901/0.0992, equity_trailing_stop_pct, equity_trailing_stop_activation_pct, portfolios[0].trend_add_block.pct; ~81 combos per stage, 8 ProcessPool workers.
+- Best 35-set parameters (28d, e04efcfc base, targets 0.333/0.333/0.334): trail 0.26 / act 1.55 / trend_add 0.025838 / toxic 0.0901 → +3734.64 USDT (+10.67%).
+- Best 26-set (later 39) parameters: trail 0.23 / act 1.55 / trend_add 0.023 → +5445.17 USDT (+20.94% of 26000), worst DDacc 2.45%.
+- Union (66-ticker) winner: trail 0.30 / act 1.55 / trend_add 0.025838 / toxic 0.0901 → union +7555 USDT (now39 +5105, 35set +3715, DDacc 42.18% ≤ 50%). This is what was written to config.json (sha 4ac75f36), along with backtest_days: 30.
+- tickers.txt grew externally 26 → 39 (added WET, RE, RUNE, BIRB, PROM, SPK, SLP, AIOT, HOT, COW, RED, IDOL); union with 35-set = 66 tickers (8 overlap).
+- Funding download: signed_actual model consumes a journal of precomputed USDT amounts (signed_amount), applied as-is by the engine (no notional scaling) — a reference notional choice is required to convert historical rates → amounts (domain decision, NOT yet made).
+- Binance api.binance.com and fapi.binance.com are 403 (region-blocked); data-api.binance.vision /fapi/v1/klines is 404. data.binance.vision archives work (SHA256-verified). Monthly fundingInfo archives for ZECUSDT 2025-10..2026-10 are all 404; daily fallback path daily/fundingInfo/{SYM}/fundingInfo/... also 404 (wrong URL guess) — funding download NOT yet successful.
+Work State
+Completed
+- Reserve-semantics fix fully done, tested (50/50), verified on 35 tickers, documented in MiMo_review.md, and merged to master via PR #5.
+- Adverse-bar-extreme hard-liquidation fix (test_hard_liquidation_uses_adverse_bar_extreme) — merged.
+- reinvestment_ratio null-safety fix — merged.
+- MiMo_review.md section "Семантика cash_reserve_usdt: внешняя свободная маржа аккаунта" added.
+- run_all35.py, ps1_search.py, ps2_search.py, ps26_search.py, ps26_s2.py, ps26_final.py, ps54_search.py, ps54_s2.py, rob_check.py — created in TEMP; all key results reproduced cleanly.
+- 31 new ticker feathers downloaded to data/ (19 first batch + 12 second batch, SHA256-verified, 45420 rows each, ending 10-27 23:59; 10-28 archive is a publisher-side 404 gap).
+- data26/ and data54/ aligned data directories built in TEMP for consistent-window optimization.
+- Winning parameter sets written to config.json twice: first 0.26/1.55/0.0258/0.0901 (+3734.64 on 35-set, 28d), then union winner 0.30/1.55/0.0258/0.0901 + backtest_days: 30 (sha 4ac75f36, confirmed by user still intact at their last check).
+- Branch opt/maxdd-limit-pnl created, work committed externally (0a97649), merged via PR #5.
+Active
+- Downloading ZECUSDT historical funding rates: dl_funding.py in TEMP attempted Binance Vision monthly fundingInfo archives for 2025-10 through 2026-10 — all returned 404 (not published at that path); daily fallback URL guess (daily/fundingInfo/{SYM}/fundingInfo/...) also 404 — need to find correct funding data source (see Blocked/Next Move).
+- funding_model=signed_actual + funding_scenario=data/funding_ZECUSDT.json is in config.json (external ZEC work, commit 9428559) but the JSON file does not exist yet — ZEC backtest fails with "funding_scenario is missing or not found" until the journal is created.
+- User's last explicit request: "Ты можешь скачать фандинг?" (Can you download the funding?) — in progress, not yet done.
+- Branch zec-liquidation-test is the current worktree branch (externally switched); uncommitted worktree diff includes external ZEC changes (funding_model=signed_actual, funding_scenario, max_drawdown_limit 50→100) mixed with my config writes.
+Blocked
+- Funding archive URLs: data.binance.vision/data/futures/um/monthly/fundingInfo/ZECUSDT/{YYYY-MM}.zip → 404 for all 13 months tried; daily fallback path also 404. Correct URL scheme not yet determined. api.binance.com / fapi.binance.com /fapi/v1/fundingRate → 403 (region-blocked).
+- Reference notional for journal: signed_amount must be a USDT amount, not a rate — user has not specified which notional to use to convert ZECUSDT historical funding rates → journal amounts (domain-policy decision required).
+Next Move
+1. Find the correct Binance Vision fundingInfo URL (try data/futures/um/monthly/fundingInfo/ZECUSDT/ZECUSDT-fundingInfo-{YYYY-MM}.zip and daily/fundingInfo/ZECUSDT/ZECUSDT-fundingInfo-{YYYY-MM-DD}.zip — the exact filename/directory scheme needs verification; the 404s suggest the path structure differs from what was guessed).
+2. Ask user for the reference notional (or use the ZEC replay's 2450 USDT notional from scripts/run_zec_replay.py) to convert rates → signed_amount USDT values, then build data/funding_ZECUSDT.json in the FundingJournal schema (event_id, signed_amount, event_time, source_ref, portfolio_id: "default", symbol, asset: "USDT", kind: "FUNDING_FEE").
+3. Run python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT --since "2025-10-20 00:00" --until "2026-10-19 23:59" to verify the ZEC backtest completes with the funding journal.
+Relevant Files
+- C:\Python\Prosperous_Bot\futures_portfolio\config.json: current sha 4ac75f36 — contains union-winner params (trail 0.30 / act 1.55 / trend_add 0.025838 / toxic 0.0901 / days 30) plus external ZEC additions (funding_model: signed_actual, funding_scenario: data/funding_ZECUSDT.json, max_drawdown_limit: 100.0); uncommitted in worktree on zec-liquidation-test.
+- C:\Python\Prosperous_Bot\futures_portfolio\backtest\backtest_rebalance.py: contains realized_ath field, realized-trigger 4b block, and FundingJournal consumption (line ~700: apply_funding_backtest(event.signed_amount, state) — amounts applied as-is).
+- C:\Python\Prosperous_Bot\futures_portfolio\core\funding.py: FundingJournal / FundingEvent classes — journal schema reference.
+- C:\Python\Prosperous_Bot\futures_portfolio\scripts\run_zec_replay.py: writes data/zec_funding_scenario_replay.json; reference for notional (2450 USDT) and deterministic funding scenario pattern.
+- C:\Python\Prosperous_Bot\futures_portfolio\tickers.txt: currently 39 tickers (grew externally from 26).
+- C:\Python\Prosperous_Bot\futures_portfolio\data\: 35 original feathers (46080 rows, ending 10-28 10:59) + 31 newly downloaded (45420 rows, ending 10-27 23:59); funding_ZECUSDT.json does not exist yet.
+- C:\Users\svsma\AppData\Local\Temp\opencode\: all optimization/search/verification scripts (ps1_search.py, ps2_search.py, ps26_search.py, ps26_s2.py, ps26_final.py, ps54_search.py, ps54_s2.py, ps54_base.json, rob_check.py, run_all35.py, data26\, data54\, dl_missing.py, dl_funding.py).
+- C:\Users\svsma\AppData\Local\Temp\opencode\ps54_base.json: frozen config base for union search (sha 17a8484a, trail 0.23/act 1.55/trend 0.023/days 30).
+- C:\Python\Prosperous_Bot\futures_portfolio\MiMo_review.md: has sections for reserve-semantics fix and liquidation diagnosis; needs a new section for the parameter-optimization results and funding download task.

@@ -14,7 +14,7 @@
   "max_replace_per_cycle": 10,
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
-  "backtest_days": 365,
+  "backtest_days": 28,
   "supervisor_interval_days": 0.005,
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
@@ -41,8 +41,8 @@
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
-      "liquidation_distance_warn_pct": 15.0,
-      "liquidation_distance_crit_pct": 8.0,
+      "liquidation_distance_warn_pct": 40.0,
+      "liquidation_distance_crit_pct": 25.0,
       "post_factum_liquidation_check": true,
       "siphoning_threshold_pct": 1438.3754797439933,
       "targets": {
@@ -88,14 +88,8 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "AIOTUSDT",
-    "BIRBUSDT",
     "BULLAUSDT",
-    "COWUSDT",
-    "HOTUSDT",
-    "PROMUSDT",
-    "SPKUSDT",
-    "WETUSDT"
+    "LSKUSDT"
   ],
   "base_ticker": "BULLAUSDT",
   "probation_paper": {},
