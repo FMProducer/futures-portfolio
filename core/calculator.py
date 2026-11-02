@@ -115,7 +115,7 @@ class PortfolioCalculator:
         # real_equity должен передаваться как "Чистый кэш" (Wallet Balance - virt_debt)
         self.tpv = self.real_equity + mtm_pnl_l + mtm_pnl_s + self.virt_value
 
-        if self.tpv <= 0:
+        if self.tpv == 0:
             self.tpv = Decimal('1e-9')
 
         self.total_tpv = self.tpv + self.siphoning_reserve
@@ -136,7 +136,7 @@ class PortfolioCalculator:
         self.val_virt = self.virt_value
         
         # 5. Cash is the remaining liquidity (Free Wallet Balance)
-        self.val_cash = self.tpv - (self.val_long + self.val_short + self.val_virt)
+        self.val_cash = self.real_equity - (self.val_long - mtm_pnl_l) - (self.val_short - mtm_pnl_s)
 
         # 6. Shares calculation (Capital weights against true TPV)
         self.share_long_raw = (self.val_long / self.tpv)

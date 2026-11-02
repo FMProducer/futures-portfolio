@@ -41,7 +41,8 @@ def test_calculator_initialization(sample_params):
     assert float(calc.share_virt_pct) == pytest.approx(16.67, abs=0.1)
 
 def test_calculate_deviations(sample_params, targets):
-    calc = PortfolioCalculator(**sample_params)
+    # Isolate sizing from the retained legacy profit-budget restriction.
+    calc = PortfolioCalculator(**sample_params, profit_budget=5000)
     threshold = 0.05
     # Isolate sizing from the profitability gate at an unchanged entry price.
     res = calc.calculate_deviations(targets, threshold_surplus=threshold, threshold_deficit=threshold, current_equity=calc.tpv, fuse_enabled=False)
@@ -101,8 +102,9 @@ def test_negative_tpv_protection():
         real_equity=-1000.0,
         virt_qty=0.01 # 600 USDT
     )
-    # tpv = -1000 + 600 = -400 -> protected to 1e-9
-    assert float(calc.tpv) == pytest.approx(1e-9)
+    # Negative equity must remain visible; virt_qty alone is not a USDT allocation.
+    assert float(calc.tpv) == -1000.0
+    assert float(calc.val_cash) == -1000.0
 
 def test_ignore_limits_deviation(sample_params, targets):
     params = sample_params.copy()

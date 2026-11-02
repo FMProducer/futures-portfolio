@@ -952,6 +952,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         if blocked:
                             trend_add_blocks += 1
                             actions = [a for a in actions if a not in blocked]
+                            if state.initial_build_active and state.pos_long == 0 and state.pos_short == 0:
+                                actions = [a for a in actions if a['key'] == 'VIRTUAL']
                             state.log_event(i, "trend_add_block", float(state.get_tpv_fast(float(mid_price))),
                                             f"move {move*100:.2f}% over {t_win} bars; adds on {opposite} blocked",
                                             keys=[a["key"] for a in blocked])
@@ -986,6 +988,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                            reason: str = "") -> None:
                     requested = abs(Decimal(str(act.get("requested_usdt", act["diff_usdt"]))))
                     approved = abs(Decimal(str(act.get("approved_usdt", act["diff_usdt"]))))
+                    if status == "filled" and approved < requested - Decimal('1e-9'):
+                        status = "partial"
                     if status == "partial" and approved < requested - Decimal('1e-9'):
                         reason = "capped_by_available_funds" + (f"+{reason}" if reason else "")
                     execution_records.append({
@@ -1466,7 +1470,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.tpv_ath = initial_capital_f
                 state.trailing_stop_violation_start = 0.0
 
-            if (trailing_stop_pct > 0
+            if tpv_f < initial_capital:
+                state.trailing_stop_violation_start = 0.0
+            elif (trailing_stop_pct > 0
                     and state.tpv_ath > initial_capital_f * (1 + trailing_stop_activation_pct / 100.0)):
                 drawdown_from_ath = (1 - tpv_f / state.tpv_ath) * 100.0
                 if drawdown_from_ath >= trailing_stop_pct:
