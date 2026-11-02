@@ -770,6 +770,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     continue
 
             # --- 1.5 Cooldown & Rebase Logic ---
+            if state.cooldown_until_bar > 0:
+                state.dormant_capital = state.get_tpv(mid_price) + state.siphoning_reserve
             if i < state.cooldown_until_bar:
                 state.history.append(float(state.dormant_capital))
                 continue
