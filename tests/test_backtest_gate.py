@@ -7,6 +7,16 @@ import pytest
 from futures_portfolio.scanner.backtest_gate import closed_metrics, effective_config
 
 
+def test_gate_uses_constant_funding_without_mutating_trading_config():
+    config = {'funding_model': 'signed_actual', 'funding_scenario': 'zec.json',
+              'portfolios': [{'paper_initial_capital': 1000}]}
+    original = deepcopy(config)
+    effective = effective_config(config)
+    assert effective['funding_model'] == 'legacy_constant'
+    assert 'funding_scenario' not in effective
+    assert config == original
+
+
 def test_candidate_ranking_uses_terminal_net_and_drawdown_without_moving_existing():
     from futures_portfolio.scanner.backtest_gate import rank_candidates
     candidates = [{'symbol': s} for s in ['WEAK', 'EXISTING', 'STRONG', 'SAFE', 'TIE', 'FAIL']]

@@ -64,7 +64,10 @@ def effective_config(config):
             "equity_trailing_stop_activation_pct", "equity_trailing_stop_timeout_sec",
             "min_notional_usdt", "toxic_cooldown_days", "max_drawdown_cooldown_days",
             "max_drawdown_limit", "funding_model", "funding_scenario", "trend_guard")
-    return {k:config[k] for k in keys if k in config}
+    effective = {k:config[k] for k in keys if k in config}
+    effective['funding_model'] = 'legacy_constant'
+    effective.pop('funding_scenario', None)
+    return effective
 
 
 async def evaluate(root, symbols, config, end, report_dir=None):

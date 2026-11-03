@@ -39,18 +39,27 @@ def test_publish_uses_pareto_and_keeps_fewer_than50_with_backup(tmp_path):
     assert (run/'tickers.before.txt').read_text() == 'OLDUSDT\n'
 
 
-@pytest.mark.parametrize('failure', ['missing', 'error', 'config'])
+@pytest.mark.parametrize('failure', ['missing', 'config'])
 def test_incomplete_or_failed_run_never_changes_whitelist(tmp_path, failure):
     run, candidates, results = fixture_run(tmp_path)
     if failure == 'missing':
         results.pop('FAIL')
-    elif failure == 'error':
-        results['FAIL']['error'] = 'Missing bars'
     else:
         (tmp_path/'config.json').write_text(json.dumps({'max_drawdown_limit':10}))
     with pytest.raises(ValueError):
         publish(tmp_path, run, candidates, results, {})
     assert (tmp_path/'tickers.txt').read_text() == 'OLDUSDT\n'
+
+
+@pytest.mark.parametrize('all_errors', [False, True])
+def test_errors_are_excluded_and_result_is_published(tmp_path, all_errors):
+    run, candidates, results = fixture_run(tmp_path)
+    for symbol in (results if all_errors else ['FAIL']):
+        results[symbol]['error'] = 'Missing bars'
+    status = publish(tmp_path, run, candidates, results, {})
+    assert status['error_count'] == (3 if all_errors else 1)
+    assert status['selected'] == ([] if all_errors else ['STRONG', 'WEAK'])
+    assert json.loads((run/'errors.json').read_text())['FAIL'] == 'Missing bars'
 
 
 @pytest.mark.asyncio
@@ -102,7 +111,7 @@ def test_only_proven_old_pass_can_fill_after_fresh_candidates(tmp_path):
     archive.mkdir(parents=True)
     (archive/'status.json').write_text(json.dumps({'status':'published','end_exclusive_ms':1}))
     (archive/'results.json').write_text(json.dumps({'FAIL':{
-        'pass':True,'windows':{'48':{'pass':True},'24':{'pass':True}}}}))
+        'pass':True,'windows':{'48':{'pass':True,'funding_model':'legacy_constant'},'24':{'pass':True,'funding_model':'legacy_constant'}}}}))
     candidates.append({'symbol':'NEVER'})
     results['NEVER'] = {'pass':False,'net_pct':100,'max_dd_pct':0}
     status = publish(tmp_path, run, candidates, results, {})
@@ -122,3 +131,19 @@ def test_failed_run_cannot_supply_historical_admission(tmp_path):
     (archive/'results.json').write_text(json.dumps({'FAIL':{'pass':True,
         'windows':{'48':{'pass':True},'24':{'pass':True}}}}))
     assert 'FAIL' not in publish(tmp_path,run,candidates,results,{})['selected']
+
+
+def test_historical_pool_survives_all_current_errors(tmp_path):
+    run, candidates, results = fixture_run(tmp_path)
+    (tmp_path/'tickers.txt').write_text('FAIL\n')
+    archive = tmp_path/'reports/daily_universe/old'
+    archive.mkdir(parents=True)
+    (archive/'status.json').write_text(json.dumps({'status':'published','end_exclusive_ms':1}))
+    (archive/'results.json').write_text(json.dumps({'FAIL':{'pass':True,'windows':{
+        '48':{'pass':True,'funding_model':'legacy_constant'},
+        '24':{'pass':True,'funding_model':'legacy_constant'}}}}))
+    for row in results.values():
+        row['error'] = 'network timeout'
+    status = publish(tmp_path, run, candidates, results, {})
+    assert status['selected'] == ['FAIL']
+    assert status['error_count'] == 3

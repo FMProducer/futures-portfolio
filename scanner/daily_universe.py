@@ -79,7 +79,8 @@ def admission_history(root, symbols):
             result = results.get(symbol, {})
             windows = result.get('windows', {})
             if (result.get('pass') is True and not result.get('error')
-                    and all(windows.get(w, {}).get('pass') is True for w in ('48','24'))):
+                    and all(windows.get(w, {}).get('pass') is True
+                            and windows[w].get('funding_model') == 'legacy_constant' for w in ('48','24'))):
                 end = result.get('end_exclusive_ms', status.get('end_exclusive_ms', 0))
                 if end >= history.get(symbol, {}).get('end_exclusive_ms', -1):
                     history[symbol] = {'report':str(result_path), 'end_exclusive_ms':end,
@@ -91,8 +92,6 @@ def publish(root, run, candidates, results, config):
     if set(results) != {r['symbol'] for r in candidates}:
         raise ValueError('Incomplete backtest universe')
     errors = {s:r['error'] for s,r in results.items() if r.get('error')}
-    if errors:
-        raise ValueError(f'Backtest errors; previous universe retained: {errors}')
     current = json.loads((root/'config.json').read_text(encoding='utf-8'))
     if effective_config(current) != effective_config(config):
         raise ValueError('Trading configuration changed during evaluation')
@@ -101,14 +100,18 @@ def publish(root, run, candidates, results, config):
     input_path = run/'tickers.input.txt'
     if input_path.exists() and input_path.read_bytes() != previous:
         raise ValueError('Candidate list changed during evaluation')
-    old_symbols = set(previous.decode('utf-8-sig').split())
+    old_order = list(dict.fromkeys(previous.decode('utf-8-sig').split()))
+    old_symbols = set(old_order)
     history = admission_history(root, old_symbols)
-    fresh = rank_candidates(candidates, results, set())
+    successful = [r for r in candidates if r['symbol'] not in errors]
+    fresh = rank_candidates(successful, results, set())
     fresh_symbols = {r['symbol'] for r in fresh}
-    retained = rank_candidates([r for r in candidates if r['symbol'] in old_symbols
+    retained = rank_candidates([r for r in successful if r['symbol'] in old_symbols
                                and r['symbol'] in history and r['symbol'] not in fresh_symbols],
                               results, set(), require_pass=False)
-    ranked = fresh + retained
+    ranked_symbols = {r['symbol'] for r in fresh + retained}
+    untested = [{'symbol':s} for s in old_order if s in history and s not in ranked_symbols]
+    ranked = fresh + retained + untested
     selected = [r['symbol'] for r in ranked[:50]]
     write_json(run/'results.json', results)
     admissions = {symbol: {'basis':'fresh_pass' if symbol in fresh_symbols else 'historical_pass',
@@ -122,10 +125,11 @@ def publish(root, run, candidates, results, config):
     content = ''.join(s+'\n' for s in selected).encode('utf-8')
     (run/'tickers.selected.txt').write_bytes(content)
     write_json(run/'ranking.json', ranked)
+    write_json(run/'errors.json', errors)
     temporary = target.with_suffix('.tmp')
     temporary.write_bytes(content)
     temporary.replace(target)
-    return {'selected':selected, 'passed':sum(bool(r.get('pass')) for r in results.values()),
+    return {'selected':selected, 'passed':sum(bool(r.get('pass')) and not r.get('error') for r in results.values()), 'error_count':len(errors),
             'pool_size':len(selected), 'retained_historical':sum(t not in fresh_symbols for t in selected), 'list_role':'cumulative_passed_pool', 'tested':len(results),
             'tickers_sha256':hashlib.sha256(content).hexdigest()}
 
