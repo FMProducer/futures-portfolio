@@ -55,7 +55,7 @@
           "leverage": 3
         },
         "VIRTUAL": {
-          "share": 0.50,
+          "share": 0.5,
           "leverage": 1
         }
       },
@@ -90,16 +90,16 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "AAVEUSDT",
-    "AINUSDT",
-    "BNBUSDT",
-    "ETHUSDT",
-    "EVAAUSDT",
-    "PUMPUSDT",
-    "UAIUSDT",
-    "XMRUSDT"
+    "APRUSDT",
+    "ARIAUSDT",
+    "BIRBUSDT",
+    "BTWUSDT",
+    "HUMAUSDT",
+    "IDOLUSDT",
+    "LSKUSDT",
+    "SOPHUSDT"
   ],
-  "base_ticker": "AAVEUSDT",
+  "base_ticker": "APRUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
