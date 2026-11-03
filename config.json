@@ -90,17 +90,19 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
+    "AGTUSDT",
     "APRUSDT",
     "ARIAUSDT",
     "BIRBUSDT",
     "BTWUSDT",
-    "HUMAUSDT",
     "IDOLUSDT",
     "LSKUSDT",
     "SOPHUSDT"
   ],
   "base_ticker": "APRUSDT",
-  "probation_paper": {},
+  "probation_paper": {
+    "HUMAUSDT": 1793714617.3278854
+  },
   "probation_real": {},
   "paper_backtest_gate": true
 }

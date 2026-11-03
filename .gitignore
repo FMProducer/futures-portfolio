@@ -105,3 +105,7 @@ optimization/
 core/paper_budget.sqlite
 best_netdd_config_*.json
 tickers.txt
+config.json
+data/funding_AGTUSDT.json
+data/AGTUSDT_funding_rates.json
+core/paper_budget.sqlite
