@@ -31,6 +31,10 @@ except ImportError:
     from core import profit_budget, siphoning
     from core.capital import drawdown_threshold
 
+# HTF 5m Indicator
+# Note: HTF5MIndicator and apply_variant_targets are defined in backtest/htf_5m_indicator.py
+# but we avoid importing them to prevent circular imports; the inline implementation is used instead
+
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("Backtest")
 
@@ -82,7 +86,7 @@ def action_side(key: str, is_reduction: bool) -> str:
     return "RELEASE" if is_reduction else "DESIGNATE"
 
 def apply_share_bias(targets: Dict[str, Dict], bias_pp: float) -> Dict[str, Dict]:
-    """Shift target weight between the futures legs by bias_pp percentage points.
+    """Shift target weight between the futures legs by bias_pp percentage points (Variant A).
 
     bias_pp == 0 returns the same object so the baseline path is unchanged.
     LONG + SHORT is preserved (clamped into [0, LONG+SHORT]); VIRTUAL and the
@@ -103,6 +107,47 @@ def apply_share_bias(targets: Dict[str, Dict], bias_pp: float) -> Dict[str, Dict
     out["BASE_LONG"]["share"] = float(long_new)
     out["BASE_SHORT"]["share"] = float(total - long_new)
     return out
+
+
+def apply_share_bias_from_virtual(targets: Dict[str, Dict], bias_pp: float) -> Dict[str, Dict]:
+    """Shift target weight from VIRTUAL to the winning leg by bias_pp percentage points (Variant B).
+
+    bias_pp == 0 returns the same object.
+    LONG signal (bias_pp > 0): BASE_LONG += bias_pp, VIRTUAL -= bias_pp
+    SHORT signal (bias_pp < 0): BASE_SHORT += |bias_pp|, VIRTUAL -= |bias_pp|
+    LONG+SHORT sum increases; VIRTUAL decreases.
+    """
+    if bias_pp == 0:
+        return targets
+    out = copy.deepcopy(targets)
+    delta = Decimal(str(abs(bias_pp))) / Decimal('100')
+    if bias_pp > 0:
+        # LONG signal: increase LONG, decrease VIRTUAL
+        out["BASE_LONG"]["share"] = float(Decimal(str(out["BASE_LONG"]["share"])) + delta)
+        out["VIRTUAL"]["share"] = float(Decimal(str(out["VIRTUAL"]["share"])) - delta)
+    else:
+        # SHORT signal: increase SHORT, decrease VIRTUAL
+        out["BASE_SHORT"]["share"] = float(Decimal(str(out["BASE_SHORT"]["share"])) + delta)
+        out["VIRTUAL"]["share"] = float(Decimal(str(out["VIRTUAL"]["share"])) - delta)
+    return out
+
+def share_signal_bias(excess_long_pp: float, excess_short_pp: float, threshold_pp: float) -> float:
+    """Stepwise LONG/SHORT/NEUTRAL bias from measured virtual-portfolio share excesses.
+
+    Equality counts as a trigger; the step equals the threshold (no accumulation).
+    Both legs >= threshold is unspecified by the contract — stop, never pick a priority.
+    """
+    trig_long = excess_long_pp >= threshold_pp
+    trig_short = excess_short_pp >= threshold_pp
+    if trig_long and trig_short:
+        raise ValueError(
+            f"both legs reached threshold: long={excess_long_pp} short={excess_short_pp} "
+            f"threshold={threshold_pp}")
+    if trig_long:
+        return threshold_pp
+    if trig_short:
+        return -threshold_pp
+    return 0.0
 
 class AccountingMismatch(AssertionError):
     def __init__(self, details: Dict[str, Any]):
@@ -457,7 +502,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         capital_override: Optional[float] = None,
                         since_utc: Optional[str] = None,
                         until_utc: Optional[str] = None,
-                        htf_bias_pp: float = 0.0) -> Optional[Dict[str, Any]]:
+                        htf_bias_pp: float = 0.0,
+                        htf_mode: str = "between_legs") -> Optional[Dict[str, Any]]:
     try:
         if quiet:
             logger.setLevel(logging.WARNING)
@@ -646,6 +692,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         max_drawdown_cooldown_bars = max(1, int(max_drawdown_cooldown_days * 1440))
         max_drawdown_limit_pct = float(config.get("max_drawdown_limit", 100.0))
         drawdown_threshold(initial_capital, initial_capital, max_drawdown_limit_pct)
+        max_dd_ath = float(initial_capital)
 
         close_prices: npt.NDArray[np.float64] = df['close'].values.astype(np.float64)
         # adverse-side extremes: exchanges mark liquidation continuously, not only at close
@@ -724,20 +771,32 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         vg_blocked_count = 0
         trend_add_blocks = 0
 
-        # --- HTF 5m bias (experiment): fixed first-experiment signal, not tuned ---
-        htf_pp_cfg = float(htf_bias_pp)
+        # --- HTF share-skew indicator (experiment): virtual 5m portfolio, not trend_guard ---
+        htf_pp_cfg = float(htf_bias_pp)  # threshold AND step in percentage points
         if not math.isfinite(htf_pp_cfg) or htf_pp_cfg < 0:
-            raise ValueError("htf_bias_pp must be finite and >= 0; direction comes from the signal sign")
-        if htf_pp_cfg > 0 and time_window is None:
-            raise ValueError("htf_bias_pp > 0 requires a real time axis (feather with 'time' column)")
-        htf_k_candles = 6        # 30 minutes of closed 5m candles
-        htf_min_move = 0.005     # 0.5% net move over the window
-        htf_eff_threshold = 0.85 # one-way path efficiency
+            raise ValueError("htf_bias_pp must be finite and >= 0; 0 disables the indicator")
+        if htf_pp_cfg > 0:
+            if time_window is None:
+                raise ValueError("htf_bias_pp > 0 requires a real time axis (feather with 'time' column)")
+            if int(time_window[0]) % 300_000 != 0:
+                raise ValueError("htf_bias_pp > 0 requires a 5m-aligned window start")
         htf_bias_pp = 0.0        # signed current bias, percentage points
         htf_updates = 0
         htf_switches = 0
         htf_nonzero_bars = 0
         htf_max_abs_pp = 0.0
+        htf_signal_counts = {"LONG": 0, "SHORT": 0, "NEUTRAL": 0}
+        if htf_pp_cfg > 0:
+            # Fixed USDT scale independent of the 1m bot; the signal uses only value ratios.
+            htf_lev_long = float(targets["BASE_LONG"]["leverage"])
+            htf_lev_short = float(targets["BASE_SHORT"]["leverage"])
+            htf_T = float(initial_capital)
+            htf_price = float(close_prices[0])
+            htf_qty_long = 0.25 * htf_T * htf_lev_long / htf_price
+            htf_qty_short = 0.25 * htf_T * htf_lev_short / htf_price
+            htf_virt = 0.5 * htf_T
+            htf_entry_long = htf_price
+            htf_entry_short = htf_price
 
         vg_cooldown_bars = 0  # оставшиеся бары блокировки от Velocity Guard
         status = "completed"
@@ -746,36 +805,74 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         for i in range(len(df)):
             mid_price = Decimal(str(close_prices[i]))
 
-            # --- HTF 5m bias: signal from CLOSED 5m candles only (bar timestamps are opens) ---
+            # --- HTF share signal: revalue -> measure -> publish -> reset (bar timestamps are opens) ---
             if htf_pp_cfg > 0:
-                if int(time_window[i]) % 300_000 == 0 and i >= 5 * htf_k_candles:
-                    htf_closes = close_prices[i - 5 * htf_k_candles:i]
-                    p_start, p_end = float(htf_closes[0]), float(htf_closes[-1])
-                    total_path = sum(abs(htf_closes[j] - htf_closes[j - 1])
-                                     for j in range(1, len(htf_closes)))
-                    net = p_end - p_start
-                    net_pct = abs(net) / p_start if p_start > 0 else 0.0
-                    eff = abs(net) / total_path if total_path > 0 else 0.0
-                    new_pp = 0.0
-                    if net_pct > htf_min_move and eff > htf_eff_threshold:
-                        new_pp = htf_pp_cfg if net > 0 else -htf_pp_cfg
+                if int(time_window[i]) % 300_000 == 0 and i >= 5:
+                    p_start = float(close_prices[i - 5])
+                    p_end = float(close_prices[i - 1])  # last closed minute of [i-5, i)
+                    val_long = htf_qty_long * (htf_entry_long / htf_lev_long + p_end - htf_entry_long)
+                    val_short = htf_qty_short * (htf_entry_short / htf_lev_short + htf_entry_short - p_end)
+                    val_virt = htf_virt
+                    total = val_long + val_short + val_virt
+                    if total <= 0 or val_long <= 0 or val_short <= 0:
+                        raise RuntimeError(
+                            f"virtual 5m portfolio non-positive at bar {i}: "
+                            f"long={val_long} short={val_short} total={total}")
+                    w_long = val_long / total
+                    w_short = val_short / total
+                    excess_l = 100.0 * (w_long - 0.25)
+                    excess_s = 100.0 * (w_short - 0.25)
+                    try:
+                        new_pp = share_signal_bias(excess_l, excess_s, htf_pp_cfg)
+                    except ValueError as exc:
+                        state.log_event(
+                            i, "htf_share_both_triggered",
+                            float(state.get_tpv_fast(float(mid_price))), str(exc),
+                            excess_long_pp=excess_l, excess_short_pp=excess_s,
+                            threshold_pp=htf_pp_cfg,
+                        )
+                        logger.error(f"HTF share indicator stopped at bar {i}: {exc}")
+                        raise
+                    signal = "LONG" if new_pp > 0 else "SHORT" if new_pp < 0 else "NEUTRAL"
                     prev_pp = htf_bias_pp
                     if new_pp != prev_pp:
                         htf_bias_pp = new_pp
                         htf_switches += 1
                     htf_updates += 1
-                    prev_t = apply_share_bias(targets, prev_pp)
-                    next_t = apply_share_bias(targets, new_pp)
+                    htf_signal_counts[signal] += 1
+                    # Apply bias function based on mode
+                    if htf_mode == "from_virtual":
+                        prev_t = apply_share_bias_from_virtual(targets, prev_pp)
+                        next_t = apply_share_bias_from_virtual(targets, new_pp)
+                    else:  # "between_legs" (default)
+                        prev_t = apply_share_bias(targets, prev_pp)
+                        next_t = apply_share_bias(targets, new_pp)
                     state.log_event(
-                        i, "htf_bias", float(state.get_tpv_fast(float(mid_price))),
-                        f"net={net_pct * 100:.4f}% eff={eff:.3f} bias={prev_pp:+g}->{new_pp:+g}pp",
-                        signal_net_pct=net_pct, signal_eff=eff,
+                        i, "htf_share_signal", float(state.get_tpv_fast(float(mid_price))),
+                        f"{signal} excess_long={excess_l:+.4f}pp excess_short={excess_s:+.4f}pp "
+                        f"bias={prev_pp:+g}->{new_pp:+g}pp mode={htf_mode}",
+                        interval_start=int(time_window[i]) - 300_000,
+                        interval_end=int(time_window[i]),
+                        signal_available_at=int(time_window[i]),
+                        price_start=p_start, price_end=p_end,
+                        val_long=val_long, val_short=val_short, val_virt=val_virt, total=total,
+                        w_long=w_long, w_short=w_short,
+                        excess_long_pp=excess_l, excess_short_pp=excess_s,
+                        threshold_pp=htf_pp_cfg, signal=signal,
                         bias_pp=new_pp, prev_bias_pp=prev_pp, changed=new_pp != prev_pp,
                         targets_long=float(next_t["BASE_LONG"]["share"]),
                         targets_short=float(next_t["BASE_SHORT"]["share"]),
                         prev_long=float(prev_t["BASE_LONG"]["share"]),
                         prev_short=float(prev_t["BASE_SHORT"]["share"]),
+                        shares_after_long=0.25, shares_after_short=0.25, shares_after_virt=0.5,
+                        first_decision_bar=i,
                     )
+                    # Reset: preserve current total value, redistribute to 25/25/50 without costs.
+                    htf_qty_long = 0.25 * total * htf_lev_long / p_end
+                    htf_qty_short = 0.25 * total * htf_lev_short / p_end
+                    htf_virt = 0.5 * total
+                    htf_entry_long = p_end
+                    htf_entry_short = p_end
                 if htf_bias_pp != 0:
                     htf_nonzero_bars += 1
                     htf_max_abs_pp = max(htf_max_abs_pp, abs(htf_bias_pp))
@@ -911,7 +1008,13 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             # VIRTUAL is already excluded from val_cash, so real_equity is the net futures wallet.
             simulated_real_equity = wallet_balance
 
-            eff_targets = apply_share_bias(targets, htf_bias_pp) if htf_pp_cfg > 0 else targets
+            if htf_pp_cfg > 0:
+                if htf_mode == "from_virtual":
+                    eff_targets = apply_share_bias_from_virtual(targets, htf_bias_pp)
+                else:  # "between_legs"
+                    eff_targets = apply_share_bias(targets, htf_bias_pp)
+            else:
+                eff_targets = targets
 
             calculator = PortfolioCalculator(
                 positions={f"{base_ticker}_LONG": float(state.pos_long), f"{base_ticker}_SHORT": float(state.pos_short)},
@@ -1388,6 +1491,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
                                     "max dd stop close")
                 state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
+                max_dd_ath = float(state.dormant_capital)
                 state.cooldown_until_bar = i + max_drawdown_cooldown_bars
                 state.log_event(i, "max_dd_stop", float(state.dormant_capital),
                                 f"max drawdown limit {max_drawdown_limit_pct}%")
@@ -1669,15 +1773,16 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "htf_bias": {
                 "enabled": bool(htf_pp_cfg > 0),
                 "pp": float(htf_pp_cfg),
-                "k_candles": int(htf_k_candles),
-                "window_minutes": int(htf_k_candles * 5),
-                "min_move_pct": float(htf_min_move * 100.0),
-                "eff_threshold": float(htf_eff_threshold),
+                "mode": htf_mode,
+                "signal_source": "virtual_5m_portfolio",
+                "interval_minutes": 5,
+                "base_shares": {"long": 0.25, "short": 0.25, "virt": 0.5},
                 "final_pp": float(htf_bias_pp),
                 "max_abs_pp": float(htf_max_abs_pp),
                 "updates": int(htf_updates),
                 "switches": int(htf_switches),
                 "nonzero_bars": int(htf_nonzero_bars),
+                "signal_counts": dict(htf_signal_counts),
             },
             "sortino_ratio": float(sortino_ratio),
             "equity_curve": equity_curve.tolist(),
@@ -1750,6 +1855,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "min_notional_usdt": float(min_notional_usdt),
                 "share_trail_distance": float(trail_distance),
                 "htf_bias_pp": float(htf_pp_cfg),
+                "htf_mode": htf_mode,
                 "trend_add_block": portfolio_cfg.get("trend_add_block"),
                 "account_free_margin": float(cash_reserve_usdt),
             },
@@ -1772,8 +1878,10 @@ if __name__ == "__main__":
     parser.add_argument("--since", default=None, help="backtest start (UTC); overrides the trailing days window")
     parser.add_argument("--until", default=None, help="backtest end (UTC); defaults to the end of local data")
     parser.add_argument("--htf-bias-pp", type=float, default=0.0,
-                        help="5m higher-timeframe bias magnitude in percentage points; 0 disables, "
-                             "direction always comes from the closed-5m-candle signal sign")
+                        help="share-skew threshold and step in percentage points; 0 disables the "
+                             "virtual-5m-portfolio indicator (direction comes from which leg is skewed)")
+    parser.add_argument("--htf-mode", type=str, default="between_legs", choices=["between_legs", "from_virtual"],
+                        help="HTF bias application mode: between_legs (A: LONG+SHORT preserved) or from_virtual (B: LONG+SHORT increases, VIRTUAL decreases)")
     args = parser.parse_args()
     if not math.isfinite(args.htf_bias_pp) or args.htf_bias_pp < 0:
         parser.error("--htf-bias-pp must be finite and >= 0")
@@ -1799,7 +1907,8 @@ if __name__ == "__main__":
                                    threshold_surplus_override=args.threshold_surplus,
                                    threshold_deficit_override=args.threshold_deficit,
                                    since_utc=since, until_utc=until,
-                                   htf_bias_pp=args.htf_bias_pp))
+                                   htf_bias_pp=args.htf_bias_pp,
+                                   htf_mode=args.htf_mode))
 
     # auto-refresh the single dashboard: write the result jsons, regenerate the html,
     # and delete stale versioned copies only for the current prefix
