@@ -1932,16 +1932,50 @@ async def test_a2_critical_guard_halts_before_supervisor_can_reopen():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("paper_mode", [True, False])
-async def test_max_drawdown_persists_fixed_budget_cooldown(paper_mode):
-    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=100.0,
+@pytest.mark.parametrize("reference", [100.0, 120.0])
+async def test_rebased_ledger_stop_persists_fixed_budget_and_cooldown(paper_mode, reference):
+    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
                           max_drawdown_cooldown_days=365.0, equity_trailing_stop_pct=0.0)
-    state = _make_state(tpv_ath=200.0, max_dd_ath=200.0)
-    low_tpv = {"total_tpv": 100.0, "tpv": 100.0, "actions": [], "total_pnl_pct": 0.0}
+    config["portfolios"][0]["siphoning_threshold_pct"] = 0
+    ledger = reference - 2.08
+    state = _make_state(started_at=1, tpv_ath=5000.0, max_drawdown_reference=reference)
+    calc = {"total_tpv": ledger, "tpv": ledger, "actions": [], "total_pnl_pct": 0.0}
     with patch(f"{M}.emergency_stop", AsyncMock()) as close:
         before = time.time()
-        saves, notifier, conn = await _run_rebalance(config, state, _make_paper_state(),
-                                                     loop_limit=2, calc_return=low_tpv)
-    closed = [s for _, s in saves if s.get("stop_reason") == "max_drawdown"]
-    assert closed and close.await_count == 1
-    assert closed[-1]["restart_not_before"] >= before + 365 * 86400
-    assert closed[-1]["trailing_stop_triggered"]
+        saves, _, _ = await _run_rebalance(config, state, _make_paper_state(balance=ledger),
+                                          loop_limit=2, calc_return=calc)
+    stopped = [s for _, s in saves if s.get("stop_reason") == "max_drawdown"]
+    assert stopped and close.await_count == 1
+    assert stopped[-1]["max_drawdown_reference"] == reference
+    assert stopped[-1]["max_drawdown_basis"] == "rebased_session_ledger"
+    assert stopped[-1]["restart_not_before"] >= before + 365 * 86400
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_rebased_ledger_ignores_open_mtm_and_old_ath(paper_mode):
+    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
+                          max_drawdown_cooldown_days=365.0, equity_trailing_stop_pct=0.0)
+    config["portfolios"][0]["siphoning_threshold_pct"] = 0
+    calc = {"total_tpv": 50.0, "tpv": 50.0, "actions": [], "total_pnl_pct": -50.0}
+    with patch(f"{M}.emergency_stop", AsyncMock()) as close:
+        saves, _, _ = await _run_rebalance(config, _make_state(started_at=1, tpv_ath=5000),
+                                          _make_paper_state(balance=100.0),
+                                          loop_limit=2, calc_return=calc)
+    close.assert_not_awaited()
+    assert not any(s.get("stop_reason") == "max_drawdown" for _, s in saves)
+
+
+@pytest.mark.parametrize("price", [60, 100, 140])
+def test_wallet_ledger_matches_portfolio_equity_without_open_mtm(price):
+    from core.calculator import PortfolioCalculator
+    calculator = PortfolioCalculator(
+        positions={"BTCUSDT_LONG": 3, "BTCUSDT_SHORT": -2},
+        spot_price=price, real_equity=500, virt_qty=0, virt_debt=500,
+        siphoning_reserve=25, initial_capital=1000, base_ticker="BTCUSDT",
+        long_entry_price=100, short_entry_price=100,
+        targets={"BASE_LONG": {"share": .25, "leverage": 3},
+                 "BASE_SHORT": {"share": .25, "leverage": 3},
+                 "VIRTUAL": {"share": .5}})
+    open_pnl = Decimal(3) * (price - 100) + Decimal(2) * (100 - price)
+    assert calculator.total_tpv - open_pnl == Decimal(1000 + 25)

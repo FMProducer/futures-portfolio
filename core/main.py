@@ -822,6 +822,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     virt_qty = float(state.get("virt_qty", 0.0))
     siphoning_reserve = float(state.get("siphoning_reserve", 0.0))
     initial_tpv = float(state.get("initial_tpv", 0.0))
+    drawdown_reference = float(state.get("max_drawdown_reference", initial_tpv + siphoning_reserve))
     reference_tpv = float(state.get("reference_tpv", 0.0))
     tpv_ath = float(state.get("tpv_ath", 0.0))
     cycles = state.get("rebalance_cycles", 0)
@@ -1704,15 +1705,21 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 now = time.time()
 
-                max_dd_ath = max(float(state.get("max_dd_ath", tpv_ath)), tpv_total, initial_tpv)
-                state["max_dd_ath"] = max_dd_ath
+                # Wallet balance already excludes open MTM and includes realized fees/funding.
+                dd_ledger = float(paper_state["balance"]) + siphoning_reserve
+                if not math.isfinite(dd_ledger):
+                    raise ValueError("Drawdown ledger must be finite")
+                if drawdown_reference <= 0:
+                    drawdown_reference = initial_tpv + siphoning_reserve
+                state["max_drawdown_reference"] = drawdown_reference
+                state["max_drawdown_basis"] = "rebased_session_ledger"
                 state_dirty = True
-                dd_threshold = drawdown_threshold(max_dd_ath, target_initial_cap, max_drawdown_limit)
-                if tpv_total <= dd_threshold:
+                dd_threshold = drawdown_threshold(drawdown_reference, target_initial_cap, max_drawdown_limit)
+                if dd_ledger <= dd_threshold:
                     cooldown_days = float(current_config.get("max_drawdown_cooldown_days", 0.1))
                     if not math.isfinite(cooldown_days) or cooldown_days < 0:
-                        raise ValueError("max_drawdown_cooldown_days must be finite and non-negative")
-                    msg = f"MAX DRAWDOWN: equity={tpv_total:.2f}, peak={max_dd_ath:.2f}, threshold={dd_threshold:.2f}; cooldown={cooldown_days}d"
+                        raise ValueError("max_drawdown_cooldown_days must be finite and nonnegative")
+                    msg = f"MAX DRAWDOWN: ledger={dd_ledger:.2f}, rebased={drawdown_reference:.2f}, threshold={dd_threshold:.2f}; cooldown={cooldown_days}d"
                     logger.critical(msg)
                     asyncio.create_task(notifier.send_alert("EMERGENCY STOP", msg))
                     state["share_trail"] = share_trail.fresh_state()
