@@ -79,6 +79,29 @@ def action_side(key: str, is_reduction: bool) -> str:
         return "BUY" if is_reduction else "SELL"
     return "RELEASE" if is_reduction else "DESIGNATE"
 
+def apply_share_bias(targets: Dict[str, Dict], bias_pp: float) -> Dict[str, Dict]:
+    """Shift target weight between the futures legs by bias_pp percentage points.
+
+    bias_pp == 0 returns the same object so the baseline path is unchanged.
+    LONG + SHORT is preserved (clamped into [0, LONG+SHORT]); VIRTUAL and the
+    residual CASH weight are untouched — this moves targets, never positions.
+    """
+    if bias_pp == 0:
+        return targets
+    out = copy.deepcopy(targets)
+    delta = Decimal(str(bias_pp)) / Decimal('100')
+    long_share = Decimal(str(out["BASE_LONG"]["share"]))
+    short_share = Decimal(str(out["BASE_SHORT"]["share"]))
+    total = long_share + short_share
+    long_new = long_share + delta
+    if long_new < 0:
+        long_new = Decimal('0')
+    elif long_new > total:
+        long_new = total
+    out["BASE_LONG"]["share"] = float(long_new)
+    out["BASE_SHORT"]["share"] = float(total - long_new)
+    return out
+
 class AccountingMismatch(AssertionError):
     def __init__(self, details: Dict[str, Any]):
         self.details = details
@@ -431,7 +454,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         threshold_deficit_override: Optional[float] = None,
                         capital_override: Optional[float] = None,
                         since_utc: Optional[str] = None,
-                        until_utc: Optional[str] = None) -> Optional[Dict[str, Any]]:
+                        until_utc: Optional[str] = None,
+                        htf_bias_pp: float = 0.0) -> Optional[Dict[str, Any]]:
     try:
         if quiet:
             logger.setLevel(logging.WARNING)
@@ -696,12 +720,62 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         vg_window_bars = max(1, vg_window_sec // 60)
         vg_blocked_count = 0
         trend_add_blocks = 0
+
+        # --- HTF 5m bias (experiment): fixed first-experiment signal, not tuned ---
+        htf_pp_cfg = float(htf_bias_pp)
+        if not math.isfinite(htf_pp_cfg) or htf_pp_cfg < 0:
+            raise ValueError("htf_bias_pp must be finite and >= 0; direction comes from the signal sign")
+        if htf_pp_cfg > 0 and time_window is None:
+            raise ValueError("htf_bias_pp > 0 requires a real time axis (feather with 'time' column)")
+        htf_k_candles = 6        # 30 minutes of closed 5m candles
+        htf_min_move = 0.005     # 0.5% net move over the window
+        htf_eff_threshold = 0.85 # one-way path efficiency
+        htf_bias_pp = 0.0        # signed current bias, percentage points
+        htf_updates = 0
+        htf_switches = 0
+        htf_nonzero_bars = 0
+        htf_max_abs_pp = 0.0
+
         vg_cooldown_bars = 0  # оставшиеся бары блокировки от Velocity Guard
         status = "completed"
         stopped_bar = None
 
         for i in range(len(df)):
             mid_price = Decimal(str(close_prices[i]))
+
+            # --- HTF 5m bias: signal from CLOSED 5m candles only (bar timestamps are opens) ---
+            if htf_pp_cfg > 0:
+                if int(time_window[i]) % 300_000 == 0 and i >= 5 * htf_k_candles:
+                    htf_closes = close_prices[i - 5 * htf_k_candles:i]
+                    p_start, p_end = float(htf_closes[0]), float(htf_closes[-1])
+                    total_path = sum(abs(htf_closes[j] - htf_closes[j - 1])
+                                     for j in range(1, len(htf_closes)))
+                    net = p_end - p_start
+                    net_pct = abs(net) / p_start if p_start > 0 else 0.0
+                    eff = abs(net) / total_path if total_path > 0 else 0.0
+                    new_pp = 0.0
+                    if net_pct > htf_min_move and eff > htf_eff_threshold:
+                        new_pp = htf_pp_cfg if net > 0 else -htf_pp_cfg
+                    prev_pp = htf_bias_pp
+                    if new_pp != prev_pp:
+                        htf_bias_pp = new_pp
+                        htf_switches += 1
+                    htf_updates += 1
+                    prev_t = apply_share_bias(targets, prev_pp)
+                    next_t = apply_share_bias(targets, new_pp)
+                    state.log_event(
+                        i, "htf_bias", float(state.get_tpv_fast(float(mid_price))),
+                        f"net={net_pct * 100:.4f}% eff={eff:.3f} bias={prev_pp:+g}->{new_pp:+g}pp",
+                        signal_net_pct=net_pct, signal_eff=eff,
+                        bias_pp=new_pp, prev_bias_pp=prev_pp, changed=new_pp != prev_pp,
+                        targets_long=float(next_t["BASE_LONG"]["share"]),
+                        targets_short=float(next_t["BASE_SHORT"]["share"]),
+                        prev_long=float(prev_t["BASE_LONG"]["share"]),
+                        prev_short=float(prev_t["BASE_SHORT"]["share"]),
+                    )
+                if htf_bias_pp != 0:
+                    htf_nonzero_bars += 1
+                    htf_max_abs_pp = max(htf_max_abs_pp, abs(htf_bias_pp))
 
             # --- 1.0 B1: Funding (EVERY bar, even during cooldown/halt) ---
             # Funding accounting continues regardless of trading state.
@@ -834,6 +908,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             # VIRTUAL is already excluded from val_cash, so real_equity is the net futures wallet.
             simulated_real_equity = wallet_balance
 
+            eff_targets = apply_share_bias(targets, htf_bias_pp) if htf_pp_cfg > 0 else targets
+
             calculator = PortfolioCalculator(
                 positions={f"{base_ticker}_LONG": float(state.pos_long), f"{base_ticker}_SHORT": float(state.pos_short)},
                 spot_price=float(mid_price),
@@ -843,7 +919,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 long_entry_price=float(state.long_entry_price),
                 short_entry_price=float(state.short_entry_price),
                 base_ticker=base_ticker,
-                targets=targets,
+                targets=eff_targets,
                 initial_capital=float(state.initial_capital),
                 last_rebalance_price=float(state.last_rebalance_price),
                 commission_pct=float(sim.commission_pct),
@@ -857,7 +933,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 trail_prev = {key: [state.share_trail[key]["peak"], state.share_trail[key]["trough"]]
                               for key in ("BASE_LONG", "BASE_SHORT")}
             calc_res = calculator.calculate_rebalance(
-                targets,
+                eff_targets,
                 threshold_surplus=threshold_surplus,
                 threshold_deficit=threshold_deficit,
                 current_equity=state.get_tpv(mid_price),
@@ -1591,6 +1667,19 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "trend_guard_blocks": int(tg_blocked_count),
             "velocity_guard_blocks": int(vg_blocked_count),
             "trend_add_blocks": int(trend_add_blocks),
+            "htf_bias": {
+                "enabled": bool(htf_pp_cfg > 0),
+                "pp": float(htf_pp_cfg),
+                "k_candles": int(htf_k_candles),
+                "window_minutes": int(htf_k_candles * 5),
+                "min_move_pct": float(htf_min_move * 100.0),
+                "eff_threshold": float(htf_eff_threshold),
+                "final_pp": float(htf_bias_pp),
+                "max_abs_pp": float(htf_max_abs_pp),
+                "updates": int(htf_updates),
+                "switches": int(htf_switches),
+                "nonzero_bars": int(htf_nonzero_bars),
+            },
             "sortino_ratio": float(sortino_ratio),
             "equity_curve": equity_curve.tolist(),
             "fills": state.fills,
@@ -1660,6 +1749,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "cooldown_bars": int(cooldown_bars_duration),
                 "min_notional_usdt": float(min_notional_usdt),
                 "share_trail_distance": float(trail_distance),
+                "htf_bias_pp": float(htf_pp_cfg),
                 "trend_add_block": portfolio_cfg.get("trend_add_block"),
                 "account_free_margin": float(cash_reserve_usdt),
             },
@@ -1681,7 +1771,12 @@ if __name__ == "__main__":
     parser.add_argument("--threshold-deficit", type=float, default=None)
     parser.add_argument("--since", default=None, help="backtest start (UTC); overrides the trailing days window")
     parser.add_argument("--until", default=None, help="backtest end (UTC); defaults to the end of local data")
+    parser.add_argument("--htf-bias-pp", type=float, default=0.0,
+                        help="5m higher-timeframe bias magnitude in percentage points; 0 disables, "
+                             "direction always comes from the closed-5m-candle signal sign")
     args = parser.parse_args()
+    if not math.isfinite(args.htf_bias_pp) or args.htf_bias_pp < 0:
+        parser.error("--htf-bias-pp must be finite and >= 0")
     if args.days is None:
         with open(args.config, encoding="utf-8") as f:
             args.days = float(json.load(f).get("backtest_days", 1.0))
@@ -1703,7 +1798,8 @@ if __name__ == "__main__":
                                    capital_override=args.capital,
                                    threshold_surplus_override=args.threshold_surplus,
                                    threshold_deficit_override=args.threshold_deficit,
-                                   since_utc=since, until_utc=until))
+                                   since_utc=since, until_utc=until,
+                                   htf_bias_pp=args.htf_bias_pp))
 
     # auto-refresh the single dashboard: write the result jsons, regenerate the html,
     # and delete stale versioned copies only for the current prefix

@@ -1,5 +1,40 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-03 — NAV target sizing, CASH admission, funding/trailing audit and annual comparisons
+
+- Code checkpoint: `18b06a2af867a5950bda2bfbe2029f6fd74a19e8` on `codex/equity-stop-capital-floor`. Correct reductions target current monetary NAV after costs; additions target post-cost NAV and spend current CASH instead of historical profit_budget. Confirmed-fill receipts, idempotency, commission/CASH checks and uncertainty blocks remain. Quantities serve order construction only. Distance remains `0.05800887342949769`.
+- User reported commit/push. Local main checkout master and origin/master both point to merge `7d83a3b65b5da20285b108d1c8f69810b128ed75` (PR #8), including 18b06a2 and user config commit 7dfb3b9. Remote not fetched again. This is code integration evidence, not proof that already running PAPER/REAL workers loaded it.
+- HUMA incident: old SHORT reduction 11128 overshot 25%; LONG addition 3694 was capped by net profit while returned margin left CASH84.14USDT. Controlled two-tick PAPER reproduction after fixes: reduction7662, addition11084, SHORT~25%, LONG~24.94%, CASH~0.004USDT. Residual deficit~0.59USDT reflects insufficient CASH after price movement/VIRTUAL allocation, not a promised exact simultaneous rebalance.
+- 62 targeted tests passed; annual execution audit checked66 reductions and89 additions, including60 CASH-capped additions. Non-capped target fills match within one quantity step. Full-suite/runtime acceptance remains unverified; test environment emitted the existing PM2-discovery subprocess-reader UnicodeDecodeError.
+- Annual ZEC: 2025-10-20 00:00 through2026-10-19 23:59UTC,525600 bars,25/25/50, leverage3/3,1000USDT active capital plus5000 external backing. Frozen original230cf73 benchmark sources; only requested fixes applied, unrelated branch changes excluded. Config/data hashes verified, unchanged fixed signed funding scenario. This is not an annual replay of all post-merge master files.
+
+| ZEC research variant | Net | MaxDD | Cycles | Stops |
+|---|---:|---:|---:|---:|
+| Original baseline | +104.979571% |31.500081%|182|42|
+| Reduction sizing only | +62.655130% |40.895022%|162|34|
+| Reductions+CASH+exact additions | +128.140929% |53.411904%|247|54|
+
+- Full variant annual exit0, funding halt=false, liquidations0, accounting_ok=true. A separate repeat directly from original baseline reproduced all fills/equity and source hashes exactly. The intermediate62.66% row was an independent experiment, not extra duplicated code. Worst-DD mechanism:7Nov2025 SHORT addition1830.38USDT to restore negative NAV, followed by price+7.09%; fixed TPV815.18→524.01 versus baseline807.16→746.92. Portfolio trailing was not activated after restart. Higher target accuracy does not imply lower price risk.
+- Distance-only5pp experiment was rejected: ZEC−234.140689%/DD271.555859%/221cycles with late funding halt; AGT research-rate model−100%/DD202.112064%/316cycles with modeled liquidation. Reduction-only at5pp improved to−56.963388%/DD106.619670%/213cycles but still funding-halted. No operational distance change.
+- Earlier accounting/target tests:25/25/50 original104.979571/31.500081/182, b6794f2 selected102.354872/33.670311/172,7a490ba corrected102.682628/33.710388/172. Independent residuals−4.06864,−2.28946,approximately0USDT respectively. Negative realized PnL itself was not relabeled as a bug; proven cooldown funding loss/display-sign errors were fixed. Earlier33/33/34 ablations and rejected packages are fully listed in the linked protocol.
+- AGT historical dataset:525600 complete minutes,2189 rate/settlement-mark funding events,13 checked monthly ZIPs, shared quantity step1/rate adapter. One absent intermediate funding event confirmed by API/archive, not fabricated. Research benchmark own1017e1d25/25/50:+163.797944%/DD82.142968%/257; master68e2ee7 and159099e:+124.282831%/DD67.485409%/234. Pair-only reproduced own executions; equity-floor-only exactly matched master. Own7a490ba/b6794f2 at33/33/34 both−100%/DD221.455108%/390, modeled liquidation;4916.48424124USDT attribution residual means no independent financial PASS for those liquidation paths.
+- Read-only swarm snapshot13:37Kaliningrad: APR/HUMA trailing pullbacks below5.8009pp; BTW trailing ready but FUSE price gate blocked reduction. Raw threshold crossing is not execution permission. No PM2 restart or worker state edit performed during audit.
+
+Latest user-supplied CLI series (not independently rerun or proven identical config/data/funding/commit to the research series):
+
+| Ticker | Before Net / MaxDD / cycles | After Net / MaxDD / cycles |
+|---|---|---|
+| ZECUSDT | +104.98% /31.50% /182 | +126.01% /43.97% /232 |
+| AGTUSDT | +269.49% /82.74% /289 | +415.94% /67.23% /402 |
+
+- Equal-capital combined Net187.235%→270.975%,+83.74pp. At1000USDT per ticker: profit3744.70→5419.50USDT,+1674.80USDT(+44.72%). Cycles471→634; market orders694→979. Aggregate MaxDD cannot be inferred by averaging individual MaxDD; synchronized equity curves are required.
+- User ZEC126.01/43.97 differs from research128.14/53.41; AGT269.49→415.94 differs from the research-rate benchmark. Cause remains unverified. Full user statistics, input hashes, causal evidence, tests, source boundaries and remaining limitations are recorded in [the protocol](docs/TRADING_REBALANCE_AUDIT_2026-11-03.md).
+- Obsidian: `Projects/futures-portfolio-nav-cash-backtests-2026-11-03.md`, indexed in `Docs/changelog.md`, linked to the previous2026-11-02 session protocol. Local artifacts: `reports/{isolated_rebalance_effects,realized_pnl_audit,targets_25_25_50,agt_yearly,agt_drawdown_causes,swarm_gate_audit_20261103,share_trail_5pp,reduction_nav_fix,huma_target_cash,huma_direct_base}/`. Some raw reports/data are Git-ignored and local only.
+- Documentation update only: no new trading changes, runtime mutations, optimization, commit or push in this documentation stage.
+
+
+
+
 ## 2026-10-30 — Cumulative PAPER candidate pool, manual full run, idle disable switch
 
 - Daily universe tests the deduplicated union of fresh top-100 supported USDT perpetual contracts by rolling 24-hour quote volume and the previous pool of up to 50 (100–150 unique tickers). Fresh dual-window passes have priority; remaining places retain only previous members with proven historical 48h AND 24h passes. Current 24h Pareto Net%/MaxDD ranks each group; admissions.json records provenance. The temporary broad pool containing never-passed tickers is superseded. Supervisor's fresh strict trading gate remains unchanged; historical pool membership is not current admission.
