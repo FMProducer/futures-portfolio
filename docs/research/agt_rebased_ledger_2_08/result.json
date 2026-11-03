@@ -1,0 +1,154 @@
+{
+  "status": "completed",
+  "final_equity": 34495.85864457203,
+  "profit_pct": 3349.5858644537534,
+  "max_dd_pct": 98.27658730498327,
+  "liquidations": 0,
+  "accounting_ok": true,
+  "cycles": 1243,
+  "settings": {
+    "fuse_enabled": true,
+    "liquidation_distance_warn_pct": 40.0,
+    "liquidation_distance_crit_pct": 25.0,
+    "post_factum_liquidation_check": true,
+    "commission_pct": 0.0004,
+    "slippage_pct": 0.0005,
+    "targets": {
+      "BASE_LONG": {
+        "share": 0.25,
+        "leverage": 3.0
+      },
+      "BASE_SHORT": {
+        "share": 0.25,
+        "leverage": 3.0
+      },
+      "VIRTUAL": {
+        "share": 0.5,
+        "leverage": 1.0
+      }
+    },
+    "thresholds": {
+      "surplus": 0.04,
+      "deficit": 0.04
+    },
+    "share_basis_scale": 1.0,
+    "effective_share_thresholds": {
+      "surplus": 0.04,
+      "deficit": 0.04
+    },
+    "siphoning_threshold_pct": 0.0,
+    "reinvestment_ratio": 0.0,
+    "funding_rate_per_day": 0.0002,
+    "bars_per_day": 1440,
+    "trailing_stop_pct": 0.3,
+    "trailing_stop_activation_pct": 1.55,
+    "trailing_stop_timeout_sec": 34,
+    "max_drawdown_limit_pct": 2.08,
+    "max_drawdown_cooldown_days": 365.0,
+    "max_drawdown_cooldown_bars": 525600,
+    "cooldown_bars": 129,
+    "min_notional_usdt": 7.0,
+    "share_trail_distance": 0.0,
+    "htf_bias_pp": 0.0,
+    "htf_mode": "between_legs",
+    "trend_add_block": {
+      "pct": 0.02583812246528389,
+      "window_bars": 53.62327119407764
+    },
+    "account_free_margin": 5000.0
+  },
+  "data_window": {
+    "feather": "AGTUSDT_live.feather",
+    "offset": 0,
+    "bars": 525600,
+    "input_bars": 525600,
+    "since_utc": "2025-10-20 00:00",
+    "until_utc": "2026-10-19 23:59",
+    "bars_per_day": 1440,
+    "time_source": "feather_time",
+    "start_utc": "2025-10-20 00:00",
+    "end_utc": "2026-10-19 23:59"
+  },
+  "funding_model": "signed_actual",
+  "profit_usdt": 33495.85864457203,
+  "max_dd_stops": [
+    {
+      "bar": 520321,
+      "kind": "max_dd_stop",
+      "tpv": 34497.12888457203,
+      "detail": "max drawdown limit 2.08%"
+    }
+  ],
+  "profile": {
+    "anchor": "rebased",
+    "measure": "ledger",
+    "horizon": "session",
+    "stage": "after_orders",
+    "limit_pct": 2.08
+  },
+  "inputs": {
+    "backtest/backtest_rebalance.py": {
+      "bytes": 115581,
+      "sha256": "ed90e0ed61ec0ee9fa943c5645e4743bd08b8d34278da2179f470456257b9ca3"
+    },
+    "core/capital.py": {
+      "bytes": 1657,
+      "sha256": "a60493ba62ff3a379a75058cecc4efb4de05f83d3289f7163c1d23b7cc8d2e3c"
+    },
+    "core/calculator.py": {
+      "bytes": 25450,
+      "sha256": "41e7d69ef91c5bf98fa20623978e24a166d101a64d8a23570cc89726e1fca3ae"
+    },
+    "core/profit_budget.py": {
+      "bytes": 3085,
+      "sha256": "3f3418c7a20bf7329e1f571912e927b269fdfffd03247e453b39424323eca594"
+    },
+    "core/funding.py": {
+      "bytes": 27960,
+      "sha256": "9c71e081b2577aac463d5ffdb6684a4b55146d33ee6c9a6e094e697e2947a9d2"
+    },
+    "core/siphoning.py": {
+      "bytes": 3587,
+      "sha256": "2b18b97e196d32688805df94274ddead9a50b9943d02f56c28b603742b118148"
+    },
+    "core/share_trail.py": {
+      "bytes": 5553,
+      "sha256": "0532d5b166cd170931aa9c22c26bbe1357e5d6b2b159c2273bc0f674b94b0f4a"
+    },
+    "docs/research/agt_rebased_ledger_2_08/config.json": {
+      "bytes": 3212,
+      "sha256": "abc8e44d40c5f5255e72f04590d591e82da25e80d668da9613a81d3fca35be2b"
+    },
+    "data/AGTUSDT_live.feather": {
+      "bytes": 13947186,
+      "sha256": "c6cf752e9d204a19c1e85ba6b75c5b60d817bf81b7e0cfc8eebc52e75fbc5308"
+    },
+    "data/funding_ZECUSDT.json": {
+      "bytes": 423916,
+      "sha256": "f884d369aff13c173c4fe2390f2e8abaf10f5f7d6687b6a1bfe337c6c1c2d013"
+    }
+  },
+  "classification": "Retrospective in-sample research result; no PAPER/REAL execution or policy deployment",
+  "reproduction_check": {
+    "entrypoint": "scripts/verify_agt_rebased_drawdown.py",
+    "script_sha256": "0388762f143f54f0ead276ae9d5a7daf5310569e10643811146f24e7bc8cd582",
+    "full_replay_matches": true,
+    "accounting_ok": true,
+    "final_equity": 34495.85864457203,
+    "profit_usdt": 33495.85864457203,
+    "max_dd_stop_bar": 520321
+  },
+  "native_reproduction": {
+    "command": "python.exe backtest\\backtest_rebalance.py --config config.json --ticker AGTUSDT --since \"2025-10-20 00:00\" --until \"2026-10-19 23:59\"",
+    "interpreter": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\.venv\\Scripts\\python.exe",
+    "basis": "rebased_session_ledger",
+    "final_equity": 34495.85864457203,
+    "profit_usdt": 33495.85864457203,
+    "profit_pct": 3349.5858644537534,
+    "liquidations": 0,
+    "accounting_ok": true,
+    "max_dd_stop_bar": 520321,
+    "backtest_sha256": "11c3888e6ae96744697ec4f62da239bfe2216571c6b09dc8716ff3dbff36c726",
+    "config_sha256_after_run": "5e51009b0480b9d9ccffcfa72d05b7916274fd5132eaf5d6b9d6023ae825e1c2"
+  }
+}

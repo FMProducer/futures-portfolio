@@ -737,3 +737,72 @@ async def test_backtest_legacy_free_margin_does_not_change_results(tmp_path):
     assert a["profit_pct"] == b["profit_pct"]
     assert a["settings"]["account_free_margin"] == 0.0
     assert b["settings"]["account_free_margin"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_max_drawdown_ignores_unrealized_swings_within_rebased_session(tmp_path):
+    config = _flat_config()
+    config.update(max_drawdown_limit=2.08, max_drawdown_cooldown_days=365.0,
+                  equity_trailing_stop_pct=0.0)
+    portfolio = config["portfolios"][0]
+    portfolio.update(post_factum_liquidation_check=False,
+                     liquidation_distance_crit_pct=0.0,
+                     rebalance_threshold_surplus=0.99, rebalance_threshold_deficit=0.99)
+    portfolio["targets"] = {"BASE_LONG": {"share": 1.0, "leverage": 1.0},
+                            "BASE_SHORT": {"share": 0.0, "leverage": 1.0},
+                            "VIRTUAL": {"share": 0.0}}
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0, 200.0, 150.0, 50.0, 300.0]
+    pd.DataFrame({"open": prices, "high": prices, "low": prices, "close": prices,
+                  "volume": [1.0] * len(prices)}).to_feather(tmp_path / "BTCUSDT_live.feather")
+    result = await run_backtest(str(config_file), str(tmp_path), days=1,
+                                commission=0.0, slippage=0.0, quiet=True)
+    assert result is not None and result["accounting_ok"]
+    stops = [event for event in result["events"] if event["kind"] == "max_dd_stop"]
+    assert not stops
+    assert result["final_equity"] == pytest.approx(3000.0)
+    assert result["settings"]["max_drawdown_basis"] == "rebased_session_ledger"
+
+
+@pytest.mark.parametrize("limit,expected", [(0, 35000), (50, 34500), (100, 34000), (200, 33000)])
+def test_drawdown_budget_is_percent_of_initial_capital(limit, expected):
+    from core.capital import drawdown_threshold
+    assert drawdown_threshold(35000, 1000, limit) == expected
+
+
+@pytest.mark.parametrize("limit", [-1, float("nan"), float("inf")])
+def test_drawdown_rejects_invalid_limit(limit):
+    from core.capital import drawdown_threshold
+    with pytest.raises(ValueError):
+        drawdown_threshold(35000, 1000, limit)
+
+
+@pytest.mark.asyncio
+async def test_max_drawdown_ledger_funding_loss_uses_fixed_budget_and_rebases(tmp_path):
+    times = pd.date_range("2026-01-01", periods=6, freq="min", tz="UTC")
+    config = _flat_config()
+    journal = tmp_path / "funding.json"
+    journal.write_text(json.dumps([
+        {"event_id": f"loss:{bar}", "signed_amount": -21,
+         "event_time": times[bar].timestamp(), "status": "received"}
+        for bar in (1, 4)
+    ]), encoding="utf-8")
+    config.update(max_drawdown_limit=2.08, max_drawdown_cooldown_days=2 / 1440,
+                  equity_trailing_stop_pct=0.0, funding_model="signed_actual",
+                  funding_scenario=str(journal))
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0] * len(times)
+    pd.DataFrame({"time": times, "open": prices, "high": prices, "low": prices,
+                  "close": prices, "volume": prices}).to_feather(tmp_path / "BTCUSDT_live.feather")
+    result = await run_backtest(str(config_file), str(tmp_path), days=1,
+                                commission=0.0, slippage=0.0, quiet=True)
+    assert result and result["accounting_ok"]
+    stops = [e for e in result["events"] if e["kind"] == "max_dd_stop"]
+    resumes = [e for e in result["events"] if e["kind"] == "cooldown_end"]
+    assert [e["bar"] for e in stops] == [1, 4]
+    assert resumes[0]["bar"] == 3 and resumes[0]["rebased"] == pytest.approx(979)
+    assert stops[0]["tpv"] == pytest.approx(979)
+    assert stops[1]["tpv"] == pytest.approx(958)
+    assert not any(1 < f["bar"] < 3 for f in result["fills"])
