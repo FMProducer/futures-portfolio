@@ -163,10 +163,10 @@
 - **Единицы:** абстрактные скор-баллы (profit/cycles·ln). Текущие 50.0 → cushion 0.5. Увеличение — реже ротация REAL; уменьшение — чаще. Режим: supervisor. Диапазон в коде не проверяется.
 
 ### `max_drawdown_limit`
-- BACKTEST/PAPER/REAL: loss budget in percent of configured initial trading capital (`paper_initial_capital` for PAPER).
-- Stop when total portfolio equity (unrealized PnL and SAFE included, external account collateral excluded) reaches its peak minus `initial_capital * max_drawdown_limit / 100`.
-- Initial capital 1000 and limit 100 mean a 1000 USDT loss from the peak. Values 100 and 200 do not disable protection.
-- The peak survives unrelated short cooldowns. Closing fees and execution price affect final equity.
+- Loss budget in percent of configured initial trading capital (`paper_initial_capital` for PAPER).
+- **BACKTEST:** compare Ledger (total portfolio equity minus unrealized PnL, including SAFE) against the current session's Rebased capital minus `initial_capital * max_drawdown_limit / 100`. The reference resets on cooldown restart; the USDT budget keeps the configured initial-capital basis.
+- **PAPER/REAL:** continue to compare total portfolio equity against its persistent high-water mark minus the fixed initial-capital budget. The BACKTEST Ledger profile has not been deployed to runtime.
+- With initial capital 1000 and limit 2.08, the budget is 20.80 USDT. Closing fees and execution price affect final equity. BACKTEST Ledger protection does not cap unrealized equity drawdown.
 
 ### `max_drawdown_cooldown_days`
 - BACKTEST/PAPER/REAL: independent cooldown after max drawdown, default 0.1 days.

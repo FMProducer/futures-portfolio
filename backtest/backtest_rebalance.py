@@ -1454,12 +1454,12 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             # The shortfall block below handles the close/halt path.
             # (Moved to the top of the bar — see funding block after cooldown/halt guard.)
 
-            # Preserve the total-equity peak across unrelated session restarts.
-            dd_equity = state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)
-            max_dd_ath = max(max_dd_ath, dd_equity)
+            # Rebase the session reference on restart; open MTM never changes the ledger trigger.
+            dd_equity = float(state.get_tpv(mid_price) + state.siphoning_reserve - state.unrealized(mid_price))
+            max_dd_ath = float(state.initial_capital + state.siphoning_reserve)
             dd_threshold = drawdown_threshold(max_dd_ath, trading_initial_capital, max_drawdown_limit_pct)
             if dd_equity <= dd_threshold:
-                logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! equity={dd_equity:.2f}, peak={max_dd_ath:.2f}, threshold={dd_threshold:.2f}. Entering {max_drawdown_cooldown_days}d cooldown.")
+                logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! ledger={dd_equity:.2f}, rebased={max_dd_ath:.2f}, threshold={dd_threshold:.2f}. Entering {max_drawdown_cooldown_days}d cooldown.")
                 state.trailing_stop_triggered = True
                 state.stops_counter += 1
                 # Закрыть все позиции по текущей цене
@@ -1848,6 +1848,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "trailing_stop_activation_pct": float(trailing_stop_activation_pct),
                 "trailing_stop_timeout_sec": int(trailing_stop_timeout_sec),
                 "max_drawdown_limit_pct": float(max_drawdown_limit_pct),
+                "max_drawdown_basis": "rebased_session_ledger",
                 "max_drawdown_cooldown_days": max_drawdown_cooldown_days,
                 "max_drawdown_cooldown_bars": max_drawdown_cooldown_bars,
                 "cooldown_bars": int(cooldown_bars_duration),

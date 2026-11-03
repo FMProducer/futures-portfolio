@@ -103,9 +103,9 @@ async def main():
     source = source.replace('            # --- 2. Portfolio Calculation ---',
                             '            _research_observe("before_orders", locals())\n'
                             '            # --- 2. Portfolio Calculation ---')
-    source = source.replace('            # Preserve the total-equity peak across unrelated session restarts.',
+    source = source.replace('            # Rebase the session reference on restart; open MTM never changes the ledger trigger.',
                             '            _research_observe("after_orders", locals())\n'
-                            '            # Preserve the total-equity peak across unrelated session restarts.')
+                            '            # Rebase the session reference on restart; open MTM never changes the ledger trigger.')
     bt.__dict__["_research_observe"] = observe
     bt.drawdown_threshold = lambda *args: float("-inf")
     exec(compile(source, bt.__file__, "exec"), bt.__dict__)

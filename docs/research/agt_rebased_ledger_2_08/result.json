@@ -137,5 +137,18 @@
     "final_equity": 34495.85864457203,
     "profit_usdt": 33495.85864457203,
     "max_dd_stop_bar": 520321
+  },
+  "native_reproduction": {
+    "command": "python.exe backtest\\backtest_rebalance.py --config config.json --ticker AGTUSDT --since \"2025-10-20 00:00\" --until \"2026-10-19 23:59\"",
+    "interpreter": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\.venv\\Scripts\\python.exe",
+    "basis": "rebased_session_ledger",
+    "final_equity": 34495.85864457203,
+    "profit_usdt": 33495.85864457203,
+    "profit_pct": 3349.5858644537534,
+    "liquidations": 0,
+    "accounting_ok": true,
+    "max_dd_stop_bar": 520321,
+    "backtest_sha256": "11c3888e6ae96744697ec4f62da239bfe2216571c6b09dc8716ff3dbff36c726",
+    "config_sha256_after_run": "5e51009b0480b9d9ccffcfa72d05b7916274fd5132eaf5d6b9d6023ae825e1c2"
   }
 }
