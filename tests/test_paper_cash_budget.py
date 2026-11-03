@@ -64,7 +64,7 @@ async def test_failed_reduction_creates_no_buying_budget(status):
 
 
 @pytest.mark.asyncio
-async def test_partial_reduction_credits_only_actual_profit_net_fee():
+async def test_partial_reduction_credits_actual_released_margin_and_net_profit():
     executor = setup_executor(1300)
     original = executor._execute_single_action
     async def partial(a, *args):
@@ -80,6 +80,7 @@ async def test_partial_reduction_credits_only_actual_profit_net_fee():
     fill = results[1]
     assert fill['status'] == 'SUCCESS'
     cost = D(str(fill['qty'])) * D(str(fill['price'])) / 7 + D(str(fill['commission']))
+    actual_proceeds += D('.1') * D(str(PAPER['short_entry_price'])) / 7
     assert cost <= actual_proceeds
 
 

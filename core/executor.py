@@ -637,22 +637,18 @@ class PortfolioExecutor:
             if virtual:
                 lev = Decimal('1')
             if not action.get("is_reduction"):
-                profit_funds = profit_budget.available(batch_state)
-                if profit_budget.ledger(batch_state)["blocked"]:
-                    profit_funds = Decimal('0')
-                elif initial_build:
-                    profit_funds = max(Decimal('0'), budget)
+                confirmed_funds = Decimal('0') if profit_budget.ledger(batch_state)["blocked"] else budget
                 fee = PAPER_COMMISSION_RATE if paper_mode else (portfolio_cfg or {}).get("fuse_gate", {}).get(leg, {}).get("taker_fee")
                 if not virtual and (fee is None or not Decimal(str(fee)).is_finite() or not 0 <= Decimal(str(fee)) < 1):
                     results_map[id(action)] = {"status": "SKIPPED", "message": "Unconfirmed expansion commission"}
                     continue
                 # Wallet persistence rounds to 1e-4; reserve one unit against rounding up the debit.
-                spendable = max(Decimal('0'), min(budget, profit_funds) - Decimal('0.0001'))
+                spendable = max(Decimal('0'), confirmed_funds - Decimal('0.0001'))
                 limit = spendable if virtual else spendable / (Decimal('1') / lev + Decimal(str(fee)))
                 approved["diff_usdt"] = float(min(abs(Decimal(str(action["diff_usdt"]))), limit))
                 approved["approved_usdt"] = approved["diff_usdt"]
                 if approved["diff_usdt"] <= 0:
-                    results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient confirmed sale profit or CASH"}
+                    results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient confirmed CASH"}
                     continue
             try:
                 result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)

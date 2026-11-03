@@ -1611,6 +1611,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     f"adds on {_t_opposite} blocked ({len(_t_blocked)} action(s))."
                                 )
                                 actions = [a for a in actions if a not in _t_blocked]
+                                if initial_build and not any(Decimal(str(q)) != 0 for q in positions.values()):
+                                    actions = [a for a in actions if a['key'] == 'VIRTUAL']
 
                 if paper_mode:
                     collateral, maintenance, distance = _paper_guard_metrics(
@@ -1741,7 +1743,13 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     state["tpv_ath"] = tpv_ath
                     state_dirty = True
 
-                if equity_trailing_stop_pct > 0 and tpv_ath > 0:
+                if tpv_active < float(portfolio_cfg.get(
+                        "paper_initial_capital" if paper_mode else "initial_capital",
+                        100.0 if paper_mode else 86.0)):
+                    if state.get("trailing_stop_violation_start", 0.0) > 0:
+                        state["trailing_stop_violation_start"] = 0.0
+                        state_dirty = True
+                elif equity_trailing_stop_pct > 0 and tpv_ath > 0:
                     # Trailing stop activates only when ATH exceeds activation threshold
                     activation_threshold = initial_tpv * (1 + equity_trailing_stop_activation_pct / 100)
                     if tpv_ath < activation_threshold:

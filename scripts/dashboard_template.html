@@ -1034,7 +1034,7 @@ dl.meta{display:grid;grid-template-columns:minmax(110px,.6fr) 1.4fr;gap:5px 10px
       ['Realized (mid)', finite(T.realized), clsNum(finite(T.realized))],
       ['Unrealized (mid)', finite(T.unrealized), clsNum(finite(T.unrealized))],
       ['Commissions', -Math.abs(finite(T.commissions)), 'neg'],
-      ['Funding', -Math.abs(finite(T.funding)), clsNum(-Math.abs(finite(T.funding)))],
+      ['Funding', -finite(T.funding), clsNum(-finite(T.funding))],
       ['Slippage', -Math.abs(finite(T.slippage)), 'neg'],
       ['Reserve / siphoning', -Math.abs(finite(T.reserve)), 'neg'],
       ['Residual / other', finite(T.residual), ok ? clsNum(finite(T.residual)) : 'warn']

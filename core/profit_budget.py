@@ -1,4 +1,4 @@
-"""Confirmed net sale profits fund additions; collateral and returned margin do not."""
+"""Persist confirmed fill receipts; addition admission uses the separate CASH budget."""
 from decimal import Decimal
 
 
@@ -70,9 +70,6 @@ def record_fill(book, fill, leverage=1, initial_build=False, require_confirmed=F
         else:
             expense = qty * price / lev + fee if not initial_build else Decimal('0')
             change = -expense if not initial_build else -fee
-    if expense > available(book):
-        row["blocked"] = True
-        row["reason"] = "confirmed_cost_exceeded_profit_budget"
     row["balance"] = str(balance(book) + change)
     row["receipts"][identity] = payload
     return True

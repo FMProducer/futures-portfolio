@@ -1,0 +1,11 @@
+{
+  "profit_pct": 128.1409288287201,
+  "max_dd_pct": 53.41190396070674,
+  "cycles": 247,
+  "trailing_stops": 54,
+  "liquidations": 0,
+  "funding_halt_active": false,
+  "accounting_ok": true,
+  "funding_paid": -169.8273,
+  "commission_paid": 131.466897755518
+}

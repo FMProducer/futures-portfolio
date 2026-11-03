@@ -1,0 +1,72 @@
+[
+  {
+    "name": "ZECUSDT",
+    "leg": "BASE_LONG",
+    "symbol": "ZECUSDT_LONG",
+    "step": ".001",
+    "params": {
+      "positions": {
+        "ZECUSDT_LONG": 2.575000000000002,
+        "ZECUSDT_SHORT": 4.415000000000001
+      },
+      "spot_price": 623.98,
+      "real_equity": 2040.0478925450316,
+      "virt_qty": 0,
+      "long_entry_price": 377.26854,
+      "short_entry_price": 382.0898583680634,
+      "base_ticker": "ZECUSDT"
+    }
+  },
+  {
+    "name": "AGTUSDT",
+    "leg": "BASE_LONG",
+    "symbol": "AGTUSDT_LONG",
+    "step": "1",
+    "params": {
+      "positions": {
+        "AGTUSDT_LONG": 65322.0,
+        "AGTUSDT_SHORT": 221752.0
+      },
+      "spot_price": 0.04109,
+      "real_equity": 5812.818238184126,
+      "virt_qty": 0,
+      "long_entry_price": 0.032306145,
+      "short_entry_price": 0.018904108172968,
+      "base_ticker": "AGTUSDT"
+    }
+  },
+  {
+    "name": "mirror_LONG",
+    "leg": "BASE_LONG",
+    "symbol": "TEST_LONG",
+    "step": ".001",
+    "params": {
+      "positions": {
+        "TEST_LONG": 10
+      },
+      "spot_price": 100,
+      "real_equity": 900,
+      "virt_qty": 0,
+      "long_entry_price": 90,
+      "short_entry_price": 0,
+      "base_ticker": "TEST"
+    }
+  },
+  {
+    "name": "mirror_SHORT",
+    "leg": "BASE_SHORT",
+    "symbol": "TEST_SHORT",
+    "step": ".001",
+    "params": {
+      "positions": {
+        "TEST_SHORT": 10
+      },
+      "spot_price": 100,
+      "real_equity": 900,
+      "virt_qty": 0,
+      "long_entry_price": 0,
+      "short_entry_price": 110,
+      "base_ticker": "TEST"
+    }
+  }
+]

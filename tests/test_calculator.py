@@ -41,7 +41,7 @@ def test_calculator_initialization(sample_params):
     assert float(calc.share_virt_pct) == pytest.approx(16.67, abs=0.1)
 
 def test_calculate_deviations(sample_params, targets):
-    calc = PortfolioCalculator(**sample_params)
+    calc = PortfolioCalculator(**sample_params, profit_budget=5000)
     threshold = 0.05
     # Isolate sizing from the profitability gate at an unchanged entry price.
     res = calc.calculate_deviations(targets, threshold_surplus=threshold, threshold_deficit=threshold, current_equity=calc.tpv, fuse_enabled=False)
@@ -59,15 +59,8 @@ def test_calculate_deviations(sample_params, targets):
     assert long_action["diff_usdt"] == pytest.approx(-6000.0)
     
     short_action = next(a for a in actions if a["symbol"] == "BTCUSDT_SHORT")
-    # TPV = 12000. Target share S = 40%. Current share S = 0%.
-    # diff_share = -0.4.
-    # diff_usdt = -(-0.4) * 12000 * 5 = 24000.
-    # BUT: val_cash = 12000 - 6000 (long margin) - 2000 (virt) = 4000.
-    # available_funds starts at 4000.
-    # Needed equity for short = 0.4 * 12000 = 4800.
-    # available_funds = 4000 (cash) + 1200 (proceeds from long reduction) = 5200.
-    # Since 5200 >= 4800, we get full size: 0.4 * 12000 * 5 = 24000.
-    assert short_action["diff_usdt"] == pytest.approx(24000.0)
+    # Only the current 4000 CASH is spendable; a planned reduction is not a receipt.
+    assert short_action["diff_usdt"] == pytest.approx(20000.0)
     
     # Virtual should not be here since 3.3% < 5%
     assert not any(a["symbol"] == "VIRTUAL" for a in actions)
@@ -101,8 +94,9 @@ def test_negative_tpv_protection():
         real_equity=-1000.0,
         virt_qty=0.01 # 600 USDT
     )
-    # tpv = -1000 + 600 = -400 -> protected to 1e-9
-    assert float(calc.tpv) == pytest.approx(1e-9)
+    # Negative equity must remain visible; virt_qty alone is not a USDT allocation.
+    assert float(calc.tpv) == -1000.0
+    assert float(calc.val_cash) == -1000.0
 
 def test_ignore_limits_deviation(sample_params, targets):
     params = sample_params.copy()

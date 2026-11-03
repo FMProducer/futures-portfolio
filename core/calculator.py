@@ -115,7 +115,7 @@ class PortfolioCalculator:
         # real_equity должен передаваться как "Чистый кэш" (Wallet Balance - virt_debt)
         self.tpv = self.real_equity + mtm_pnl_l + mtm_pnl_s + self.virt_value
 
-        if self.tpv <= 0:
+        if self.tpv == 0:
             self.tpv = Decimal('1e-9')
 
         self.total_tpv = self.tpv + self.siphoning_reserve
@@ -136,7 +136,7 @@ class PortfolioCalculator:
         self.val_virt = self.virt_value
         
         # 5. Cash is the remaining liquidity (Free Wallet Balance)
-        self.val_cash = self.tpv - (self.val_long + self.val_short + self.val_virt)
+        self.val_cash = self.real_equity - (self.val_long - mtm_pnl_l) - (self.val_short - mtm_pnl_s)
 
         # 6. Shares calculation (Capital weights against true TPV)
         self.share_long_raw = (self.val_long / self.tpv)
@@ -290,6 +290,32 @@ class PortfolioCalculator:
             diff_usdt = -diff_share * current_equity * lev
             diff_equity = -diff_share * current_equity # Real cash (margin) movement
 
+            if key in FUTURES_LEGS and diff_share > 0 and self.tpv > 0:
+                value = self.val_long if key == "BASE_LONG" else self.val_short
+                qty = abs(self.positions.get(f"{self.base_ticker}_{key.replace('BASE_', '')}", Decimal('0')))
+                fill_price = self.price * (1 - self.slippage_pct if key == "BASE_LONG" else 1 + self.slippage_pct)
+                close_cost = qty * (abs(fill_price - self.price) + fill_price * self.commission_pct)
+                # Closing a fraction removes that fraction of current NAV; costs also lower the target TPV.
+                denominator = value - target_share * close_cost
+                if denominator <= 0:
+                    continue
+                fraction = (value - target_share * self.tpv) / denominator
+                if fraction <= 0 or fraction > 1:
+                    continue
+                diff_usdt = -qty * fraction * self.price
+                diff_equity = -value * fraction
+
+            elif key in FUTURES_LEGS and diff_share < 0 and self.tpv > 0 and not self.initial_build:
+                fill_price = self.price * (1 + self.slippage_pct if key == "BASE_LONG" else 1 - self.slippage_pct)
+                pnl_per_qty = (self.price - fill_price) * (1 if key == "BASE_LONG" else -1)
+                cost_per_qty = abs(fill_price - self.price) + fill_price * self.commission_pct
+                # Added NAV and its execution costs both change the final share.
+                unit_value = fill_price / lev + pnl_per_qty + target_share * cost_per_qty
+                if unit_value <= 0:
+                    continue
+                value = self.val_long if key == "BASE_LONG" else self.val_short
+                diff_usdt = (target_share * self.tpv - value) / unit_value * self.price
+
             if abs(diff_usdt) < Decimal('1.0'): # Fundamental rounding filter
                 continue
 
@@ -314,8 +340,6 @@ class PortfolioCalculator:
 
         # 2. Assemble final actions with Anti-Churn FUSE logic
         final_actions: List[Dict] = []
-        total_proceeds = Decimal('0')
-        estimated_net_profit = Decimal('0')
 
         # Last rebalance price for FUSE checks
         last_reb = self.last_rebalance_price
@@ -376,48 +400,32 @@ class PortfolioCalculator:
 
             if is_valid:
                 final_actions.append(act)
-                total_proceeds += abs(Decimal(str(act["diff_equity"])))
-                if act["key"] != "VIRTUAL":
-                    qty = min(abs(Decimal(str(act["diff_usdt"]))) / self.price,
-                              abs(self.positions.get(act["symbol"], Decimal('0'))))
-                    is_long = act["position_side"] == "LONG"
-                    entry = self.long_entry_price if is_long else self.short_entry_price
-                    fill_price = self.price * (1 - self.slippage_pct if is_long else 1 + self.slippage_pct)
-                    if self.fuse_fill is not None:
-                        fill_price = book_vwap(self.fuse_fill["bids" if is_long else "asks"], qty)
-                    if fill_price is not None and entry > 0:
-                        pnl = qty * (fill_price - entry) * (1 if is_long else -1)
-                        estimated_net_profit += pnl - qty * fill_price * self.commission_pct
             else:
                 logger.debug(f"🚫 FUSE (SURPLUS): {act['key']} blocked. Price {self.price:.6g} vs Limit {limit_price:.6g}")
 
-        # Planned sale profit is only a sizing estimate; executors recheck confirmed net proceeds.
-        building = self.initial_build
-        if building:
-            available_funds = max(Decimal('0'), self.val_cash)
-        else:
-            available_funds = min(max(Decimal('0'), self.val_cash) + total_proceeds,
-                                  max(Decimal('0'), self.profit_budget + estimated_net_profit))
+        available_funds = max(Decimal('0'), self.val_cash)
         
         # Futures deficits have first claim on limited CASH.
         deficit_actions.sort(key=lambda x: x["key"] == "VIRTUAL")
         
         for act in deficit_actions:
             lev = Decimal(str(act["leverage"]))
-            needed_equity = abs(Decimal(str(act["diff_equity"])))
             
             if available_funds <= Decimal('0'):
                 continue
 
             fee = Decimal('0') if act['key'] == 'VIRTUAL' else self.commission_pct
-            actual_buy_usdt = min(needed_equity * lev, available_funds / (1 / lev + fee))
+            fill_ratio = Decimal('1') if act['key'] == 'VIRTUAL' else (
+                1 + self.slippage_pct if act['key'] == 'BASE_LONG' else 1 - self.slippage_pct)
+            cash_per_usdt = fill_ratio * (1 / lev + fee)
+            actual_buy_usdt = min(abs(Decimal(str(act['diff_usdt']))), available_funds / cash_per_usdt)
 
             if actual_buy_usdt >= min_notional or ignore_limits:
                 act["diff_usdt"] = float(abs(actual_buy_usdt))
                 act["approved_usdt"] = float(abs(actual_buy_usdt))
                 act["priority"] = 2
                 final_actions.append(act)
-                available_funds -= actual_buy_usdt * (1 / lev + fee)
+                available_funds -= actual_buy_usdt * cash_per_usdt
 
         return {
             "actions": final_actions,
