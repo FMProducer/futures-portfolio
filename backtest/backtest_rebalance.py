@@ -21,6 +21,7 @@ try:
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
     from core import profit_budget, siphoning
+    from core.capital import drawdown_threshold
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,6 +29,7 @@ except ImportError:
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
     from core import profit_budget, siphoning
+    from core.capital import drawdown_threshold
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("Backtest")
@@ -642,7 +644,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         if not math.isfinite(max_drawdown_cooldown_days) or max_drawdown_cooldown_days < 0:
             raise ValueError("max_drawdown_cooldown_days must be finite and non-negative")
         max_drawdown_cooldown_bars = max(1, int(max_drawdown_cooldown_days * 1440))
-        max_drawdown_limit_pct: float = config.get("max_drawdown_limit", 100.0)  # по умолчанию 100% = отключён
+        max_drawdown_limit_pct = float(config.get("max_drawdown_limit", 100.0))
+        drawdown_threshold(initial_capital, initial_capital, max_drawdown_limit_pct)
 
         close_prices: npt.NDArray[np.float64] = df['close'].values.astype(np.float64)
         # adverse-side extremes: exchanges mark liquidation continuously, not only at close
@@ -1347,6 +1350,52 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             # The shortfall block below handles the close/halt path.
             # (Moved to the top of the bar — see funding block after cooldown/halt guard.)
 
+            # Rebase the session reference on restart; open MTM never changes the ledger trigger.
+            dd_equity = float(state.get_tpv(mid_price) + state.siphoning_reserve - state.unrealized(mid_price))
+            max_dd_ath = float(state.initial_capital + state.siphoning_reserve)
+            dd_threshold = drawdown_threshold(max_dd_ath, trading_initial_capital, max_drawdown_limit_pct)
+            if dd_equity <= dd_threshold:
+                logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! ledger={dd_equity:.2f}, rebased={max_dd_ath:.2f}, threshold={dd_threshold:.2f}. Entering {max_drawdown_cooldown_days}d cooldown.")
+                state.trailing_stop_triggered = True
+                state.stops_counter += 1
+                # Закрыть все позиции по текущей цене
+                if state.pos_long > 0:
+                    qty_close = state.pos_long
+                    exec_p, comm = sim.simulate_market_execution("SELL", qty_close, mid_price)
+                    realized_pnl = qty_close * (exec_p - state.long_entry_price)
+                    m_l = (qty_close * state.long_entry_price) / l_lev
+                    state.val_cash += m_l + realized_pnl - comm
+                    state.pos_long = Decimal('0')
+                    state.long_entry_price = Decimal('0')
+                    state.log_fill(i, "SELL", "BASE_LONG", qty_close, exec_p, comm, realized_pnl,
+                                   float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                   leverage=l_lev, trigger="max_dd_stop", cycle_id=state.cycles)
+                if state.pos_short > 0:
+                    qty_close = state.pos_short
+                    exec_p, comm = sim.simulate_market_execution("BUY", qty_close, mid_price)
+                    realized_pnl = qty_close * (state.short_entry_price - exec_p)
+                    m_s = (qty_close * state.short_entry_price) / s_lev
+                    state.val_cash += m_s + realized_pnl - comm
+                    state.pos_short = Decimal('0')
+                    state.short_entry_price = Decimal('0')
+                    state.log_fill(i, "BUY", "BASE_SHORT", qty_close, exec_p, comm, realized_pnl,
+                                   float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
+                                   leverage=s_lev, trigger="max_dd_stop", cycle_id=state.cycles)
+                state.check_accounting(mid_price, i, "max_dd_stop")
+                if state.share_trail is not None:
+                    share_trail.reset_all(state.share_trail)
+                    state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
+                                    "max dd stop close")
+                state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
+                state.cooldown_until_bar = i + max_drawdown_cooldown_bars
+                state.log_event(i, "max_dd_stop", float(state.dormant_capital),
+                                f"max drawdown limit {max_drawdown_limit_pct}%")
+                state.log_event(i, "cooldown_start", float(state.dormant_capital),
+                                "max drawdown limit", until_bar=int(state.cooldown_until_bar),
+                                reason="max_dd_stop")
+                state.history.append(float(state.dormant_capital))
+                continue
+
             # --- 2.5 Unified Predictive Cross-Margin Liquidation Guard ---
             # Расчет метрик Кросс-Маржи согласно спецификации Binance Futures
             mmr = Decimal('0.004')  # Maintenance Margin Rate для плеча <= 5x
@@ -1488,57 +1537,6 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                 until_bar=int(state.cooldown_until_bar), reason="siphon_stop")
                 state.history.append(float(state.dormant_capital))
                 continue
-
-            # --- 4b. Max Drawdown Limit (Emergency Stop) ---
-            if max_drawdown_limit_pct < 100.0:
-                # Realized (ledger) equity trigger: an MTM trough is not a stop,
-                # a realized loss is — flattening at the MTM bottom just locks the loss in.
-                _re_eq = float(tpv_f - float(state.unrealized(mid_price)))
-                if _re_eq > state.realized_ath:
-                    state.realized_ath = _re_eq
-                _dd_base = state.realized_ath if state.realized_ath > 0 else initial_capital_f
-                drawdown_threshold = _dd_base * (1.0 - max_drawdown_limit_pct / 100.0)
-                if _re_eq < drawdown_threshold:
-                    logger.warning(f"Bar {i}: MAX DRAWDOWN LIMIT reached! realized={_re_eq:.2f} < threshold={drawdown_threshold:.2f} ({max_drawdown_limit_pct}% DD from realized ATH={_dd_base:.2f}). Entering {max_drawdown_cooldown_days}d cooldown.")
-                    state.trailing_stop_triggered = True
-                    state.stops_counter += 1
-                    # Закрыть все позиции по текущей цене
-                    if state.pos_long > 0:
-                        qty_close = state.pos_long
-                        exec_p, comm = sim.simulate_market_execution("SELL", qty_close, mid_price)
-                        realized_pnl = qty_close * (exec_p - state.long_entry_price)
-                        m_l = (qty_close * state.long_entry_price) / l_lev
-                        state.val_cash += m_l + realized_pnl - comm
-                        state.pos_long = Decimal('0')
-                        state.long_entry_price = Decimal('0')
-                        state.log_fill(i, "SELL", "BASE_LONG", qty_close, exec_p, comm, realized_pnl,
-                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
-                                       leverage=l_lev, trigger="max_dd_stop", cycle_id=state.cycles)
-                    if state.pos_short > 0:
-                        qty_close = state.pos_short
-                        exec_p, comm = sim.simulate_market_execution("BUY", qty_close, mid_price)
-                        realized_pnl = qty_close * (state.short_entry_price - exec_p)
-                        m_s = (qty_close * state.short_entry_price) / s_lev
-                        state.val_cash += m_s + realized_pnl - comm
-                        state.pos_short = Decimal('0')
-                        state.short_entry_price = Decimal('0')
-                        state.log_fill(i, "BUY", "BASE_SHORT", qty_close, exec_p, comm, realized_pnl,
-                                       float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
-                                       leverage=s_lev, trigger="max_dd_stop", cycle_id=state.cycles)
-                    state.check_accounting(mid_price, i, "max_dd_stop")
-                    if state.share_trail is not None:
-                        share_trail.reset_all(state.share_trail)
-                        state.log_event(i, "share_trail_reset_all", float(state.get_tpv_fast(float(mid_price))),
-                                        "max dd stop close")
-                    state.dormant_capital = Decimal(str(state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
-                    state.cooldown_until_bar = i + max_drawdown_cooldown_bars
-                    state.log_event(i, "max_dd_stop", float(state.dormant_capital),
-                                    f"max drawdown limit {max_drawdown_limit_pct}%")
-                    state.log_event(i, "cooldown_start", float(state.dormant_capital),
-                                    "max drawdown limit", until_bar=int(state.cooldown_until_bar),
-                                    reason="max_dd_stop")
-                    state.history.append(float(state.dormant_capital))
-                    continue
 
             # --- 4c. Trailing Stop ---
             if tpv_f > state.tpv_ath:
@@ -1744,6 +1742,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "trailing_stop_activation_pct": float(trailing_stop_activation_pct),
                 "trailing_stop_timeout_sec": int(trailing_stop_timeout_sec),
                 "max_drawdown_limit_pct": float(max_drawdown_limit_pct),
+                "max_drawdown_basis": "rebased_session_ledger",
                 "max_drawdown_cooldown_days": max_drawdown_cooldown_days,
                 "max_drawdown_cooldown_bars": max_drawdown_cooldown_bars,
                 "cooldown_bars": int(cooldown_bars_duration),

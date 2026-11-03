@@ -18,7 +18,7 @@ load_dotenv()
 
 from core.connector import BinanceConnector
 from core.calculator import PortfolioCalculator, initial_notional_after_fee, select_tick_actions
-from core.capital import capital_with_reserve
+from core.capital import capital_with_reserve, drawdown_threshold
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
@@ -540,6 +540,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         logger.critical(f"🚨 Strategy snapshot is not a JSON object: {state_file_path}")
         state = default_state
 
+    if time.time() < float(state.get("restart_not_before", 0)):
+        logger.warning(f"Persisted cooldown blocks launch: {base_ticker}")
+        return
+
     if configured_cash_reserve:
         funded_baseline = float(state.get("initial_tpv", 0))
         if funded_baseline > 0 and not math.isclose(funded_baseline, target_initial_cap, abs_tol=1e-8):
@@ -818,6 +822,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     virt_qty = float(state.get("virt_qty", 0.0))
     siphoning_reserve = float(state.get("siphoning_reserve", 0.0))
     initial_tpv = float(state.get("initial_tpv", 0.0))
+    drawdown_reference = float(state.get("max_drawdown_reference", initial_tpv + siphoning_reserve))
     reference_tpv = float(state.get("reference_tpv", 0.0))
     tpv_ath = float(state.get("tpv_ath", 0.0))
     cycles = state.get("rebalance_cycles", 0)
@@ -829,7 +834,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     
     equity_trailing_stop_pct = config.get("equity_trailing_stop_pct", 0.0)
     equity_trailing_stop_activation_pct = config.get("equity_trailing_stop_activation_pct", 0.0)
-    max_drawdown_limit = config.get("max_drawdown_limit", 0.5)
+    max_drawdown_limit = config.get("max_drawdown_limit", 100.0)
     margin_warning = portfolio_cfg.get("margin_ratio_warning", 5.0)
     margin_critical = portfolio_cfg.get("margin_ratio_critical", 2.0)
 
@@ -1064,7 +1069,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         target_initial, targets = capital_with_reserve(portfolio_cfg, target_initial)
 
                         max_capital_usdt = portfolio_cfg.get("max_capital_usdt", target_initial)
-                        max_drawdown_limit = current_config.get("max_drawdown_limit", 0.5)
+                        max_drawdown_limit = current_config.get("max_drawdown_limit", 100.0)
                         equity_trailing_stop_pct = current_config.get("equity_trailing_stop_pct", 0.0)
                         equity_trailing_stop_timeout_sec = current_config.get("equity_trailing_stop_timeout_sec", 0.0)
                         trail_distance = float(current_config.get("rebalance_share_trail_distance", 0.0))
@@ -1700,36 +1705,35 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 now = time.time()
 
-                # EMERGENCY STOP: If total_tpv (including SAFE) drops below max_drawdown_limit % of tpv_ath (high-water mark)
-                _dd_base = tpv_ath if tpv_ath > 0 else initial_tpv
-                drawdown_threshold = _dd_base * (1 - max_drawdown_limit / 100)
-                if _dd_base > 0 and tpv_total < drawdown_threshold:
-                    msg = f"CRITICAL: Total Equity {tpv_total:.2f} (including SAFE) is less than {drawdown_threshold:.2f} ({max_drawdown_limit}% DD from ATH={_dd_base:.2f}). EMERGENCY STOP!"
+                # Wallet balance already excludes open MTM and includes realized fees/funding.
+                dd_ledger = float(paper_state["balance"]) + siphoning_reserve
+                if not math.isfinite(dd_ledger):
+                    raise ValueError("Drawdown ledger must be finite")
+                if drawdown_reference <= 0:
+                    drawdown_reference = initial_tpv + siphoning_reserve
+                state["max_drawdown_reference"] = drawdown_reference
+                state["max_drawdown_basis"] = "rebased_session_ledger"
+                state_dirty = True
+                dd_threshold = drawdown_threshold(drawdown_reference, target_initial_cap, max_drawdown_limit)
+                if dd_ledger <= dd_threshold:
+                    cooldown_days = float(current_config.get("max_drawdown_cooldown_days", 0.1))
+                    if not math.isfinite(cooldown_days) or cooldown_days < 0:
+                        raise ValueError("max_drawdown_cooldown_days must be finite and nonnegative")
+                    msg = f"MAX DRAWDOWN: ledger={dd_ledger:.2f}, rebased={drawdown_reference:.2f}, threshold={dd_threshold:.2f}; cooldown={cooldown_days}d"
                     logger.critical(msg)
                     asyncio.create_task(notifier.send_alert("EMERGENCY STOP", msg))
                     state["share_trail"] = share_trail.fresh_state()
                     state["share_trail_receipts"] = []
-                    state_dirty = True
-                    
-                    # Проверяем прибыль относительно глобального начального капитала
-                    global_initial = initial_tpv
-                    if tpv_total < global_initial:
-                        emit_signal("stop", base_ticker, paper_mode)
-                        logger.info(f"Sent STOP signal. Total Equity {tpv_total:.2f} < Global Initial {global_initial:.2f}. Ticker blacklisted.")
-                    else:
-                        emit_signal("exit", base_ticker, paper_mode)
-                        logger.info(f"Sent EXIT signal. Total Equity {tpv_total:.2f} >= Global Initial {global_initial:.2f}. Ticker goes to probation.")
-                        
-                        # Устанавливаем таймаут пробации для прибыльного Emergency Stop
-                        probation_days = current_config.get("probation_period_days", 0.041)
-                        state["trailing_stop_paper_timeout_end"] = now + probation_days * 86400
-                        state["trailing_stop_triggered"] = True
-
+                    state.update(stop_reason="max_drawdown", trailing_stop_triggered=True,
+                                 restart_not_before=now + cooldown_days * 86400,
+                                 trailing_stop_paper_timeout_end=now + cooldown_days * 86400)
+                    await save_json(state_file_path, state)
                     # --- CRITICAL: Update final metrics BEFORE emergency stop and exit ---
                     await _update_final_metrics_for_exit(state, state_file_path, Decimal(str(tpv_total)), Decimal(str(initial_tpv)), calc_res, cycles, logger)
                     # --------------------------------------------------------------------
                     try:
                         await emergency_stop(connector, config_path, state_file_path, paper_state_file_path, logger, ticker_override=base_ticker, paper_mode=paper_mode, close_only=True)
+                        emit_signal("drawdown", base_ticker, paper_mode)
                     finally:
                         await self_kill_pm2(base_ticker, paper_mode)
                     while True:

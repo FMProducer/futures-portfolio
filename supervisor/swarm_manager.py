@@ -349,6 +349,8 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
     history_dir.mkdir(exist_ok=True)
 
     old_state = await safe_load_json(str(base_state_path), {})
+    if time.time() < float(old_state.get("restart_not_before", 0)):
+        raise ValueError(f"State reset blocked by cooldown: {ticker}")
     if old_state.get("startup_blocked") or old_state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
         raise ValueError(f"State reset requires manual reconciliation: {ticker}")
 
@@ -877,11 +879,17 @@ async def manage_swarm():
                     f"(expires {time.ctime(now_ts + toxic_cooldown_sec)})"
                 )
 
-            elif signal_type in ("exit", "siphon"):
+            elif signal_type in ("exit", "siphon", "drawdown"):
                 # Прибыльный исход (Пробация) → probation (мягкий cooldown, без перманентного бана)
                 prob_key = "probation_paper" if mode_tag == "paper" else "probation_real"
                 probation = prob_paper if mode_tag == "paper" else prob_real
                 cooldown_sec = toxic_cooldown_sec if signal_type == "siphon" else probation_cooldown_sec
+                if signal_type == "drawdown":
+                    closed = await safe_load_json(str(CORE_PATH / f"{mode_tag}_state_{ticker}.json"), {})
+                    deadline = float(closed["restart_not_before"])
+                    if not math.isfinite(deadline) or closed.get("stop_reason") != "max_drawdown":
+                        raise ValueError(f"Invalid drawdown cooldown: {ticker}")
+                    cooldown_sec = max(0.0, deadline - now_ts)
                 probation[ticker] = now_ts + cooldown_sec
                 config[prob_key] = probation
 
@@ -900,6 +908,7 @@ async def manage_swarm():
                         if any(float(p["qty"]) != 0 for key,p in positions.items() if key.split("_")[0] == ticker):
                             raise ValueError(f"SAFE credit requires verified flat REAL positions: {ticker}")
                     siphoning.credit_reserve(config, mode_tag, ticker, closed)
+                if signal_type in ("siphon", "drawdown"):
                     await safe_save_json(CONFIG_PATH, {**config,
                         "black_list": sorted(config.get("black_list", [])),
                         "live_swarm": sorted(config.get("live_swarm", []))})

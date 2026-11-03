@@ -1367,3 +1367,53 @@ async def test_integration_blacklisted_real_skipped(tmp_path, monkeypatch):
 
     final_swarm = saved.get("live_swarm", [])
     assert "QUARANTINEDUSDT" not in final_swarm
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["paper", "real"])
+async def test_drawdown_signal_preserves_deadline_with_empty_scanner(tmp_path, mode):
+    sig = tmp_path / "signals"
+    sig.mkdir()
+    (sig / f"drawdown_{mode}_AGTUSDT.flag").touch()
+    deadline = 2000000000.0
+    (tmp_path / f"{mode}_state_AGTUSDT.json").write_text(json.dumps({
+        "stop_reason": "max_drawdown", "restart_not_before": deadline}))
+    cm, saved, _, _, _ = _cm_manage_swarm(tmp_path, config_overrides={"paper_mode": False}, scanner=[])
+    with cm, patch(f"{M}.time.time", return_value=1000000000.0):
+        await manage_swarm()
+    assert saved[f"probation_{mode}"]["AGTUSDT"] == deadline
+    assert not list(sig.glob("*.flag"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_paper", [True, False])
+async def test_drawdown_cooldown_blocks_start_and_reset(tmp_path, monkeypatch, is_paper):
+    from futures_portfolio.supervisor import swarm_manager as manager
+    monkeypatch.setattr(manager, "CORE_PATH", tmp_path)
+    monkeypatch.setattr(manager, "BASE_PATH", tmp_path)
+    state = {"stop_reason": "max_drawdown", "restart_not_before": 2000}
+    with patch(f"{M}.time.time", return_value=1000), \
+         patch(f"{M}.safe_load_json", AsyncMock(return_value=state)), \
+         patch(f"{M}.asyncio.create_subprocess_exec", AsyncMock()) as launch:
+        await manager.start_bot("AGTUSDT", is_paper, {"portfolios": [{}]})
+        launch.assert_not_called()
+        with pytest.raises(ValueError, match="cooldown"):
+            await manager.reset_bot_state_files("AGTUSDT", is_paper, {"portfolios": [{}]})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_paper", [True, False])
+async def test_drawdown_new_session_drops_old_reference_after_deadline(tmp_path, monkeypatch, is_paper):
+    from futures_portfolio.supervisor import swarm_manager as manager
+    monkeypatch.setattr(manager, "CORE_PATH", tmp_path)
+    monkeypatch.setattr(manager, "BASE_PATH", tmp_path)
+    previous = {"last_tpv": 100, "max_drawdown_reference": 1000,
+                "restart_not_before": 0, "stop_reason": "max_drawdown"}
+    with patch(f"{M}.safe_load_json", AsyncMock(return_value=previous)), \
+         patch(f"{M}.safe_save_json", AsyncMock()) as save:
+        await manager.reset_bot_state_files("AGTUSDT", is_paper, {
+            "portfolios": [{"paper_initial_capital": 100, "initial_capital": 100}]})
+    state = save.call_args_list[0].args[1]
+    assert state["initial_tpv"] == 100
+    assert "max_drawdown_reference" not in state
+    assert not state["trailing_stop_triggered"]

@@ -737,3 +737,39 @@ async def test_backtest_legacy_free_margin_does_not_change_results(tmp_path):
     assert a["profit_pct"] == b["profit_pct"]
     assert a["settings"]["account_free_margin"] == 0.0
     assert b["settings"]["account_free_margin"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_rebased_ledger_funding_stop_resets_after_cooldown(tmp_path):
+    times = pd.date_range("2026-01-01", periods=6, freq="min", tz="UTC")
+    journal = tmp_path / "funding.json"
+    journal.write_text(json.dumps([
+        {"event_id": f"loss:{bar}", "signed_amount": -21,
+         "event_time": times[bar].timestamp(), "status": "received"} for bar in (1, 4)
+    ]), encoding="utf-8")
+    config = _flat_config()
+    config.update(max_drawdown_limit=2.08, max_drawdown_cooldown_days=2 / 1440,
+                  equity_trailing_stop_pct=0.0, funding_model="signed_actual", funding_scenario=str(journal))
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0] * 6
+    pd.DataFrame({"time": times, "open": prices, "high": prices, "low": prices,
+                  "close": prices, "volume": prices}).to_feather(tmp_path / "BTCUSDT_live.feather")
+    result = await run_backtest(str(cfg), str(tmp_path), days=1, commission=0.0, slippage=0.0, quiet=True)
+    assert result and result["accounting_ok"]
+    assert [e["bar"] for e in result["events"] if e["kind"] == "max_dd_stop"] == [1, 4]
+    restart = next(e for e in result["events"] if e["kind"] == "cooldown_end")
+    assert restart["bar"] == 3 and restart["rebased"] == pytest.approx(979)
+    assert result["settings"]["max_drawdown_basis"] == "rebased_session_ledger"
+
+
+@pytest.mark.parametrize("limit", [-1, float("nan"), float("inf")])
+def test_drawdown_rejects_invalid_budget(limit):
+    from core.capital import drawdown_threshold
+    with pytest.raises(ValueError):
+        drawdown_threshold(34590.29, 1000, limit)
+
+
+def test_drawdown_budget_stays_on_configured_initial_capital():
+    from core.capital import drawdown_threshold
+    assert drawdown_threshold(34590.29, 1000, 2.08) == pytest.approx(34569.49)
