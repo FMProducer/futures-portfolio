@@ -47,15 +47,15 @@
       "siphoning_threshold_pct": 0.0,
       "targets": {
         "BASE_LONG": {
-          "share": 0.333,
+          "share": 0.25,
           "leverage": 3
         },
         "BASE_SHORT": {
-          "share": 0.333,
+          "share": 0.25,
           "leverage": 3
         },
         "VIRTUAL": {
-          "share": 0.334,
+          "share": 0.50,
           "leverage": 1
         }
       },
@@ -90,16 +90,16 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
+    "AAVEUSDT",
     "AINUSDT",
-    "AIOTUSDT",
-    "BLESSUSDT",
-    "COWUSDT",
-    "ESPORTSUSDT",
-    "LITUSDT",
-    "RUNEUSDT",
-    "ZAMAUSDT"
+    "BNBUSDT",
+    "ETHUSDT",
+    "EVAAUSDT",
+    "PUMPUSDT",
+    "UAIUSDT",
+    "XMRUSDT"
   ],
-  "base_ticker": "AINUSDT",
+  "base_ticker": "AAVEUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
