@@ -423,6 +423,8 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
         "short_liquidation_price": 0.0
     }
 
+    if old_state.get("stop_reason") != "max_drawdown" and "max_dd_ath" in old_state:
+        new_state["max_dd_ath"] = old_state["max_dd_ath"]
     await safe_save_json(str(base_state_path), new_state)
     await safe_save_json(str(shadow_state_path), new_shadow_state)
     logger.info(f"✨ Reset {'paper' if is_paper else 'real'} state files for {ticker} to clean initial values (capital: {final_capital}).")

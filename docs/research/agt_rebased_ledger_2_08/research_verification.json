@@ -1,0 +1,67 @@
+{
+  "git_head": "a21ed1d362f5487f2b257c87c73ff2665e67de3f",
+  "config_sha256": "6ded26af6337b32066ad536cf5f5253b16f149980e1053ded94633cdb5f0a757",
+  "source_sha256": "ed90e0ed61ec0ee9fa943c5645e4743bd08b8d34278da2179f470456257b9ca3",
+  "checks": [
+    "36 first-stop families completed",
+    "72 fixed-limit cases evaluated",
+    "All nonnegative static-limit crossing intervals enumerated for each family",
+    "Synthetic envelope boundary checks passed",
+    "4 independent full replays agree with the envelope within 1e-6 USDT",
+    "No strategy/config tracked files modified"
+  ],
+  "verified": [
+    {
+      "name": "rebased_100",
+      "anchor": "rebased",
+      "measure": "equity",
+      "horizon": "persistent",
+      "limit_pct": 100,
+      "stop_bar": 246684,
+      "final_equity": 1508.5635584870652,
+      "profit_usdt": 508.56355848706517,
+      "max_dd_pct": 44.91071568489041,
+      "accounting_ok": true,
+      "projection_difference": 0.0
+    },
+    {
+      "name": "rebased_700",
+      "anchor": "rebased",
+      "measure": "equity",
+      "horizon": "persistent",
+      "limit_pct": 700,
+      "stop_bar": 514498,
+      "final_equity": 21939.915074125176,
+      "profit_usdt": 20939.915074125176,
+      "max_dd_pct": 98.27658730498327,
+      "accounting_ok": true,
+      "projection_difference": 0.0
+    },
+    {
+      "name": "equity_670",
+      "anchor": "equity",
+      "measure": "equity",
+      "horizon": "persistent",
+      "limit_pct": 670,
+      "stop_bar": 485909,
+      "final_equity": 23659.18928096901,
+      "profit_usdt": 22659.18928096901,
+      "max_dd_pct": 98.27658730498327,
+      "accounting_ok": true,
+      "projection_difference": 0.0
+    },
+    {
+      "name": "ledger_session_2_08",
+      "anchor": "rebased",
+      "measure": "ledger",
+      "horizon": "session",
+      "limit_pct": 2.08,
+      "stop_bar": 520321,
+      "final_equity": 34495.85864457203,
+      "profit_usdt": 33495.85864457203,
+      "max_dd_pct": 98.27658730498327,
+      "accounting_ok": true,
+      "projection_difference": 0.0
+    }
+  ]
+}

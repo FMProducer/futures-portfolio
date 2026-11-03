@@ -1,0 +1,112 @@
+{
+  "testnet": false,
+  "limit_order_enabled": false,
+  "limit_offset_pct": 0.1,
+  "limit_timeout_sec": 30,
+  "min_notional_usdt": 7.0,
+  "paper_mode": true,
+  "max_orders_per_second": 10,
+  "min_cycles_for_rank": 15,
+  "min_cycles_for_rotation": 6,
+  "max_bots": 8,
+  "paper_mode_bots": 8,
+  "paper_idle_hours": 0,
+  "max_replace_per_cycle": 10,
+  "probation_period_days": 0.01,
+  "backtest_period_days": 0.125,
+  "backtest_days": 28,
+  "supervisor_interval_days": 0.005,
+  "scanner_period_days": 0.125,
+  "replacement_efficiency_threshold_pct": 50.0,
+  "max_drawdown_limit": 2.08,
+  "max_drawdown_cooldown_days": 365.0,
+  "equity_trailing_stop_pct": 0.3,
+  "equity_trailing_stop_activation_pct": 1.55,
+  "equity_trailing_stop_timeout_sec": 34.454466312271094,
+  "toxic_cooldown_days": 0.09014340672051,
+  "use_v2_scoring": true,
+  "scoring_drawdown_weight": 2.0,
+  "funding_model": "signed_actual",
+  "funding_scenario": "data/funding_ZECUSDT.json",
+  "telegram_enabled": false,
+  "telegram_use_queue": false,
+  "telegram_summary_interval_min": 1,
+  "portfolios": [
+    {
+      "name": "SyntheticMarketNeutral",
+      "initial_capital": 1000.0,
+      "paper_initial_capital": 1000.0,
+      "paper_account_free_margin": 5000.0,
+      "cash_reserve_usdt": 5000.0,
+      "paper_min_free_margin_pct": 15.0,
+      "margin_ratio_warning": 3.0,
+      "margin_ratio_critical": 1.5,
+      "liquidation_distance_warn_pct": 40.0,
+      "liquidation_distance_crit_pct": 25.0,
+      "post_factum_liquidation_check": true,
+      "siphoning_threshold_pct": 0.0,
+      "targets": {
+        "BASE_LONG": {
+          "share": 0.25,
+          "leverage": 3
+        },
+        "BASE_SHORT": {
+          "share": 0.25,
+          "leverage": 3
+        },
+        "VIRTUAL": {
+          "share": 0.5,
+          "leverage": 1
+        }
+      },
+      "trend_add_block": {
+        "pct": 0.02583812246528389,
+        "window_bars": 53.62327119407764
+      },
+      "safety_guards": {
+        "max_spread_pct": 0.15,
+        "max_price_velocity_pct": 1.7162537475519108,
+        "velocity_window_sec": 39.74433842359656,
+        "trend_min_move_pct": 0.3292445294617389,
+        "trend_eff_threshold": 0.6093394728040318,
+        "net_move_block_pct": 2.14,
+        "net_move_window_sec": 72,
+        "trend_lookback_bars": 26
+      },
+      "fuse_enabled": true,
+      "rebalance_threshold_surplus": 0.04,
+      "rebalance_threshold_deficit": 0.04,
+      "ticker_thresholds": {}
+    }
+  ],
+  "rebalance_share_trail_distance": 0.0,
+  "live_swarm": [],
+  "use_real_whitelist": false,
+  "real_whitelist": [],
+  "black_list": [
+    "AGTUSDT",
+    "BTCUSDT"
+  ],
+  "toxic_blacklist": {},
+  "toxic_blacklist_paper": {
+    "AGTUSDT": 1793740991.250442
+  },
+  "toxic_blacklist_real": {},
+  "tickers": [
+    "AINUSDT",
+    "AKEUSDT",
+    "ARIAUSDT",
+    "BTWUSDT",
+    "HAEDALUSDT",
+    "JCTUSDT",
+    "LYNUSDT",
+    "UAIUSDT"
+  ],
+  "base_ticker": "AINUSDT",
+  "probation_paper": {},
+  "probation_real": {},
+  "paper_backtest_gate": true,
+  "siphoning_credits": {
+    "paper:HUMAUSDT:1793718538.8750496:3": "10.30082560000001"
+  }
+}

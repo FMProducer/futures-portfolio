@@ -1325,7 +1325,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         "tpv_basis": "after", "shares_basis": "before",
                         "shares": {"L": calc_res["share_long_pct"], "S": calc_res["share_short_pct"],
                                    "V": calc_res["share_virt_pct"], "C": calc_res["share_cash_pct"]},
-                        "targets": {k: float(v.get("share", 0.0)) for k, v in targets.items()},
+                        "targets": {k: float(v.get("share", 0.0)) for k, v in eff_targets.items()},
+                        "target_bias_pp": float(htf_bias_pp),
                         "thresholds": {"surplus": float(threshold_surplus), "deficit": float(threshold_deficit)},
                         "actions": [
                             f'{r["key"]} {r["side"]} req={r["requested_usdt"]:.2f}'
