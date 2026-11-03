@@ -1,0 +1,23 @@
+{
+  "sources": {
+    "backtest.py": "85eff5b65968282e4149b5e49fe90235e1eb03b54e0953fe1aac1447d99a2109",
+    "core\\calculator.py": "576b0dfca44984a7a4a0198ea4902b37b2fee6fd037f598b715a887e159fdc05",
+    "core\\funding.py": "5e38c8b5dead85588683e17d4088ddbbb7103a6866bdb1d1f07070ba4268d490",
+    "core\\profit_budget.py": "5467a1e330427326d49bebba7385024a4e152be9cd065a9e62dcae59e5c8e52b",
+    "core\\share_trail.py": "9df1fab5d4049821c24ce1f7945833978afce753bc11731d5ea6a208ade573bd",
+    "core\\siphoning.py": "9da25132f11463ebf121f2bdc19c0d2c08f8702acbfe7656661fbed73a2f8edb",
+    "core\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "inputs": {
+    "config.json": "8de2ac89e45741ab0a46149bd00547b80255d50dda948ff1a4b6b00655fcdea8",
+    "funding_ZECUSDT.json": "f884d369aff13c173c4fe2390f2e8abaf10f5f7d6687b6a1bfe337c6c1c2d013",
+    "ZECUSDT_live.feather": "37ec72c903e426e5ad445a409b77cc48b2d7039398b973cf27a71451f9b026dd"
+  },
+  "baseline_commit": "230cf73f532a6e6becbcccc63261ee1937779070",
+  "unrelated_branch_changes_excluded": [
+    "negative TPV preservation",
+    "CASH identity",
+    "paired initial guard",
+    "cooldown funding fix"
+  ]
+}

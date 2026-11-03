@@ -44,21 +44,21 @@ def test_failure_and_returned_virtual_margin_do_not_create_profit():
     assert pb.available(book) == 7
 
 
-def test_unconfirmed_or_overspent_fill_blocks_future_additions():
+def test_unconfirmed_fill_blocks_but_negative_profit_ledger_does_not():
     book = {}
     pb.record_fill(book, fill('unknown', True, pnl=999, financials_confirmed=False), 3, require_confirmed=True)
     assert pb.available(book) == 0 and pb.ledger(book)['blocked']
     book = {}
     pb.record_fill(book, fill('sale', True, pnl=10), 3)
     pb.record_fill(book, fill('bad-fee', False, qty=.3, fee=2), 3)
-    assert pb.balance(book) == -2 and pb.ledger(book)['blocked']
+    assert pb.balance(book) == -2 and not pb.ledger(book)['blocked']
 
 
 def test_calculator_does_not_buy_deficit_from_large_collateral_reserve():
     targets = {'BASE_LONG': {'share': .5, 'leverage': 3},
                'BASE_SHORT': {'share': .5, 'leverage': 3}, 'VIRTUAL': {'share': 0, 'leverage': 1}}
-    calc = PortfolioCalculator({'TESTUSDT_SHORT': 300}, 2, 1000000, 0,
-        short_entry_price=1, base_ticker='TESTUSDT', targets=targets)
+    calc = PortfolioCalculator({'TESTUSDT_SHORT': 300}, 1, 100, 0,
+        short_entry_price=1, base_ticker='TESTUSDT', targets=targets, siphoning_reserve=1000000)
     actions = calc.calculate_rebalance(targets, .04, .04, calc.tpv, fuse_enabled=False)['actions']
     assert not any(not a['is_reduction'] for a in actions)
 
@@ -69,7 +69,7 @@ def action(leg, reduction, amount):
 
 
 @pytest.mark.asyncio
-async def test_executor_spends_sale_profit_without_reusing_returned_margin_or_reserve():
+async def test_executor_uses_confirmed_cash_instead_of_profit_ledger_cap():
     connector = MagicMock()
     connector.get_order_book = AsyncMock(return_value={'bids': [['120', '1000']], 'asks': [['120', '1000']]})
     executor = PortfolioExecutor(connector, 'TESTUSDT')
@@ -81,7 +81,8 @@ async def test_executor_spends_sale_profit_without_reusing_returned_margin_or_re
     sale, addition = results
     assert sale['status'] == addition['status'] == 'SUCCESS'
     cost = D(str(addition['qty'])) * D(str(addition['price'])) / 3 + D(str(addition['commission']))
-    assert 0 < cost <= D(str(sale['trade_pnl'])) - D(str(sale['commission']))
+    assert cost > D(str(sale['trade_pnl'])) - D(str(sale['commission']))
+    assert cost <= D('999000')
     assert wallet['balance'] == 1000000 and 'profit_budget' not in wallet
 
 
@@ -97,7 +98,7 @@ async def test_failed_or_pending_sale_cannot_fund_addition(status, pending):
         results = await executor.execute_actions([action('LONG', True, 120), action('SHORT', False, 10000)],
             120, True, {'min_notional_usdt': 1}, {},
             {'balance': 1000000, 'positions': {'TESTUSDT_LONG': 1}, 'long_entry_price': 100},
-            cash_budget=D('999000'))
+            cash_budget=D('0'))
     assert execute.await_count == 1 and results[1]['status'] == 'SKIPPED'
 
 

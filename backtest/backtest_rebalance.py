@@ -1088,8 +1088,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 expansions.sort(key=lambda x: x["key"] == "VIRTUAL")
                 remaining_funds = max(Decimal('0'), state.val_cash)
                 building = is_initial_formation or was_initial_pending
-                if not building:
-                    remaining_funds = min(remaining_funds, profit_budget.available(state.profit_book))
+                if profit_budget.ledger(state.profit_book)["blocked"]:
+                    remaining_funds = Decimal('0')
 
                 for act in expansions:
                     key = act["key"]
