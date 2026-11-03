@@ -737,3 +737,44 @@ async def test_backtest_legacy_free_margin_does_not_change_results(tmp_path):
     assert a["profit_pct"] == b["profit_pct"]
     assert a["settings"]["account_free_margin"] == 0.0
     assert b["settings"]["account_free_margin"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_max_drawdown_uses_unrealized_peak_and_fixed_initial_budget(tmp_path):
+    config = _flat_config()
+    config.update(max_drawdown_limit=100.0, max_drawdown_cooldown_days=365.0,
+                  equity_trailing_stop_pct=0.0)
+    portfolio = config["portfolios"][0]
+    portfolio.update(post_factum_liquidation_check=False,
+                     liquidation_distance_crit_pct=0.0,
+                     rebalance_threshold_surplus=0.99, rebalance_threshold_deficit=0.99)
+    portfolio["targets"] = {"BASE_LONG": {"share": 1.0, "leverage": 1.0},
+                            "BASE_SHORT": {"share": 0.0, "leverage": 1.0},
+                            "VIRTUAL": {"share": 0.0}}
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0, 200.0, 150.0, 100.0, 300.0]
+    pd.DataFrame({"open": prices, "high": prices, "low": prices, "close": prices,
+                  "volume": [1.0] * len(prices)}).to_feather(tmp_path / "BTCUSDT_live.feather")
+    result = await run_backtest(str(config_file), str(tmp_path), days=1,
+                                commission=0.0, slippage=0.0, quiet=True)
+    assert result is not None and result["accounting_ok"]
+    stops = [event for event in result["events"] if event["kind"] == "max_dd_stop"]
+    assert len(stops) == 1 and stops[0]["bar"] == 3
+    assert result["final_equity"] == pytest.approx(1000.0)
+    assert not any(fill["bar"] > 3 for fill in result["fills"])
+    cooldown = next(e for e in result["events"] if e["kind"] == "cooldown_start")
+    assert cooldown["until_bar"] == 3 + 365 * 1440
+
+
+@pytest.mark.parametrize("limit,expected", [(0, 35000), (50, 34500), (100, 34000), (200, 33000)])
+def test_drawdown_budget_is_percent_of_initial_capital(limit, expected):
+    from core.capital import drawdown_threshold
+    assert drawdown_threshold(35000, 1000, limit) == expected
+
+
+@pytest.mark.parametrize("limit", [-1, float("nan"), float("inf")])
+def test_drawdown_rejects_invalid_limit(limit):
+    from core.capital import drawdown_threshold
+    with pytest.raises(ValueError):
+        drawdown_threshold(35000, 1000, limit)

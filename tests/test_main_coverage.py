@@ -1928,3 +1928,20 @@ async def test_a2_critical_guard_halts_before_supervisor_can_reopen():
     assert final_state["trailing_stop_triggered"] is True
     assert final_paper["positions"]["BTCUSDT_LONG"] == 0.0
     assert final_paper["long_entry_price"] == 0.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_max_drawdown_persists_fixed_budget_cooldown(paper_mode):
+    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=100.0,
+                          max_drawdown_cooldown_days=365.0, equity_trailing_stop_pct=0.0)
+    state = _make_state(tpv_ath=200.0, max_dd_ath=200.0)
+    low_tpv = {"total_tpv": 100.0, "tpv": 100.0, "actions": [], "total_pnl_pct": 0.0}
+    with patch(f"{M}.emergency_stop", AsyncMock()) as close:
+        before = time.time()
+        saves, notifier, conn = await _run_rebalance(config, state, _make_paper_state(),
+                                                     loop_limit=2, calc_return=low_tpv)
+    closed = [s for _, s in saves if s.get("stop_reason") == "max_drawdown"]
+    assert closed and close.await_count == 1
+    assert closed[-1]["restart_not_before"] >= before + 365 * 86400
+    assert closed[-1]["trailing_stop_triggered"]

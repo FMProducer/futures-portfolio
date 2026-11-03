@@ -163,16 +163,15 @@
 - **Единицы:** абстрактные скор-баллы (profit/cycles·ln). Текущие 50.0 → cushion 0.5. Увеличение — реже ротация REAL; уменьшение — чаще. Режим: supervisor. Диапазон в коде не проверяется.
 
 ### `max_drawdown_limit`
-- **Текущее значение:** `200.0` | **Тип:** float, % просадки от ATH
-- **Чтение:** `core/main.py:446` (default 0.5!) и hot-reload `:566`. Использование: `drawdown_threshold = tpv_ath * (1 - value/100)`; если `total_tpv < threshold` → EMERGENCY STOP (`main.py:926-958`). При 200.0 порог = `tpv_ath * (1-2) = -tpv_ath` — **защита фактически отключена** (TPV не бывает отрицательным). При default 0.5 порог = 99.5% ATH — срабатывал бы почти сразу (замеченное несоответствие единиц: default задан как доля, а используется как процент).
-- **Backtest:** `backtest_rebalance.py:355` default `100.0` («по умолчанию 100% = отключён»), проверка `if max_drawdown_limit_pct < 100.0` (`:761`).
-- **Оптимизаторы:** область поиска 5.0–50.0 (`optimize_stops.py:54`) — рекомендация автора, не валидация.
-- **Режимы:** live, paper, backtest. После emergency stop бот шлёт сигнал `stop` (если TPV < initial_capital) или `exit` (probation) (`main.py:936-944`).
+- BACKTEST/PAPER/REAL: loss budget in percent of configured initial trading capital (`paper_initial_capital` for PAPER).
+- Stop when total portfolio equity (unrealized PnL and SAFE included, external account collateral excluded) reaches its peak minus `initial_capital * max_drawdown_limit / 100`.
+- Initial capital 1000 and limit 100 mean a 1000 USDT loss from the peak. Values 100 and 200 do not disable protection.
+- The peak survives unrelated short cooldowns. Closing fees and execution price affect final equity.
 
 ### `max_drawdown_cooldown_days`
-- **Scope:** backtest only; top-level config, default `0.1` days.
-- After `max_drawdown_limit`, positions close and trading resumes after this independent cooldown with capital and ATH rebased. `toxic_cooldown_days` does not affect this timer.
-- Must be finite and non-negative. Converted to minute bars as `max(1, int(days * 1440))`; zero resumes on the next bar.
+- BACKTEST/PAPER/REAL: independent cooldown after max drawdown, default 0.1 days.
+- PAPER/REAL persist the restart deadline and pass it to supervisor probation; other cooldown settings do not replace it.
+- Must be finite and nonnegative. BACKTEST uses `max(1, int(days * 1440))` minute bars; zero resumes on the next bar.
 
 ### `equity_trailing_stop_pct`
 - **Текущее значение:** `0.001` | **Тип:** float, % просадки от tpv_ath

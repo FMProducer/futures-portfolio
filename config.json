@@ -18,8 +18,8 @@
   "supervisor_interval_days": 0.005,
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
-  "max_drawdown_limit": 100.0,
-  "max_drawdown_cooldown_days": 0.09,
+  "max_drawdown_limit": 700.0,
+  "max_drawdown_cooldown_days": 365.0,
   "equity_trailing_stop_pct": 0.3,
   "equity_trailing_stop_activation_pct": 1.55,
   "equity_trailing_stop_timeout_sec": 34.454466312271094,
@@ -79,30 +79,36 @@
       "ticker_thresholds": {}
     }
   ],
-  "rebalance_share_trail_distance": 0.05800887342949769,
+  "rebalance_share_trail_distance": 0.0,
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
   "black_list": [
+    "AGTUSDT",
     "BTCUSDT"
   ],
   "toxic_blacklist": {},
-  "toxic_blacklist_paper": {},
+  "toxic_blacklist_paper": {
+    "AGTUSDT": 1793740991.250442
+  },
   "toxic_blacklist_real": {},
   "tickers": [
-    "AGTUSDT",
-    "APRUSDT",
+    "AINUSDT",
+    "AKEUSDT",
     "ARIAUSDT",
-    "BIRBUSDT",
     "BTWUSDT",
-    "IDOLUSDT",
-    "LSKUSDT",
-    "SOPHUSDT"
+    "HAEDALUSDT",
+    "JCTUSDT",
+    "LYNUSDT",
+    "UAIUSDT"
   ],
-  "base_ticker": "APRUSDT",
+  "base_ticker": "AINUSDT",
   "probation_paper": {
-    "HUMAUSDT": 1793714617.3278854
+    "HUMAUSDT": 1793739588.6238775
   },
   "probation_real": {},
-  "paper_backtest_gate": true
+  "paper_backtest_gate": true,
+  "siphoning_credits": {
+    "paper:HUMAUSDT:1793718538.8750496:3": "10.30082560000001"
+  }
 }

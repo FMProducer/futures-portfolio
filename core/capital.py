@@ -3,6 +3,15 @@ import copy
 import math
 
 
+def drawdown_threshold(peak, initial_capital, limit_pct):
+    """Express the loss budget in percent of fixed initial capital."""
+    peak, initial_capital, limit_pct = map(float, (peak, initial_capital, limit_pct))
+    if (not all(math.isfinite(v) for v in (peak, initial_capital, limit_pct))
+            or initial_capital <= 0 or limit_pct < 0):
+        raise ValueError("Drawdown inputs must be finite, capital positive and limit nonnegative")
+    return peak - initial_capital * limit_pct / 100
+
+
 def capital_with_reserve(portfolio, trading_capital):
     reserve = portfolio.get("cash_reserve_usdt", 0)
     if (type(reserve) not in (int, float) or not math.isfinite(reserve) or reserve < 0
