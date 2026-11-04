@@ -490,7 +490,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
     siphoning_threshold_pct = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
     reinvestment_ratio = portfolio_cfg.get("reinvestment_ratio", 0.0)
-    siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0), reinvestment_ratio)
+    siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0),
+                             reinvestment_ratio, portfolio_cfg.get("siphoning_pct"))
     trail_distance = float(config.get("rebalance_share_trail_distance", 0.0))
     if not math.isfinite(trail_distance) or trail_distance < 0:
         raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -1045,7 +1046,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         candidate_portfolio = current_config["portfolios"][0]
                         siphoning.validate_config(candidate_portfolio.get("siphoning_threshold_pct", 0),
                                                   candidate_portfolio.get("targets", {}).get("VIRTUAL", {}).get("share", 0),
-                                                  candidate_portfolio.get("reinvestment_ratio", 0))
+                                                  candidate_portfolio.get("reinvestment_ratio", 0),
+                                                  candidate_portfolio.get("siphoning_pct"))
                         if (candidate_portfolio.get("cash_reserve_usdt", 0) != portfolio_cfg.get("cash_reserve_usdt", 0)
                                 and not siphoning.funded_reserve_change(config, current_config)):
                             raise ValueError("Changing CASH reserve requires a funded new session")
@@ -2339,13 +2341,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 state_dirty = True
 
                 amount = siphoning.calculate_amount(safe_calc.tpv, target_initial_cap,
-                    state.get("virt_debt", 0), siphoning_threshold_pct, reinvestment_ratio)
+                    state.get("virt_debt", 0), siphoning_threshold_pct, reinvestment_ratio,
+                    portfolio_cfg.get("siphoning_pct"))
                 if amount > Decimal('0.1'):
                     state["virt_debt"] = float(Decimal(str(state.get("virt_debt", 0))) - amount)
                     paper_state["balance"] = float(Decimal(str(paper_state["balance"])) - amount)
                     siphoning_reserve = float(Decimal(str(siphoning_reserve)) + amount)
                     profit_budget.charge(paper_state, amount)
-                    initial_tpv = reference_tpv = target_initial_cap
+                    initial_tpv = reference_tpv = (float(safe_calc.tpv - amount)
+                        if portfolio_cfg.get("siphoning_pct") is not None else target_initial_cap)
                     state.update(initial_tpv=initial_tpv, reference_tpv=reference_tpv,
                                  siphoning_reserve=siphoning_reserve)
                     safe_calc_kwargs.update(virt_debt=state["virt_debt"], siphoning_reserve=siphoning_reserve,

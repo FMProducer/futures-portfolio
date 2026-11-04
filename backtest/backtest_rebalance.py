@@ -665,7 +665,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         siphoning_threshold_pct: float = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
         # config ships reinvestment_ratio as null; 0 = reinvest nothing
         reinvestment_ratio: float = float(portfolio_cfg.get("reinvestment_ratio") or 0.0)
-        siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0), reinvestment_ratio)
+        siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0),
+                                 reinvestment_ratio, portfolio_cfg.get("siphoning_pct"))
         trail_distance: float = float(config.get("rebalance_share_trail_distance", 0.0))
         if not math.isfinite(trail_distance) or trail_distance < 0:
             raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -1604,22 +1605,23 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             initial_capital_f = float(state.initial_capital)
             siphon_amount = siphoning.calculate_amount(
                 state.get_tpv(mid_price), trading_initial_capital, state.virt_debt,
-                siphoning_threshold_pct, reinvestment_ratio)
+                siphoning_threshold_pct, reinvestment_ratio, portfolio_cfg.get("siphoning_pct"))
             if siphon_amount > Decimal('0.1'):
                 virtual_before = state.virt_debt
                 took = state.siphon_from_virtual(siphon_amount)
                 state.account_free_margin += took
                 portfolio_cfg["cash_reserve_usdt"] = float(state.account_free_margin)
                 profit_budget.charge(state.profit_book, float(took))
-                state.initial_capital = Decimal(str(trading_initial_capital))
+                state.initial_capital = (state.get_tpv(mid_price) if portfolio_cfg.get("siphoning_pct") is not None
+                                         else Decimal(str(trading_initial_capital)))
                 state.realized_ath = max(0.0, state.realized_ath - float(took))
                 tpv_f = float(state.get_tpv(mid_price))
                 initial_capital_f = float(state.initial_capital)
                 state.check_accounting(mid_price, i, "siphon_virtual")
                 state.siphoning_log.append({
                     "bar": int(i), "amount": float(took), "reserve": float(state.siphoning_reserve),
-                    "initial_capital": trading_initial_capital, "active_tpv": tpv_f,
-                    "active_pnl": tpv_f - trading_initial_capital,
+                    "initial_capital": float(state.initial_capital), "active_tpv": tpv_f,
+                    "active_pnl": tpv_f - float(state.initial_capital),
                     "virtual_before": float(virtual_before), "virtual_after": float(state.virt_debt),
                 })
                 logger.info(f"Bar {i}: SAFE siphoned {took:.4f} from VIRTUAL; active TPV={tpv_f:.4f}, SAFE={state.siphoning_reserve:.4f}")
@@ -1844,6 +1846,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "effective_share_thresholds": {"surplus": threshold_surplus * share_basis_scale,
                                                "deficit": threshold_deficit * share_basis_scale},
                 "siphoning_threshold_pct": float(siphoning_threshold_pct),
+                "siphoning_pct": portfolio_cfg.get("siphoning_pct"),
                 "reinvestment_ratio": float(reinvestment_ratio),
                 "funding_rate_per_day": float(daily_funding_rate),
                 "bars_per_day": int(bars_per_day),

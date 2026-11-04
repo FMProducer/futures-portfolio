@@ -47,38 +47,58 @@ def test_threshold_is_inclusive_and_take_is_capped_by_virtual(equity, virtual, e
     assert siphoning.calculate_amount(equity,1000,virtual,30) == D(str(expected))
 
 
-def test_backtest_siphon_closes_positions_and_starts_clean_after_cooldown():
+@pytest.mark.parametrize("equity,virtual,pct,expected", [
+    (1199, 500, 10, 0), (1200, 500, 10, 100),
+    (1250, 500, 10, 100), (1200, 50, 10, 50),
+    (1200, 500, 0, 0), (1200, 500, 30, 200)])
+def test_fixed_withdrawal_uses_original_capital(equity, virtual, pct, expected):
+    siphoning.validate_config(20, .5, 0, pct)
+    assert siphoning.calculate_amount(equity, 1000, virtual, 20, 0, pct) == D(expected)
+
+
+@pytest.mark.parametrize("pct", [-1, float('nan'), float('inf')])
+def test_invalid_withdrawal_pct(pct):
+    with pytest.raises(ValueError, match="siphoning_pct"):
+        siphoning.validate_config(20, .5, 0, pct)
+
+
+@pytest.mark.parametrize("pct", [None, 10])
+def test_backtest_siphon_closes_positions_and_starts_clean_after_cooldown(pct):
     state=BacktestState(initial_capital=D(1270),base_ticker="TESTUSDT",val_cash=D(700),
                         virt_debt=D(400),pos_long=D(3),pos_short=D(3),long_entry_price=D(100),
                         short_entry_price=D(100),l_lev=D(3),s_lev=D(3),ledger_base=D(1000),
                         realized_total=D(300),realized_ath=1300)
+    if pct is not None:
+        state.initial_capital = D(1000)
     profit_budget.ledger(state.profit_book)["balance"]="300"
     sim=Mock()
     sim.simulate_market_execution.side_effect=lambda side,qty,price: (price, qty*price*D('.0004'))
     ns=dict(state=state,mid_price=D(110),trading_initial_capital=1000,siphoning_threshold_pct=30,
             reinvestment_ratio=0,Decimal=D,siphoning=siphoning,profit_budget=profit_budget,logger=Mock(),i=7,
-            sim=sim,cooldown_bars_duration=10,share_trail=Mock(),portfolio_cfg={})
+            sim=sim,cooldown_bars_duration=10,share_trail=Mock(),portfolio_cfg={"siphoning_pct": pct})
     code=source_block("backtest/backtest_rebalance.py","            # --- 4. SAFE Siphoning ---",
                       "            # --- 4c. Trailing Stop ---")
     exec("for _ in [0]:\n"+textwrap.indent(code,"    "),ns)
     assert state.pos_long==state.pos_short==state.long_entry_price==state.short_entry_price==0
-    assert state.get_tpv(D(110))==D('999.736')
-    assert state.siphoning_reserve==300 and state.virt_debt==100
-    assert state.account_free_margin==300 and ns["portfolio_cfg"]["cash_reserve_usdt"]==300
+    remaining = 1000 if pct is None else 1200
+    withdrawn = 300 if pct is None else 100
+    assert state.get_tpv(D(110))==D(remaining)-D('.264')
+    assert state.siphoning_reserve==withdrawn and state.virt_debt==400-withdrawn
+    assert state.account_free_margin==withdrawn and ns["portfolio_cfg"]["cash_reserve_usdt"]==withdrawn
     assert state.cooldown_until_bar==17 and state.trailing_stop_triggered
     assert [fill["trigger"] for fill in state.fills]==["siphon_stop","siphon_stop"]
     assert state.commission_paid==D('.264')
     assert state.siphoning_log[-1]["active_pnl"]==0
-    assert state.siphoning_log[-1]["initial_capital"]==1000
-    assert state.initial_capital==1000
+    assert state.siphoning_log[-1]["initial_capital"]==remaining
+    assert state.initial_capital==remaining
     assert state.accounting_residual(D(110))==0
     ns.update(i=17,df=[0]*30,targets={"VIRTUAL":{"share":.334}})
     cooldown=source_block("backtest/backtest_rebalance.py",
         "            if i == state.cooldown_until_bar and state.cooldown_until_bar > 0:",
-        "            # --- 2. Portfolio Calculation ---")
+        "            # Stop before rebalance can increase exposure")
     exec("for _ in [0]:\n"+textwrap.indent(cooldown,"    "),ns)
-    assert state.siphoning_reserve==300 and state.get_tpv(D(110))==D('999.736')
-    assert state.tpv_ath==999.736 and state.initial_capital==D('999.736')
+    assert state.siphoning_reserve==withdrawn and state.get_tpv(D(110))==D(remaining)-D('.264')
+    assert state.tpv_ath==float(D(remaining)-D('.264')) and state.initial_capital==D(remaining)-D('.264')
     assert state.trailing_stop_violation_start==0 and not state.trailing_stop_triggered
     assert state.profit_book=={} and state.initial_build_active
     assert state.accounting_residual(D(110))==0
@@ -93,7 +113,7 @@ def test_cooldown_never_reinvests_safe(active):
             targets={"VIRTUAL":{"share":.334}})
     code=source_block("backtest/backtest_rebalance.py",
                       "            if i == state.cooldown_until_bar and state.cooldown_until_bar > 0:",
-                      "            # --- 2. Portfolio Calculation ---")
+                      "            # Stop before rebalance can increase exposure")
     exec("for _ in [0]:\n"+textwrap.indent(code,"    "),ns)
     assert state.siphoning_reserve==300
     assert state.get_tpv(D(100))==active
@@ -107,17 +127,22 @@ def test_cooldown_never_reinvests_safe(active):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("pct", [None, 10])
 @pytest.mark.parametrize("close_fails", [False, True])
-async def test_runtime_siphon_stops_only_after_persisted_close(monkeypatch, close_fails):
+async def test_runtime_siphon_stops_only_after_persisted_close(monkeypatch, close_fails, pct):
     targets={"BASE_LONG":{"share":.333,"leverage":3},"BASE_SHORT":{"share":.333,"leverage":3},
              "VIRTUAL":{"share":.334,"leverage":1}}
     positions={"TESTUSDT_LONG":3,"TESTUSDT_SHORT":3}
     state={"virt_debt":400,"siphoning_reserve":0,"initial_tpv":1270,"reference_tpv":1270}
     wallet={"balance":1300,"positions":deepcopy(positions),"long_entry_price":100,"short_entry_price":100}
+    if pct is not None:
+        wallet["balance"] = 1200
     before=deepcopy(wallet)
     kwargs=dict(positions=positions,spot_price=110,real_equity=900,virt_debt=400,virt_qty=0,
                 base_ticker="TESTUSDT",siphoning_reserve=0,targets=targets,initial_capital=1270,
                 long_entry_price=100,short_entry_price=100,last_rebalance_price=110)
+    if pct is not None:
+        kwargs["real_equity"] = 800
     calc=PortfolioCalculator(**kwargs)
     notifier=Mock(send_message=AsyncMock())
     events=[]
@@ -132,8 +157,10 @@ async def test_runtime_siphon_stops_only_after_persisted_close(monkeypatch, clos
     kill=AsyncMock(side_effect=lambda *args: events.append("kill"))
     signal=Mock(side_effect=lambda *args: events.append("signal"))
     ns=dict(state=state,paper_state=wallet,safe_calc=calc,safe_calc_kwargs=kwargs,
-            target_initial_cap=1000,initial_tpv=1270,reference_tpv=1270,siphoning_reserve=0,
-            siphoning_threshold_pct=30,reinvestment_ratio=None,Decimal=D,PortfolioCalculator=PortfolioCalculator,
+            target_initial_cap=1000,initial_tpv=1000 if pct is not None else 1270,
+            reference_tpv=1270,siphoning_reserve=0,portfolio_cfg={"siphoning_pct": pct},
+            siphoning_threshold_pct=30 if pct is None else 20,
+            reinvestment_ratio=None,Decimal=D,PortfolioCalculator=PortfolioCalculator,
             siphoning=siphoning,profit_budget=profit_budget,logger=Mock(),notifier=notifier,
             asyncio=asyncio,targets=targets,time=Mock(time=Mock(return_value=100)),
             current_config={"toxic_cooldown_days":.1},state_file_path="state",paper_state_file_path="wallet",
@@ -159,12 +186,14 @@ async def test_runtime_siphon_stops_only_after_persisted_close(monkeypatch, clos
     await asyncio.sleep(0)
     assert wallet["positions"]==before["positions"]
     assert wallet["long_entry_price"]==wallet["short_entry_price"]==100
-    assert wallet["balance"]==1000 and state["virt_debt"]==100 and state["siphoning_reserve"]==300
-    assert ns["safe_calc"].tpv==1000 and ns["safe_calc"].total_tpv==1300
+    remaining = 1000 if pct is None else 1100
+    withdrawn = 300 if pct is None else 100
+    assert wallet["balance"]==remaining and state["virt_debt"]==400-withdrawn and state["siphoning_reserve"]==withdrawn
+    assert ns["safe_calc"].tpv==remaining and ns["safe_calc"].total_tpv==remaining+withdrawn
     assert ns["safe_calc_res"]["total_pnl"]==0
-    assert ns["safe_calc_res"]["val_cash"]==700
-    assert state["initial_tpv"]==1000 and state["reference_tpv"]==1000
-    assert state["last_tpv"]==1300 and state["last_profit"]==300
+    assert ns["safe_calc_res"]["val_cash"]==(700 if pct is None else 600)
+    assert state["initial_tpv"]==remaining and state["reference_tpv"]==remaining
+    assert state["last_tpv"]==remaining+withdrawn and state["last_profit"]==withdrawn
     notifier.send_message.assert_awaited_once()
 
 
