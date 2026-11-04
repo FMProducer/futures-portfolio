@@ -1387,7 +1387,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     # but we NO LONGER overwrite paper_state["balance"] with it.
                     wallet_balance = float(m_info.get("total_wallet_balance", 0.0))
 
-                if not paper_mode and state.get("live_funding") is not None:
+                funding_model = ("disabled" if current_config.get("funding_model") == "disabled"
+                                 else state.get("funding_model", "legacy_constant"))
+                if funding_model != "disabled" and not paper_mode and state.get("live_funding") is not None:
                     from core.funding import poll_live_funding, save_funding_boundary, FundingHalt, FundingJournal
                     try:
                         live_journal = await poll_live_funding(connector, state, base_ticker, int(time.time() * 1000))
@@ -1402,7 +1404,6 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         continue
 
                 # --- B1: Funding BEFORE calculator (per canonical order §3) ---
-                funding_model = state.get("funding_model", "legacy_constant")
                 if funding_model == "signed_actual":
                     from core.funding import FundingJournal, apply_funding_paper, settle_funding_reserve
                     journal = FundingJournal.from_list(state.get("funding_journal"))

@@ -244,3 +244,26 @@ def test_wal_persists_reciprocal_snapshot_identity(tmp_path):
     wallet["live_funding_snapshot"]["snapshot_ms"] = 999
     with pytest.raises(ValueError, match="identity mismatch"):
         save_funding_boundary(sp, wp, state, wallet, FundingJournal(), FundingHalt())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_disabled_funding_skips_poll_and_pending_application(paper_mode):
+    import time
+    from unittest.mock import MagicMock, patch
+    from core.funding import FundingEvent
+    from test_main_coverage import _make_config, _make_state, _make_paper_state, _run_rebalance
+    config = _make_config(paper_mode=paper_mode, funding_model="disabled", equity_trailing_stop_pct=0)
+    config["portfolios"][0].update(cash_reserve_usdt=5000, paper_account_free_margin=5000, siphoning_threshold_pct=0)
+    state = _make_state(virt_debt=34, funding_model="signed_actual",
+        funding_journal=[FundingEvent("pending", Decimal(-10000), 1).to_dict()])
+    if not paper_mode:
+        state["live_funding"] = {"symbol": "BTCUSDT", "snapshot_ms": int(time.time()*1000), "blocked": ""}
+    calculator = MagicMock()
+    with patch("core.funding.poll_live_funding", AsyncMock()) as poll, \
+         patch("core.funding.apply_funding_paper") as apply:
+        await _run_rebalance(config, state, _make_paper_state(), loop_limit=2, calculator_class=calculator)
+    poll.assert_not_called()
+    apply.assert_not_called()
+    assert calculator.called
+    assert config["portfolios"][0]["cash_reserve_usdt"] == config["portfolios"][0]["paper_account_free_margin"] == 5000

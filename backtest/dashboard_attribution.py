@@ -163,7 +163,7 @@ def reconstruct_attribution(
         if funding_source == "portfolio" and funding_model == "signed_actual":
             if i in funding_by_bar:
                 funding += funding_by_bar[i]
-        elif funding_source == "portfolio" and not in_cooldown and funding_rate_per_bar > 0 and (pos_long > 0 or pos_short > 0):
+        elif funding_source == "portfolio" and funding_model == "legacy_constant" and not in_cooldown and funding_rate_per_bar > 0 and (pos_long > 0 or pos_short > 0):
             funding += (pos_long + pos_short) * closes[i] * funding_rate_per_bar
 
         if i in cooldown_starts:

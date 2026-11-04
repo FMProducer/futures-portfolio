@@ -26,11 +26,8 @@
   "toxic_cooldown_days": 0.09014340672051,
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
-  "funding_model": "signed_actual",
-  "funding_scenario": {
-    "AGTUSDT": "docs/research/agt_rebased_ledger_2_08/funding_replay_AGTUSDT.json",
-    "default": "data/funding_{ticker}.json"
-  },
+  "funding_model": "disabled",
+  "funding_scenario": {},
   "telegram_enabled": false,
   "telegram_use_queue": false,
   "telegram_summary_interval_min": 1,
@@ -90,8 +87,17 @@
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
-  "tickers": [],
-  "base_ticker": "",
+  "tickers": [
+    "AINUSDT",
+    "AIOUSDT",
+    "ARIAUSDT",
+    "BTWUSDT",
+    "ENAUSDT",
+    "OPUSDT",
+    "QUSDT",
+    "UAIUSDT"
+  ],
+  "base_ticker": "ARIAUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true,

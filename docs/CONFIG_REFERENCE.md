@@ -626,3 +626,7 @@ python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT 
 - Funding expenses retain their original `profit_budget` charge. This is an expense record, not a second cash settlement; receipts retain the original budget behavior.
 
 - `funding_scenario` also accepts a ticker-to-path object with `default`. The working config explicitly selects the historical AGT replay for `AGTUSDT`; other tickers resolve `data/funding_{ticker}.json`. Missing files and symbol mismatches remain errors.
+
+### Disabling funding
+
+Set top-level `"funding_model": "disabled"` to skip funding scenarios, constant-rate accrual, live-income polling and new funding settlements in BACKTEST/PAPER/REAL. No new funding changes reserves, shadow capital, profit budget or Ledger stops. Scanner gates honor the same setting; cached admissions from another funding mode are excluded. Reports do not reconstruct synthetic funding drag. The runtime reads the current config; the stored source model and pending journal are preserved for re-enabling. Existing booked funding, reserve receipts, reconciliation blocks and active funding halts are not undone. Re-enabling resumes pending funding processing. This setting does not disable exchange-side REAL funding charges/receipts. Existing `signed_actual` and `legacy_constant` behavior remains unchanged.

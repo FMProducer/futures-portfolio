@@ -65,7 +65,7 @@ def effective_config(config):
             "min_notional_usdt", "toxic_cooldown_days", "max_drawdown_cooldown_days",
             "max_drawdown_limit", "funding_model", "funding_scenario", "trend_guard")
     effective = {k:config[k] for k in keys if k in config}
-    effective['funding_model'] = 'legacy_constant'
+    effective['funding_model'] = 'disabled' if config.get('funding_model') == 'disabled' else 'legacy_constant'
     effective.pop('funding_scenario', None)
     return effective
 

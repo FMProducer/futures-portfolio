@@ -210,7 +210,7 @@ class BacktestState:
     s_lev: Decimal = Decimal('5')
 
     # B1: funding model and halt state
-    funding_model: str = "legacy_constant"  # signed_actual | legacy_constant
+    funding_model: str = "legacy_constant"  # signed_actual | legacy_constant | disabled
     funding_shortfall: Decimal = Decimal('0')
     funding_halt_active: bool = False
     funding_halt_event_id: str = ""
@@ -699,6 +699,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
         # B1: funding model — legacy_constant (default) or signed_actual.
         funding_model = config.get("funding_model", "legacy_constant")
+        if funding_model not in ("legacy_constant", "signed_actual", "disabled"):
+            raise ValueError("funding_model must be legacy_constant, signed_actual or disabled")
+        if funding_model == "disabled":
+            logger.info("Funding disabled: no funding events, rate charges or reserve settlements")
         funding_journal = None
         if funding_model == "signed_actual":
             scenario_path = config.get("funding_scenario")
@@ -915,7 +919,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             state.log_event(i, "share_trail_reset_all", float(state.dormant_capital), "funding halt close")
                         break  # stop processing events this bar
             # Both rate models halt on unpaid reserve funding, even before initial positions exist.
-            if state.get_funding_shortfall() > 0 and not state.funding_halt_active:
+            if state.funding_model != "disabled" and state.get_funding_shortfall() > 0 and not state.funding_halt_active:
                 state.funding_halt_active = True
                 state.funding_halt_at = float(i)
                 state.funding_shortfall = state.get_funding_shortfall()
@@ -1817,9 +1821,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "funding_accounting_offset": float(state.funding_accounting_offset),
             "actual_portfolio_equity": float(final_tpv_with_reserve + state.funding_accounting_offset),
             "funding_reserve_shortfall": float(state.funding_reserve_shortfall),
-            "funding_source": "cash_reserve_usdt",
+            "funding_source": "none" if funding_model == "disabled" else "cash_reserve_usdt",
             "funding_strategy_accounting": "legacy_shadow",
-            "funding_amount_basis": ("signed_amount" if funding_model == "signed_actual" else "legacy_rate"),
+            "funding_amount_basis": ("disabled" if funding_model == "disabled" else "signed_amount" if funding_model == "signed_actual" else "legacy_rate"),
             "portfolio_profit_after_funding": float(final_tpv_with_reserve - Decimal(str(initial_capital))),
             "funding_events": [f for f in state.fills if f.get("trigger") == "funding_shortfall"],
             "funding_halt_active": state.funding_halt_active,

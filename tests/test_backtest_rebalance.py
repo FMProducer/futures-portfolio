@@ -853,3 +853,24 @@ async def test_external_funding_preserves_signed_events_and_trade_path(tmp_path)
     assert funded["funding_amount_basis"] == "signed_amount"
     assert funded["actual_portfolio_equity"] + funded["cash_reserve_usdt"] == pytest.approx(
         control["final_equity"] + control["cash_reserve_usdt"])
+
+
+@pytest.mark.asyncio
+async def test_disabled_funding_skips_scenario_and_all_charges(tmp_path):
+    config = _flat_config()
+    config.update(funding_model="disabled", funding_scenario=str(tmp_path / "missing.json"))
+    config["portfolios"][0]["cash_reserve_usdt"] = 5000
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    pd.DataFrame({"time": pd.date_range("2026-01-01", periods=4, freq="min", tz="UTC"),
+                  "open": [100.] * 4, "high": [100.] * 4, "low": [100.] * 4,
+                  "close": [100.] * 4, "volume": [1.] * 4}).to_feather(
+                      tmp_path / "BTCUSDT_live.feather")
+    result = await run_backtest(str(cfg), str(tmp_path), days=1, commission=0, slippage=0, quiet=True)
+    assert result and result["accounting_ok"]
+    assert result["funding_model"] == result["funding_amount_basis"] == "disabled"
+    assert result["funding_paid"] == result["funding_from_reserve"] == result["funding_accounting_offset"] == 0
+    assert result["cash_reserve_usdt"] == 5000
+    assert result["final_equity"] == result["actual_portfolio_equity"] == 1000
+    assert not result["funding_halt_active"]
+    assert not any(e["kind"] in ("funding", "funding_shortfall") for e in result["events"])
