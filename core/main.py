@@ -2349,7 +2349,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     siphoning_reserve = float(Decimal(str(siphoning_reserve)) + amount)
                     profit_budget.charge(paper_state, amount)
                     initial_tpv = reference_tpv = (float(safe_calc.tpv - amount)
-                        if portfolio_cfg.get("siphoning_pct") is not None else target_initial_cap)
+                        if float(portfolio_cfg.get("siphoning_pct") or 0) > 0 else target_initial_cap)
                     state.update(initial_tpv=initial_tpv, reference_tpv=reference_tpv,
                                  siphoning_reserve=siphoning_reserve)
                     safe_calc_kwargs.update(virt_debt=state["virt_debt"], siphoning_reserve=siphoning_reserve,

@@ -50,10 +50,23 @@ def test_threshold_is_inclusive_and_take_is_capped_by_virtual(equity, virtual, e
 @pytest.mark.parametrize("equity,virtual,pct,expected", [
     (1199, 500, 10, 0), (1200, 500, 10, 100),
     (1250, 500, 10, 100), (1200, 50, 10, 50),
-    (1200, 500, 0, 0), (1200, 500, 30, 200)])
+    (1200, 500, 0, 200), (1200, 500, 30, 200)])
 def test_fixed_withdrawal_uses_original_capital(equity, virtual, pct, expected):
     siphoning.validate_config(20, .5, 0, pct)
     assert siphoning.calculate_amount(equity, 1000, virtual, 20, 0, pct) == D(expected)
+
+
+@pytest.mark.parametrize("ratio,expected", [(None, 200), (0, 200), (.5, 100), (1, 0)])
+@pytest.mark.parametrize("pct", [None, 0.0])
+def test_reinvestment_ratio_retains_profit_without_fixed_withdrawal(ratio, expected, pct):
+    siphoning.validate_config(20, .5, ratio, pct)
+    assert siphoning.calculate_amount(1200, 1000, 500, 20, ratio, pct) == D(expected)
+
+
+@pytest.mark.parametrize("ratio", [-.1, 1.1, float('nan'), float('inf')])
+def test_invalid_reinvestment_ratio(ratio):
+    with pytest.raises(ValueError, match="reinvestment_ratio"):
+        siphoning.validate_config(20, .5, ratio)
 
 
 @pytest.mark.parametrize("pct", [-1, float('nan'), float('inf')])
