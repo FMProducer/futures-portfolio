@@ -782,12 +782,18 @@ def test_drawdown_budget_stays_on_configured_initial_capital():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("ticker", ["AGTUSDT", "ZECUSDT"])
-async def test_funding_scenario_template_selects_ticker(tmp_path, ticker):
+@pytest.mark.parametrize("mapping", [False, True])
+async def test_funding_scenario_template_selects_ticker(tmp_path, ticker, mapping):
     config = _flat_config()
     config["base_ticker"] = ticker
     config.update(funding_model="signed_actual",
                   funding_scenario=str(tmp_path / "funding_{ticker}.json"))
-    (tmp_path / f"funding_{ticker}.json").write_text("[]", encoding="utf-8")
+    if mapping:
+        config["funding_scenario"] = {"AGTUSDT": str(tmp_path / "agt_replay.json"),
+                                      "default": str(tmp_path / "funding_{ticker}.json")}
+        (tmp_path / "agt_replay.json").write_text("[]" if ticker == "AGTUSDT" else "invalid", encoding="utf-8")
+    (tmp_path / f"funding_{ticker}.json").write_text(
+        "invalid" if mapping and ticker == "AGTUSDT" else "[]", encoding="utf-8")
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps(config), encoding="utf-8")
     pd.DataFrame({"time": pd.date_range("2026-10-10", periods=3, freq="min", tz="UTC"),

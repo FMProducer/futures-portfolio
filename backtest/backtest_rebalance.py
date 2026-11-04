@@ -702,6 +702,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         funding_journal = None
         if funding_model == "signed_actual":
             scenario_path = config.get("funding_scenario")
+            if isinstance(scenario_path, dict):
+                scenario_path = scenario_path.get(base_ticker, scenario_path.get("default"))
             if scenario_path:
                 scenario_path = scenario_path.format(ticker=base_ticker)
             if not scenario_path or not os.path.exists(scenario_path):

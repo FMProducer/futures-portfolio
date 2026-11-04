@@ -624,3 +624,5 @@ python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT 
 - BACKTEST `funding_scenario` supports `{ticker}` (for example `data/funding_{ticker}.json`); nonempty event symbols must match the selected ticker.
 
 - Funding expenses retain their original `profit_budget` charge. This is an expense record, not a second cash settlement; receipts retain the original budget behavior.
+
+- `funding_scenario` also accepts a ticker-to-path object with `default`. The working config explicitly selects the historical AGT replay for `AGTUSDT`; other tickers resolve `data/funding_{ticker}.json`. Missing files and symbol mismatches remain errors.

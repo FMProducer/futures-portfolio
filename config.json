@@ -27,7 +27,10 @@
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
   "funding_model": "signed_actual",
-  "funding_scenario": "docs/research/agt_rebased_ledger_2_08/funding_replay_AGTUSDT.json",
+  "funding_scenario": {
+    "AGTUSDT": "docs/research/agt_rebased_ledger_2_08/funding_replay_AGTUSDT.json",
+    "default": "data/funding_{ticker}.json"
+  },
   "telegram_enabled": false,
   "telegram_use_queue": false,
   "telegram_summary_interval_min": 1,
