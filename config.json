@@ -19,7 +19,7 @@
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
   "max_drawdown_limit": 100.0,
-  "max_drawdown_cooldown_days": 365.0,
+  "max_drawdown_cooldown_days": 365.00,
   "equity_trailing_stop_pct": 0.3,
   "equity_trailing_stop_activation_pct": 1.55,
   "equity_trailing_stop_timeout_sec": 34.454466312271094,
