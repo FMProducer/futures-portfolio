@@ -18,7 +18,7 @@
   "supervisor_interval_days": 0.005,
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
-  "max_drawdown_limit": 100.00,
+  "max_drawdown_limit": 100.0,
   "max_drawdown_cooldown_days": 365.0,
   "equity_trailing_stop_pct": 0.3,
   "equity_trailing_stop_activation_pct": 1.55,
@@ -45,6 +45,7 @@
       "liquidation_distance_crit_pct": 25.0,
       "post_factum_liquidation_check": true,
       "siphoning_threshold_pct": 20.0,
+      "siphoning_pct": 20.0,
       "targets": {
         "BASE_LONG": {
           "share": 0.25,

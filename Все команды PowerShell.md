@@ -10,6 +10,8 @@ $env:PYTHONIOENCODING = "utf-8"
 
 $taskPython = "C:\Python\Prosperous_Bot\futures_portfolio\.venv\Scripts\python.exe"
 ```
+python .\scanner\daily_universe.py
+
 
 Посмотреть процессы и состояние dashboard:
 
