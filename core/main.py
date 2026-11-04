@@ -1723,21 +1723,19 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 now = time.time()
 
-                # The shadow wallet retains funding for the original Ledger-stop calculation.
-                dd_ledger = float(paper_state["balance"]) + siphoning_reserve
-                if not math.isfinite(dd_ledger):
-                    raise ValueError("Drawdown ledger must be finite")
-                if drawdown_reference <= 0:
-                    drawdown_reference = initial_tpv + siphoning_reserve
+                dd_equity = float(tpv_total)
+                if not math.isfinite(dd_equity):
+                    raise ValueError("Drawdown equity must be finite")
+                drawdown_reference = max(drawdown_reference, tpv_ath, initial_tpv + siphoning_reserve, dd_equity)
                 state["max_drawdown_reference"] = drawdown_reference
-                state["max_drawdown_basis"] = "rebased_session_ledger"
+                state["max_drawdown_basis"] = "portfolio_equity_peak"
                 state_dirty = True
                 dd_threshold = drawdown_threshold(drawdown_reference, target_initial_cap, max_drawdown_limit)
-                if dd_ledger <= dd_threshold:
+                if dd_equity <= dd_threshold:
                     cooldown_days = float(current_config.get("max_drawdown_cooldown_days", 0.1))
                     if not math.isfinite(cooldown_days) or cooldown_days < 0:
                         raise ValueError("max_drawdown_cooldown_days must be finite and nonnegative")
-                    msg = f"MAX DRAWDOWN: ledger={dd_ledger:.2f}, rebased={drawdown_reference:.2f}, threshold={dd_threshold:.2f}; cooldown={cooldown_days}d"
+                    msg = f"MAX DRAWDOWN: equity={dd_equity:.2f}, peak={drawdown_reference:.2f}, threshold={dd_threshold:.2f}; cooldown={cooldown_days}d"
                     logger.critical(msg)
                     asyncio.create_task(notifier.send_alert("EMERGENCY STOP", msg))
                     state["share_trail"] = share_trail.fresh_state()

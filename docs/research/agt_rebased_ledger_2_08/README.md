@@ -1,5 +1,7 @@
 # AGTUSDT: сохранённый результат Rebased capital / Ledger / 2.08%
 
+> Historical Ledger-only result. The current maximum-drawdown rule checks full equity, including open PnL, before rebalance orders. At the same 2.08% fixed initial-capital budget, current AGT stops at bar 516; the historical 34495.86-USDT result below is not a current-code expectation.
+
 Результат ниже относится к исходному ZECUSDT-журналу фиксированных выплат, использованному для AGTUSDT. После переноса денежных расчётов funding в резерв прежняя стратегия восстановлена через shadow accounting: позиции и Ledger-стоп используют исходный расчёт, а фактический баланс корректируется через `funding_accounting_offset`. Полная сверка с исходной версией подтвердила совпадение всех 1795 записей сделок и событий, итог 34495.85864457203 USDT и отсутствие ликвидаций. Проверенный replay-конфиг: `config.json`; сверка: `reports/funding_route_diagnosis/shadow_verification.json`. В replay явно нормализована только метка символа исходных выплат; суммы и время сохранены. Исходный `data/funding_AGTUSDT.json` содержит нулевые суммы и не эквивалентен этому replay. По явному выбору пользователя рабочий `config.json` теперь использует сохранённый `docs/research/agt_rebased_ledger_2_08/funding_replay_AGTUSDT.json`: суммы и время исходного ZEC-сценария сохранены, символ обозначает инструмент replay, а `source=historical_replay_ZECUSDT_for_AGTUSDT` явно указывает происхождение. Это исторический сценарий, а не фактический funding AGT.
 
 

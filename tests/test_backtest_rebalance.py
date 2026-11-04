@@ -765,7 +765,7 @@ async def test_external_funding_retains_original_ledger_stop(tmp_path):
     assert result["actual_portfolio_equity"] == pytest.approx(1000)
     assert result["cash_reserve_usdt"] == pytest.approx(4958)
     assert result["funding_from_reserve"] == pytest.approx(42)
-    assert result["settings"]["max_drawdown_basis"] == "rebased_session_ledger"
+    assert result["settings"]["max_drawdown_basis"] == "portfolio_equity_peak"
 
 
 @pytest.mark.parametrize("limit", [-1, float("nan"), float("inf")])
@@ -874,3 +874,27 @@ async def test_disabled_funding_skips_scenario_and_all_charges(tmp_path):
     assert result["final_equity"] == result["actual_portfolio_equity"] == 1000
     assert not result["funding_halt_active"]
     assert not any(e["kind"] in ("funding", "funding_shortfall") for e in result["events"])
+
+
+@pytest.mark.asyncio
+async def test_drawdown_closes_open_loss_from_equity_peak_before_rebalance(tmp_path):
+    prices = [100., 110., 107., 50.]
+    times = pd.date_range("2026-01-01", periods=4, freq="min", tz="UTC")
+    pd.DataFrame({"time": times, "open": prices, "high": prices, "low": prices,
+                  "close": prices, "volume": [1.] * 4}).to_feather(tmp_path / "BTCUSDT_live.feather")
+    config = _flat_config()
+    config.update(funding_model="disabled", max_drawdown_limit=2.08,
+                  max_drawdown_cooldown_days=365, equity_trailing_stop_pct=0)
+    config["portfolios"][0]["targets"] = {"BASE_LONG": {"share": 1., "leverage": 1.},
+        "BASE_SHORT": {"share": 0., "leverage": 1.}, "VIRTUAL": {"share": 0.}}
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    result = await run_backtest(str(cfg), str(tmp_path), days=1, commission=0, slippage=0, quiet=True)
+    assert result and result["accounting_ok"] and result["liquidations"] == 0
+    stops = [e for e in result["events"] if e["kind"] == "max_dd_stop"]
+    assert [e["bar"] for e in stops] == [2]
+    assert result["final_equity"] == pytest.approx(1070)
+    closes = [f for f in result["fills"] if f["trigger"] == "max_dd_stop"]
+    assert len(closes) == 1 and closes[0]["bar"] == 2
+    assert not any(f["bar"] >= 2 and f["trigger"] != "max_dd_stop" for f in result["fills"])
+    assert result["settings"]["max_drawdown_cooldown_bars"] == 365 * 1440

@@ -1941,12 +1941,12 @@ async def test_a2_critical_guard_halts_before_supervisor_can_reopen():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("paper_mode", [True, False])
 @pytest.mark.parametrize("reference", [100.0, 120.0])
-async def test_rebased_ledger_stop_persists_fixed_budget_and_cooldown(paper_mode, reference):
+async def test_equity_stop_persists_fixed_budget_and_cooldown(paper_mode, reference):
     config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
                           max_drawdown_cooldown_days=365.0, equity_trailing_stop_pct=0.0)
     config["portfolios"][0]["siphoning_threshold_pct"] = 0
     ledger = reference - 2.08
-    state = _make_state(started_at=1, tpv_ath=5000.0, max_drawdown_reference=reference)
+    state = _make_state(started_at=1, tpv_ath=reference, max_drawdown_reference=reference)
     calc = {"total_tpv": ledger, "tpv": ledger, "actions": [], "total_pnl_pct": 0.0}
     with patch(f"{M}.emergency_stop", AsyncMock()) as close:
         before = time.time()
@@ -1955,13 +1955,13 @@ async def test_rebased_ledger_stop_persists_fixed_budget_and_cooldown(paper_mode
     stopped = [s for _, s in saves if s.get("stop_reason") == "max_drawdown"]
     assert stopped and close.await_count == 1
     assert stopped[-1]["max_drawdown_reference"] == reference
-    assert stopped[-1]["max_drawdown_basis"] == "rebased_session_ledger"
+    assert stopped[-1]["max_drawdown_basis"] == "portfolio_equity_peak"
     assert stopped[-1]["restart_not_before"] >= before + 365 * 86400
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("paper_mode", [True, False])
-async def test_rebased_ledger_ignores_open_mtm_and_old_ath(paper_mode):
+async def test_equity_stop_counts_open_mtm_and_persisted_peak(paper_mode):
     config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
                           max_drawdown_cooldown_days=365.0, equity_trailing_stop_pct=0.0)
     config["portfolios"][0]["siphoning_threshold_pct"] = 0
@@ -1970,8 +1970,8 @@ async def test_rebased_ledger_ignores_open_mtm_and_old_ath(paper_mode):
         saves, _, _ = await _run_rebalance(config, _make_state(started_at=1, tpv_ath=5000),
                                           _make_paper_state(balance=100.0),
                                           loop_limit=2, calc_return=calc)
-    close.assert_not_awaited()
-    assert not any(s.get("stop_reason") == "max_drawdown" for _, s in saves)
+    close.assert_awaited_once()
+    assert any(s.get("stop_reason") == "max_drawdown" for _, s in saves)
 
 
 @pytest.mark.parametrize("price", [60, 100, 140])

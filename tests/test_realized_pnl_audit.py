@@ -11,7 +11,7 @@ import pytest
 from backtest.backtest_rebalance import BacktestState, MarketOrderSlippageSimulator, run_backtest
 
 
-@pytest.mark.parametrize('amount,event_bar', [(10, 1), (-5, 1), (10, 3), (-5, 3)])
+@pytest.mark.parametrize('amount,event_bar', [(10, 2), (-5, 2), (10, 4), (-5, 4)])
 @pytest.mark.asyncio
 async def test_funding_survives_cooldown_and_restart(tmp_path, amount, event_bar):
     times = pd.date_range('2026-01-01', periods=6, freq='min', tz='UTC')
@@ -31,9 +31,9 @@ async def test_funding_survives_cooldown_and_restart(tmp_path, amount, event_bar
     assert result and result['accounting_ok']
     stop = next(event for event in result['events'] if event['kind'] == 'cooldown_start')
     resume = next(event for event in result['events'] if event['kind'] == 'cooldown_end')
-    assert stop['bar'] == 0 and resume['bar'] == 3
+    assert stop['bar'] == 1 and resume['bar'] == 4
     assert resume['rebased'] == pytest.approx(stop['tpv'] + amount)
-    if event_bar == 1:
+    if event_bar == 2:
         assert result['equity_curve'][event_bar] == pytest.approx(stop['tpv'] + amount)
 
 

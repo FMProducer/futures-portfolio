@@ -24,7 +24,7 @@ def capital_with_reserve(portfolio, trading_capital):
 
 
 def drawdown_threshold(reference, initial_capital, limit_pct):
-    """Use a fixed initial-capital loss budget against the session reference."""
+    """Subtract the fixed initial-capital loss budget from the portfolio equity peak."""
     reference, initial_capital, limit_pct = map(float, (reference, initial_capital, limit_pct))
     if (not all(math.isfinite(v) for v in (reference, initial_capital, limit_pct))
             or initial_capital <= 0 or limit_pct < 0):
