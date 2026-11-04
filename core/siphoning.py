@@ -18,7 +18,7 @@ def validate_config(threshold_pct, virtual_share, reinvestment_ratio=0, siphonin
 
 def calculate_amount(active_equity, initial_capital, virtual_available, threshold_pct, reinvestment_ratio=0,
                      siphoning_pct=None):
-    """Explicit pct withdraws original capital * pct / 100; None retains legacy profit withdrawal."""
+    """Positive pct sets a fixed withdrawal; zero or None uses reinvestment_ratio."""
     equity, base, virtual, threshold, ratio = map(Decimal, map(str, (
         active_equity, initial_capital, virtual_available, threshold_pct, reinvestment_ratio or 0)))
     if not all(v.is_finite() for v in (equity, base, virtual, threshold, ratio)) or base <= 0:
@@ -33,7 +33,8 @@ def calculate_amount(active_equity, initial_capital, virtual_available, threshol
         pct = Decimal(str(siphoning_pct))
         if not pct.is_finite() or pct < 0:
             raise ValueError("siphoning_pct must be finite and nonnegative")
-        amount = min(profit, base * pct / 100)
+        if pct > 0:
+            amount = min(profit, base * pct / 100)
     return min(max(Decimal(0), amount), max(Decimal(0), virtual))
 
 

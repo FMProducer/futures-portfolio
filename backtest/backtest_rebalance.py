@@ -1612,7 +1612,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 state.account_free_margin += took
                 portfolio_cfg["cash_reserve_usdt"] = float(state.account_free_margin)
                 profit_budget.charge(state.profit_book, float(took))
-                state.initial_capital = (state.get_tpv(mid_price) if portfolio_cfg.get("siphoning_pct") is not None
+                state.initial_capital = (state.get_tpv(mid_price) if float(portfolio_cfg.get("siphoning_pct") or 0) > 0
                                          else Decimal(str(trading_initial_capital)))
                 state.realized_ath = max(0.0, state.realized_ath - float(took))
                 tpv_f = float(state.get_tpv(mid_price))
