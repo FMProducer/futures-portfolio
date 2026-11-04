@@ -109,3 +109,4 @@ config.json
 data/funding_AGTUSDT.json
 data/AGTUSDT_funding_rates.json
 core/paper_budget.sqlite
+~config.json

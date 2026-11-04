@@ -19,6 +19,7 @@ def reconstruct_attribution(
     final_equity: Optional[float] = None,
     funding_rate_per_bar: float = 0.0,
     funding_model: str = "legacy_constant",
+    funding_source: str = "portfolio",
     events: Optional[Iterable[Dict[str, Any]]] = None,
     siphoning_log: Optional[Iterable[Dict[str, Any]]] = None,
     sample_indices: Optional[Set[int]] = None,
@@ -159,10 +160,10 @@ def reconstruct_attribution(
 
         reserve += siphon_bars.get(i, 0.0)
 
-        if funding_model == "signed_actual":
+        if funding_source == "portfolio" and funding_model == "signed_actual":
             if i in funding_by_bar:
                 funding += funding_by_bar[i]
-        elif not in_cooldown and funding_rate_per_bar > 0 and (pos_long > 0 or pos_short > 0):
+        elif funding_source == "portfolio" and not in_cooldown and funding_rate_per_bar > 0 and (pos_long > 0 or pos_short > 0):
             funding += (pos_long + pos_short) * closes[i] * funding_rate_per_bar
 
         if i in cooldown_starts:

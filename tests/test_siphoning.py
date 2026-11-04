@@ -59,7 +59,7 @@ def test_backtest_siphon_closes_positions_and_starts_clean_after_cooldown():
             reinvestment_ratio=0,Decimal=D,siphoning=siphoning,profit_budget=profit_budget,logger=Mock(),i=7,
             sim=sim,cooldown_bars_duration=10,share_trail=Mock(),portfolio_cfg={})
     code=source_block("backtest/backtest_rebalance.py","            # --- 4. SAFE Siphoning ---",
-                      "            # --- 4b. Max Drawdown Limit")
+                      "            # --- 4c. Trailing Stop ---")
     exec("for _ in [0]:\n"+textwrap.indent(code,"    "),ns)
     assert state.pos_long==state.pos_short==state.long_entry_price==state.short_entry_price==0
     assert state.get_tpv(D(110))==D('999.736')

@@ -437,7 +437,7 @@
 - **Используются, но эффект подавлен кодом:** `limit_order_enabled`, `limit_offset_pct`, `limit_timeout_sec` (market-only доктрина).
 - **Используются частично/неявно:** `max_replace_per_cycle` (только REAL-ротация), `max_capital_usdt` (не найден потребитель, если добавить).
 - **Работают только в части режимов:** `backtest_period_days` (только optimization), `min_cycles_for_rotation`, `paper_mode_bots`, `use_real_whitelist`, `real_whitelist`, `live_swarm`, `probation_*` (только supervisor); `margin_ratio_*`, spread-guard, `post-factum` ликвидационная проверка (только real); `telegram_summary_interval_min` (только aggregator); `scanner_period_days` (scanner + fallback supervisor); `min_notional_usdt` (live/paper/backtest/supervisor-dust).
-- **Legacy/игнорируются:** `paper_account_free_margin`, `paper_min_free_margin_pct` (A2a; сохранены в конфиге для совместимости).
+- `paper_account_free_margin` is the PAPER funding reserve; `paper_min_free_margin_pct` remains a legacy sizing parameter.
 
 ---
 
@@ -610,3 +610,17 @@ python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT 
 ### PAPER idle timeout
 
 `paper_idle_hours` (top-level, default `6.0`): finite non-negative hours without a successful post-build rebalance before PAPER idle reassessment; `0` disables idle reassessment and idle replacement. The clock starts at completed initial build if no subsequent rebalance exists; otherwise at the last successful rebalance. Heartbeat and restart do not reset it. Expiry triggers the existing gate/replacement rules, not unconditional closure. Read by supervisor each normal cycle; changing it does not require restarting PAPER workers. Negative and non-finite values are invalid.
+
+
+### Funding reserve settlement
+- BACKTEST and REAL settle both funding payments and receipts only against `cash_reserve_usdt`; PAPER uses `paper_account_free_margin`.
+- Strategy shadow wallet, VIRTUAL, position sizing, profit budget and Ledger stops retain their original funding calculation. Actual cash settles only in the external reserve. `funding_accounting_offset` bridges shadow capital to actual portfolio equity; it is added once for account collateral and actual balances. BACKTEST `final_equity` is strategy capital, `actual_portfolio_equity` includes that bridge, and `portfolio_profit_after_funding` is strategy PnL with funding already included once.
+- A reserve never becomes negative. An unpaid debit is recorded as `funding_reserve_shortfall` and invokes the existing persistent funding halt/close mechanism; the portfolio is not a fallback payer.
+- Runtime config settlements use one file lock and immutable `funding_reserve_receipts` keyed by mode, ticker and event ID. The bot journal/wallet pair then commits through the existing WAL. Replaying a pending event uses its existing receipt and does not charge the account twice.
+- Other config writers preserve settlements missing from their stale snapshot. REAL reserve reload validation includes documented funding receipts.
+- The exchange still books actual REAL funding itself. This changes the bot's accounting attribution and does not initiate transfers.
+
+- Funding amounts and timestamps are not recalculated: `signed_actual` applies the journal's `signed_amount` unchanged, including zero amounts. `source_ref` remains provenance metadata. REAL income retains the exchange-reported amount; the legacy rate model is unchanged. Only the settlement account changes.
+- BACKTEST `funding_scenario` supports `{ticker}` (for example `data/funding_{ticker}.json`); nonempty event symbols must match the selected ticker.
+
+- Funding expenses retain their original `profit_budget` charge. This is an expense record, not a second cash settlement; receipts retain the original budget behavior.

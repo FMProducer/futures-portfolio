@@ -34,7 +34,7 @@ def test_cli_uses_full_dashboard_for_every_ticker(tmp_path, monkeypatch, ticker,
 
     monkeypatch.setattr(asyncio, "run", fake_run)
     monkeypatch.setattr(subprocess, "run", fake_subprocess)
-    monkeypatch.setattr(sys, "argv", [str(script), "--config", "missing.json"])
+    monkeypatch.setattr(sys, "argv", [str(script), "--config", "missing.json", "--days", str(bars / 1440)])
     runpy.run_path(str(script), run_name="__main__")
 
     assert calls == [[sys.executable, str(tmp_path / "scripts" / "visualize_zec_dashboard.py"), prefix]]

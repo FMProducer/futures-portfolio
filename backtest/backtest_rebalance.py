@@ -192,6 +192,9 @@ class BacktestState:
     realized_total: Decimal = Decimal('0')
     funding_paid: Decimal = Decimal('0')
     funding_from_virtual: Decimal = Decimal('0')
+    funding_from_reserve: Decimal = Decimal('0')
+    funding_accounting_offset: Decimal = Decimal('0')
+    funding_reserve_shortfall: Decimal = Decimal('0')
     slippage_paid: Decimal = Decimal('0')
     liquidation_loss_total: Decimal = Decimal('0')
     ledger_base: Optional[Decimal] = None
@@ -310,31 +313,17 @@ class BacktestState:
         self.siphoning_reserve += amount
         return amount
 
-    # B1: V-only funding (spec §4).  CASH-first legacy kept for baseline reproduction.
     def pay_funding(self, amount: Decimal) -> Decimal:
-        """Apply signed funding to V (virt_debt) only.  CASH unchanged.
+        from core.funding import apply_funding_backtest
+        apply_funding_backtest(amount, self)
+        return Decimal(str(amount))
 
-        Returns the signed amount applied.  If V becomes negative, the caller
-        must handle the shortfall via the funding-shortfall close/halt path.
-        """
-        amount = Decimal(str(amount))
-        self.virt_debt += amount
-        self.funding_paid -= amount  # opposite sign
-        return amount
-
-    # Legacy CASH-first funding — for baseline reproduction only (legacy_constant mode).
     def pay_funding_legacy(self, amount: Decimal) -> Decimal:
-        """Old CASH-first waterfall.  val_cash decreases; V only absorbs remainder."""
-        amount = Decimal(str(amount))
-        if amount > 0 and amount > self.val_cash:
-            self.funding_from_virtual += self.release_virtual(amount - self.val_cash)
-        self.val_cash -= amount
-        self.funding_paid += amount
-        return amount
+        from core.funding import pay_funding_legacy
+        return pay_funding_legacy(self, amount)
 
     def get_funding_shortfall(self) -> Decimal:
-        """Non-negative shortfall from negative V.  0 when V >= 0."""
-        return max(Decimal('0'), -self.virt_debt)
+        return max(self.funding_reserve_shortfall, -self.virt_debt, Decimal(0))
 
     def close_position_for_funding_shortfall(
         self, leg: str, qty: Decimal, mid_price: Decimal,
@@ -391,11 +380,11 @@ class BacktestState:
 
     def hard_liquidation_triggered(self, price: Decimal, mmr: Decimal) -> bool:
         # account-level collateral: portfolio TPV plus external free margin
-        return (self.pos_long > 0 or self.pos_short > 0) and self.get_tpv(price) + self.account_free_margin <= self.maintenance_margin(price, mmr)
+        return (self.pos_long > 0 or self.pos_short > 0) and self.get_tpv(price) + self.funding_accounting_offset + self.account_free_margin <= self.maintenance_margin(price, mmr)
 
     def cross_margin_distance_pct(self, price: Decimal, mmr: Decimal) -> Decimal:
         # account-level collateral: portfolio TPV plus external free margin
-        total_margin_balance = self.get_tpv(price) + self.account_free_margin
+        total_margin_balance = self.get_tpv(price) + self.funding_accounting_offset + self.account_free_margin
         if total_margin_balance <= 0:
             return Decimal('-100')
         total_mm = self.maintenance_margin(price, mmr)
@@ -713,6 +702,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         funding_journal = None
         if funding_model == "signed_actual":
             scenario_path = config.get("funding_scenario")
+            if scenario_path:
+                scenario_path = scenario_path.format(ticker=base_ticker)
             if not scenario_path or not os.path.exists(scenario_path):
                 logger.error(
                     f"funding_model=signed_actual but funding_scenario is missing "
@@ -892,13 +883,15 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 for event in funding_journal.get_received():
                     if event.event_time > bar_ts:
                         continue
+                    if event.symbol and event.symbol != base_ticker:
+                        raise ValueError("Funding event symbol does not match backtest ticker")
                     apply_funding_backtest(event.signed_amount, state)
                     funding_journal.mark_applied(event.event_id)
                     state.log_event(i, "funding", float(state.get_tpv_fast(float(mid_price))),
                                     f"{event.event_id} amount={float(event.signed_amount)}",
                                     funding_amount=float(event.signed_amount))
                     # Check shortfall after EACH event (subsequent credit must not hide it).
-                    if state.get_funding_shortfall() > 0 and (state.pos_long > 0 or state.pos_short > 0):
+                    if state.get_funding_shortfall() > 0 and not state.funding_halt_active:
                         state.funding_halt_active = True
                         state.funding_halt_at = float(i)
                         state.funding_shortfall = state.get_funding_shortfall()
@@ -919,29 +912,29 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                             share_trail.reset_all(state.share_trail)
                             state.log_event(i, "share_trail_reset_all", float(state.dormant_capital), "funding halt close")
                         break  # stop processing events this bar
-                # Legacy shortfall check (CASH-first may leave V < 0)
-                if state.get_funding_shortfall() > 0 and (state.pos_long > 0 or state.pos_short > 0):
-                    state.funding_halt_active = True
-                    state.funding_halt_at = float(i)
-                    state.funding_shortfall = state.get_funding_shortfall()
-                    if state.pos_long > 0:
-                        state.close_position_for_funding_shortfall(
-                            "BASE_LONG", state.pos_long, mid_price, sim, i)
-                    if state.pos_short > 0:
-                        state.close_position_for_funding_shortfall(
-                            "BASE_SHORT", state.pos_short, mid_price, sim, i)
-                    state.check_accounting(mid_price, i, "funding_shortfall_close")
-                    state.dormant_capital = Decimal(str(
-                        state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
-                    state.cooldown_until_bar = i + cooldown_bars_duration
-                    state.log_event(i, "funding_shortfall", float(state.dormant_capital),
-                                    f"shortfall={float(state.get_funding_shortfall()):.4f}")
-                    if state.share_trail is not None:
-                        share_trail.reset_all(state.share_trail)
-                        state.log_event(i, "share_trail_reset_all", float(state.dormant_capital), "funding halt close")
-                    logger.warning(f"Bar {i}: Funding halt — positions closed.")
-                    state.history.append(float(state.dormant_capital))
-                    continue
+            # Both rate models halt on unpaid reserve funding, even before initial positions exist.
+            if state.get_funding_shortfall() > 0 and not state.funding_halt_active:
+                state.funding_halt_active = True
+                state.funding_halt_at = float(i)
+                state.funding_shortfall = state.get_funding_shortfall()
+                if state.pos_long > 0:
+                    state.close_position_for_funding_shortfall(
+                        "BASE_LONG", state.pos_long, mid_price, sim, i)
+                if state.pos_short > 0:
+                    state.close_position_for_funding_shortfall(
+                        "BASE_SHORT", state.pos_short, mid_price, sim, i)
+                state.check_accounting(mid_price, i, "funding_shortfall_close")
+                state.dormant_capital = Decimal(str(
+                    state.get_tpv_fast(float(mid_price)) + float(state.siphoning_reserve)))
+                state.cooldown_until_bar = i + cooldown_bars_duration
+                state.log_event(i, "funding_shortfall", float(state.dormant_capital),
+                                f"shortfall={float(state.get_funding_shortfall()):.4f}")
+                if state.share_trail is not None:
+                    share_trail.reset_all(state.share_trail)
+                    state.log_event(i, "share_trail_reset_all", float(state.dormant_capital), "funding halt close")
+                logger.warning(f"Bar {i}: Funding halt — positions closed.")
+                state.history.append(float(state.dormant_capital))
+                continue
 
             # --- 1.5 Cooldown & Rebase Logic ---
             if state.cooldown_until_bar > 0:
@@ -1580,6 +1573,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.val_cash = Decimal('0')
                     state.virt_debt = Decimal('0')
                     state.account_free_margin = Decimal('0')
+                    state.funding_accounting_offset = Decimal('0')
                     state.siphoning_reserve = Decimal('0')
                     state.pos_long = Decimal('0')
                     state.long_entry_price = Decimal('0')
@@ -1690,7 +1684,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             state.history.append(float(current_tpv + state.siphoning_reserve))
             # Account default is account-level: external free margin keeps the account
             # solvent while the 1000-portfolio book can run negative on MTM losses.
-            if current_tpv + state.account_free_margin <= 0:
+            if current_tpv + state.funding_accounting_offset + state.account_free_margin <= 0:
                 status = "portfolio_default"
                 stopped_bar = i
                 state.log_event(i, status, float(current_tpv), "TPV <= 0")
@@ -1817,6 +1811,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "funding_model": state.funding_model,
             "funding_paid": float(state.funding_paid),
             "funding_from_virtual": float(state.funding_from_virtual),
+            "funding_from_reserve": float(state.funding_from_reserve),
+            "funding_accounting_offset": float(state.funding_accounting_offset),
+            "actual_portfolio_equity": float(final_tpv_with_reserve + state.funding_accounting_offset),
+            "funding_reserve_shortfall": float(state.funding_reserve_shortfall),
+            "funding_source": "cash_reserve_usdt",
+            "funding_strategy_accounting": "legacy_shadow",
+            "funding_amount_basis": ("signed_amount" if funding_model == "signed_actual" else "legacy_rate"),
+            "portfolio_profit_after_funding": float(final_tpv_with_reserve - Decimal(str(initial_capital))),
             "funding_events": [f for f in state.fills if f.get("trigger") == "funding_shortfall"],
             "funding_halt_active": state.funding_halt_active,
             "slippage_paid": float(state.slippage_paid),

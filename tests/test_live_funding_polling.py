@@ -9,7 +9,7 @@ from core.funding import (prepare_live_funding_snapshot, poll_live_funding,
 
 
 def seed():
-    state = {"base_ticker": "ZECUSDT", "virt_debt": 34., "funding_paid": 0.}
+    state = {"base_ticker": "ZECUSDT", "virt_debt": 34., "funding_paid": 0., "cash_reserve_usdt": 100.}
     wallet = {"base_ticker": "ZECUSDT", "balance": 100., "positions": {}}
     return prepare_live_funding_snapshot(state, wallet, "ZECUSDT", 1000, "100", {}), wallet
 
@@ -54,6 +54,7 @@ async def test_pending_journal_survives_restart_before_application(tmp_path):
     event = journal.get_received()[0]
     apply_funding_paper(event.signed_amount, wallet, state)
     assert wallet["balance"] == 103 and state["virt_debt"] == 37
+    assert state["cash_reserve_usdt"] == 103
     assert state["funding_paid"] == -3
 
 
@@ -133,16 +134,19 @@ async def test_real_loop_polls_and_commits_before_calculator(api_error):
 
     with patch("core.funding.poll_live_funding", side_effect=poll), \
          patch("core.funding.save_funding_boundary", side_effect=save):
-        await _run_rebalance(_make_config(paper_mode=False), state, wallet, loop_limit=2)
+        config = _make_config(paper_mode=False)
+        config["portfolios"][0]["cash_reserve_usdt"] = 100
+        await _run_rebalance(config, state, wallet, loop_limit=2)
     assert saves
     current, shadow = saves[-1]
     if api_error:
         assert current["live_funding"]["blocked"]
-        assert shadow["balance"] == 100
+        assert shadow["balance"] == pytest.approx(100 + sum(float(e["signed_amount"]) for e in state["funding_journal"] if e["status"] == "applied"))
     else:
         assert current["funding_journal"][0]["status"] == "applied"
         assert current["funding_paid"] == .000049
-        assert shadow["balance"] == pytest.approx(99.999951)
+        assert shadow["balance"] == pytest.approx(100 + sum(float(e["signed_amount"]) for e in state["funding_journal"] if e["status"] == "applied"))
+        assert current["funding_reserve_balance"] == pytest.approx(99.999951)
 
 
 @pytest.mark.asyncio
@@ -166,6 +170,7 @@ async def test_wallet_write_failure_restores_event_and_wallet_together(tmp_path,
     status, recovered, shadow = recover_funding_boundary(sp, wp)
     assert status == RECOVERY_RECOVERED
     assert shadow["balance"] == 99 and recovered["virt_debt"] == 33
+    assert recovered["cash_reserve_usdt"] == 99
     assert shadow["live_funding_snapshot"] == {"symbol": "ZECUSDT", "snapshot_ms": 1000}
     assert recovered["funding_paid"] == 1
     assert not (await poll_live_funding(c, recovered, "ZECUSDT", 2500)).get_received()

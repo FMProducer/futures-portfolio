@@ -27,7 +27,7 @@
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
   "funding_model": "signed_actual",
-  "funding_scenario": "data/funding_ZECUSDT.json",
+  "funding_scenario": "docs/research/agt_rebased_ledger_2_08/funding_replay_AGTUSDT.json",
   "telegram_enabled": false,
   "telegram_use_queue": false,
   "telegram_summary_interval_min": 1,
@@ -83,28 +83,14 @@
   "live_swarm": [],
   "use_real_whitelist": false,
   "real_whitelist": [],
-  "black_list": [
-    "AGTUSDT",
-    "BTCUSDT"
-  ],
+  "black_list": [],
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
-  "tickers": [
-    "AINUSDT",
-    "AKEUSDT",
-    "ARIAUSDT",
-    "BTWUSDT",
-    "HAEDALUSDT",
-    "JCTUSDT",
-    "LYNUSDT",
-    "UAIUSDT"
-  ],
-  "base_ticker": "AINUSDT",
+  "tickers": [],
+  "base_ticker": "",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true,
-  "siphoning_credits": {
-    "paper:HUMAUSDT:1793718538.8750496:3": "10.30082560000001"
-  }
+  "siphoning_credits": {}
 }

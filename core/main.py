@@ -1023,6 +1023,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     continue
                 if paper_mode:
                     validate_paper_positions(paper_state)
+                if state.get("startup_blocked"):
+                    logger.critical("Funding/state commit requires restart recovery; trading blocked")
+                    await asyncio.sleep(check_interval)
+                    continue
+
                 # Failsafe: if restarted by PM2 with triggered state, exit immediately to trigger Reaper
                 if state.get("trailing_stop_triggered", False):
                     logger.critical(f"🚨 Trailing Stop already triggered for {base_ticker}. Entering Zombie Mode.")
@@ -1399,26 +1404,37 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # --- B1: Funding BEFORE calculator (per canonical order §3) ---
                 funding_model = state.get("funding_model", "legacy_constant")
                 if funding_model == "signed_actual":
-                    from core.funding import FundingJournal, apply_funding_paper
+                    from core.funding import FundingJournal, apply_funding_paper, settle_funding_reserve
                     journal = FundingJournal.from_list(state.get("funding_journal"))
                     for event in journal.get_received():
                         if event.event_time > time.time():
                             continue
-                        apply_funding_paper(event.signed_amount, paper_state, state)
+                        if event.symbol and event.symbol != base_ticker:
+                            raise ValueError("Funding event symbol does not match runtime ticker")
+                        reserve_result = await asyncio.to_thread(settle_funding_reserve,
+                            config_path, "paper" if paper_mode else "real", base_ticker, event)
+                        funding_result = apply_funding_paper(event.signed_amount, paper_state, state, reserve_result)
+                        portfolio_cfg = dict(portfolio_cfg)
+                        portfolio_cfg[reserve_result["reserve_key"]] = float(reserve_result["current_reserve"])
+                        state["funding_reserve_key"] = reserve_result["reserve_key"]
+                        state["funding_reserve_balance"] = float(reserve_result["current_reserve"])
                         journal.mark_applied(event.event_id)
                         state["funding_journal"] = journal.to_list()
                         state_dirty = True
                         paper_state_dirty = True
-                        v_now = Decimal(str(state.get("virt_debt", 0)))
-                        if state.get("live_funding") is not None and v_now >= 0:
+                        shortfall_now = max(Decimal(str(funding_result["shortfall"])),
+                                            -Decimal(str(state.get("virt_debt", 0))), Decimal(0))
+                        if shortfall_now == 0:
                             from core.funding import save_funding_boundary, FundingHalt
                             try:
                                 save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
                                                       journal, FundingHalt.from_dict(state.get("funding_halt")))
                             except Exception:
-                                state["live_funding"]["blocked"] = "Funding commit failed; restart recovery required"
+                                if state.get("live_funding") is not None:
+                                    state["live_funding"]["blocked"] = "Funding commit failed; restart recovery required"
+                                state["startup_blocked"] = True
                                 raise
-                        if v_now < 0:
+                        if shortfall_now > 0:
                             from core.funding import (
                                 FundingHalt, commit_funding_halt_with_intents,
                                 begin_close_leg, record_close_result,
@@ -1426,11 +1442,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                             lq = Decimal(str(abs(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))))
                             sq = Decimal(str(abs(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))))
                             halt_obj = commit_funding_halt_with_intents(
-                                FundingHalt(), event.event_id, -v_now, lq, sq)
+                                FundingHalt(), event.event_id, shortfall_now, lq, sq)
                             state["funding_halt"] = halt_obj.to_dict()
                             state["funding_journal"] = journal.to_list()
                             state_dirty = True
-                            logger.critical(f"🚨 Funding shortfall: V={float(v_now):.4f}. Closing.")
+                            logger.critical(f"Funding reserve shortfall={float(shortfall_now):.4f}. Closing.")
                             # Commit halt BEFORE any close (durable boundary)
                             save_funding_boundary(
                                 state_file_path, paper_state_file_path,
@@ -1622,7 +1638,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 if paper_mode:
                     collateral, maintenance, distance = _paper_guard_metrics(
                         paper_state, base_ticker, price, calc.tpv, logger,
-                        portfolio_cfg.get("paper_account_free_margin", 0)
+                        Decimal(str(portfolio_cfg.get("paper_account_free_margin", 0))) + Decimal(str(state.get("funding_accounting_offset", 0)))
                     )
                     predictive_liquidation = liquidation_distance_crit != 0 and distance <= liquidation_distance_crit
                     hard_liquidation = (not predictive_liquidation and post_factum_liquidation_check
@@ -1635,6 +1651,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 paper_state["positions"][f"{base_ticker}_{side}"] = 0.0
                                 paper_state[f"{side.lower()}_entry_price"] = 0.0
                                 paper_state[f"{side.lower()}_liquidation_price"] = 0.0
+                            state["funding_accounting_offset"] = 0.0
                             state["liquidation_loss_total"] = float(state.get("liquidation_loss_total", 0)) + float(collateral)
                             state["virt_qty"] = 0.0
                             state["virt_debt"] = 0.0
@@ -1705,7 +1722,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 now = time.time()
 
-                # Wallet balance already excludes open MTM and includes realized fees/funding.
+                # The shadow wallet retains funding for the original Ledger-stop calculation.
                 dd_ledger = float(paper_state["balance"]) + siphoning_reserve
                 if not math.isfinite(dd_ledger):
                     raise ValueError("Drawdown ledger must be finite")

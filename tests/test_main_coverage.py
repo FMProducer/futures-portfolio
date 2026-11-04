@@ -133,6 +133,13 @@ async def _run_rebalance(config, state, paper_state, connector=None,
             return copy.deepcopy(state)
         return default
 
+    def settle_reserve(path, mode, symbol, event):
+        from core.funding import reserve_funding
+        key = "paper_account_free_margin" if mode == "paper" else "cash_reserve_usdt"
+        result = reserve_funding(event.signed_amount, config["portfolios"][0].get(key, 0))
+        config["portfolios"][0][key] = float(result["reserve_after"])
+        return {**result, "reserve_key": key, "current_reserve": result["reserve_after"]}
+
     saves = []
     def save_side_effect(path, data):
         saves.append((str(path), copy.deepcopy(data)))
@@ -169,7 +176,8 @@ async def _run_rebalance(config, state, paper_state, connector=None,
          patch(f"{M}.TelegramNotifier", return_value=notifier), \
          patch("asyncio.sleep", side_effect=bounded_sleep), \
          patch(f"{M}.PortfolioCalculator", side_effect=calculator_class, return_value=calc_mock), \
-         patch(f"{M}.BinanceConnector", return_value=connector):
+         patch(f"{M}.BinanceConnector", return_value=connector), \
+         patch("core.funding.settle_funding_reserve", side_effect=settle_reserve):
         try:
             await rebalance_loop(connector, "config.json", "state.json", "paper_state.json", MagicMock())
         except (Exception, BaseException) as e:

@@ -93,6 +93,8 @@ def analyze(stage, rows, funding_by_bar, initial):
 
 
 async def main():
+    if "funding_from_reserve" in bt.BacktestState.__dataclass_fields__:
+        raise ValueError("This archived first-stop study requires its original portfolio-funded revision")
     config = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
     initial = float(config["portfolios"][0]["initial_capital"])
     assert config["max_drawdown_cooldown_days"] >= 365

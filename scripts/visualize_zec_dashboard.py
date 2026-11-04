@@ -373,7 +373,8 @@ def _quality_checks(
         add("ok" if accounting_ok else "fail", "Engine accounting",
             f"TPV residual {_money(acc_res)} USDT (tolerance {_money(acc_tol)})")
     engine_net = (_finite(result.get("realized_pnl_total")) + _finite(result.get("final_unrealized_pnl"))
-                  - _finite(result.get("commission_paid")) - _finite(result.get("funding_paid")))
+                  - _finite(result.get("commission_paid")) - _finite(result.get("funding_paid"))
+                  + (0 if result.get("funding_strategy_accounting") == "legacy_shadow" else _finite(result.get("funding_from_reserve"))))
     engine_diff = engine_net - (final - initial)
     add("ok" if abs(engine_diff) <= tol else "warn", "Execution-basis PnL",
         f"engine net vs final equity diff {_money(engine_diff)} USDT")
@@ -382,7 +383,7 @@ def _quality_checks(
         if key not in result:
             continue
         if key == "funding_paid":
-            diff = _finite(result[key]) - _finite(attr_totals.get("funding"))
+            diff = _finite(result[key]) - (0 if result.get("funding_strategy_accounting") == "legacy_shadow" else _finite(result.get("funding_from_reserve"))) - _finite(attr_totals.get("funding"))
         elif key == "commission_paid":
             diff = _finite(result[key]) - _finite(attr_totals.get("commissions"))
         else:
@@ -487,6 +488,7 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         closes.tolist(), equity.tolist(), fills_raw,
         initial_capital=initial, final_equity=final,
         funding_rate_per_bar=rate, funding_model=result.get("funding_model", "legacy_constant"),
+        funding_source="portfolio" if result.get("funding_strategy_accounting") == "legacy_shadow" else result.get("funding_source", "portfolio"),
         events=events_raw,
         siphoning_log=siphoning_raw, sample_indices=attr_sample,
     )
@@ -575,6 +577,8 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         kpi("BUY / SELL", f"{_int(buys)} / {_int(sells)}", "Exchange fill count by side; BUY also closes shorts and SELL closes longs.", ""),
         kpi("Commissions", f"-{_money(commissions)} USDT", "Taker commissions, mark-to-mid attribution basis.", "neg"),
         kpi("Funding", f"-{_money(funding)} USDT", "Funding drag reconstructed from open notional per bar.", "neg"),
+        kpi("Funding from external reserve (net)", f"{_money(result.get('funding_from_reserve', 0))} USDT",
+            "Positive means paid, negative means received. Shadow strategy capital retains funding; actual equity includes the accounting offset.", ""),
         kpi("Funding from VIRTUAL", f"{_money(funding_from_virtual)} USDT",
             "Portion of funding paid by transferring VIRTUAL cash. Already included in Funding; not deducted again in PnL attribution.", ""),
         kpi("Realized PnL", f"{_money(realized)} USDT", "Mark-to-mid realized PnL; slippage is shown separately.", "pos" if realized >= 0 else "neg"),

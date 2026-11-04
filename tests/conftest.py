@@ -133,3 +133,18 @@ def mock_binance_client():
     """ГЛОБАЛЬНЫЙ мок: предотвращает любые реальные Binance API-вызовы."""
     with patch("binance.client.Client") as mock:
         yield mock
+
+
+@pytest.fixture(autouse=True)
+def guard_funding_reserve_writes(monkeypatch):
+    from pathlib import Path
+    import core.funding as funding
+    original = funding.settle_funding_reserve
+    workspace = Path(__file__).resolve().parents[1]
+
+    def guarded(config_path, *args, **kwargs):
+        if Path(config_path).resolve().is_relative_to(workspace):
+            raise AssertionError("Funding tests must use a temporary config or an explicit mock")
+        return original(config_path, *args, **kwargs)
+
+    monkeypatch.setattr(funding, "settle_funding_reserve", guarded)

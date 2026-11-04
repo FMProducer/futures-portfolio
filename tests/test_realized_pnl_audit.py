@@ -21,7 +21,7 @@ async def test_funding_survives_cooldown_and_restart(tmp_path, amount, event_bar
                                    'event_time': times[event_bar].timestamp(), 'status': 'received'}]))
     config = {'base_ticker': 'TESTUSDT', 'funding_model': 'signed_actual', 'funding_scenario': str(journal),
               'max_drawdown_limit': .1, 'max_drawdown_cooldown_days': 3 / 1440,
-              'portfolios': [{'initial_capital': 1000, 'targets': {
+              'portfolios': [{'cash_reserve_usdt': 1000, 'initial_capital': 1000, 'targets': {
                   'BASE_LONG': {'share': .333, 'leverage': 3},
                   'BASE_SHORT': {'share': .333, 'leverage': 3},
                   'VIRTUAL': {'share': .334, 'leverage': 1}}}]}

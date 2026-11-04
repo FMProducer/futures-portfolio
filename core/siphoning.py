@@ -57,7 +57,14 @@ def funded_reserve_change(previous, current):
     if any(new.get(key) != value for key, value in old.items()):
         return False
     amounts = [Decimal(str(value)) for key,value in new.items() if key.startswith("real:") and key not in old]
+    old_funding = previous.get("funding_reserve_receipts", {})
+    new_funding = current.get("funding_reserve_receipts", {})
+    if any(new_funding.get(key) != value for key, value in old_funding.items()):
+        return False
+    funding_delta = sum((Decimal(value["settled"]) for key, value in new_funding.items()
+                         if key not in old_funding and value["reserve_key"] == "cash_reserve_usdt"), Decimal(0))
     before = Decimal(str(previous["portfolios"][0].get("cash_reserve_usdt", 0)))
     after = Decimal(str(current["portfolios"][0].get("cash_reserve_usdt", 0)))
     return (all(v.is_finite() and v > 0 for v in amounts) and before.is_finite() and after.is_finite()
-            and after >= before and abs(after-before-sum(amounts)) <= Decimal('1e-8'))
+            and after >= 0 and funding_delta.is_finite()
+            and abs(after-before-sum(amounts)-funding_delta) <= Decimal('1e-8'))
