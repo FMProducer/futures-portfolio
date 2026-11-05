@@ -113,7 +113,7 @@ def _make_config(tmp_path: Path, scenario_path: str) -> str:
             "liquidation_distance_warn_pct": 0.0,
             "liquidation_distance_crit_pct": 0.0,
             "post_factum_liquidation_check": False,
-            "siphoning_threshold_pct": 1000.0,
+            "siphoning_threshold_pct": 0.0,
             "targets": {
                 "BASE_LONG": {"share": 0.35, "leverage": 7},
                 "BASE_SHORT": {"share": 0.35, "leverage": 7},
@@ -243,7 +243,6 @@ async def test_crash_before_executor():
         tmpdir = Path(tmpdir)
         scenario_path = _make_funding_scenario(tmpdir)
         config_path = _make_config(tmpdir, scenario_path)
-        _copy_feather_data(tmpdir)
 
         # Create initial state files with funding halt active
         state = {
@@ -333,7 +332,7 @@ async def test_crash_before_executor():
                     "liquidation_distance_warn_pct": 0.0,
                     "liquidation_distance_crit_pct": 0.0,
                     "post_factum_liquidation_check": False,
-                    "siphoning_threshold_pct": 1000.0,
+                    "siphoning_threshold_pct": 0.0,
                     "targets": {
                         "BASE_LONG": {"share": 0.35, "leverage": 7},
                         "BASE_SHORT": {"share": 0.35, "leverage": 7},
@@ -356,10 +355,6 @@ async def test_crash_before_executor():
                 "funding_scenario": scenario_path,
             }, f, indent=2)
 
-        # Copy feather
-        src = ROOT / "data" / "ZECUSDT_12m.feather"
-        dst = tmpdir / "ZECUSDT_live.feather"
-        shutil.copy2(src, dst)
 
         # Write state files
         state_file = tmpdir / "state.json"

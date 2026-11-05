@@ -197,8 +197,9 @@ async def test_live_snapshot_zero_virtual_qty_never_adds_virtual_again():
 async def test_live_snapshot_missing_wallet_blocks_without_fallback():
     from test_main_coverage import _make_config, _make_state, _run_rebalance
     state = _make_state(live_funding={"symbol": "BTCUSDT", "snapshot_ms": 1000, "boundary_ms": 1000})
-    with pytest.raises(ValueError, match="cannot be migrated"):
-        await _run_rebalance(_make_config(paper_mode=False), state, {})
+    saves, _, connector = await _run_rebalance(_make_config(paper_mode=False), state, {})
+    assert any(value.get('startup_blocked') for _, value in saves)
+    connector.get_positions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -230,8 +231,9 @@ async def test_wallet_marker_blocks_missing_or_legacy_strategy(missing):
     wallet = _make_paper_state(balance=6.99,
         live_funding_snapshot={"symbol": "BTCUSDT", "snapshot_ms": 1000})
     state = {} if missing else _make_state()
-    with pytest.raises(ValueError, match="matching strategy"):
-        await _run_rebalance(_make_config(paper_mode=False), state, wallet)
+    saves, _, connector = await _run_rebalance(_make_config(paper_mode=False), state, wallet)
+    assert any(value.get('startup_blocked') for _, value in saves)
+    connector.get_positions.assert_not_awaited()
 
 
 def test_wal_persists_reciprocal_snapshot_identity(tmp_path):

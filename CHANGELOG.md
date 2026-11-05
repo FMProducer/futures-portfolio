@@ -1,5 +1,17 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-05 — Isolated PAPER/REAL parity candidate for 01e4df4
+
+- Worktree/branch: `codex/paper-real-backtest-parity`; uncommitted, no deployment, no PM2/account changes. Reference BACKTEST, calculator and financial parameters unchanged; slot capacity is now max_bots=9/paper_mode_bots=8, as approved.
+- Aligned the minute decision clock, guard windows/order, PAPER slippage/fees/legacy funding, realized MaxDD, equity trailing and confirmed session restart capital. REAL preserves actual exchange funding, commissions and fills; uncertain financial outcomes remain blocked behind durable intents.
+- Removed repeat terminal closes, synthetic REAL wallet resets and fabricated PAPER-budget returns. Exact close quantity reaches the active executor. Final REAL PnL% uses confirmed post-close facts, and supervisor terminal signals follow confirmed closure.
+- Historical first-divergence fix: bar26923 VIRTUAL transfer6.34617 was incorrectly rejected by runtime's7-USDT exchange minimum; bar26950 SHORT then became0.056 instead of0.041. Kept the reference calculator's6-USDT floor, applied exchange minima only to futures execution, and passed the correct minimum through to the executor.
+- Annual ZECUSDT,525600 minutes,2025-10-20 00:00 through2026-10-19 23:59UTC, committed config: BACKTEST/PAPER Net89.17733%, MaxDD80.96895%,236cycles,337exchange fills,46stops. Checked every minute and every exchange fill; maximum equity difference1.8189894035458565e-12USDT. Final TPV1891.7732964814545, funding187.0365173283611. Earlier conversation metrics used different configurations and are not substituted for this control.
+- Final targeted offline suite:441passed, exit0. Reproducible driver: `scripts/verify_runtime_parity.py`; detailed evidence and limitations: `docs/PAPER_REAL_BACKTEST_PARITY.md`.
+- Implemented the approved single REAL owner plus eight PAPER slots, one common5000-USDT reserve outside the1000-USDT worker TPV, observed-account-backed SQLite ownership, actual wallet reconciliation and cross-process execution exclusion. Confirmed terminal handover settles late funding; ambiguous outcomes keep ownership. Rotation stops the worker before confirmed close and blocks replacement on close failure.
+- Final annual PAPER repeat with1REAL/8PAPER configuration: Net+89.17733%, MaxDD80.96895%,236cycles,337fills,46stops, exit0. All525600 equity points and all fills identical to prior verified PAPER; oracle difference <=1.8189894035458565e-12USDT. Evidence:comparison_shared.json/manifest_shared.json.
+- Shared-account final targeted suite:514passed in33.17s, exit0 (`parity-shared-final-tests.log`). No actual exchange opening snapshot, test order, main-checkout changes or runtime deployment; live acceptance remains unverified.
+
 ## 2026-11-03 — NAV target sizing, CASH admission, funding/trailing audit and annual comparisons
 
 - Code checkpoint: `18b06a2af867a5950bda2bfbe2029f6fd74a19e8` on `codex/equity-stop-capital-floor`. Correct reductions target current monetary NAV after costs; additions target post-cost NAV and spend current CASH instead of historical profit_budget. Confirmed-fill receipts, idempotency, commission/CASH checks and uncertainty blocks remain. Quantities serve order construction only. Distance remains `0.05800887342949769`.

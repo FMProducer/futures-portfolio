@@ -45,12 +45,12 @@ async def test_emergency_paper_stop_preserves_opening_and_ath(tmp_path):
                          ticker_override="X", paper_mode=True, close_only=True)
     state, wallet = json.loads(sp.read_text()), json.loads(wp.read_text())
     assert state["initial_tpv"] == 1000 and state["tpv_ath"] == 1200
-    assert state["last_tpv"] == wallet["balance"] == 1014.874
+    assert state["last_tpv"] == wallet["balance"] == 1014.716521
     assert state["paper_close_complete"] is True
     assert len(wallet["share_fill_receipts"]) == 2
     await emergency_stop(connector, str(config), str(sp), str(wp), logging.getLogger(),
                          ticker_override="X", paper_mode=True, close_only=True)
-    assert json.loads(wp.read_text())["balance"] == 1014.874
+    assert json.loads(wp.read_text())["balance"] == 1014.716521
 
 
 def test_close_pair_recovers_after_wallet_write_crash(tmp_path, monkeypatch):

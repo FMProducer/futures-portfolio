@@ -1,5 +1,6 @@
 import copy
 import json
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
@@ -52,6 +53,9 @@ async def test_runtime_duplicate_fill_and_disk_checkpoint(mock_config, mock_conn
         raise EndTick()
 
     with patch.object(main, "load_json", side_effect=load), \
+         patch.object(main.backtest_rules, 'strategy_minutes', AsyncMock(return_value=[(60000, 100.)])), \
+         patch.object(main.backtest_rules, 'paper_legacy_funding', return_value=Decimal(0)), \
+         patch('core.funding.save_funding_boundary'), \
          patch.object(main, "save_json", side_effect=save), \
          patch.object(main, "safe_load_json_sync", return_value=cfg), \
          patch.object(main, "PortfolioExecutor", return_value=executor), \

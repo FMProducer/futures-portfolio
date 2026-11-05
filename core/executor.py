@@ -19,6 +19,7 @@ getcontext().prec = 28
 getcontext().rounding = ROUND_HALF_EVEN
 
 PAPER_COMMISSION_RATE = Decimal('0.0004')
+PAPER_SLIPPAGE_RATE = Decimal('0.0005')
 
 
 def financials_confirmed(trades, executed_qty):
@@ -396,6 +397,11 @@ class PortfolioExecutor:
         side = ("BUY" if diff_usdt > 0 else "SELL") if pos_side == "LONG" else ("SELL" if diff_usdt > 0 else "BUY")
         order_qty = abs(diff_usdt / qty_price)
         reduce_only = (pos_side == "LONG" and side == "SELL") or (pos_side == "SHORT" and side == "BUY")
+        if action.get('qty') is not None:
+            exact_qty = Decimal(str(action['qty']))
+            if not reduce_only or not exact_qty.is_finite() or exact_qty <= 0:
+                raise ValueError('Explicit quantity requires a positive reduction')
+            order_qty = exact_qty
 
         min_notional = Decimal(str(portfolio_cfg.get("min_notional_usdt", 6.0))) if portfolio_cfg else Decimal('6.0')
         dec_step_size = Decimal(str(step_size))
@@ -455,6 +461,11 @@ class PortfolioExecutor:
         side = ("BUY" if diff_usdt > 0 else "SELL") if pos_side == "LONG" else ("SELL" if diff_usdt > 0 else "BUY")
         order_qty = abs(diff_usdt / qty_price)
         reduce_only = (pos_side == "LONG" and side == "SELL") or (pos_side == "SHORT" and side == "BUY")
+        if action.get('qty') is not None:
+            exact_qty = Decimal(str(action['qty']))
+            if not reduce_only or not exact_qty.is_finite() or exact_qty <= 0:
+                raise ValueError('Explicit quantity requires a positive reduction')
+            order_qty = exact_qty
         step_size = Decimal(str(step_sizes.get(base_symbol, 0.0))) if step_sizes else Decimal('0.0')
         min_notional = Decimal(str(portfolio_cfg.get("min_notional_usdt", 6.0)))
 
@@ -466,9 +477,10 @@ class PortfolioExecutor:
                 order_qty = min(order_qty, available)
             qty_rounded = self.round_quantity(order_qty, step_size)
             # B7 FIX: Используем qty_price (mid_price) для расчёта order_value
-            order_value = qty_rounded * qty_price
+            fill_price = qty_price * (1 + PAPER_SLIPPAGE_RATE if side == "BUY" else 1 - PAPER_SLIPPAGE_RATE)
+            order_value = qty_rounded * fill_price
             
-            if order_value < min_notional:
+            if qty_rounded * qty_price < min_notional:
                 return {
                     "type": pos_side,
                     "symbol": symbol,
@@ -497,9 +509,9 @@ class PortfolioExecutor:
                     if not old_entry.is_finite() or old_entry <= 0:
                         raise ValueError("Invalid PAPER reduction entry")
                     if pos_side == "LONG":
-                        trade_pnl = qty_rounded * (qty_price - old_entry)
+                        trade_pnl = qty_rounded * (fill_price - old_entry)
                     else:
-                        trade_pnl = qty_rounded * (old_entry - qty_price)
+                        trade_pnl = qty_rounded * (old_entry - fill_price)
 
             return {
                 "type": pos_side,
@@ -507,7 +519,7 @@ class PortfolioExecutor:
                 "side": side,
                 "qty": float(qty_rounded),
                 "execution_id": "paper:" + uuid4().hex,
-                "price": float(qty_price),
+                "price": float(fill_price),
                 "status": "SUCCESS",
                 "trade_pnl": float(trade_pnl),
                 "commission": float(commission),
@@ -605,6 +617,9 @@ class PortfolioExecutor:
                 symbol = action.get("symbol", "")
                 base_symbol = symbol.split("_")[0] if "_" in symbol else symbol
             if base_symbol and base_symbol not in mid_prices:
+                if paper_mode:
+                    mid_prices[base_symbol] = Decimal(str(price))
+                    continue
                 try:
                     order_book = await self.connector.get_order_book(base_symbol, limit=5)
                     best_bid = Decimal(str(order_book["bids"][0][0]))
@@ -617,6 +632,7 @@ class PortfolioExecutor:
         # Surplus-First Doctrine: Execute SELLs (reductions) before BUYs (expansions)
         reductions = [a for a in actions if a.get("is_reduction")]
         expansions = [a for a in actions if not a.get("is_reduction")]
+        expansions.sort(key=lambda action: action.get('key') == 'VIRTUAL')
 
         # Mapping for result tracking to maintain original order
         results_map = {}
@@ -642,9 +658,9 @@ class PortfolioExecutor:
                 if not virtual and (fee is None or not Decimal(str(fee)).is_finite() or not 0 <= Decimal(str(fee)) < 1):
                     results_map[id(action)] = {"status": "SKIPPED", "message": "Unconfirmed expansion commission"}
                     continue
-                # Wallet persistence rounds to 1e-4; reserve one unit against rounding up the debit.
-                spendable = max(Decimal('0'), confirmed_funds - Decimal('0.0001'))
-                limit = spendable if virtual else spendable / (Decimal('1') / lev + Decimal(str(fee)))
+                spendable = max(Decimal('0'), confirmed_funds)
+                fill_ratio = (1 + PAPER_SLIPPAGE_RATE if leg == 'LONG' else 1 - PAPER_SLIPPAGE_RATE) if paper_mode and not virtual else Decimal('1')
+                limit = spendable if virtual else spendable / (fill_ratio * (Decimal('1') / lev + Decimal(str(fee))))
                 approved["diff_usdt"] = float(min(abs(Decimal(str(action["diff_usdt"]))), limit))
                 approved["approved_usdt"] = approved["diff_usdt"]
                 if approved["diff_usdt"] <= 0:
@@ -674,7 +690,7 @@ class PortfolioExecutor:
             fill_price = Decimal(str(result.get("price", mid_prices.get(symbol, price))))
             commission = Decimal(str(result.get("commission", 0)))
             pnl = Decimal(str(result.get("trade_pnl", 0)))
-            next_wallet = (wallet + pnl - commission).quantize(Decimal('0.0001'))
+            next_wallet = wallet + pnl - commission
             budget += next_wallet - wallet
             wallet = next_wallet
             if result.get("reduce_only"):

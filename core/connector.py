@@ -224,6 +224,20 @@ class BinanceConnector:
         return await asyncio.to_thread(self.futures_client.futures_klines, symbol=symbol, interval=interval, limit=limit)
 
     @retry_on_network_error(retries=3, delay=2.0)
+    async def get_usdt_account(self):
+        info = await asyncio.to_thread(self.futures_client.futures_account)
+        if info.get('multiAssetsMargin') is not False or info.get('canTrade') is not True:
+            raise ValueError('REAL allocation requires a tradable single-asset USDT account')
+        asset = next((a for a in info.get('assets', []) if a.get('asset') == 'USDT'), None)
+        if asset is None:
+            raise ValueError('Confirmed USDT account balance missing')
+        return {'wallet': asset['walletBalance'], 'available': asset['availableBalance']}
+
+    @retry_on_network_error(retries=3, delay=2.0)
+    async def get_open_orders(self):
+        return await asyncio.to_thread(self.futures_client.futures_get_open_orders)
+
+    @retry_on_network_error(retries=3, delay=2.0)
     async def get_margin_ratio(self) -> Dict[str, float]:
         account_info = await asyncio.to_thread(self.futures_client.futures_account)
         return {

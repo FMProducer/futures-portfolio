@@ -21,6 +21,7 @@ class PaperClosePathTests(unittest.IsolatedAsyncioTestCase):
         self.events = []
         self.release = Mock(side_effect=lambda *args, **kwargs: self.events.append("release"))
         self.close_code = 0
+        self.mode = "--paper"
         probe = ("from importlib.machinery import PathFinder\nimport sys\nfrom pathlib import Path\n"
                  "spec = PathFinder.find_spec('core', sys.path)\n"
                  f"assert spec and Path(spec.origin).resolve() == Path({str(self.root / 'core/__init__.py')!r}).resolve()\n")
@@ -40,7 +41,7 @@ class PaperClosePathTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(kwargs["cwd"], str(self.root))
             self.assertEqual(args[args.index("--ticker") + 1], "AGTUSDT")
             self.assertIn("--stop", args)
-            self.assertIn("--paper", args)
+            self.assertIn(self.mode, args)
             if self.close_code == 0:
                 result = subprocess.run(args, cwd=kwargs["cwd"], env=kwargs["env"],
                                         capture_output=True, text=True, timeout=10)
@@ -79,6 +80,43 @@ class PaperClosePathTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(RuntimeError, "PAPER close failed; capital remains reserved: AGTUSDT"):
             await self.stop("AGTUSDT", is_paper=True)
         self.release.assert_not_called()
+
+    async def test_real_close_runs_after_worker_stop_without_paper_release(self):
+        self.mode = "--real"
+        await self.stop("AGTUSDT", is_paper=False)
+        self.assertEqual(self.events, ["stopped", "close_exit"])
+        self.release.assert_not_called()
+
+    async def test_failed_real_close_blocks_rotation(self):
+        self.mode, self.close_code = "--real", 1
+        with self.assertRaisesRegex(RuntimeError, "REAL close failed; allocation retained"):
+            await self.stop("AGTUSDT", is_paper=False)
+        self.assertEqual(self.events, ["stopped", "close_exit"])
+        self.release.assert_not_called()
+
+    async def test_consistency_closes_both_legs_once_and_preserves_terminal_proof(self):
+        import json
+        source = self.root / "supervisor/swarm_manager.py"
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        node = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef)
+                    and n.name == "enforce_swarm_consistency")
+        state_path = self.core / "real_state_AGTUSDT.json"
+        state_path.write_text(json.dumps({'rebalance_cycles': 1, 'trailing_stop_triggered': True}))
+        original = state_path.read_bytes()
+        stop = AsyncMock()
+        names = dict(BinanceConnector=object, Set=set, CORE_PATH=self.core, logger=Mock(),
+                     get_running_bots_info=AsyncMock(return_value={}), json=json, stop_bot=stop,
+                     start_bot=AsyncMock())
+        exec(compile(ast.Module(body=[node], type_ignores=[]), str(source), "exec"), names)
+        connector = SimpleNamespace(get_positions=AsyncMock(return_value={
+            'AGTUSDT_LONG': {'qty': 1}, 'AGTUSDT_SHORT': {'qty': -1}}))
+        await names['enforce_swarm_consistency'](connector, {'live_swarm': ['AGTUSDT']})
+        stop.assert_awaited_once_with('AGTUSDT', is_paper=False)
+        self.assertEqual(state_path.read_bytes(), original)
+        stop.side_effect = RuntimeError('unconfirmed close')
+        with self.assertRaisesRegex(RuntimeError, 'unconfirmed close'):
+            await names['enforce_swarm_consistency'](connector, {'live_swarm': ['AGTUSDT']})
+        self.assertEqual(state_path.read_bytes(), original)
 
 
 if __name__ == "__main__":

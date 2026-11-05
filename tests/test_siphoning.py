@@ -2,6 +2,7 @@
 
 import ast
 import asyncio
+import json
 from copy import deepcopy
 from decimal import Decimal as D
 from pathlib import Path
@@ -222,8 +223,9 @@ async def test_supervisor_siphon_uses_toxic_cooldown_without_blacklisting(tmp_pa
             "portfolios":[{"paper_account_free_margin":5000,"cash_reserve_usdt":5000}]}
     closed=dict(trailing_stop_triggered=True,paper_close_complete=True,stop_reason="siphon",
                 siphon_amount=300,siphoning_reserve=300,started_at=1,rebalance_cycles=3)
-    documents=[closed,{"positions":{"TESTUSDT_LONG":0,"TESTUSDT_SHORT":0}}] if mode=="paper" else [closed]
-    load=AsyncMock(side_effect=documents)
+    def document(path, default=None):
+        return {'positions': {'TESTUSDT_LONG': 0, 'TESTUSDT_SHORT': 0}} if 'shadow' in str(path) else closed
+    load=AsyncMock(side_effect=document)
     saved=[]
     async def save(path, document):
         saved.append(deepcopy(document))
@@ -244,7 +246,7 @@ async def test_supervisor_siphon_uses_toxic_cooldown_without_blacklisting(tmp_pa
         assert config["portfolios"][0][key]==5300
         assert saved[0]["portfolios"][0][key]==5300
         flag.touch()
-        load.side_effect=documents
+        load.side_effect=document
         await ns["process"]()
         assert config["portfolios"][0][key]==5300
 
@@ -255,8 +257,14 @@ async def test_supervisor_cannot_launch_during_siphon_cooldown(tmp_path, paper):
     source=ROOT/"supervisor/swarm_manager.py"
     tree=ast.parse(source.read_text(encoding="utf-8"))
     function=next(n for n in tree.body if isinstance(n,ast.AsyncFunctionDef) and n.name=="start_bot")
+    state = {'restart_not_before': 101, 'base_ticker': 'TESTUSDT',
+             'live_funding': {'symbol': 'TESTUSDT', 'snapshot_ms': 1}}
+    if not paper:
+        (tmp_path/'real_state_TESTUSDT.json').write_text(json.dumps(state))
+        (tmp_path/'shadow_state_TESTUSDT.json').write_text(json.dumps({
+            'base_ticker': 'TESTUSDT', 'live_funding_snapshot': {'symbol': 'TESTUSDT', 'snapshot_ms': 1}}))
     ns=dict(CORE_PATH=tmp_path,time=Mock(time=Mock(return_value=100)),logger=Mock(),
-            safe_load_json=AsyncMock(return_value={"restart_not_before":101}),get_running_bots_info=AsyncMock())
+            safe_load_json=AsyncMock(return_value=state),get_running_bots_info=AsyncMock())
     exec(compile(ast.Module(body=[function],type_ignores=[]),str(source),"exec"),ns)
     await ns["start_bot"]("TESTUSDT",is_paper=paper,config={"toxic_cooldown_days":.1})
     ns["safe_load_json"].assert_awaited_once()

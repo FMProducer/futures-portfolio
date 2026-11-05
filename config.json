@@ -8,7 +8,7 @@
   "max_orders_per_second": 10,
   "min_cycles_for_rank": 15,
   "min_cycles_for_rotation": 6,
-  "max_bots": 8,
+  "max_bots": 9,
   "paper_mode_bots": 8,
   "paper_idle_hours": 0,
   "max_replace_per_cycle": 10,
