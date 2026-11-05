@@ -1,5 +1,12 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-05 — Isolated regression audit after 990d302
+
+- Fixed stale AST fixtures and explicit REAL unit-test capacity; blocked unmocked trading-worker subprocesses in tests.
+- Fixed confirmed strategy-exit cooldown persistence before flag deletion/empty-scanner return. Per user choice, PAPER/REAL MaxDD below100 follows BACKTEST full equity and a fixed initial-capital loss budget before rebalance; >=100 stays disabled.22 policy and66 isolation/lifecycle tests passed.
+- Exact supplied config: annual AGT+379.927489%/DD67.421727%/386cycles; ZEC+89.177330%/DD80.968951%/236cycles. All525600 equity points checked against saved controls.
+- Full suite remains FAIL:1060passed,79failed,13errors, exit1. Missing artifacts and unresolved mismatches are documented in docs/REGRESSION_990D302.md. No deployment, commit, push or live-state changes.
+
 ## 2026-11-05 — Isolated PAPER/REAL parity candidate for 01e4df4
 
 - Worktree/branch: `codex/paper-real-backtest-parity`; uncommitted, no deployment, no PM2/account changes. Reference BACKTEST, calculator and financial parameters unchanged; slot capacity is now max_bots=9/paper_mode_bots=8, as approved.
