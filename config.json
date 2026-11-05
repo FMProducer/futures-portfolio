@@ -88,14 +88,11 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "AGTUSDT",
     "AINUSDT",
-    "BIRBUSDT",
-    "BTWUSDT",
-    "HAEDALUSDT",
-    "IDOLUSDT",
-    "UAIUSDT",
-    "VVVUSDT"
+    "AIOUSDT",
+    "BEAMXUSDT",
+    "ICNTUSDT",
+    "LYNUSDT"
   ],
   "base_ticker": "AINUSDT",
   "probation_paper": {},
