@@ -90,11 +90,14 @@
   "tickers": [
     "AINUSDT",
     "AIOUSDT",
-    "BEAMXUSDT",
+    "ARIAUSDT",
+    "CLANKERUSDT",
     "ICNTUSDT",
-    "LYNUSDT"
+    "JCTUSDT",
+    "LSKUSDT",
+    "UAIUSDT"
   ],
-  "base_ticker": "AINUSDT",
+  "base_ticker": "AIOUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
