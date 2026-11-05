@@ -21,3 +21,12 @@ def capital_with_reserve(portfolio, trading_capital):
         if sum(t["share"] for t in portfolio["targets"].values()) > 1 + 1e-12:
             raise ValueError("Trading shares must not exceed one with a CASH reserve")
     return total, targets
+
+
+def drawdown_threshold(reference, initial_capital, limit_pct):
+    """Subtract the fixed initial-capital loss budget from the portfolio equity peak."""
+    reference, initial_capital, limit_pct = map(float, (reference, initial_capital, limit_pct))
+    if (not all(math.isfinite(v) for v in (reference, initial_capital, limit_pct))
+            or initial_capital <= 0 or limit_pct < 0):
+        raise ValueError("Drawdown inputs must be finite, capital positive and limit nonnegative")
+    return reference - initial_capital * limit_pct / 100

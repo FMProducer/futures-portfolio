@@ -165,3 +165,19 @@ def test_non_network_errors_are_not_retried(monkeypatch, kind):
     monkeypatch.setattr('urllib.request.urlopen', request)
     with pytest.raises(type(error)):read_public_url('https://example.test')
     assert request.call_count == 1
+
+
+def test_gate_preserves_explicit_funding_disable():
+    config = {"funding_model": "disabled", "funding_scenario": "missing.json", "portfolios": []}
+    assert effective_config(config) == {"funding_model": "disabled", "portfolios": []}
+
+
+def test_admission_history_does_not_mix_funding_modes(tmp_path):
+    from futures_portfolio.scanner.daily_universe import admission_history
+    folder = tmp_path / "reports/daily_universe/sample"
+    folder.mkdir(parents=True)
+    (folder / "status.json").write_text(json.dumps({"status": "published"}))
+    result = {"pass": True, "windows": {w: {"pass": True, "funding_model": "disabled"} for w in ("48", "24")}, "end_exclusive_ms": 10}
+    (folder / "results.json").write_text(json.dumps({"TESTUSDT": result}))
+    assert admission_history(tmp_path, {"TESTUSDT"}) == {}
+    assert "TESTUSDT" in admission_history(tmp_path, {"TESTUSDT"}, "disabled")

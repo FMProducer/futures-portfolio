@@ -1,13 +1,4 @@
-"""B1 funding: V-only accounting, shortfall halt, per-leg close recovery.
-
-Funding is charged to V (virt_debt), not CASH.  If funding exceeds V,
-the full debit is applied once, V becomes negative, a stable halt is
-committed before any close, and positions are closed with tracked per-leg
-status for crash-safe recovery.
-
-All amounts are kept at full Decimal precision; rounding to wallet
-granularity is the caller's responsibility at persistence time.
-"""
+"""Reserve-only funding, idempotent settlement and crash-safe close recovery."""
 import json
 import logging
 import time
@@ -271,67 +262,107 @@ def load_funding_state(state: Dict) -> Tuple[FundingJournal, FundingHalt]:
 
 # ── funding application ──────────────────────────────────────────────────────
 
-def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
-                         strategy_state: Dict) -> Dict:
-    """Apply one funding event to paper wallet + strategy state.
+def reserve_funding(signed_amount, reserve):
+    """Settle only available reserve and expose an unpaid debit as a shortfall."""
+    amount, before = map(Decimal, map(str, (signed_amount, reserve)))
+    if not amount.is_finite() or not before.is_finite() or before < 0:
+        raise ValueError("Funding and nonnegative reserve must be finite")
+    settled = max(amount, -before)
+    after = before + settled
+    shortfall = max(Decimal(0), -(before + amount))
+    return {"amount": str(amount), "settled": str(settled),
+            "reserve_before": str(before), "reserve_after": str(after),
+            "shortfall": str(shortfall)}
 
-    All amounts kept at full Decimal precision.  Caller quantises at
-    persistence time.  Shortfall is detected on raw (unrounded) V.
-    """
+
+def settle_funding_reserve(config_path, mode, symbol, event):
+    """Persist a shared-account settlement once, before committing the bot journal."""
+    from core.storage import update_json_sync
+    if mode not in ("paper", "real") or not symbol or not event.event_id:
+        raise ValueError("Funding settlement requires mode, symbol and event identity")
+    key = "paper_account_free_margin" if mode == "paper" else "cash_reserve_usdt"
+    identity = f"{mode}:{symbol}:{event.event_id}"
+
+    def update(config):
+        receipts = config.setdefault("funding_reserve_receipts", {})
+        if identity in receipts:
+            receipt = receipts[identity]
+            if (Decimal(receipt["amount"]) != event.signed_amount
+                    or receipt["reserve_key"] != key
+                    or receipt["event_time"] != event.event_time):
+                raise ValueError("Funding reserve event identity conflict")
+            current = reserve_funding(0, config["portfolios"][0][key])["reserve_after"]
+            return {**receipt, "current_reserve": current}
+        portfolio = config["portfolios"][0]
+        receipt = reserve_funding(event.signed_amount, portfolio.get(key, 0))
+        receipt.update(reserve_key=key, event_time=event.event_time)
+        value = Decimal(receipt["reserve_after"])
+        if Decimal(str(float(value))) != value:
+            raise ValueError("Funding reserve cannot be persisted without precision loss")
+        portfolio[key] = float(value)
+        receipts[identity] = receipt
+        return {**receipt, "current_reserve": receipt["reserve_after"]}
+
+    return update_json_sync(config_path, update)
+
+
+def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
+                         strategy_state: Dict, reserve_result=None) -> Dict:
+    """Settle externally while retaining the original shadow-wallet strategy inputs."""
     amount = Decimal(str(signed_amount))
+    previous = [Decimal(str(strategy_state.get(key, 0))) for key in
+                ("funding_paid", "funding_from_reserve", "funding_reserve_shortfall")]
+    if not amount.is_finite() or not all(value.is_finite() for value in previous) or previous[2] < 0:
+        raise ValueError("Funding counters must be finite and shortfall nonnegative")
+    if reserve_result is None:
+        key = "cash_reserve_usdt" if strategy_state.get("live_funding") is not None else "paper_account_free_margin"
+        reserve_result = reserve_funding(amount, strategy_state.get(key, 0))
+        strategy_state[key] = float(Decimal(reserve_result["reserve_after"]))
+    if Decimal(reserve_result["amount"]) != amount:
+        raise ValueError("Funding reserve amount mismatch")
     if amount < 0:
         from core.profit_budget import charge
         charge(paper_wallet, -amount)
-
-    wallet_val = Decimal(str(paper_wallet.get("balance", 0)))
-    v_val = Decimal(str(strategy_state.get("virt_debt", 0)))
-
-    paper_wallet["balance"] = float(wallet_val + amount)
-    strategy_state["virt_debt"] = float(v_val + amount)
-
-    prev_paid = Decimal(str(strategy_state.get("funding_paid", 0)))
-    strategy_state["funding_paid"] = float(prev_paid - amount)
-
-    v_after = Decimal(str(strategy_state["virt_debt"]))
-    shortfall = max(Decimal("0"), -v_after)
-
-    return {
-        "v_before": float(v_val),
-        "v_after": float(v_after),
-        "shortfall": float(shortfall),
-        "cash_change": 0.0,
-    }
+    virtual = Decimal(str(strategy_state.get("virt_debt", 0)))
+    paper_wallet["balance"] = float(Decimal(str(paper_wallet.get("balance", 0))) + amount)
+    strategy_state["virt_debt"] = float(virtual + amount)
+    strategy_state["funding_accounting_offset"] = float(
+        Decimal(str(strategy_state.get("funding_accounting_offset", 0))) - amount)
+    strategy_state["funding_paid"] = float(Decimal(str(strategy_state.get("funding_paid", 0))) - amount)
+    strategy_state["funding_from_reserve"] = float(Decimal(str(strategy_state.get("funding_from_reserve", 0))) - amount)
+    strategy_state["funding_reserve_shortfall"] = float(
+        Decimal(str(strategy_state.get("funding_reserve_shortfall", 0))) + Decimal(reserve_result["shortfall"]))
+    return {**reserve_result, "shortfall": float(max(Decimal(str(strategy_state["funding_reserve_shortfall"])), -(virtual + amount), Decimal(0))),
+            "v_before": float(virtual), "v_after": float(virtual + amount), "cash_change": 0.0}
 
 
 def apply_funding_backtest(signed_amount: Decimal, state) -> Dict:
-    """Apply one funding event to BacktestState (V-only, full precision)."""
+    """Reserve settles the cash; VIRTUAL retains the original strategy calculation."""
     amount = Decimal(str(signed_amount))
+    result = reserve_funding(amount, state.account_free_margin)
     if amount < 0 and hasattr(state, "profit_book"):
         from core.profit_budget import charge
         charge(state.profit_book, -amount)
+    state.account_free_margin = Decimal(result["reserve_after"])
     v_before = state.virt_debt
     state.virt_debt += amount
+    state.funding_accounting_offset -= amount
     state.funding_paid -= amount
-    v_after = state.virt_debt
-    shortfall = max(Decimal("0"), -v_after)
-    return {
-        "v_before": float(v_before), "v_after": float(v_after),
-        "shortfall": float(shortfall), "cash_change": 0.0,
-    }
+    state.funding_from_reserve -= amount
+    state.funding_reserve_shortfall += Decimal(result["shortfall"])
+    return {**result, "shortfall": float(max(state.funding_reserve_shortfall, -state.virt_debt, Decimal(0))),
+            "v_before": float(v_before), "v_after": float(state.virt_debt), "cash_change": 0.0}
 
-
-# ── legacy CASH-first (baseline reproduction only) ───────────────────────────
 
 def pay_funding_legacy(state, amount: Decimal) -> Decimal:
-    """Old CASH-first waterfall.  Do NOT mix with signed_actual events."""
+    """Keep the legacy rate model; settle its expense from the same reserve."""
     amount = Decimal(str(amount))
-    if amount > 0 and hasattr(state, "profit_book"):
-        from core.profit_budget import charge
-        charge(state.profit_book, amount)
+    virtual = state.virt_debt
+    apply_funding_backtest(-amount, state)
+    state.virt_debt = virtual
     if amount > 0 and amount > state.val_cash:
         state.funding_from_virtual += state.release_virtual(amount - state.val_cash)
     state.val_cash -= amount
-    state.funding_paid += amount
     return amount
 
 

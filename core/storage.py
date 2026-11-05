@@ -4,6 +4,9 @@ import time
 import asyncio
 import random
 import tempfile
+from copy import deepcopy
+from decimal import Decimal
+from filelock import FileLock
 from typing import Dict, Any
 
 async def safe_load_json(path: str, default: Dict[str, Any], retries: int = 15) -> Dict[str, Any]:
@@ -40,12 +43,58 @@ def safe_load_json_sync(path: str, default: Dict[str, Any], retries: int = 5) ->
 
 async def safe_save_json(path: str, data: Dict[str, Any]) -> None:
     """
-    Атомарная запись JSON через временный файл (без filelock).
+    Atomic JSON save; shared configuration updates also hold the account lock.
     Гарантирует целостность данных при сбоях.
     """
     await asyncio.to_thread(safe_save_json_sync, path, data)
 
+def merge_funding_receipts(data, latest):
+    """Preserve reserve settlements when a config writer holds an older snapshot."""
+    merged = deepcopy(data)
+    receipts = merged.setdefault("funding_reserve_receipts", {})
+    for identity, receipt in latest.get("funding_reserve_receipts", {}).items():
+        if identity in receipts:
+            if receipts[identity] != receipt:
+                raise ValueError("Funding reserve receipt changed")
+            continue
+        key = receipt["reserve_key"]
+        if key not in ("cash_reserve_usdt", "paper_account_free_margin"):
+            raise ValueError("Invalid funding reserve key")
+        portfolio = merged["portfolios"][0]
+        value = Decimal(str(portfolio.get(key, 0))) + Decimal(receipt["settled"])
+        if not value.is_finite() or value < 0:
+            raise ValueError("Stale config cannot reconcile funding reserve")
+        if Decimal(str(float(value))) != value:
+            raise ValueError("Stale reserve reconciliation would lose precision")
+        portfolio[key] = float(value)
+        receipts[identity] = receipt
+    return merged
+
+
+def update_json_sync(path, update):
+    """Commit a read-modify-write under the same lock as other config writers."""
+    with FileLock(os.path.abspath(path) + ".lock"):
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+        result = update(data)
+        _atomic_save_json(path, data)
+        return result
+
+
 def safe_save_json_sync(path: str, data: Dict[str, Any]) -> None:
+    if isinstance(data, dict) and "portfolios" in data:
+        with FileLock(os.path.abspath(path) + ".lock"):
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as handle:
+                    latest = json.load(handle)
+                if latest.get("funding_reserve_receipts"):
+                    data = merge_funding_receipts(data, latest)
+            _atomic_save_json(path, data)
+    else:
+        _atomic_save_json(path, data)
+
+
+def _atomic_save_json(path: str, data: Dict[str, Any]) -> None:
     """Синхронная версия атомарной записи JSON."""
     dir_name = os.path.dirname(os.path.abspath(path))
     if dir_name:

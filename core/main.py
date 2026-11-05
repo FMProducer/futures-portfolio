@@ -473,7 +473,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
     siphoning_threshold_pct = portfolio_cfg.get("siphoning_threshold_pct", 0.0)
     reinvestment_ratio = portfolio_cfg.get("reinvestment_ratio", 0.0)
-    siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0), reinvestment_ratio)
+    siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0),
+                             reinvestment_ratio, portfolio_cfg.get("siphoning_pct"))
     trail_distance = float(config.get("rebalance_share_trail_distance", 0.0))
     if not math.isfinite(trail_distance) or trail_distance < 0:
         raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -522,6 +523,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
         # (which runs after this point) must restore the real pair first.
         logger.critical(f"🚨 Strategy snapshot is not a JSON object: {state_file_path}")
         state = default_state
+
+    if time.time() < float(state.get("restart_not_before", 0)):
+        logger.warning(f"Persisted cooldown blocks launch: {base_ticker}")
+        return
 
     if configured_cash_reserve:
         funded_baseline = float(state.get("initial_tpv", 0))
@@ -809,6 +814,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     virt_qty = float(state.get("virt_qty", 0.0))
     siphoning_reserve = float(state.get("siphoning_reserve", 0.0))
     initial_tpv = float(state.get("initial_tpv", 0.0))
+    drawdown_reference = float(state.get("max_drawdown_reference", initial_tpv + siphoning_reserve))
     reference_tpv = float(state.get("reference_tpv", 0.0))
     tpv_ath = float(state.get("tpv_ath", 0.0))
     cycles = state.get("rebalance_cycles", 0)
@@ -820,7 +826,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     
     equity_trailing_stop_pct = config.get("equity_trailing_stop_pct", 0.0)
     equity_trailing_stop_activation_pct = config.get("equity_trailing_stop_activation_pct", 0.0)
-    max_drawdown_limit = config.get("max_drawdown_limit", 0.5)
+    max_drawdown_limit = config.get("max_drawdown_limit", 100.0)
     margin_warning = portfolio_cfg.get("margin_ratio_warning", 5.0)
     margin_critical = portfolio_cfg.get("margin_ratio_critical", 2.0)
 
@@ -1010,6 +1016,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     continue
                 if paper_mode:
                     validate_paper_positions(paper_state)
+                if state.get("startup_blocked"):
+                    logger.critical("Funding/state commit requires restart recovery; trading blocked")
+                    await asyncio.sleep(check_interval)
+                    continue
+
                 # Failsafe: if restarted by PM2 with triggered state, exit immediately to trigger Reaper
                 if state.get("trailing_stop_triggered", False):
                     logger.critical(f"🚨 Trailing Stop already triggered for {base_ticker}. Entering Zombie Mode.")
@@ -1027,7 +1038,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         candidate_portfolio = current_config["portfolios"][0]
                         siphoning.validate_config(candidate_portfolio.get("siphoning_threshold_pct", 0),
                                                   candidate_portfolio.get("targets", {}).get("VIRTUAL", {}).get("share", 0),
-                                                  candidate_portfolio.get("reinvestment_ratio", 0))
+                                                  candidate_portfolio.get("reinvestment_ratio", 0),
+                                                  candidate_portfolio.get("siphoning_pct"))
                         if (candidate_portfolio.get("cash_reserve_usdt", 0) != portfolio_cfg.get("cash_reserve_usdt", 0)
                                 and not siphoning.funded_reserve_change(config, current_config)):
                             raise ValueError("Changing CASH reserve requires a funded new session")
@@ -1056,7 +1068,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         target_initial, targets = capital_with_reserve(portfolio_cfg, target_initial)
 
                         max_capital_usdt = portfolio_cfg.get("max_capital_usdt", target_initial)
-                        max_drawdown_limit = current_config.get("max_drawdown_limit", 0.5)
+                        max_drawdown_limit = current_config.get("max_drawdown_limit", 100.0)
                         equity_trailing_stop_pct = current_config.get("equity_trailing_stop_pct", 0.0)
                         equity_trailing_stop_timeout_sec = current_config.get("equity_trailing_stop_timeout_sec", 0.0)
                         trail_distance = float(current_config.get("rebalance_share_trail_distance", 0.0))
@@ -1323,7 +1335,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     # but we NO LONGER overwrite paper_state["balance"] with it.
                     wallet_balance = float(m_info.get("total_wallet_balance", 0.0))
 
-                if not paper_mode and state.get("live_funding") is not None:
+                funding_model = ("disabled" if current_config.get("funding_model") == "disabled"
+                                 else state.get("funding_model", "legacy_constant"))
+                if funding_model != "disabled" and not paper_mode and state.get("live_funding") is not None:
                     from core.funding import poll_live_funding, save_funding_boundary, FundingHalt, FundingJournal
                     try:
                         live_journal = await poll_live_funding(connector, state, base_ticker, int(time.time() * 1000))
@@ -1345,28 +1359,38 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     state_dirty = paper_state_dirty = True
 
                 # --- B1: Funding BEFORE calculator (per canonical order §3) ---
-                funding_model = state.get("funding_model", "legacy_constant")
                 if funding_model == "signed_actual":
-                    from core.funding import FundingJournal, apply_funding_paper
+                    from core.funding import FundingJournal, apply_funding_paper, settle_funding_reserve
                     journal = FundingJournal.from_list(state.get("funding_journal"))
                     for event in journal.get_received():
                         if event.event_time > (strategy_bar_ms / 1000 if paper_mode else time.time()):
                             continue
-                        apply_funding_paper(event.signed_amount, paper_state, state)
+                        if event.symbol and event.symbol != base_ticker:
+                            raise ValueError("Funding event symbol does not match runtime ticker")
+                        reserve_result = await asyncio.to_thread(settle_funding_reserve,
+                            config_path, "paper" if paper_mode else "real", base_ticker, event)
+                        funding_result = apply_funding_paper(event.signed_amount, paper_state, state, reserve_result)
+                        portfolio_cfg = dict(portfolio_cfg)
+                        portfolio_cfg[reserve_result["reserve_key"]] = float(reserve_result["current_reserve"])
+                        state["funding_reserve_key"] = reserve_result["reserve_key"]
+                        state["funding_reserve_balance"] = float(reserve_result["current_reserve"])
                         journal.mark_applied(event.event_id)
                         state["funding_journal"] = journal.to_list()
                         state_dirty = True
                         paper_state_dirty = True
-                        v_now = Decimal(str(state.get("virt_debt", 0)))
-                        if state.get("live_funding") is not None and v_now >= 0:
+                        shortfall_now = max(Decimal(str(funding_result["shortfall"])),
+                                            -Decimal(str(state.get("virt_debt", 0))), Decimal(0))
+                        if shortfall_now == 0:
                             from core.funding import save_funding_boundary, FundingHalt
                             try:
                                 save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
                                                       journal, FundingHalt.from_dict(state.get("funding_halt")))
                             except Exception:
-                                state["live_funding"]["blocked"] = "Funding commit failed; restart recovery required"
+                                if state.get("live_funding") is not None:
+                                    state["live_funding"]["blocked"] = "Funding commit failed; restart recovery required"
+                                state["startup_blocked"] = True
                                 raise
-                        if v_now < 0:
+                        if shortfall_now > 0:
                             from core.funding import (
                                 FundingHalt, commit_funding_halt_with_intents,
                                 begin_close_leg, record_close_result,
@@ -1374,11 +1398,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                             lq = Decimal(str(abs(paper_state["positions"].get(f"{base_ticker}_LONG", 0.0))))
                             sq = Decimal(str(abs(paper_state["positions"].get(f"{base_ticker}_SHORT", 0.0))))
                             halt_obj = commit_funding_halt_with_intents(
-                                FundingHalt(), event.event_id, -v_now, lq, sq)
+                                FundingHalt(), event.event_id, shortfall_now, lq, sq)
                             state["funding_halt"] = halt_obj.to_dict()
                             state["funding_journal"] = journal.to_list()
                             state_dirty = True
-                            logger.critical(f"🚨 Funding shortfall: V={float(v_now):.4f}. Closing.")
+                            logger.critical(f"Funding reserve shortfall={float(shortfall_now):.4f}. Closing.")
                             # Commit halt BEFORE any close (durable boundary)
                             save_funding_boundary(
                                 state_file_path, paper_state_file_path,
@@ -2053,13 +2077,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         )
 
                 amount = siphoning.calculate_amount(safe_calc.tpv, target_initial_cap,
-                    state.get("virt_debt", 0), siphoning_threshold_pct, reinvestment_ratio)
+                    state.get("virt_debt", 0), siphoning_threshold_pct, reinvestment_ratio,
+                    portfolio_cfg.get("siphoning_pct"))
                 if amount > Decimal('0.1'):
                     state["virt_debt"] = float(Decimal(str(state.get("virt_debt", 0))) - amount)
                     paper_state["balance"] = float(Decimal(str(paper_state["balance"])) - amount)
                     siphoning_reserve = float(Decimal(str(siphoning_reserve)) + amount)
                     profit_budget.charge(paper_state, amount)
-                    initial_tpv = reference_tpv = target_initial_cap
+                    initial_tpv = reference_tpv = (float(safe_calc.tpv - amount)
+                        if float(portfolio_cfg.get("siphoning_pct") or 0) > 0 else target_initial_cap)
                     state.update(initial_tpv=initial_tpv, reference_tpv=reference_tpv,
                                  siphoning_reserve=siphoning_reserve)
                     safe_calc_kwargs.update(virt_debt=state["virt_debt"], siphoning_reserve=siphoning_reserve,

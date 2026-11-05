@@ -74,7 +74,7 @@ def test_siphon_from_virtual_pays_v_not_cash():
 def test_funding_waterfall_preserves_tpv_on_virtual_transfer():
     """B1 V-only: funding debits V, CASH unchanged."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
-                          virt_debt=Decimal('300'), base_ticker="BTCUSDT")
+                          virt_debt=Decimal('300'), base_ticker="BTCUSDT", account_free_margin=Decimal("5000"))
     before = state.get_tpv(Decimal('100'))
     state.pay_funding(Decimal('-1.00'))  # signed: negative = debit
     assert state.val_cash == Decimal('0.20')  # CASH unchanged
@@ -86,7 +86,7 @@ def test_funding_waterfall_preserves_tpv_on_virtual_transfer():
 def test_funding_waterfall_exhausts_virtual_before_negative_cash():
     """B1 V-only: V goes negative on excess debit; CASH untouched."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
-                          virt_debt=Decimal('0.50'), base_ticker="BTCUSDT")
+                          virt_debt=Decimal('0.50'), base_ticker="BTCUSDT", account_free_margin=Decimal("5000"))
     before = state.get_tpv(Decimal('100'))
     state.pay_funding(Decimal('-1.00'))  # debit 1.0 > V 0.5 → V = -0.50
     assert state.virt_debt == Decimal('-0.50')  # negative V (shortfall)
@@ -99,7 +99,7 @@ def test_funding_waterfall_exhausts_virtual_before_negative_cash():
 def test_negative_funding_credits_cash_without_virtual_transfer():
     """B1 V-only: funding credit increases V, CASH unchanged."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
-                          virt_debt=Decimal('300'), base_ticker="BTCUSDT")
+                          virt_debt=Decimal('300'), base_ticker="BTCUSDT", account_free_margin=Decimal("5000"))
     before = state.get_tpv(Decimal('100'))
     state.pay_funding(Decimal('1.00'))  # signed: positive = credit
     assert state.val_cash == Decimal('0.20')  # CASH unchanged
@@ -110,7 +110,7 @@ def test_negative_funding_credits_cash_without_virtual_transfer():
 
 def test_cross_margin_guard_counts_external_free_margin():
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
-                          virt_debt=Decimal('0.50'), base_ticker="BTCUSDT",
+                          virt_debt=Decimal('0.50'), base_ticker="BTCUSDT", account_free_margin=Decimal("5000"),
                           l_lev=Decimal('5'), s_lev=Decimal('5'))
     state.pos_long = Decimal('10')
     state.long_entry_price = Decimal('100')
@@ -118,7 +118,7 @@ def test_cross_margin_guard_counts_external_free_margin():
     assert state.val_cash == Decimal('0.20')  # CASH unchanged
     assert state.virt_debt == Decimal('-0.50')  # negative V
     assert state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004')) > Decimal('8')
-    assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004')) <= Decimal('8')
+    assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004')) > Decimal('8')
 
     state.virt_debt = Decimal('4')
     state.account_free_margin = Decimal('1000')
@@ -156,7 +156,7 @@ async def test_cash_reserve_is_external_account_margin(tmp_path):
     assert res is not None and res["accounting_ok"]
     # portfolio base stays the trading capital; the reserve is account free margin
     assert res["initial_capital"] == 1000 and res["trading_initial_capital"] == 1000
-    assert res["cash_reserve_usdt"] == 100000
+    assert res["cash_reserve_usdt"] == pytest.approx(100000 - res["funding_from_reserve"])
     assert res["settings"]["account_free_margin"] == 100000
     assert res["settings"]["share_basis_scale"] == 1.0
 
@@ -218,6 +218,7 @@ def _flat_config() -> dict:
         "min_notional_usdt": 1.0,
         "portfolios": [{
             "initial_capital": 1000.0,
+            "cash_reserve_usdt": 1.0,
             "paper_account_free_margin": 0.0,
             "targets": {
                 "BASE_LONG": {"share": 0.33, "leverage": 7.0},
@@ -316,6 +317,7 @@ async def test_hard_liquidation_uses_adverse_bar_extreme(tmp_path, side, bar1, e
 async def test_portfolio_default_returns_result_at_stop_bar(tmp_path, capsys, default_price):
     config = _flat_config()
     portfolio = config["portfolios"][0]
+    portfolio["cash_reserve_usdt"] = 0.0
     portfolio.update(liquidation_distance_crit_pct=0.0, liquidation_distance_warn_pct=0.0,
                      post_factum_liquidation_check=False)
     portfolio["targets"] = {
@@ -735,5 +737,164 @@ async def test_backtest_legacy_free_margin_does_not_change_results(tmp_path):
     assert a["fill_count"] == b["fill_count"] > 0
     assert a["final_tpv"] == b["final_tpv"]
     assert a["profit_pct"] == b["profit_pct"]
-    assert a["settings"]["account_free_margin"] == 0.0
-    assert b["settings"]["account_free_margin"] == 0.0
+    assert a["settings"]["account_free_margin"] == 1.0
+    assert b["settings"]["account_free_margin"] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_external_funding_retains_original_ledger_stop(tmp_path):
+    times = pd.date_range("2026-01-01", periods=6, freq="min", tz="UTC")
+    journal = tmp_path / "funding.json"
+    journal.write_text(json.dumps([
+        {"event_id": f"loss:{bar}", "signed_amount": -21,
+         "event_time": times[bar].timestamp(), "status": "received"} for bar in (1, 4)
+    ]), encoding="utf-8")
+    config = _flat_config()
+    config.update(max_drawdown_limit=2.08, max_drawdown_cooldown_days=2 / 1440,
+                  equity_trailing_stop_pct=0.0, funding_model="signed_actual", funding_scenario=str(journal))
+    config["portfolios"][0]["cash_reserve_usdt"] = 5000
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    prices = [100.0] * 6
+    pd.DataFrame({"time": times, "open": prices, "high": prices, "low": prices,
+                  "close": prices, "volume": prices}).to_feather(tmp_path / "BTCUSDT_live.feather")
+    result = await run_backtest(str(cfg), str(tmp_path), days=1, commission=0.0, slippage=0.0, quiet=True)
+    assert result and result["accounting_ok"]
+    assert [e["bar"] for e in result["events"] if e["kind"] == "max_dd_stop"] == [1, 4]
+    assert result["final_equity"] == pytest.approx(958)
+    assert result["actual_portfolio_equity"] == pytest.approx(1000)
+    assert result["cash_reserve_usdt"] == pytest.approx(4958)
+    assert result["funding_from_reserve"] == pytest.approx(42)
+    assert result["settings"]["max_drawdown_basis"] == "portfolio_equity_peak"
+
+
+@pytest.mark.parametrize("limit", [-1, float("nan"), float("inf")])
+def test_drawdown_rejects_invalid_budget(limit):
+    from core.capital import drawdown_threshold
+    with pytest.raises(ValueError):
+        drawdown_threshold(34590.29, 1000, limit)
+
+
+def test_drawdown_budget_stays_on_configured_initial_capital():
+    from core.capital import drawdown_threshold
+    assert drawdown_threshold(34590.29, 1000, 2.08) == pytest.approx(34569.49)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ticker", ["AGTUSDT", "ZECUSDT"])
+@pytest.mark.parametrize("mapping", [False, True])
+async def test_funding_scenario_template_selects_ticker(tmp_path, ticker, mapping):
+    config = _flat_config()
+    config["base_ticker"] = ticker
+    config.update(funding_model="signed_actual",
+                  funding_scenario=str(tmp_path / "funding_{ticker}.json"))
+    if mapping:
+        config["funding_scenario"] = {"AGTUSDT": str(tmp_path / "agt_replay.json"),
+                                      "default": str(tmp_path / "funding_{ticker}.json")}
+        (tmp_path / "agt_replay.json").write_text("[]" if ticker == "AGTUSDT" else "invalid", encoding="utf-8")
+    (tmp_path / f"funding_{ticker}.json").write_text(
+        "invalid" if mapping and ticker == "AGTUSDT" else "[]", encoding="utf-8")
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    pd.DataFrame({"time": pd.date_range("2026-10-10", periods=3, freq="min", tz="UTC"),
+                  "open": [100.] * 3, "high": [100.] * 3, "low": [100.] * 3,
+                  "close": [100.] * 3, "volume": [1.] * 3}).to_feather(
+                      tmp_path / f"{ticker}_live.feather")
+    result = await run_backtest(str(config_file), str(tmp_path), days=0.1, quiet=True)
+    assert result is not None and result["accounting_ok"]
+
+
+@pytest.mark.asyncio
+async def test_external_funding_preserves_signed_events_and_trade_path(tmp_path):
+    times = pd.date_range("2026-01-01", periods=12, freq="min", tz="UTC")
+    prices = [100., 101., 99., 102., 100., 98., 101., 103., 99., 100., 102., 101.]
+    pd.DataFrame({"time": times, "open": prices, "high": prices, "low": prices,
+                  "close": prices, "volume": [1.] * len(prices)}).to_feather(
+                      tmp_path / "BTCUSDT_live.feather")
+    config = _flat_config()
+    config["funding_model"] = "signed_actual"
+    config["portfolios"][0]["cash_reserve_usdt"] = 5000
+    config["portfolios"][0]["post_factum_liquidation_check"] = False
+    config["portfolios"][0]["liquidation_distance_crit_pct"] = 0
+    results = []
+    for name, amounts in (("control", [-7, 3, 0]), ("funded", [-7, 3, 0])):
+        events = [{"event_id": f"fixed:{i}", "signed_amount": amount,
+                   "event_time": times[bar].timestamp(), "symbol": "BTCUSDT",
+                   "source": "binance_fundingRate_history",
+                   "source_ref": "fundingTime=0 rate=999"}
+                  for i, (bar, amount) in enumerate(zip((2, 5, 8), amounts))]
+        journal = tmp_path / f"{name}.json"
+        journal.write_text(json.dumps(events), encoding="utf-8")
+        config["funding_scenario"] = str(journal)
+        cfg = tmp_path / "config.json"
+        cfg.write_text(json.dumps(config), encoding="utf-8")
+        def original_funding(amount, state):
+            from core.profit_budget import charge
+            if amount < 0:
+                charge(state.profit_book, -amount)
+            state.virt_debt += amount
+            state.funding_paid -= amount
+        if name == "control":
+            with patch.dict(run_backtest.__globals__, apply_funding_backtest=original_funding):
+                results.append(await run_backtest(str(cfg), str(tmp_path), days=1, quiet=True))
+        else:
+            results.append(await run_backtest(str(cfg), str(tmp_path), days=1, quiet=True))
+    control, funded = results
+    assert control and funded and control["accounting_ok"] and funded["accounting_ok"]
+    assert funded["fills"] == control["fills"]
+    assert funded["final_equity"] == control["final_equity"]
+    assert funded["cycles"] == control["cycles"]
+    assert [e for e in funded["events"] if e["kind"] != "funding"] == [
+        e for e in control["events"] if e["kind"] != "funding"]
+    funding = [e for e in funded["events"] if e["kind"] == "funding"]
+    assert [(e["bar"], e["funding_amount"]) for e in funding] == [(2, -7), (5, 3), (8, 0)]
+    assert funded["cash_reserve_usdt"] == control["cash_reserve_usdt"] - 4
+    assert funded["funding_paid"] == funded["funding_from_reserve"] == 4
+    assert funded["funding_amount_basis"] == "signed_amount"
+    assert funded["actual_portfolio_equity"] + funded["cash_reserve_usdt"] == pytest.approx(
+        control["final_equity"] + control["cash_reserve_usdt"])
+
+
+@pytest.mark.asyncio
+async def test_disabled_funding_skips_scenario_and_all_charges(tmp_path):
+    config = _flat_config()
+    config.update(funding_model="disabled", funding_scenario=str(tmp_path / "missing.json"))
+    config["portfolios"][0]["cash_reserve_usdt"] = 5000
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    pd.DataFrame({"time": pd.date_range("2026-01-01", periods=4, freq="min", tz="UTC"),
+                  "open": [100.] * 4, "high": [100.] * 4, "low": [100.] * 4,
+                  "close": [100.] * 4, "volume": [1.] * 4}).to_feather(
+                      tmp_path / "BTCUSDT_live.feather")
+    result = await run_backtest(str(cfg), str(tmp_path), days=1, commission=0, slippage=0, quiet=True)
+    assert result and result["accounting_ok"]
+    assert result["funding_model"] == result["funding_amount_basis"] == "disabled"
+    assert result["funding_paid"] == result["funding_from_reserve"] == result["funding_accounting_offset"] == 0
+    assert result["cash_reserve_usdt"] == 5000
+    assert result["final_equity"] == result["actual_portfolio_equity"] == 1000
+    assert not result["funding_halt_active"]
+    assert not any(e["kind"] in ("funding", "funding_shortfall") for e in result["events"])
+
+
+@pytest.mark.asyncio
+async def test_drawdown_closes_open_loss_from_equity_peak_before_rebalance(tmp_path):
+    prices = [100., 110., 107., 50.]
+    times = pd.date_range("2026-01-01", periods=4, freq="min", tz="UTC")
+    pd.DataFrame({"time": times, "open": prices, "high": prices, "low": prices,
+                  "close": prices, "volume": [1.] * 4}).to_feather(tmp_path / "BTCUSDT_live.feather")
+    config = _flat_config()
+    config.update(funding_model="disabled", max_drawdown_limit=2.08,
+                  max_drawdown_cooldown_days=365, equity_trailing_stop_pct=0)
+    config["portfolios"][0]["targets"] = {"BASE_LONG": {"share": 1., "leverage": 1.},
+        "BASE_SHORT": {"share": 0., "leverage": 1.}, "VIRTUAL": {"share": 0.}}
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    result = await run_backtest(str(cfg), str(tmp_path), days=1, commission=0, slippage=0, quiet=True)
+    assert result and result["accounting_ok"] and result["liquidations"] == 0
+    stops = [e for e in result["events"] if e["kind"] == "max_dd_stop"]
+    assert [e["bar"] for e in stops] == [2]
+    assert result["final_equity"] == pytest.approx(1070)
+    closes = [f for f in result["fills"] if f["trigger"] == "max_dd_stop"]
+    assert len(closes) == 1 and closes[0]["bar"] == 2
+    assert not any(f["bar"] >= 2 and f["trigger"] != "max_dd_stop" for f in result["fills"])
+    assert result["settings"]["max_drawdown_cooldown_bars"] == 365 * 1440

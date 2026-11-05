@@ -140,6 +140,13 @@ async def _run_rebalance(config, state, paper_state, connector=None,
             return copy.deepcopy(state)
         return default
 
+    def settle_reserve(path, mode, symbol, event):
+        from core.funding import reserve_funding
+        key = "paper_account_free_margin" if mode == "paper" else "cash_reserve_usdt"
+        result = reserve_funding(event.signed_amount, config["portfolios"][0].get(key, 0))
+        config["portfolios"][0][key] = float(result["reserve_after"])
+        return {**result, "reserve_key": key, "current_reserve": result["reserve_after"]}
+
     saves = []
     def save_side_effect(path, data):
         saves.append((str(path), copy.deepcopy(data)))
@@ -201,7 +208,8 @@ async def _run_rebalance(config, state, paper_state, connector=None,
          patch(f"{M}.TelegramNotifier", return_value=notifier), \
          patch("asyncio.sleep", side_effect=bounded_sleep), \
          patch(f"{M}.PortfolioCalculator", side_effect=calculator_class, return_value=calc_mock), \
-         patch(f"{M}.BinanceConnector", return_value=connector):
+         patch(f"{M}.BinanceConnector", return_value=connector), \
+         patch("core.funding.settle_funding_reserve", side_effect=settle_reserve):
         try:
             await rebalance_loop(connector, "config.json", "state.json", "paper_state.json", MagicMock())
         except (Exception, BaseException) as e:
@@ -1334,3 +1342,54 @@ async def test_a2_critical_guard_halts_before_supervisor_can_reopen():
     assert final_state["trailing_stop_triggered"] is True
     assert final_paper["positions"]["BTCUSDT_LONG"] == 0.0
     assert final_paper["long_entry_price"] == 0.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+@pytest.mark.parametrize("reference", [100.0, 120.0])
+async def test_equity_stop_persists_fixed_budget_and_cooldown(paper_mode, reference):
+    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
+                          max_drawdown_cooldown_days=365.0, equity_trailing_stop_pct=0.0)
+    config["portfolios"][0]["siphoning_threshold_pct"] = 0
+    ledger = reference - 2.08
+    state = _make_state(started_at=1, tpv_ath=reference, max_drawdown_reference=reference)
+    calc = {"total_tpv": ledger, "tpv": ledger, "actions": [], "total_pnl_pct": 0.0}
+    with patch(f"{M}.emergency_stop", AsyncMock()) as close:
+        before = time.time()
+        saves, _, _ = await _run_rebalance(config, state, _make_paper_state(balance=ledger),
+                                          loop_limit=2, calc_return=calc)
+    stopped = [s for _, s in saves if s.get("stop_reason") == "max_drawdown"]
+    assert stopped and close.await_count == 1
+    assert stopped[-1]["max_drawdown_reference"] == reference
+    assert stopped[-1]["max_drawdown_basis"] == "portfolio_equity_peak"
+    assert stopped[-1]["restart_not_before"] >= before + 365 * 86400
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_equity_stop_counts_open_mtm_and_persisted_peak(paper_mode):
+    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
+                          max_drawdown_cooldown_days=365.0, equity_trailing_stop_pct=0.0)
+    config["portfolios"][0]["siphoning_threshold_pct"] = 0
+    calc = {"total_tpv": 50.0, "tpv": 50.0, "actions": [], "total_pnl_pct": -50.0}
+    with patch(f"{M}.emergency_stop", AsyncMock()) as close:
+        saves, _, _ = await _run_rebalance(config, _make_state(started_at=1, tpv_ath=5000),
+                                          _make_paper_state(balance=100.0),
+                                          loop_limit=2, calc_return=calc)
+    close.assert_awaited_once()
+    assert any(s.get("stop_reason") == "max_drawdown" for _, s in saves)
+
+
+@pytest.mark.parametrize("price", [60, 100, 140])
+def test_wallet_ledger_matches_portfolio_equity_without_open_mtm(price):
+    from core.calculator import PortfolioCalculator
+    calculator = PortfolioCalculator(
+        positions={"BTCUSDT_LONG": 3, "BTCUSDT_SHORT": -2},
+        spot_price=price, real_equity=500, virt_qty=0, virt_debt=500,
+        siphoning_reserve=25, initial_capital=1000, base_ticker="BTCUSDT",
+        long_entry_price=100, short_entry_price=100,
+        targets={"BASE_LONG": {"share": .25, "leverage": 3},
+                 "BASE_SHORT": {"share": .25, "leverage": 3},
+                 "VIRTUAL": {"share": .5}})
+    open_pnl = Decimal(3) * (price - 100) + Decimal(2) * (100 - price)
+    assert calculator.total_tpv - open_pnl == Decimal(1000 + 25)

@@ -3,17 +3,22 @@
 from decimal import Decimal
 
 
-def validate_config(threshold_pct, virtual_share, reinvestment_ratio=0):
+def validate_config(threshold_pct, virtual_share, reinvestment_ratio=0, siphoning_pct=None):
     threshold, share, ratio = map(Decimal, map(str, (threshold_pct, virtual_share, reinvestment_ratio or 0)))
     if (not threshold.is_finite() or not share.is_finite()
             or not 0 <= share <= 1 or not 0 <= threshold <= share * 100):
         raise ValueError("siphoning_threshold_pct must be finite, nonnegative and <= VIRTUAL share * 100")
     if not ratio.is_finite() or not 0 <= ratio <= 1:
         raise ValueError("reinvestment_ratio must be finite and between 0 and 1")
+    if siphoning_pct is not None:
+        pct = Decimal(str(siphoning_pct))
+        if not pct.is_finite() or pct < 0:
+            raise ValueError("siphoning_pct must be finite and nonnegative")
 
 
-def calculate_amount(active_equity, initial_capital, virtual_available, threshold_pct, reinvestment_ratio=0):
-    """Return zero when siphoning_threshold_pct is zero (disabled)."""
+def calculate_amount(active_equity, initial_capital, virtual_available, threshold_pct, reinvestment_ratio=0,
+                     siphoning_pct=None):
+    """Positive pct sets a fixed withdrawal; zero or None uses reinvestment_ratio."""
     equity, base, virtual, threshold, ratio = map(Decimal, map(str, (
         active_equity, initial_capital, virtual_available, threshold_pct, reinvestment_ratio or 0)))
     if not all(v.is_finite() for v in (equity, base, virtual, threshold, ratio)) or base <= 0:
@@ -23,7 +28,14 @@ def calculate_amount(active_equity, initial_capital, virtual_available, threshol
     profit = equity - base
     if profit < max(Decimal('0.1'), base * threshold / 100):
         return Decimal(0)
-    return min(max(Decimal(0), profit * (1-ratio)), max(Decimal(0), virtual))
+    amount = profit * (1-ratio)
+    if siphoning_pct is not None:
+        pct = Decimal(str(siphoning_pct))
+        if not pct.is_finite() or pct < 0:
+            raise ValueError("siphoning_pct must be finite and nonnegative")
+        if pct > 0:
+            amount = min(profit, base * pct / 100)
+    return min(max(Decimal(0), amount), max(Decimal(0), virtual))
 
 
 def credit_reserve(config, mode, ticker, state):
@@ -57,7 +69,14 @@ def funded_reserve_change(previous, current):
     if any(new.get(key) != value for key, value in old.items()):
         return False
     amounts = [Decimal(str(value)) for key,value in new.items() if key.startswith("real:") and key not in old]
+    old_funding = previous.get("funding_reserve_receipts", {})
+    new_funding = current.get("funding_reserve_receipts", {})
+    if any(new_funding.get(key) != value for key, value in old_funding.items()):
+        return False
+    funding_delta = sum((Decimal(value["settled"]) for key, value in new_funding.items()
+                         if key not in old_funding and value["reserve_key"] == "cash_reserve_usdt"), Decimal(0))
     before = Decimal(str(previous["portfolios"][0].get("cash_reserve_usdt", 0)))
     after = Decimal(str(current["portfolios"][0].get("cash_reserve_usdt", 0)))
     return (all(v.is_finite() and v > 0 for v in amounts) and before.is_finite() and after.is_finite()
-            and after >= before and abs(after-before-sum(amounts)) <= Decimal('1e-8'))
+            and after >= 0 and funding_delta.is_finite()
+            and abs(after-before-sum(amounts)-funding_delta) <= Decimal('1e-8'))

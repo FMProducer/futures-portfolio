@@ -22,7 +22,7 @@ from futures_portfolio.backtest.backtest_rebalance import BacktestState
 def test_f1_funding_paid_less_than_v_decreases_v_tpv_cash_unchanged():
     """Paid funding < V: V and TPV decrease; CASH unchanged."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT")
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     tpv_before = state.get_tpv(D('100'))
     cash_before = state.val_cash
     result = apply_funding_backtest(D('-3.00'), state)
@@ -39,7 +39,7 @@ def test_f1_funding_paid_less_than_v_decreases_v_tpv_cash_unchanged():
 def test_f2_funding_paid_equal_to_v_leaves_v_zero():
     """Paid funding = V: V=0, no shortfall, no CASH transfer."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('5'), base_ticker="BTCUSDT")
+                          virt_debt=D('5'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     result = apply_funding_backtest(D('-5.00'), state)
     assert state.virt_debt == D('0')
     assert result["shortfall"] == 0.0
@@ -50,7 +50,7 @@ def test_f2_funding_paid_equal_to_v_leaves_v_zero():
 def test_f3_funding_paid_greater_than_v_preserves_negative_v():
     """Paid > V: full debit, negative V, shortfall > 0, CASH unchanged."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('3'), base_ticker="BTCUSDT")
+                          virt_debt=D('3'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     tpv_before = state.get_tpv(D('100'))
     result = apply_funding_backtest(D('-10.00'), state)
     assert state.virt_debt == D('-7')  # full debit, negative V
@@ -64,7 +64,7 @@ def test_f3_funding_paid_greater_than_v_preserves_negative_v():
 def test_f4_funding_received_increases_v_tpv():
     """Credit: V and TPV increase, CASH unchanged."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT")
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     tpv_before = state.get_tpv(D('100'))
     result = apply_funding_backtest(D('3.00'), state)
     assert state.virt_debt == D('343')
@@ -106,7 +106,7 @@ def test_f6_same_id_different_payload_is_conflict():
 def test_f7_crash_before_commit_keeps_received_state_unchanged():
     """Event remains 'received'; recovery applies once."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT")
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     journal = FundingJournal()
     journal.receive(FundingEvent(event_id="fund:1", signed_amount=D('-3'),
                                   event_time=100.0))
@@ -148,7 +148,7 @@ def test_f9_late_event_is_quarantined():
 
 def test_f10_paper_funding_updates_wallet_and_v_together_cash_unchanged():
     paper_wallet = {"balance": 1000.0}
-    strategy = {"virt_debt": 340.0, "funding_paid": 0.0}
+    strategy = {"paper_account_free_margin": 5000, "virt_debt": 340.0, "funding_paid": 0.0}
     result = apply_funding_paper(D('-5.00'), paper_wallet, strategy)
     assert paper_wallet["balance"] == pytest.approx(995.0)
     assert strategy["virt_debt"] == pytest.approx(335.0)
@@ -158,7 +158,7 @@ def test_f10_paper_funding_updates_wallet_and_v_together_cash_unchanged():
 
 def test_f10b_paper_funding_credit():
     paper_wallet = {"balance": 1000.0}
-    strategy = {"virt_debt": 340.0, "funding_paid": 0.0}
+    strategy = {"paper_account_free_margin": 5000, "virt_debt": 340.0, "funding_paid": 0.0}
     apply_funding_paper(D('3.00'), paper_wallet, strategy)
     assert paper_wallet["balance"] == pytest.approx(1003.0)
     assert strategy["virt_debt"] == pytest.approx(343.0)
@@ -185,7 +185,7 @@ class _FakeSim:
 def test_f11_funding_shortfall_closes_both_legs_with_fees_and_halt():
     """F3 + close: both legs closed with commission, halt active."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('100'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT",
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"),
                           l_lev=D('7'), s_lev=D('7'))
     state.pos_long = D('1.5')
     state.long_entry_price = D('1300')
@@ -244,7 +244,7 @@ def test_f12_halt_survives_close_proceeds():
 def test_f15_funding_paid_sign_credit_3():
     """Credit +3: V/TPV +3, funding_paid -3, equity +3."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT",
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"),
                           ledger_base=D('1000'))
     tpv_before = state.get_tpv(D('100'))
     equity_before = state.accounting_equity(D('100'))
@@ -396,7 +396,7 @@ def test_defect_all_legs_closed_false_when_second_not_registered():
 def test_defect_partial_close_preserves_remainder():
     """Closing 1 of 2 contracts leaves 1 remaining, not zero."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT",
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"),
                           l_lev=D('7'), s_lev=D('7'))
     state.pos_long = D('2')
     state.long_entry_price = D('1300')
@@ -419,7 +419,7 @@ def test_defect_partial_close_preserves_remainder():
 def test_defect_and_f4b_funding_rounding_preserves_cash_zero():
     """Funding -0.00006 on paper: wallet and V both quantised; CASH stays 0."""
     paper = {"balance": 1000.0}
-    strategy = {"virt_debt": 340.0, "funding_paid": 0.0, "funding_rounding_buf": 0.0}
+    strategy = {"paper_account_free_margin": 5000, "virt_debt": 340.0, "funding_paid": 0.0, "funding_rounding_buf": 0.0}
     result = apply_funding_paper(D('-0.00006'), paper, strategy)
     # Both wallet and V quantised to 1e-4; rounding diff captured in buf.
     assert result["cash_change"] == 0.0
@@ -439,7 +439,7 @@ def test_defect_and_f4b_funding_rounding_preserves_cash_zero():
 def test_v8_partial_close_preserves_remainder_and_entry():
     """Partial close: remainder qty > 0, entry NOT zeroed."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT",
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"),
                           l_lev=D('7'), s_lev=D('7'))
     state.pos_long = D('2')
     state.long_entry_price = D('1300')
@@ -466,7 +466,7 @@ def test_v8_empty_signed_journal_gives_zero_funding():
 def test_v8_funding_applied_before_calculator():
     """V decreases → next TPV reflects the new V."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT")
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     tpv_before = state.get_tpv(D('100'))
     apply_funding_backtest(D('-50'), state)
     tpv_after = state.get_tpv(D('100'))
@@ -540,7 +540,7 @@ def test_crash_recovery_halt_and_close_state_survive_reload():
 def test_defect_v_zero_micro_funding_detects_shortfall():
     """V=0, funding=-0.00004: raw V becomes negative, shortfall detected."""
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('0'), base_ticker="BTCUSDT")
+                          virt_debt=D('0'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     result = apply_funding_backtest(D('-0.00004'), state)
     assert state.virt_debt < 0
     assert result["shortfall"] > 0
@@ -550,7 +550,7 @@ def test_defect_v_zero_micro_funding_detects_shortfall():
 def test_defect_v_zero_fractional_paper_funding_shortfall():
     """Paper: V=0, funding=-0.00004 → raw V=-0.00004 (no rounding loss)."""
     paper = {"balance": 1000.0}
-    strategy = {"virt_debt": 0.0, "funding_paid": 0.0}
+    strategy = {"paper_account_free_margin": 5000, "virt_debt": 0.0, "funding_paid": 0.0}
     result = apply_funding_paper(D('-0.00004'), paper, strategy)
     assert result["shortfall"] > 0
     assert strategy["virt_debt"] < 0
@@ -573,7 +573,7 @@ def test_defect_different_portfolio_id_is_conflict_not_duplicate():
 def test_defect_funding_paper_preserves_wallet_v_equality():
     """Paper funding: wallet and V change by exactly the same amount."""
     paper = {"balance": 1000.0}
-    strategy = {"virt_debt": 340.0, "funding_paid": 0.0}
+    strategy = {"paper_account_free_margin": 5000, "virt_debt": 340.0, "funding_paid": 0.0}
     w_before = D(str(paper["balance"]))
     v_before = D(str(strategy["virt_debt"]))
     apply_funding_paper(D('-5.12345'), paper, strategy)
@@ -594,7 +594,7 @@ def test_crash_recovery_unapplied_event_applied_once_after_reload():
     assert j2.events["fund:1"].status == "received"
     # Apply after reload
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT")
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     apply_funding_backtest(D('-3'), state)
     j2.mark_applied("fund:1")
     assert j2.events["fund:1"].status == "applied"
@@ -607,7 +607,7 @@ def test_crash_recovery_unapplied_event_applied_once_after_reload():
 
 def test_v8_partial_close_preserves_remainder_and_entry():
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT",
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"),
                           l_lev=D('7'), s_lev=D('7'))
     state.pos_long = D('2')
     state.long_entry_price = D('1300')
@@ -632,7 +632,7 @@ def test_v8_empty_signed_journal_zero_funding_attribution():
 
 def test_v8_funding_applied_before_calculator():
     state = BacktestState(initial_capital=D('1000'), val_cash=D('660'),
-                          virt_debt=D('340'), base_ticker="BTCUSDT")
+                          virt_debt=D('340'), base_ticker="BTCUSDT", account_free_margin=D("5000"))
     tpv_before = state.get_tpv(D('100'))
     apply_funding_backtest(D('-50'), state)
     assert state.get_tpv(D('100')) == tpv_before - D('50')

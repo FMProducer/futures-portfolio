@@ -31,3 +31,11 @@ def test_cooldown_marks_open_positions_to_market():
     assert out["totals"]["realized"] == -100.0
     assert out["totals"]["unrealized"] == 0.0
     assert abs(out["totals"]["residual"]) < 1e-9
+
+
+def test_disabled_funding_does_not_reconstruct_legacy_drag():
+    out = reconstruct_attribution([100., 100.], [1000., 1000.],
+        [{"bar": 0, "side": "BUY", "leg": "BASE_LONG", "qty": 10., "price": 100., "mid": 100., "commission": 0.}],
+        initial_capital=1000, funding_model="disabled", funding_rate_per_bar=0.1)
+    assert out["totals"]["funding"] == 0
+    assert abs(out["totals"]["residual"]) < 1e-9

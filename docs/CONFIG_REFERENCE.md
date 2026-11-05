@@ -163,16 +163,17 @@
 - **Единицы:** абстрактные скор-баллы (profit/cycles·ln). Текущие 50.0 → cushion 0.5. Увеличение — реже ротация REAL; уменьшение — чаще. Режим: supervisor. Диапазон в коде не проверяется.
 
 ### `max_drawdown_limit`
-- **Текущее значение:** `200.0` | **Тип:** float, % просадки от ATH
-- **Чтение:** `core/main.py:446` (default 0.5!) и hot-reload `:566`. Использование: `drawdown_threshold = tpv_ath * (1 - value/100)`; если `total_tpv < threshold` → EMERGENCY STOP (`main.py:926-958`). При 200.0 порог = `tpv_ath * (1-2) = -tpv_ath` — **защита фактически отключена** (TPV не бывает отрицательным). При default 0.5 порог = 99.5% ATH — срабатывал бы почти сразу (замеченное несоответствие единиц: default задан как доля, а используется как процент).
-- **Backtest:** `backtest_rebalance.py:355` default `100.0` («по умолчанию 100% = отключён»), проверка `if max_drawdown_limit_pct < 100.0` (`:761`).
-- **Оптимизаторы:** область поиска 5.0–50.0 (`optimize_stops.py:54`) — рекомендация автора, не валидация.
-- **Режимы:** live, paper, backtest. После emergency stop бот шлёт сигнал `stop` (если TPV < initial_capital) или `exit` (probation) (`main.py:936-944`).
+- BACKTEST/PAPER/REAL use the Rebased session reference and Ledger (equity excluding open unrealized PnL).
+- Loss budget: configured `initial_capital * max_drawdown_limit / 100`; PAPER uses `paper_initial_capital`. At 1000 USDT and 2.08% the budget stays 20.80 USDT even if the rebased session capital grows.
+- Stop at or below `session_reference - budget`. The reference resets on a clean new session, not on a process restart or an equity ATH update.
+- PAPER/REAL store `max_drawdown_reference` and `max_drawdown_basis=rebased_session_ledger` in the strategy snapshot. Ledger is the reconciled shadow wallet balance plus SAFE; external account collateral is excluded.
+- This rule does not cap unrealized equity drawdown. Closing costs can reduce final equity further.
 
 ### `max_drawdown_cooldown_days`
-- **Scope:** backtest only; top-level config, default `0.1` days.
-- After `max_drawdown_limit`, positions close and trading resumes after this independent cooldown with capital and ATH rebased. `toxic_cooldown_days` does not affect this timer.
-- Must be finite and non-negative. Converted to minute bars as `max(1, int(days * 1440))`; zero resumes on the next bar.
+- Independent BACKTEST/PAPER/REAL cooldown after a max-drawdown close; default 0.1 days.
+- PAPER/REAL persist `restart_not_before` and pass the deadline to supervisor probation using a `drawdown` signal after closing. Other cooldown settings do not replace this deadline.
+- State resets and bot launches are blocked until the deadline. Once the verified closed session is replaced, its reference is reset to the newly funded capital; allocation/reconciliation rules remain in force.
+- Must be finite and nonnegative. BACKTEST converts to `max(1, int(days * 1440))` minute bars.
 
 ### `equity_trailing_stop_pct`
 - **Текущее значение:** `0.001` | **Тип:** float, % просадки от tpv_ath
@@ -436,7 +437,7 @@
 - **Используются, но эффект подавлен кодом:** `limit_order_enabled`, `limit_offset_pct`, `limit_timeout_sec` (market-only доктрина).
 - **Используются частично/неявно:** `max_replace_per_cycle` (только REAL-ротация), `max_capital_usdt` (не найден потребитель, если добавить).
 - **Работают только в части режимов:** `backtest_period_days` (только optimization), `min_cycles_for_rotation`, `paper_mode_bots`, `use_real_whitelist`, `real_whitelist`, `live_swarm`, `probation_*` (только supervisor); `margin_ratio_*`, spread-guard, `post-factum` ликвидационная проверка (только real); `telegram_summary_interval_min` (только aggregator); `scanner_period_days` (scanner + fallback supervisor); `min_notional_usdt` (live/paper/backtest/supervisor-dust).
-- **Legacy/игнорируются:** `paper_account_free_margin`, `paper_min_free_margin_pct` (A2a; сохранены в конфиге для совместимости).
+- `paper_account_free_margin` is the PAPER funding reserve; `paper_min_free_margin_pct` remains a legacy sizing parameter.
 
 ---
 
@@ -609,3 +610,29 @@ python.exe backtest\backtest_rebalance.py --config config.json --ticker ZECUSDT 
 ### PAPER idle timeout
 
 `paper_idle_hours` (top-level, default `6.0`): finite non-negative hours without a successful post-build rebalance before PAPER idle reassessment; `0` disables idle reassessment and idle replacement. The clock starts at completed initial build if no subsequent rebalance exists; otherwise at the last successful rebalance. Heartbeat and restart do not reset it. Expiry triggers the existing gate/replacement rules, not unconditional closure. Read by supervisor each normal cycle; changing it does not require restarting PAPER workers. Negative and non-finite values are invalid.
+
+
+### Funding reserve settlement
+- BACKTEST and REAL settle both funding payments and receipts only against `cash_reserve_usdt`; PAPER uses `paper_account_free_margin`.
+- Strategy shadow wallet, VIRTUAL, position sizing, profit budget and Ledger stops retain their original funding calculation. Actual cash settles only in the external reserve. `funding_accounting_offset` bridges shadow capital to actual portfolio equity; it is added once for account collateral and actual balances. BACKTEST `final_equity` is strategy capital, `actual_portfolio_equity` includes that bridge, and `portfolio_profit_after_funding` is strategy PnL with funding already included once.
+- A reserve never becomes negative. An unpaid debit is recorded as `funding_reserve_shortfall` and invokes the existing persistent funding halt/close mechanism; the portfolio is not a fallback payer.
+- Runtime config settlements use one file lock and immutable `funding_reserve_receipts` keyed by mode, ticker and event ID. The bot journal/wallet pair then commits through the existing WAL. Replaying a pending event uses its existing receipt and does not charge the account twice.
+- Other config writers preserve settlements missing from their stale snapshot. REAL reserve reload validation includes documented funding receipts.
+- The exchange still books actual REAL funding itself. This changes the bot's accounting attribution and does not initiate transfers.
+
+- Funding amounts and timestamps are not recalculated: `signed_actual` applies the journal's `signed_amount` unchanged, including zero amounts. `source_ref` remains provenance metadata. REAL income retains the exchange-reported amount; the legacy rate model is unchanged. Only the settlement account changes.
+- BACKTEST `funding_scenario` supports `{ticker}` (for example `data/funding_{ticker}.json`); nonempty event symbols must match the selected ticker.
+
+- Funding expenses retain their original `profit_budget` charge. This is an expense record, not a second cash settlement; receipts retain the original budget behavior.
+
+- `funding_scenario` also accepts a ticker-to-path object with `default`. The working config explicitly selects the historical AGT replay for `AGTUSDT`; other tickers resolve `data/funding_{ticker}.json`. Missing files and symbol mismatches remain errors.
+
+### Disabling funding
+
+Set top-level `"funding_model": "disabled"` to skip funding scenarios, constant-rate accrual, live-income polling and new funding settlements in BACKTEST/PAPER/REAL. No new funding changes reserves, shadow capital, profit budget or Ledger stops. Scanner gates honor the same setting; cached admissions from another funding mode are excluded. Reports do not reconstruct synthetic funding drag. The runtime reads the current config; the stored source model and pending journal are preserved for re-enabling. Existing booked funding, reserve receipts, reconciliation blocks and active funding halts are not undone. Re-enabling resumes pending funding processing. This setting does not disable exchange-side REAL funding charges/receipts. Existing `signed_actual` and `legacy_constant` behavior remains unchanged.
+
+### Maximum drawdown equity stop
+
+`max_drawdown_limit` is a fixed loss budget in percent of configured initial capital: `initial_capital * limit / 100`. BACKTEST and PAPER/REAL compare the complete portfolio equity, including open PnL and the portfolio safe reserve, against its running equity peak minus that budget. External account free margin is excluded from portfolio equity. The check precedes rebalance orders; a breach closes positions and applies `max_drawdown_cooldown_days`. A completed max-drawdown cooldown starts a new risk period; its reference is the retained capital. This replaces the old realized-Ledger rule.
+
+Reported MaxDD is a separate metric: `(peak_equity - equity) / peak_equity * 100`. Execution commissions, slippage and discrete price checks can make realized drawdown exceed the trigger budget. With funding disabled, initial capital 1000, limit 2.08 and cooldown 365, both AGT periods ending 2026-10-15 and 2026-10-19 stop at bar 516: equity 982.79, peak 1009.77, threshold 988.97, final capital 981.5881927378483 USDT, no liquidations. The former 32k trajectory required tolerating much larger earlier floating drawdowns and is not reproduced by this fixed 20.80-USDT equity stop.

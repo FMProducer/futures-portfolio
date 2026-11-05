@@ -65,7 +65,7 @@ def write_json(path, data):
     temporary.replace(path)
 
 
-def admission_history(root, symbols):
+def admission_history(root, symbols, funding_model="legacy_constant"):
     history = {}
     for status_path in sorted((root/'reports/daily_universe').glob('*/status.json')):
         status = json.loads(status_path.read_text(encoding='utf-8'))
@@ -80,7 +80,7 @@ def admission_history(root, symbols):
             windows = result.get('windows', {})
             if (result.get('pass') is True and not result.get('error')
                     and all(windows.get(w, {}).get('pass') is True
-                            and windows[w].get('funding_model') == 'legacy_constant' for w in ('48','24'))):
+                            and windows[w].get('funding_model') == funding_model for w in ('48','24'))):
                 end = result.get('end_exclusive_ms', status.get('end_exclusive_ms', 0))
                 if end >= history.get(symbol, {}).get('end_exclusive_ms', -1):
                     history[symbol] = {'report':str(result_path), 'end_exclusive_ms':end,
@@ -102,7 +102,7 @@ def publish(root, run, candidates, results, config):
         raise ValueError('Candidate list changed during evaluation')
     old_order = list(dict.fromkeys(previous.decode('utf-8-sig').split()))
     old_symbols = set(old_order)
-    history = admission_history(root, old_symbols)
+    history = admission_history(root, old_symbols, effective_config(config)['funding_model'])
     successful = [r for r in candidates if r['symbol'] not in errors]
     fresh = rank_candidates(successful, results, set())
     fresh_symbols = {r['symbol'] for r in fresh}
