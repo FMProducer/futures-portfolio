@@ -276,7 +276,8 @@ async def test_execute_single_action_paper_mode(executor):
     )
     assert res["status"] == "SUCCESS"
     assert res["qty"] == 0.001
-    assert res["commission"] == pytest.approx(0.001 * 60000.0 * 0.0004)
+    assert res['price'] == 60000 * 1.0005
+    assert res["commission"] == pytest.approx(0.001 * res['price'] * 0.0004)
     assert res["trade_pnl"] == 0.0 # expansion
 
     # Test reduce_only
@@ -289,7 +290,7 @@ async def test_execute_single_action_paper_mode(executor):
     )
     assert res["reduce_only"] is True
     # trade_pnl = 0.001 * (60000 - 50000) = 10.0
-    assert res["trade_pnl"] == 10.0
+    assert res["trade_pnl"] == pytest.approx(9.97)
 
 @pytest.mark.asyncio
 async def test_execute_single_action_real_mode(executor, mock_connector):

@@ -16,7 +16,7 @@ VIRTUAL = D('500.606392')
 def calculator(book, price):
     return PortfolioCalculator(book['positions'], price, D(str(book['balance'])) - VIRTUAL, 0,
         long_entry_price=book['long_entry_price'], short_entry_price=book['short_entry_price'],
-        virt_debt=VIRTUAL, base_ticker='HUMAUSDT', targets=TARGETS, commission_pct=.0004,
+        virt_debt=VIRTUAL, base_ticker='HUMAUSDT', targets=TARGETS, commission_pct=.0004, slippage_pct=.0005,
         profit_budget=profit_budget.balance(book))
 
 

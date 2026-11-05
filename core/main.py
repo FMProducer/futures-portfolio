@@ -17,9 +17,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 load_dotenv()
 
 from core.connector import BinanceConnector
-from core.calculator import PortfolioCalculator, initial_notional_after_fee, select_tick_actions
+from core.calculator import PortfolioCalculator, select_tick_actions
+from core import backtest_rules
 from core.capital import capital_with_reserve
-from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, validate_paper_positions
+from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, PAPER_SLIPPAGE_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
 from core import share_trail, profit_budget, siphoning
@@ -331,7 +332,7 @@ async def _update_final_metrics_for_exit(state: dict, state_file_path: str, tota
             "reference_tpv": _current_reference_tpv,
             "tpv_ath": max(float(total_tpv_final), _current_initial_tpv),
             "last_profit": float(total_tpv_final - initial_tpv),
-            "total_pnl_pct": safe_calc_res.get("total_pnl_pct", 0.0),
+            "total_pnl_pct": float((total_tpv_final / initial_tpv - 1) * 100),
             "last_update": time.time(),
             "rebalance_cycles": cycles,
             # Очистка триггеров скользящего стопа (но сохраняем сам факт срабатывания для супервайзера)
@@ -369,6 +370,7 @@ async def _handle_liquidation_guard(
     is_paper: bool, raw_positions, paper_state, connector,
     base_ticker: str, step_sizes: dict, notifier, logger,
     reason: str = "LIQUIDATION", price_label: str = "liq_price",
+    state=None, strategy_path=None, wallet_path=None, targets=None,
 ):
     """
     Shared liquidation guard handler for both paper and real modes.
@@ -391,42 +393,22 @@ async def _handle_liquidation_guard(
         if is_paper:
             from core.paper_close import close_wallet
             closed = close_wallet(paper_state, base_ticker, liq_price,
-                                  f"guard:{base_ticker}:{paper_state.get('balance')}", PAPER_COMMISSION_RATE)
+                                  f"guard:{base_ticker}:{paper_state.get('balance')}", PAPER_COMMISSION_RATE, PAPER_SLIPPAGE_RATE)
             paper_state.clear()
             paper_state.update(closed)
             mode_tag = "PAPER"
         else:
-            # Real mode: send actual close order for BOTH sides
-            for _side in ("LONG", "SHORT"):
-                _pos_key = f"{base_ticker}_{_side}"
-                _close_side = "SELL" if _side == "LONG" else "BUY"
-                _close_qty = abs(raw_positions.get(_pos_key, {}).get("qty", 0.0))
-                if _close_qty > 0:
-                    try:
-                        await PortfolioExecutor(connector).execute_market_order(
-                            symbol=base_ticker,
-                            side=_close_side,
-                            qty=_close_qty,
-                            position_side=_side,
-                            reduce_only=True
-                        )
-                        paper_state["positions"][_pos_key] = 0.0
-                        logger.info(f"✅ Emergency closed {_pos_key} to avoid liquidation")
-                    except Exception as close_err:
-                        logger.error(f"Failed to emergency close {_pos_key}: {close_err}")
-            mode_tag = "REAL"
+            if state is None or not strategy_path or not wallet_path or targets is None:
+                raise ValueError('REAL liquidation close requires durable strategy and wallet context')
+            from core.live_close import close_live_wallet
+            await close_live_wallet(connector, state, paper_state, base_ticker, targets,
+                                    step_sizes, strategy_path, wallet_path, reason)
 
         logger.info(
             f"✅ [{'PAPER' if is_paper else 'REAL'}] Emergency closed {pos_key} "
             f"(dist={dist:.1f}%, {price_label}={liq_price:.8f})"
         )
 
-        # [SSOT] Delegate config mutation to supervisor via signal
-        emit_signal("stop", base_ticker, is_paper=is_paper)
-        logger.critical(
-            f"🚫 {base_ticker} signal 'stop' emitted. "
-            f"Awaiting supervisor to blacklist and remove from live_swarm."
-        )
 
     elif liquidation_distance_warn != 0 and dist <= liquidation_distance_warn:
         logger.warning(
@@ -458,6 +440,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
     # Paper mode: override > config
     paper_mode = paper_mode_override if paper_mode_override is not None else config.get("paper_mode", False)
+    expect_live_snapshot = expect_live_snapshot or not paper_mode
     
     # Приоритет тикера: override > config > default
     base_ticker = ticker_override if ticker_override else config.get("base_ticker", "BTCUSDT")
@@ -542,8 +525,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
     if configured_cash_reserve:
         funded_baseline = float(state.get("initial_tpv", 0))
-        if funded_baseline > 0 and not math.isclose(funded_baseline, target_initial_cap, abs_tol=1e-8):
-            raise ValueError("CASH reserve requires a funded new session; existing baseline differs")
+        if not math.isfinite(funded_baseline) or funded_baseline < 0:
+            raise ValueError('Invalid funded session baseline')
         if not paper_mode and funded_baseline <= 0:
             free_balance = float(await connector.get_free_balance())
             if not math.isfinite(free_balance) or free_balance < target_initial_cap:
@@ -689,6 +672,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 or not math.isfinite(float(state.get("initial_tpv", 0)))
                 or float(state.get("initial_tpv", 0)) <= 0):
             raise ValueError("Live funding snapshot cannot be migrated or reset")
+    allocation_root = Path(state_file_path).resolve().parent.parent
+    if not paper_mode:
+        source = state.get('live_funding') or {}
+        if source.get('allocation'):
+            from core.real_allocation import validate, account_key
+            validate(allocation_root, source['allocation'], base_ticker, account_key(connector))
+        elif configured_cash_reserve > 0 and not (state.get('funding_halt') or {}).get('active'):
+            raise ValueError('Shared REAL reserve requires a confirmed worker allocation')
 
     # Detect active funding halt BEFORE startup validation so that
     # Phase 2 recovery can complete reductions uninterrupted.
@@ -961,7 +952,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 await connector.set_leverage(base_ticker, _lev)
                 logger.info(f"Leverage set to {_lev}x for {base_ticker}")
             except Exception as e:
-                logger.warning(f"Could not set leverage for {base_ticker}: {e}")
+                logger.error(f"Could not set leverage for {base_ticker}: {e}; trading refused")
+                return
 
             try:
                 await connector.set_margin_type(base_ticker, "CROSSED")
@@ -1109,12 +1101,13 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 if state.get("live_funding") is not None:
                     source = state["live_funding"]
-                    if source.get("blocked") or _in_blacklist or initial_tpv != target_initial:
+                    if source.get("blocked") or _in_blacklist:
                         from core.funding import save_funding_boundary, FundingHalt, FundingJournal
                         source["blocked"] = source.get("blocked") or "Snapshot/config rebase requires operator reconciliation"
                         save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
                                               FundingJournal.from_list(state.get("funding_journal")),
                                               FundingHalt.from_dict(state.get("funding_halt")))
+                        await asyncio.sleep(check_interval)
                         continue
 
                 if _in_blacklist and not paper_mode:
@@ -1136,7 +1129,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     paper_state_dirty = True
                     state_dirty = True
                     _rebased = True
-                elif initial_tpv > target_initial and target_initial > 0 and not paper_mode:
+                elif initial_tpv > target_initial and target_initial > 0 and not paper_mode and state.get("live_funding") is None:
                     logger.info(f"🔄 Initial Capital changed in config: {initial_tpv} -> {target_initial}. Updating base.")
                     initial_tpv = target_initial
                     reference_tpv = initial_tpv
@@ -1154,83 +1147,25 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     state["share_trail_receipts"] = []
                     state_dirty = True
 
-                # Use Mark Price for TPV and rebalance triggers as recommended by Audit
-                prices = await connector.get_mark_prices([base_ticker])
-                price = prices.get(base_ticker)
-                if not price: raise Exception(f"Could not fetch {base_ticker} mark price")
-                
-                # -------------------------------------------------------------------------
-                # [SAFETY] VELOCITY & TREND GUARD
-                # -------------------------------------------------------------------------
                 now = time.time()
-                price_history.append((now, price))
-                # Увеличиваем окно истории до 300 секунд для анализа тренда
-                prune_cut = max(300, int(((portfolio_cfg.get("trend_add_block") or {}).get("window_bars", 0)) * 60))
-                while price_history and (now - price_history[0][0]) > prune_cut:
-                    price_history.popleft()
-                
-                if len(price_history) > 1:
-                    # 1. VELOCITY GUARD (% за окно 60с)
-                    v_point = next((p for p in price_history if now - p[0] <= velocity_window), price_history[0])
-                    old_t, old_p = v_point
-                    velocity = abs(price - old_p) / old_p
-                    if velocity > max_velocity:
-                        if i % 5 == 0:
-                            logger.warning(f"🚀 Velocity Guard: {base_ticker} is moving too fast ({velocity*100:.2f}% in {int(now-old_t)}s). Blocking trades.")
-                        await asyncio.sleep(check_interval); i += 1; continue
-
-                    # 2. TREND GUARD (Efficiency Filter)
-                    if len(price_history) > 10:
-                        p_list = [p[1] for p in price_history]
-                        net_move = abs(p_list[-1] - p_list[0])
-                        total_path = sum(abs(p_list[j] - p_list[j-1]) for j in range(1, len(p_list)))
-                        trend_eff = (net_move / total_path) if total_path > 0 else 0
-                        
-                        trend_min_move = guards_cfg.get("trend_min_move_pct", 0.7) / 100.0
-                        trend_eff_thresh = guards_cfg.get("trend_eff_threshold", 0.35)
-                        
-                        # Trend Guard: если прошли > min_move% и эффективность > threshold — это тренде
-                        if (net_move / p_list[0] > trend_min_move) and trend_eff > trend_eff_thresh:
-                            if i % 5 == 0:
-                                logger.warning(f"🚫 Trend Guard: {base_ticker} toxic move (Eff: {trend_eff:.2f}, Move: {net_move/p_list[0]*100:.2f}%). Freezing.")
-                            await asyncio.sleep(check_interval); i += 1; continue
-
-                # -------------------------------------------------------------------------
-                # [SAFETY] NET MOVE GUARD (NMG) — Pump/Dump Protection
-                # -------------------------------------------------------------------------
-                # If price moved > threshold in one direction within short window,
-                # block ALL rebalance actions. Prevents closing positions at fake
-                # profit/loss during fast unidirectional moves.
-                nmg_triggered = False
-                if len(price_history) > 1:
-                    nmg_point = next((p for p in price_history if now - p[0] <= net_move_window), None)
-                    if nmg_point:
-                        nmg_old_t, nmg_old_p = nmg_point
-                        net_move = abs(price - nmg_old_p) / nmg_old_p
-                        if net_move_block_pct > 0 and net_move > net_move_block_pct:
-                            nmg_triggered = True
-                            if i % 5 == 0:
-                                logger.warning(f"🛡️ Net Move Guard: {base_ticker} moved {net_move*100:.2f}% in {int(now-nmg_old_t)}s (limit {net_move_block_pct*100:.1f}%). Blocking ALL actions.")
-                            await asyncio.sleep(check_interval); i += 1; continue
-
-                # -------------------------------------------------------------------------
-                # [SAFETY] SPREAD GUARD (Only for REAL mode or detailed Paper simulation)
-                # -------------------------------------------------------------------------
+                minute_bars = await backtest_rules.strategy_minutes(
+                    connector, base_ticker, state, current_config, portfolio_cfg, int(now * 1000), paper_state, paper_mode)
+                if not minute_bars:
+                    await asyncio.sleep(check_interval)
+                    i += 1
+                    continue
+                strategy_bar_ms, price = minute_bars[-1]
+                state.setdefault("strategy_origin_ms", minute_bars[0][0])
+                strategy_prices = [value for _, value in minute_bars]
+                spread_blocked = False
                 if not paper_mode:
                     try:
                         depth = await connector.get_order_book(base_ticker, limit=5)
-                        best_bid = float(depth['bids'][0][0]) if depth['bids'] else 0
-                        best_ask = float(depth['asks'][0][0]) if depth['asks'] else 0
-                        if best_bid > 0 and best_ask > 0:
-                            spread = (best_ask - best_bid) / best_bid
-                            if spread > max_spread:
-                                if i % 5 == 0:
-                                    logger.warning(f"⚠️ Spread Guard: {base_ticker} spread too wide ({spread*100:.3f}% > {max_spread*100:.3f}%). Blocking trades.")
-                                await asyncio.sleep(check_interval)
-                                i += 1
-                                continue
-                    except Exception as e:
-                        logger.error(f"Failed to check order book for spread: {e}")
+                        best_bid, best_ask = float(depth['bids'][0][0]), float(depth['asks'][0][0])
+                        spread_blocked = best_bid <= 0 or best_ask < best_bid or (best_ask-best_bid)/best_bid > max_spread
+                    except Exception as error:
+                        logger.error(f"Spread unconfirmed; rebalance blocked: {error}")
+                        spread_blocked = True
 
                 # Fetch current data for deviation calculation
                 l_entry: float = 0.0
@@ -1250,6 +1185,19 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 else:
                     # In REAL mode, we sync positions from exchange but keep balance in shadow
                     raw_positions = await connector.get_positions()
+                    if state.get('live_funding', {}).get('allocation') and any(
+                            key.split('_')[0] != base_ticker and Decimal(str(p['qty'])) != 0
+                            for key, p in raw_positions.items()):
+                        state.update(startup_blocked=True, startup_block_reason='Unallocated REAL position on account')
+                        await save_json(state_file_path, state)
+                        raise ValueError(state['startup_block_reason'])
+                    from core.live_close import reconcile_positions
+                    try:
+                        reconcile_positions(paper_state, raw_positions, base_ticker)
+                    except ValueError as error:
+                        state.update(startup_blocked=True, startup_block_reason=str(error))
+                        await save_json(state_file_path, state)
+                        raise
                     if any(
                         abs(float(paper_state["positions"].get(f"{base_ticker}_{side}", 0))) > 1e-10
                         and abs(float(raw_positions.get(f"{base_ticker}_{side}", {}).get("qty", 0))) < 1e-10
@@ -1369,8 +1317,6 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 virt_debt = Decimal(str(state.get("virt_debt", 0.0)))
                 real_equity = float(Decimal(str(paper_state["balance"])) - virt_debt)
 
-                if real_equity < 0:
-                    real_equity = 0.0
 
                 if not paper_mode:
                     # In REAL mode, we still fetch wallet_balance for margin safety checks, 
@@ -1391,13 +1337,20 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                               FundingHalt.from_dict(state.get("funding_halt")))
                         continue
 
+                if paper_mode and current_config.get("funding_model", "legacy_constant") == "legacy_constant":
+                    backtest_rules.paper_legacy_funding(paper_state, state, targets, base_ticker, price, strategy_bar_ms)
+                    from core.funding import save_funding_boundary, load_funding_state
+                    journal, halt = load_funding_state(state)
+                    save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                    state_dirty = paper_state_dirty = True
+
                 # --- B1: Funding BEFORE calculator (per canonical order §3) ---
                 funding_model = state.get("funding_model", "legacy_constant")
                 if funding_model == "signed_actual":
                     from core.funding import FundingJournal, apply_funding_paper
                     journal = FundingJournal.from_list(state.get("funding_journal"))
                     for event in journal.get_received():
-                        if event.event_time > time.time():
+                        if event.event_time > (strategy_bar_ms / 1000 if paper_mode else time.time()):
                             continue
                         apply_funding_paper(event.signed_amount, paper_state, state)
                         journal.mark_applied(event.event_id)
@@ -1501,8 +1454,16 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # Re-fetch funding-sensitive values AFTER funding block (V/wallet may have changed).
                 virt_debt = Decimal(str(state.get("virt_debt", 0.0)))
                 real_equity = float(Decimal(str(paper_state["balance"])) - virt_debt)
-                if real_equity < 0:
-                    real_equity = 0.0
+
+                if not paper_mode and state.get('live_funding', {}).get('allocation'):
+                    from core.real_allocation import reconcile, account_key
+                    try:
+                        actual = await connector.get_usdt_account()
+                        reconcile(allocation_root, state['live_funding'], state, paper_state, actual['wallet'], account_key(connector))
+                    except Exception as error:
+                        state.update(startup_blocked=True, startup_block_reason=str(error))
+                        await save_json(state_file_path, state)
+                        raise
 
                 # Direct synchronous call to PortfolioCalculator to reduce latency
                 initial_build_pending = state.get("initial_build_pending")
@@ -1517,7 +1478,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 if config_min is None:
                     raise ValueError("min_notional_usdt must be set in config.json")
                 exchange_min = min_notionals.get(base_ticker, config_min)
-                active_min_notional = max(config_min, exchange_min * 1.02)  # 2% buffer for dynamic Binance minimums
+                active_min_notional = config_min if paper_mode else max(config_min, exchange_min)
 
                 fuse_fill = None
                 if not paper_mode:
@@ -1536,9 +1497,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     long_entry_price=l_entry,
                     short_entry_price=s_entry,
                     last_rebalance_price=state.get("last_rebalance_price", 0.0),
-                    min_notional=active_min_notional,
                     # live FUSE gate must price real closing costs, not zero
-                    commission_pct=float(PAPER_COMMISSION_RATE),
+                    commission_pct=float(PAPER_COMMISSION_RATE if paper_mode or fuse_fill.get("taker") is None else fuse_fill["taker"]),
+                    slippage_pct=float(PAPER_SLIPPAGE_RATE) if paper_mode else 0.0,
                     fuse_fill=fuse_fill,
                     profit_budget=profit_budget.balance(paper_state),
                     initial_build=initial_build,
@@ -1594,315 +1555,12 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         if action.get("key") in missing and not action.get("is_reduction", False)
                     ]
 
-                # Trend-add block: additions opposite a one-way window move are skipped (mirrors backtest guard).
-                _t_cfg = portfolio_cfg.get("trend_add_block") or {}
-                _t_pct = _t_cfg.get("pct")
-                if actions and _t_pct:
-                    _t_sec = int(_t_cfg.get("window_sec", int(_t_cfg.get("window_bars", 120)) * 60))  # backtest bars are minute-scale
-                    _t_ref = next((pt for pt in price_history if now - pt[0] <= _t_sec), None)
-                    if _t_ref and _t_ref[1]:
-                        _t_move = (price - _t_ref[1]) / _t_ref[1]
-                        if abs(_t_move) >= float(_t_pct):
-                            _t_opposite = "BASE_SHORT" if _t_move > 0 else "BASE_LONG"
-                            _t_blocked = [a for a in actions if a.get("key") == _t_opposite and not a.get("is_reduction", False)]
-                            if _t_blocked:
-                                logger.warning(
-                                    f"Trend-add block: {base_ticker} moved {_t_move*100:+.2f}% vs {_t_sec}s window; "
-                                    f"adds on {_t_opposite} blocked ({len(_t_blocked)} action(s))."
-                                )
-                                actions = [a for a in actions if a not in _t_blocked]
-                                if initial_build and not any(Decimal(str(q)) != 0 for q in positions.values()):
-                                    actions = [a for a in actions if a['key'] == 'VIRTUAL']
+                actions = backtest_rules.filter_actions(actions, strategy_prices, current_config,
+                    portfolio_cfg, state, initial_build, ignore_limits and not initial_build_pending)
+                if spread_blocked or (not paper_mode and fuse_fill.get("taker") is None):
+                    actions = []
+                state_dirty = True
 
-                if paper_mode:
-                    collateral, maintenance, distance = _paper_guard_metrics(
-                        paper_state, base_ticker, price, calc.tpv, logger,
-                        portfolio_cfg.get("paper_account_free_margin", 0)
-                    )
-                    predictive_liquidation = liquidation_distance_crit != 0 and distance <= liquidation_distance_crit
-                    hard_liquidation = (not predictive_liquidation and post_factum_liquidation_check
-                                        and maintenance > 0 and collateral <= maintenance)
-                    if collateral <= 0 or hard_liquidation:
-                        terminal_status = "portfolio_default" if collateral <= 0 else "modeled_liquidation"
-                        if hard_liquidation and collateral > 0:
-                            paper_state["balance"] = 0.0
-                            for side in ("LONG", "SHORT"):
-                                paper_state["positions"][f"{base_ticker}_{side}"] = 0.0
-                                paper_state[f"{side.lower()}_entry_price"] = 0.0
-                                paper_state[f"{side.lower()}_liquidation_price"] = 0.0
-                            state["liquidation_loss_total"] = float(state.get("liquidation_loss_total", 0)) + float(collateral)
-                            state["virt_qty"] = 0.0
-                            state["virt_debt"] = 0.0
-                        final_tpv = (Decimal('0') if terminal_status == "modeled_liquidation" else collateral)
-                        final_tpv += Decimal(str(state.get("siphoning_reserve", 0)))
-                        initial = Decimal(str(state["initial_tpv"]))
-                        state.update(status=terminal_status, startup_blocked=True,
-                                     startup_block_reason=terminal_status, stopped_at=time.time(),
-                                     last_tpv=float(final_tpv), last_profit=float(final_tpv - initial),
-                                     total_pnl_pct=float((final_tpv / initial - 1) * 100),
-                                     terminal_price=price, terminal_collateral=float(collateral),
-                                     terminal_maintenance=float(maintenance))
-                        from core.funding import save_funding_boundary, load_funding_state
-                        journal, halt = load_funding_state(state)
-                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
-                        logger.warning(f"PAPER {terminal_status}: TPV={final_tpv}; trading blocked until manual reconciliation")
-                        continue
-                    elif predictive_liquidation:
-                        logger.critical(
-                            f"🚨 PAPER COLLATERAL CRITICAL: distance={distance:.2f}% "
-                            f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
-                        )
-                        await _handle_liquidation_guard(
-                            pos_key="PORTFOLIO", dist=distance, liq_price=price,
-                            liquidation_distance_warn=liquidation_distance_warn,
-                            liquidation_distance_crit=liquidation_distance_crit,
-                            is_paper=True, raw_positions=None,
-                            paper_state=paper_state, connector=None,
-                            base_ticker=base_ticker, step_sizes=step_sizes,
-                            notifier=notifier, logger=logger,
-                            reason="PAPER COLLATERAL", price_label="price",
-                        )
-                        state["initial_build_pending"] = None
-                        state["trailing_stop_triggered"] = True
-                        state["paper_close_complete"] = True
-                        state["last_tpv"] = float(paper_state["balance"]) + float(state.get("siphoning_reserve", 0))
-                        state["last_profit"] = state["last_tpv"] - float(state["initial_tpv"])
-                        state["share_trail"] = share_trail.fresh_state()
-                        state["share_trail_receipts"] = []
-                        actions = []
-                        paper_state_dirty = True
-                        state_dirty = True
-                        from core.funding import save_funding_boundary, load_funding_state
-                        journal, halt = load_funding_state(state)
-                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
-                        logger.critical(
-                            "PAPER COLLATERAL CRITICAL: trading halted pending supervisor stop"
-                        )
-                        # Skipping the rest of the cycle prevents any opening before Zombie Mode.
-                        continue
-                    elif liquidation_distance_warn != 0 and distance <= liquidation_distance_warn:
-                        logger.warning(
-                            f"⚠️ PAPER COLLATERAL WARNING: distance={distance:.2f}% "
-                            f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
-                        )
-
-                if ignore_limits and paper_mode:
-                    # initial sizing must reserve the taker fee or CASH ends below zero
-                    for action in actions:
-                        if action.get("key") in ("BASE_LONG", "BASE_SHORT"):
-                            lev = Decimal(str(action.get("leverage", 1)))
-                            adjusted = initial_notional_after_fee(
-                                abs(float(action["diff_usdt"])), float(lev), float(PAPER_COMMISSION_RATE)
-                            )
-                            action["diff_usdt"] = adjusted
-                            action["approved_usdt"] = adjusted
-                            action["diff_equity"] = adjusted / float(lev)
-
-                now = time.time()
-
-                # EMERGENCY STOP: If total_tpv (including SAFE) drops below max_drawdown_limit % of tpv_ath (high-water mark)
-                _dd_base = tpv_ath if tpv_ath > 0 else initial_tpv
-                drawdown_threshold = _dd_base * (1 - max_drawdown_limit / 100)
-                if _dd_base > 0 and tpv_total < drawdown_threshold:
-                    msg = f"CRITICAL: Total Equity {tpv_total:.2f} (including SAFE) is less than {drawdown_threshold:.2f} ({max_drawdown_limit}% DD from ATH={_dd_base:.2f}). EMERGENCY STOP!"
-                    logger.critical(msg)
-                    asyncio.create_task(notifier.send_alert("EMERGENCY STOP", msg))
-                    state["share_trail"] = share_trail.fresh_state()
-                    state["share_trail_receipts"] = []
-                    state_dirty = True
-                    
-                    # Проверяем прибыль относительно глобального начального капитала
-                    global_initial = initial_tpv
-                    if tpv_total < global_initial:
-                        emit_signal("stop", base_ticker, paper_mode)
-                        logger.info(f"Sent STOP signal. Total Equity {tpv_total:.2f} < Global Initial {global_initial:.2f}. Ticker blacklisted.")
-                    else:
-                        emit_signal("exit", base_ticker, paper_mode)
-                        logger.info(f"Sent EXIT signal. Total Equity {tpv_total:.2f} >= Global Initial {global_initial:.2f}. Ticker goes to probation.")
-                        
-                        # Устанавливаем таймаут пробации для прибыльного Emergency Stop
-                        probation_days = current_config.get("probation_period_days", 0.041)
-                        state["trailing_stop_paper_timeout_end"] = now + probation_days * 86400
-                        state["trailing_stop_triggered"] = True
-
-                    # --- CRITICAL: Update final metrics BEFORE emergency stop and exit ---
-                    await _update_final_metrics_for_exit(state, state_file_path, Decimal(str(tpv_total)), Decimal(str(initial_tpv)), calc_res, cycles, logger)
-                    # --------------------------------------------------------------------
-                    try:
-                        await emergency_stop(connector, config_path, state_file_path, paper_state_file_path, logger, ticker_override=base_ticker, paper_mode=paper_mode, close_only=True)
-                    finally:
-                        await self_kill_pm2(base_ticker, paper_mode)
-                    while True:
-                        await asyncio.sleep(86400)
-
-                if tpv_ath == 0 or tpv_total > tpv_ath:
-                    tpv_ath = tpv_total
-                    # The session allocation may be smaller than the configured cap.
-                    if tpv_ath < initial_tpv:
-                        tpv_ath = initial_tpv
-                    state["tpv_ath"] = tpv_ath
-                    state_dirty = True
-
-                if tpv_active < float(portfolio_cfg.get(
-                        "paper_initial_capital" if paper_mode else "initial_capital",
-                        100.0 if paper_mode else 86.0)):
-                    if state.get("trailing_stop_violation_start", 0.0) > 0:
-                        state["trailing_stop_violation_start"] = 0.0
-                        state_dirty = True
-                elif equity_trailing_stop_pct > 0 and tpv_ath > 0:
-                    # Trailing stop activates only when ATH exceeds activation threshold
-                    activation_threshold = initial_tpv * (1 + equity_trailing_stop_activation_pct / 100)
-                    if tpv_ath < activation_threshold:
-                        # Not yet activated — reset violation and skip
-                        if state.get("trailing_stop_violation_start", 0.0) > 0:
-                            state["trailing_stop_violation_start"] = 0.0
-                            state_dirty = True
-                    else:
-                        drawdown_pct = (1 - tpv_total / tpv_ath) * 100
-                        if drawdown_pct >= equity_trailing_stop_pct:
-                            violation_start = state.get("trailing_stop_violation_start", 0.0)
-                            if violation_start == 0:
-                                violation_start = now
-                                state["trailing_stop_violation_start"] = violation_start
-                                state_dirty = True
-                                logger.warning(f"Trailing Stop threshold breached ({drawdown_pct:.2f}%). Timeout: {equity_trailing_stop_timeout_sec}s")
-
-                            elapsed = now - violation_start
-                            if elapsed >= equity_trailing_stop_timeout_sec:
-                                msg = f"Trailing Stop triggered: {drawdown_pct:.2f}% drop from ATH for {elapsed:.1f}s. Closing all positions for {base_ticker}."
-                                logger.warning(f"!!! [STOP] {msg}")
-                                asyncio.create_task(notifier.send_alert("STOP LOSS", msg))
-
-                                # Realize PnL and close positions
-                                if paper_mode:
-                                    from core.paper_close import close_wallet
-                                    paper_state = close_wallet(paper_state, base_ticker, price,
-                                                               f"trailing:{state.get('started_at')}:{cycles}", PAPER_COMMISSION_RATE)
-                                    from core.funding import save_funding_boundary, load_funding_state
-                                    tpv_total = float(paper_state["balance"]) + float(state.get("siphoning_reserve", 0))
-                                    state["last_tpv"] = tpv_total
-                                    state["last_profit"] = tpv_total - float(state["initial_tpv"])
-                                    state["paper_close_complete"] = True
-                                    journal, halt = load_funding_state(state)
-                                    save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
-                                for pos_key, qty in positions.items():
-                                    if paper_mode:
-                                        continue
-                                    if qty == 0 or base_ticker not in pos_key: continue
-                                    side = "SELL" if qty > 0 else "BUY"
-                                    step_size = step_sizes.get(base_ticker, 0.0)
-
-                                    # Calculate realized PnL for shadow balance
-                                    p_qty = abs(paper_state["positions"].get(pos_key, 0.0))
-                                    if p_qty > 0:
-                                        if "LONG" in pos_key:
-                                            pnl = p_qty * (price - paper_state.get("long_entry_price", price))
-                                        else:
-                                            pnl = p_qty * (paper_state.get("short_entry_price", price) - price)
-                                        paper_state["balance"] += pnl
-                                        paper_state["positions"][pos_key] = 0.0
-
-                                    if not paper_mode:
-                                        # In REAL mode, close real position
-                                        await PortfolioExecutor(connector).execute_market_order(
-                                            symbol=pos_key.split('_')[0],
-                                            qty=Decimal(str(abs(qty))),
-                                            side=side,
-                                            step_size=Decimal(str(step_size)),
-                                            reduce_only=True,
-                                            position_side=pos_key.split('_')[1] if '_' in pos_key else "BOTH",
-                                            min_notional=Decimal('0')
-                                        )
-
-                                # Realize state in shadow balance
-                                paper_state["long_entry_price"] = 0.0
-                                paper_state["short_entry_price"] = 0.0
-                                await save_json(paper_state_file_path, paper_state)
-
-                                # Жестко фиксируем смерть по трейлингу для HEAL Guard
-                                state["trailing_stop_triggered"] = True
-                                state["share_trail"] = share_trail.fresh_state()
-                                state["share_trail_receipts"] = []
-                                state_dirty = True
-
-                                # --- CRITICAL: Update final metrics BEFORE state resets and exit ---
-                                await _update_final_metrics_for_exit(state, state_file_path, Decimal(str(tpv_total)), Decimal(str(initial_tpv)), calc_res, cycles, logger)
-                                # --------------------------------------------------------------------
-
-                                # Set paper probation timeout (from probation_period_days)
-                                probation_days = current_config.get("probation_period_days", 0.041)
-                                timeout_end = now + probation_days * 86400
-                                # Trailing stop timeout end should be set AFTER _update_final_metrics_for_exit if we want it to persist,
-                                # but _update_final_metrics_for_exit clears it.
-                                # Actually, requirements say: "Fully reset trailing stop tracking fields ... to 0.0/False to ensure clean state generation."
-                                # So supervisor should handle the timeout if needed.
-                                logger.info(f"Post-stop paper probation end: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timeout_end))}")
-
-                                # Эмитируем сигнал остановки для супервайзера
-                                global_initial = initial_tpv
-                                if tpv_total < global_initial:
-                                    emit_signal("stop", base_ticker, paper_mode)
-                                    logger.info(f"Sent STOP signal. Total Equity {tpv_total:.2f} < Global Initial {global_initial:.2f}. Ticker blacklisted.")
-                                else:
-                                    # Trailing stop triggered with PROFIT
-                                    # Delegate toxic_blacklist logic entirely to supervisor via IPC signal
-                                    emit_signal("exit", base_ticker, paper_mode)
-                                    logger.info(f"Sent EXIT signal. Total Equity {tpv_total:.2f} >= Global Initial {global_initial:.2f}.")
-
-                                # --- CRITICAL: Update final metrics BEFORE state resets and exit ---
-                                await _update_final_metrics_for_exit(state, state_file_path, Decimal(str(tpv_total)), Decimal(str(initial_tpv)), calc_res, cycles, logger)
-                                # --------------------------------------------------------------------
-
-                                # TERMINAL ACTION: Execute emergency liquidation immediately to prevent race condition with supervisor
-                                logger.critical(f"Initiating synchronous emergency liquidation for {base_ticker}...")
-                                # Close positions on exchange, preserve internal state for supervisor review
-                                try:
-                                    await emergency_stop(connector, config_path, state_file_path, paper_state_file_path, logger, ticker_override=base_ticker, paper_mode=paper_mode, close_only=True)
-                                finally:
-                                    await self_kill_pm2(base_ticker, paper_mode)
-                                while True:
-                                    await asyncio.sleep(86400)
-                            else:
-                                # Timeout not yet reached — still pending
-                                if i % 5 == 0:
-                                    logger.info(f"Trailing Stop Pending: {drawdown_pct:.2f}% (Wait {equity_trailing_stop_timeout_sec - elapsed:.1f}s more)")
-                        else:
-                            # Drawdown back below threshold — NO RECOVERY
-                            # Trailing stop is ONE-SHOT: once triggered, never resets
-                            if state.get("trailing_stop_violation_start", 0.0) > 0:
-                                logger.info(f"Trailing Stop: drawdown {drawdown_pct:.2f}% but already triggered — NO recovery")
-
-                # Check if trailing stop was previously triggered (one-shot)
-                if state.get("trailing_stop_triggered", False):
-                    logger.critical(f"🚨 Trailing Stop already triggered for {base_ticker}. Entering Zombie Mode.")
-                    await self_kill_pm2(base_ticker, paper_mode)
-                    while True:
-                        await asyncio.sleep(86400)
-
-                if not paper_mode and (margin_warning > 0 or margin_critical > 0):
-                    try:
-                        m_ratio = m_info.get("margin_ratio", 0.0)
-                        if m_ratio > 0:
-                            if m_ratio < portfolio_cfg.get("margin_ratio_critical", 2.0):
-                                msg = f"Margin ratio {m_ratio:.2f} < {portfolio_cfg.get('margin_ratio_critical', 2.0)}. Emergency stop!"
-                                logger.error(msg)
-                                asyncio.create_task(notifier.send_alert("CRITICAL MARGIN", msg))
-                                emit_signal("stop", base_ticker, paper_mode)
-                                # --- CRITICAL: Update final metrics BEFORE emergency stop and exit ---
-                                await _update_final_metrics_for_exit(state, state_file_path, Decimal(str(tpv_total)), Decimal(str(initial_tpv)), calc_res, cycles, logger)
-                                # --------------------------------------------------------------------
-                                try:
-                                    await emergency_stop(connector, config_path, state_file_path, paper_state_file_path, logger, ticker_override=base_ticker, paper_mode=paper_mode, close_only=True)
-                                finally:
-                                    await self_kill_pm2(base_ticker, paper_mode)
-                                while True:
-                                    await asyncio.sleep(86400)
-                            elif m_ratio < portfolio_cfg.get("margin_ratio_warning", 5.0):
-                                msg = f"Low margin ratio: {m_ratio:.2f}"
-                                logger.warning(msg)
-                                asyncio.create_task(notifier.send_message(f"⚠️ <b>WARNING</b>: {msg} ({base_ticker})"))
-                    except Exception as e:
-                        logger.error(f"Failed to check margin: {e}")
 
                 if i % 5 == 0:
                     res_str = f" | SAFE:{siphoning_reserve:.2f}" if siphoning_reserve > 0 else ""
@@ -1935,7 +1593,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     # Внедряем Notional Value Guard для ВСЕХ ордеров
                     # Проверяем и в портфеле, и в глобальном конфиге
                     min_notional = portfolio_cfg.get("min_notional_usdt", current_config.get("min_notional_usdt", 6.0))
-                    valid_actions = [a for a in actions if abs(a.get("diff_usdt", 0)) >= min_notional]
+                    valid_actions = [a for a in actions if a.get('type') == 'VIRTUAL_ORDER'
+                                     or abs(a.get("diff_usdt", 0)) >= min_notional]
                     
                     fused_actions = valid_actions
                     if state.get("cash_invariant_violation"):
@@ -1989,7 +1648,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 "actions": json.loads(json.dumps(fused_actions, default=str))}
                             await save_json(state_file_path, state)
                         exec_results = await executor.execute_actions(
-                            fused_actions, price, paper_mode, portfolio_cfg, step_sizes, paper_state, **budget_args
+                            fused_actions, price, paper_mode, dict(portfolio_cfg, min_notional_usdt=active_min_notional),
+                            step_sizes, paper_state, **budget_args
                         )
                         if not paper_mode:
                             state["rebalance_inflight"]["results"] = json.loads(json.dumps(exec_results, default=str))
@@ -2019,11 +1679,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     # перекладывает метку «свободный кэш <-> V» (value-neutral).
                                     # Баланс и цена актива в это не вмешиваются.
                                     new_virt_debt = Decimal(str(state.get("virt_debt", 0.0))) + diff_usdt
-                                    if Decimal('0') < new_virt_debt < Decimal('1.0'):
-                                        new_virt_debt = Decimal('0')  # dust-метка -> в ноль
                                     if new_virt_debt < Decimal('0'):
                                         new_virt_debt = Decimal('0')
-                                    state["virt_debt"] = float(new_virt_debt.quantize(Decimal('1e-4')))
+                                    state["virt_debt"] = float(new_virt_debt)
                                     paper_state_dirty = True
                                     state_dirty = True
 
@@ -2097,7 +1755,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 if not reduce_only and (old_qty + qty) > 0:
                                     dec_price = Decimal(str(res.get("price", price)))
                                     new_entry = (old_qty * old_entry + qty * dec_price) / (old_qty + qty)
-                                    paper_state[entry_key] = float(new_entry.quantize(Decimal('1e-8')))
+                                    paper_state[entry_key] = float(new_entry)
 
                                     # [LIQUIDATION GUARD] Calculate simulated liquidation price
                                     # For LONG: liq_price < entry (price must drop to liq)
@@ -2119,7 +1777,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     paper_state["short_liquidation_price"] = 0.0
 
                                 # Запись обратно во float-структуру JSON
-                                paper_state["positions"][pos_key] = float(new_qty.quantize(Decimal('1e-8')))
+                                paper_state["positions"][pos_key] = float(new_qty)
 
                                 # Two-sided share trailing: a confirmed fill (full or partial, qty > 0)
                                 # consumes the signal of this leg and direction only. Unknown/failed
@@ -2133,7 +1791,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                         state_dirty = True
 
                                 current_balance = Decimal(str(paper_state["balance"]))
-                                paper_state["balance"] = float((current_balance + trade_pnl - commission).quantize(Decimal('1e-4')))
+                                paper_state["balance"] = float(current_balance + trade_pnl - commission)
                                 paper_state_dirty = True
                                 if trail_state is not None or paper_mode:
                                     share_trail.fill_receipt(paper_state, res, record=True)
@@ -2287,7 +1945,6 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # Use reconstructed real_equity for safe_calc
                 safe_virt_debt = Decimal(str(state.get("virt_debt", 0.0)))
                 safe_real_equity_adj = float(Decimal(str(safe_real_equity)) - safe_virt_debt)
-                if safe_real_equity_adj < 0: safe_real_equity_adj = 0.0
 
                 safe_calc_kwargs = dict(
                     positions=safe_positions,
@@ -2317,6 +1974,83 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 state["valuation_at"] = state["last_update"]
                 state["valuation_price"] = float(price)
                 state_dirty = True
+
+                calc, calc_res = safe_calc, safe_calc_res
+                tpv_active, tpv_total = float(safe_calc.tpv), float(safe_calc.total_tpv)
+                if paper_mode:
+                    collateral, maintenance, distance = _paper_guard_metrics(
+                        paper_state, base_ticker, price, calc.tpv, logger,
+                        portfolio_cfg.get("cash_reserve_usdt", 0)
+                    )
+                    predictive_liquidation = liquidation_distance_crit != 0 and distance <= liquidation_distance_crit
+                    hard_liquidation = (not predictive_liquidation and post_factum_liquidation_check
+                                        and maintenance > 0 and collateral <= maintenance)
+                    if collateral <= 0 or hard_liquidation:
+                        terminal_status = "portfolio_default" if collateral <= 0 else "modeled_liquidation"
+                        if hard_liquidation and collateral > 0:
+                            paper_state["balance"] = 0.0
+                            for side in ("LONG", "SHORT"):
+                                paper_state["positions"][f"{base_ticker}_{side}"] = 0.0
+                                paper_state[f"{side.lower()}_entry_price"] = 0.0
+                                paper_state[f"{side.lower()}_liquidation_price"] = 0.0
+                            state["liquidation_loss_total"] = float(state.get("liquidation_loss_total", 0)) + float(collateral)
+                            state["virt_qty"] = 0.0
+                            state["virt_debt"] = 0.0
+                        final_tpv = (Decimal('0') if terminal_status == "modeled_liquidation" else collateral)
+                        final_tpv += Decimal(str(state.get("siphoning_reserve", 0)))
+                        initial = Decimal(str(state["initial_tpv"]))
+                        state.update(status=terminal_status, startup_blocked=True,
+                                     startup_block_reason=terminal_status, stopped_at=time.time(),
+                                     last_tpv=float(final_tpv), last_profit=float(final_tpv - initial),
+                                     total_pnl_pct=float((final_tpv / initial - 1) * 100),
+                                     terminal_price=price, terminal_collateral=float(collateral),
+                                     terminal_maintenance=float(maintenance))
+                        from core.funding import save_funding_boundary, load_funding_state
+                        journal, halt = load_funding_state(state)
+                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                        logger.warning(f"PAPER {terminal_status}: TPV={final_tpv}; trading blocked until manual reconciliation")
+                        continue
+                    elif predictive_liquidation:
+                        logger.critical(
+                            f"🚨 PAPER COLLATERAL CRITICAL: distance={distance:.2f}% "
+                            f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
+                        )
+                        await _handle_liquidation_guard(
+                            pos_key="PORTFOLIO", dist=distance, liq_price=price,
+                            liquidation_distance_warn=liquidation_distance_warn,
+                            liquidation_distance_crit=liquidation_distance_crit,
+                            is_paper=True, raw_positions=None,
+                            paper_state=paper_state, connector=None,
+                            base_ticker=base_ticker, step_sizes=step_sizes,
+                            notifier=notifier, logger=logger,
+                            reason="PAPER COLLATERAL", price_label="price",
+                        )
+                        state["initial_build_pending"] = None
+                        state["trailing_stop_triggered"] = True
+                        state["paper_close_complete"] = True
+                        state.update(stop_reason='liquidation_guard', strategy_bar_ms=strategy_bar_ms,
+                                     restart_not_before=strategy_bar_ms/1000 + int(float(current_config.get('toxic_cooldown_days', .1))*1440)*60)
+                        state["last_tpv"] = float(paper_state["balance"]) + float(state.get("siphoning_reserve", 0))
+                        state["last_profit"] = state["last_tpv"] - float(state["initial_tpv"])
+                        state["share_trail"] = share_trail.fresh_state()
+                        state["share_trail_receipts"] = []
+                        actions = []
+                        paper_state_dirty = True
+                        state_dirty = True
+                        from core.funding import save_funding_boundary, load_funding_state
+                        journal, halt = load_funding_state(state)
+                        save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                        logger.critical(
+                            "PAPER COLLATERAL CRITICAL: trading halted pending supervisor stop"
+                        )
+                        emit_signal('exit', base_ticker, paper_mode)
+                        await self_kill_pm2(base_ticker, paper_mode)
+                        return
+                    elif liquidation_distance_warn != 0 and distance <= liquidation_distance_warn:
+                        logger.warning(
+                            f"⚠️ PAPER COLLATERAL WARNING: distance={distance:.2f}% "
+                            f"collateral={collateral:.4f} maintenance={maintenance:.4f}"
+                        )
 
                 amount = siphoning.calculate_amount(safe_calc.tpv, target_initial_cap,
                     state.get("virt_debt", 0), siphoning_threshold_pct, reinvestment_ratio)
@@ -2349,6 +2083,144 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     emit_signal("siphon", base_ticker, paper_mode)
                     await self_kill_pm2(base_ticker, paper_mode)
                     return
+
+                now = strategy_bar_ms / 1000
+
+                _unrealized = float(safe_calc.tpv) - float(paper_state["balance"])
+                _maxdd, _realized_ath = backtest_rules.maxdd_reached(
+                    float(safe_calc.tpv), _unrealized, state.get("realized_ath", initial_tpv),
+                    initial_tpv, max_drawdown_limit)
+                state["realized_ath"] = _realized_ath
+                _dd_base = _realized_ath if _realized_ath > 0 else initial_tpv
+                drawdown_threshold = _dd_base * (1 - max_drawdown_limit / 100)
+                if _maxdd:
+                    cooldown_days = float(current_config.get('max_drawdown_cooldown_days', .1))
+                    if not math.isfinite(cooldown_days) or cooldown_days < 0:
+                        raise ValueError('max_drawdown_cooldown_days must be finite and non-negative')
+                    state.update(restart_not_before=now + max(1, int(cooldown_days * 1440)) * 60,
+                                 trailing_stop_triggered=True, stop_reason='max_dd_stop',
+                                 strategy_bar_ms=strategy_bar_ms, rebalance_cycles=cycles)
+                    logger.critical(f"Realized drawdown stop: wallet={paper_state['balance']}; threshold={drawdown_threshold}")
+                    asyncio.create_task(notifier.send_alert('EMERGENCY STOP', f'Realized drawdown limit reached for {base_ticker}'))
+                    from core.funding import load_funding_state, save_funding_boundary
+                    journal, halt = load_funding_state(state)
+                    save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                    await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
+                                         logger, ticker_override=base_ticker, paper_mode=paper_mode,
+                                         close_only=True, decision_price=price)
+                    emit_signal('exit', base_ticker, paper_mode)
+                    await self_kill_pm2(base_ticker, paper_mode)
+                    return
+
+                if tpv_ath == 0 or tpv_active > tpv_ath:
+                    tpv_ath = tpv_active
+                    # The session allocation may be smaller than the configured cap.
+                    if tpv_ath < initial_tpv:
+                        tpv_ath = initial_tpv
+                    state["tpv_ath"] = tpv_ath
+                    state['trailing_stop_violation_start'] = 0.0
+                    state_dirty = True
+
+                if tpv_active < float(portfolio_cfg.get(
+                        "paper_initial_capital" if paper_mode else "initial_capital",
+                        100.0 if paper_mode else 86.0)):
+                    if state.get("trailing_stop_violation_start", 0.0) > 0:
+                        state["trailing_stop_violation_start"] = 0.0
+                        state_dirty = True
+                elif equity_trailing_stop_pct > 0 and tpv_ath > 0:
+                    # Trailing stop activates only when ATH exceeds activation threshold
+                    activation_threshold = initial_tpv * (1 + equity_trailing_stop_activation_pct / 100)
+                    if tpv_ath <= activation_threshold:
+                        # Not yet activated — reset violation and skip
+                        if state.get("trailing_stop_violation_start", 0.0) > 0:
+                            state["trailing_stop_violation_start"] = 0.0
+                            state_dirty = True
+                    else:
+                        drawdown_pct = (1 - tpv_active / tpv_ath) * 100
+                        if drawdown_pct >= equity_trailing_stop_pct:
+                            violation_start = state.get("trailing_stop_violation_start", 0.0)
+                            if violation_start == 0:
+                                violation_start = now
+                                state["trailing_stop_violation_start"] = violation_start
+                                state_dirty = True
+                                logger.warning(f"Trailing Stop threshold breached ({drawdown_pct:.2f}%). Timeout: {equity_trailing_stop_timeout_sec}s")
+
+                            elapsed = now - violation_start
+                            if elapsed >= max(1, int(equity_trailing_stop_timeout_sec) // 60) * 60:
+                                msg = f"Trailing Stop triggered: {drawdown_pct:.2f}% drop from ATH for {elapsed:.1f}s. Closing all positions for {base_ticker}."
+                                logger.warning(f"!!! [STOP] {msg}")
+                                asyncio.create_task(notifier.send_alert("STOP LOSS", msg))
+
+                                cooldown_days = float(current_config.get('toxic_cooldown_days', .1))
+                                if not math.isfinite(cooldown_days) or cooldown_days < 0:
+                                    raise ValueError('toxic_cooldown_days must be finite and non-negative')
+                                state.update(trailing_stop_triggered=True, stop_reason='equity_trailing_stop',
+                                             restart_not_before=now + int(cooldown_days * 1440) * 60,
+                                             strategy_bar_ms=strategy_bar_ms, rebalance_cycles=cycles)
+                                if paper_mode:
+                                    from core.paper_close import close_wallet
+                                    paper_state = close_wallet(paper_state, base_ticker, price,
+                                        f"trailing:{state.get('started_at')}:{cycles}", PAPER_COMMISSION_RATE, PAPER_SLIPPAGE_RATE)
+                                    state['paper_close_complete'] = True
+                                else:
+                                    from core.live_close import close_live_wallet
+                                    await close_live_wallet(connector, state, paper_state, base_ticker,
+                                        targets, step_sizes, state_file_path, paper_state_file_path,
+                                        'equity_trailing_stop')
+                                tpv_total = float(paper_state['balance']) + float(state.get('siphoning_reserve', 0))
+                                state.update(last_tpv=tpv_total, last_profit=tpv_total-initial_tpv,
+                                             total_pnl_pct=(tpv_total/initial_tpv-1)*100,
+                                             trailing_stop_violation_start=0., share_trail=share_trail.fresh_state(),
+                                             share_trail_receipts=[], last_update=time.time())
+                                from core.funding import load_funding_state, save_funding_boundary
+                                journal, halt = load_funding_state(state)
+                                save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                                emit_signal('exit', base_ticker, paper_mode)
+                                await self_kill_pm2(base_ticker, paper_mode)
+                                return
+                            else:
+                                # Timeout not yet reached — still pending
+                                if i % 5 == 0:
+                                    logger.info(f"Trailing Stop Pending: {drawdown_pct:.2f}% (Wait {equity_trailing_stop_timeout_sec - elapsed:.1f}s more)")
+                        else:
+                            # Drawdown back below threshold — NO RECOVERY
+                            # Trailing stop is ONE-SHOT: once triggered, never resets
+                            if state.get("trailing_stop_violation_start", 0.0) > 0:
+                                logger.info(f"Trailing Stop: drawdown {drawdown_pct:.2f}% but already triggered — NO recovery")
+
+                # Check if trailing stop was previously triggered (one-shot)
+                if state.get("trailing_stop_triggered", False):
+                    logger.critical(f"🚨 Trailing Stop already triggered for {base_ticker}. Entering Zombie Mode.")
+                    await self_kill_pm2(base_ticker, paper_mode)
+                    while True:
+                        await asyncio.sleep(86400)
+
+                if not paper_mode and (margin_warning > 0 or margin_critical > 0):
+                    try:
+                        m_info = await connector.get_margin_ratio()
+                        m_ratio = m_info.get("margin_ratio", 0.0)
+                        if m_ratio > 0:
+                            if m_ratio < portfolio_cfg.get("margin_ratio_critical", 2.0):
+                                msg = f"Margin ratio {m_ratio:.2f} < {portfolio_cfg.get('margin_ratio_critical', 2.0)}. Emergency stop!"
+                                logger.error(msg)
+                                asyncio.create_task(notifier.send_alert("CRITICAL MARGIN", msg))
+                                state.update(stop_reason='exchange_margin_critical', strategy_bar_ms=strategy_bar_ms,
+                                             rebalance_cycles=cycles)
+                                from core.funding import load_funding_state, save_funding_boundary
+                                journal, halt = load_funding_state(state)
+                                save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                                await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
+                                    logger, ticker_override=base_ticker, paper_mode=False, close_only=True)
+                                emit_signal('stop', base_ticker, paper_mode)
+                                await self_kill_pm2(base_ticker, paper_mode)
+                                return
+                            elif m_ratio < portfolio_cfg.get("margin_ratio_warning", 5.0):
+                                msg = f"Low margin ratio: {m_ratio:.2f}"
+                                logger.warning(msg)
+                                asyncio.create_task(notifier.send_message(f"⚠️ <b>WARNING</b>: {msg} ({base_ticker})"))
+                    except Exception as e:
+                        logger.error(f"Failed to check margin: {e}")
+
 
                 # Update reporting value in summary to account for new reserve
                 final_reported_tpv = total_tpv_final
@@ -2421,6 +2293,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     except Exception as e:
                         logger.warning(f"Liquidation guard check failed: {e}")
 
+                state["strategy_bar_ms"] = strategy_bar_ms
+                state_dirty = True
                 if state_dirty:
                     await save_json(state_file_path, state)
                 if paper_state_dirty:
@@ -2442,7 +2316,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     finally:
         await notifier.close()
 
-async def emergency_stop(connector: BinanceConnector, config_path: str, state_file_path: str, paper_state_file_path: str, logger: logging.Logger, ticker_override: str = None, paper_mode: bool = False, close_only: bool = False):
+async def emergency_stop(connector: BinanceConnector, config_path: str, state_file_path: str, paper_state_file_path: str, logger: logging.Logger, ticker_override: str = None, paper_mode: bool = False, close_only: bool = False, decision_price=None):
     config = safe_load_json_sync(config_path, {})
 
     base_ticker = ticker_override if ticker_override else config.get("base_ticker", "BTCUSDT")
@@ -2459,12 +2333,15 @@ async def emergency_stop(connector: BinanceConnector, config_path: str, state_fi
         if not state or not wallet or not state.get("started_at") or float(state.get("initial_tpv", 0)) <= 0:
             raise ValueError("PAPER stop requires an identified strategy/wallet pair")
         if any(float(q) for q in wallet.get("positions", {}).values()):
-            prices = await connector.get_mark_prices([base_ticker])
-            close_price = prices.get(base_ticker)
+            if decision_price is None:
+                prices = await connector.get_mark_prices([base_ticker])
+                close_price = prices.get(base_ticker)
+            else:
+                close_price = decision_price
         else:
             close_price = wallet.get("last_price") or 1
         event = f"stop:{state['started_at']}:{state.get('rebalance_cycles', 0)}"
-        wallet = close_wallet(wallet, base_ticker, close_price, event, PAPER_COMMISSION_RATE)
+        wallet = close_wallet(wallet, base_ticker, close_price, event, PAPER_COMMISSION_RATE, PAPER_SLIPPAGE_RATE)
         equity = float(wallet["balance"]) + float(state.get("siphoning_reserve", 0))
         state.update(last_tpv=equity, last_profit=equity - float(state["initial_tpv"]),
                      paper_close_complete=True, trailing_stop_triggered=True, last_update=time.time())
@@ -2478,123 +2355,22 @@ async def emergency_stop(connector: BinanceConnector, config_path: str, state_fi
         logger.info(f"PAPER CLOSE committed: {base_ticker} equity={equity:.8f} net={state['last_profit']:.8f}; opening and ATH retained")
         return
 
-    logger.info(f"🛑 EMERGENCY STOP for {base_ticker} (Paper: {paper_mode}, CloseOnly: {close_only})")
-
-    # --- PERSISTENCE PROTOCOL: Archive state before reset ---
-    # --- PERSISTENCE PROTOCOL: Archive state before reset ---
-    try:
-        history_dir = Path("history")
-        history_dir.mkdir(exist_ok=True)
-        state = await load_json(state_file_path, {})
-        paper_state = await load_json(paper_state_file_path, {})
-
-        # Ensure final profit is calculated from the *current* state before archiving
-        current_total_tpv_final = float(state.get("last_tpv", 0.0))
-        current_initial_tpv = float(state.get("initial_tpv", 0.0))
-        final_calculated_profit = current_total_tpv_final - current_initial_tpv
-
-        archive_data = {
-            "ticker": base_ticker,
-            "timestamp": time.time(),
-            "state": state,
-            "paper_state": paper_state,
-            "final_profit": final_calculated_profit,
-            "final_total_tpv": current_total_tpv_final,
-            "final_pnl_pct": state.get("total_pnl_pct", 0.0)
-        }
-        archive_path = history_dir / f"archive_{base_ticker}_{int(time.time())}.json"
-        await save_json(str(archive_path), archive_data)
-        logger.info(f"💾 State archived to {archive_path}")
-    except Exception as e:
-        logger.error(f"Failed to archive state: {e}")
-
+    from core.live_close import close_live_wallet
+    from core.funding import load_funding_state, save_funding_boundary
+    state = await load_json(state_file_path, {})
+    wallet = await load_json(paper_state_file_path, {})
+    if not state or not wallet or not state.get("started_at"):
+        raise ValueError("REAL stop requires an identified strategy/wallet pair")
     exchange_info = await connector.get_exchange_info()
-    step_sizes = {s["symbol"]: float(f["stepSize"]) for s in exchange_info["symbols"] for f in s["filters"] if f["filterType"] == "LOT_SIZE"}
-
-    # Always try to load paper_state to reset it (unless close_only)
-    paper_state = await load_json(paper_state_file_path, {})
-
-    if paper_mode:
-        if paper_state and "positions" in paper_state:
-            for pos_key, qty in paper_state["positions"].items():
-                if qty != 0:
-                    logger.info(f"Closing PAPER position {pos_key}: {qty}")
-
-        if not close_only:
-            # Reset paper state to fresh start
-            paper_state.update({
-                "balance": initial_capital,
-                "positions": {f"{base_ticker}_LONG": 0.0, f"{base_ticker}_SHORT": 0.0},
-                "long_entry_price": 0.0,
-                "short_entry_price": 0.0,
-                "last_price": 0.0
-            })
-            await save_json(paper_state_file_path, paper_state)
-    else:
-        # REAL mode: close on exchange
-        raw_positions = await connector.get_positions()
-        for pos_key, data in raw_positions.items():
-            if base_ticker in pos_key:
-                qty = data["qty"]
-                if qty != 0:
-                    side = "SELL" if qty > 0 else "BUY"
-                    step_size = step_sizes.get(base_ticker, 0.0)
-                    logger.info(f"Closing REAL position {pos_key}: {qty}")
-                    await PortfolioExecutor(connector).execute_market_order(
-                        symbol=base_ticker,
-                        qty=Decimal(str(abs(qty))),
-                        side=side,
-                        step_size=Decimal(str(step_size)),
-                        reduce_only=True,
-                        position_side=pos_key.split('_')[1] if '_' in pos_key else "BOTH",
-                        min_notional=Decimal('0')
-                    )
-
-        if not close_only:
-            if paper_state:
-                paper_state.update({
-                    "balance": initial_capital,
-                    "positions": {f"{base_ticker}_LONG": 0.0, f"{base_ticker}_SHORT": 0.0},
-                    "long_entry_price": 0.0,
-                    "short_entry_price": 0.0
-                })
-                await save_json(paper_state_file_path, paper_state)
-
-    if not close_only:
-        # Сброс основного состояния
-        state = await load_json(state_file_path, {})
-        state.update({
-            "virt_qty": 0.0,
-            "virt_debt": 0.0,
-            "initial_tpv": 0.0,
-            "reference_tpv": 0.0,
-            "tpv_ath": 0.0,
-            # "trailing_stop_triggered": False, # [RESTRICTION] Manual reset only by supervisor
-            "trailing_stop_violation_start": 0.0
-        })
-        await save_json(state_file_path, state)
-        logger.info(f"✅ Emergency stop completed for {base_ticker}. All positions closed and state reset (TS flag preserved).")
-    else:
-        # При close_only (например, при ротации супервайзером) выполняем санитарию ATH и базы,
-        # чтобы при следующем запуске бот не стартанул с глубокой просадки относительно старого ATH.
-        try:
-            state = await load_json(state_file_path, {})
-            if state:
-                current_tpv = float(state.get("last_tpv", 0.0))
-                if current_tpv > 0:
-                    logger.info(f"🔄 Санитизация состояния при плановом стопе ({base_ticker}). Ребазирование на {current_tpv:.4f}")
-                    # Floor: tpv_ath cannot be below global initial capital
-                    _sanitized_ath = max(current_tpv, initial_capital)
-                    state.update({
-                        "initial_tpv": current_tpv,
-                        "reference_tpv": current_tpv,
-                        "tpv_ath": _sanitized_ath,
-                        "trailing_stop_violation_start": 0.0
-                    })
-                    await save_json(state_file_path, state)
-        except Exception as e:
-            logger.error(f"Failed to sanitize state during emergency_stop: {e}")
-        logger.info(f"✅ Positions closed for {base_ticker}. State preserved and sanitized.")
+    steps = {row["symbol"]: float(f["stepSize"]) for row in exchange_info["symbols"]
+             for f in row["filters"] if f["filterType"] == "LOT_SIZE"}
+    await close_live_wallet(connector, state, wallet, base_ticker, portfolio_cfg["targets"],
+                            steps, state_file_path, paper_state_file_path, "emergency_stop")
+    state["trailing_stop_triggered"] = True
+    state["share_trail"] = share_trail.fresh_state()
+    journal, halt = load_funding_state(state)
+    save_funding_boundary(state_file_path, paper_state_file_path, state, wallet, journal, halt)
+    logger.info(f"REAL close confirmed for {base_ticker}; financial state preserved")
 
 if __name__ == "__main__":
     import argparse
@@ -2711,13 +2487,16 @@ if __name__ == "__main__":
             logger.critical(f"Failed to initialize BinanceConnector after 5 attempts: {e}")
             exit(1)
 
-    if args.stop:
-        # КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: По умолчанию НЕ удаляем стейт при стопе. 
-        # Только если явно передан --wipe
-        should_wipe = args.wipe
-        asyncio.run(emergency_stop(connector, args.config, instance_state_file, instance_paper_state_file, logger, ticker_override=base_ticker, paper_mode=is_paper_instance, close_only=(not should_wipe)))
-    else:
-        logger.info(f"💾 State files: REAL={instance_state_file}, PAPER={instance_paper_state_file} | Mode: {'PAPER' if is_paper_instance else 'REAL'}")
-        # Передаем признак paper_mode в rebalance_loop через конфиг-обертку или напрямую, 
-        # но rebalance_loop читает конфиг из файла. Лучше пропатчить rebalance_loop чтобы он принимал paper_mode_override.
-        asyncio.run(rebalance_loop(connector, args.config, instance_state_file, instance_paper_state_file, logger, ticker_override=base_ticker, paper_mode_override=is_paper_instance, expect_live_snapshot=args.expect_live_snapshot))
+    from contextlib import nullcontext
+    from filelock import FileLock
+    from tempfile import gettempdir
+    from core.real_allocation import account_key
+    execution_guard = (nullcontext() if is_paper_instance else FileLock(
+        str(Path(gettempdir())/f'prosperous-real-{account_key(connector)}.lock'), timeout=0))
+    with execution_guard:
+        if args.stop:
+            should_wipe = args.wipe
+            asyncio.run(emergency_stop(connector, args.config, instance_state_file, instance_paper_state_file, logger, ticker_override=base_ticker, paper_mode=is_paper_instance, close_only=(not should_wipe)))
+        else:
+            logger.info(f"State files: {instance_state_file}, {instance_paper_state_file}; mode={'PAPER' if is_paper_instance else 'REAL'}")
+            asyncio.run(rebalance_loop(connector, args.config, instance_state_file, instance_paper_state_file, logger, ticker_override=base_ticker, paper_mode_override=is_paper_instance, expect_live_snapshot=args.expect_live_snapshot))

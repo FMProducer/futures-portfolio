@@ -126,6 +126,9 @@ async def reconcile_swarm_state(target_tickers: List[str], mode: str) -> None:
         logger.warning(f"🚨 [REAPER GUARD] Обнаружен рассинхрон. Orphaned процессы в режиме {mode}: {orphans_to_kill}")
 
         async def kill_orphan(orphan_name: str) -> None:
+            if mode == 'real':
+                await stop_bot(orphan_name.removeprefix('real-').upper()+'USDT', is_paper=False)
+                return
             if mode == "paper" and (CORE_PATH / "paper_budget.sqlite").exists():
                 await stop_bot(orphan_name.removeprefix("paper-").upper() + "USDT", is_paper=True)
                 return
@@ -163,6 +166,14 @@ async def stop_bot(ticker: str, is_paper: bool = False):
             f"pm2 delete {proc_name}",
             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
         )).wait()
+        if not is_paper:
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(BASE_PATH)
+            close = await asyncio.create_subprocess_exec(
+                sys.executable, str(CORE_PATH/'main.py'), '--config', str(CONFIG_PATH),
+                '--ticker', ticker, '--stop', '--real', cwd=str(BASE_PATH), env=env)
+            if await close.wait() != 0:
+                raise RuntimeError(f'REAL close failed; allocation retained: {ticker}')
         if is_paper and (CORE_PATH / "paper_budget.sqlite").exists():
             if code != 0:
                 raise RuntimeError(f"PAPER process stop failed: {ticker}")
@@ -179,11 +190,15 @@ async def stop_bot(ticker: str, is_paper: bool = False):
                     await safe_load_json(str(CORE_PATH / f"paper_shadow_{ticker}.json"), {}), rotation=True)
     except FileNotFoundError:
         logger.error(f"PM2 binary not found — cannot delete {proc_name}")
+        if not is_paper or (CORE_PATH/'paper_budget.sqlite').exists():
+            raise
     except OSError as e:
         logger.error(f"OS error deleting {proc_name}: {e}")
+        if not is_paper or (CORE_PATH/'paper_budget.sqlite').exists():
+            raise
     except Exception as e:
         logger.error(f"Failed to delete {proc_name}: {e}")
-        if is_paper and (CORE_PATH / "paper_budget.sqlite").exists():
+        if not is_paper or (CORE_PATH / "paper_budget.sqlite").exists():
             raise
 
 async def enforce_swarm_consistency(connector: BinanceConnector, config: dict) -> Set[str]:
@@ -234,21 +249,6 @@ async def enforce_swarm_consistency(connector: BinanceConnector, config: dict) -
                         logger.warning(f"⚠️ HEAL REJECTED: {ticker} was stopped by Trailing Stop. Scheduling position liquidation.")
                         to_close_tickers.add(ticker)
 
-                        # [B1 FIX] Kill zombie PM2 process BEFORE resetting TS flags
-                        # so Reaper Guard (later in the loop) won't find a stale zombie.
-                        await stop_bot(ticker, is_paper=False)
-
-                        # Сброс TS флагов для будущего чистого старта
-                        try:
-                            state_data["trailing_stop_triggered"] = False
-                            state_data["trailing_stop_violation_start"] = 0.0
-                            state_data["trailing_stop_paper_timeout_end"] = 0.0
-                            with open(state_path, "w", encoding="utf-8") as f:
-                                json.dump(state_data, f, indent=2, ensure_ascii=False)
-                            logger.info(f"🔄 TS flags reset in state file for {ticker}")
-                        except Exception as e:
-                            logger.error(f"Failed to reset TS flags for {ticker}: {e}")
-
                         continue
 
                     logger.warning(f"🚨 HEAL TRIGGERED: Active position for {ticker} detected on exchange, but PM2 process is dead. Real state file is valid. Initiating recovery...")
@@ -276,18 +276,10 @@ async def enforce_swarm_consistency(connector: BinanceConnector, config: dict) -
         await start_bot(ticker, is_paper=False, config=config)
         logger.info(f"✅ Relaunch command sent for {ticker}.")
 
-    # Ensure subprocess can find core/ module from any CWD
-    _sub_env = os.environ.copy()
-    _sub_env["PYTHONPATH"] = str(BASE_PATH)
-
-    for ticker in to_close_tickers:
-        logger.info(f"🧹 Closing all positions for unauthorized ticker: {ticker}")
-        cmd_stop = f'"{sys.executable}" "{BASE_PATH / "core" / "main.py"}" --config config.json --ticker {ticker} --stop --real'
-        await (await asyncio.create_subprocess_shell(
-            cmd_stop, env=_sub_env,
-            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
-        )).wait()
-        logger.info(f"✅ Positions for {ticker} closed successfully.")
+    for ticker in sorted(to_close_tickers):
+        logger.info(f"Closing all positions for unauthorized ticker: {ticker}")
+        await stop_bot(ticker, is_paper=False)
+        logger.info(f"Positions for {ticker} closed successfully.")
 
     return to_heal_tickers
 
@@ -352,26 +344,21 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
     if old_state.get("startup_blocked") or old_state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
         raise ValueError(f"State reset requires manual reconciliation: {ticker}")
 
-    # For paper mode: also release the budget allocation so it can be freshly reserved
-    if is_paper and (CORE_PATH / "paper_budget.sqlite").exists():
-        from core.paper_budget import release, ticker_history
-        # Create a mock wallet with flat positions for clean release
-        mock_wallet = {"balance": config_capital, "positions": {f"{ticker}_LONG": 0.0, f"{ticker}_SHORT": 0.0}}
-        mock_state = {"paper_close_complete": True, "last_tpv": config_capital, "siphoning_reserve": 0.0, "started_at": old_state.get("started_at", time.time())}
-        try:
-            release(BASE_PATH, ticker, mock_state, mock_wallet, rotation=True)
-            logger.info(f"🔄 Released paper budget allocation for {ticker} during state reset")
-        except Exception as e:
-            logger.warning(f"Could not release paper budget for {ticker}: {e}")
-    
+    old_wallet = await safe_load_json(str(shadow_state_path), {})
+    if old_state and any(float(q) != 0 for q in old_wallet.get("positions", {}).values()):
+        raise ValueError(f"State reset requires a confirmed flat wallet: {ticker}")
+
     # Динамическое ребазирование: сохраняем накопленный или урезанный стопом капитал
-    final_capital = float(old_state.get("last_tpv", config_capital)) if old_state else config_capital
+    final_capital = float(old_wallet.get("balance", config_capital)) if old_state else config_capital
     if capital_override is not None:
         final_capital = capital_override
     final_capital, config_capital = float(final_capital), float(config_capital)
     if not all(math.isfinite(value) and value > 0 for value in (final_capital, config_capital)):
         raise ValueError(f"Invalid starting capital: {ticker}")
-    final_capital = min(final_capital, config_capital)
+    if final_capital < 5:
+        raise ValueError(f"Starting capital below BACKTEST restart minimum: {ticker}")
+    if capital_override is not None and old_wallet and final_capital > float(old_wallet["balance"]) + 1e-8:
+        raise ValueError(f"Starting capital exceeds confirmed wallet: {ticker}")
 
     if old_state and (old_state.get("trailing_stop_triggered") or old_state.get("trailing_stop_violation_start", 0.0) > 0.0):
         logger.warning(f"📉 Обнаружен Trailing Stop для {ticker}. Капитал ребазирован: {config_capital} -> {final_capital}")
@@ -383,8 +370,6 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
             try:
                 shutil.copy(path, archive_path)
                 logger.info(f"💾 Archived {'paper ' if is_paper else ''}state for {ticker}: {path.name} -> {archive_path.name}")
-                os.remove(path)
-                logger.info(f"🗑️ Deleted stale state file: {path.name}")
             except Exception as e:
                 logger.error(f"Failed to archive {path}: {e}")
                 raise
@@ -421,11 +406,34 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
         "short_liquidation_price": 0.0
     }
 
-    await safe_save_json(str(base_state_path), new_state)
-    await safe_save_json(str(shadow_state_path), new_shadow_state)
+    for key in ("strategy_origin_ms", "strategy_bar_ms", "velocity_cooldown_bars"):
+        if key in old_state:
+            new_state[key] = old_state[key]
+    if not is_paper and old_state.get("live_funding") is not None:
+        for key in ("live_funding", "funding_model", "funding_journal", "funding_halt", "funding_paid"):
+            if key in old_state:
+                new_state[key] = old_state[key]
+        if "live_funding_snapshot" in old_wallet:
+            new_shadow_state["live_funding_snapshot"] = old_wallet["live_funding_snapshot"]
+        if new_state.get('live_funding', {}).get('allocation'):
+            from copy import deepcopy
+            new_state['live_funding'] = deepcopy(new_state['live_funding'])
+            new_state['live_funding']['reserve_offset'] = str(
+                Decimal(str(new_state['live_funding'].get('reserve_offset', 0)))
+                + Decimal(str(old_state.get('siphoning_reserve', 0))))
+
+    from core.funding import load_funding_state, save_funding_boundary
+    journal, halt = load_funding_state(new_state)
+    save_funding_boundary(str(base_state_path), str(shadow_state_path), new_state, new_shadow_state, journal, halt)
     logger.info(f"✨ Reset {'paper' if is_paper else 'real'} state files for {ticker} to clean initial values (capital: {final_capital}).")
 
 async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
+    if not is_paper:
+        from core.funding import recover_funding_boundary, RECOVERY_FAILED
+        recovered, _, _ = recover_funding_boundary(str(CORE_PATH/f'real_state_{ticker}.json'),
+                                                   str(CORE_PATH/f'shadow_state_{ticker}.json'))
+        if recovered == RECOVERY_FAILED:
+            raise ValueError('REAL launch requires funding WAL reconciliation')
     if is_paper and config and (CORE_PATH / 'paper_budget.sqlite').exists():
         from core.paper_budget import ticker_history
         loss_at = ticker_history(BASE_PATH, ticker)['loss_at']
@@ -434,6 +442,24 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
             return
     prefix = "paper" if is_paper else "real"
     existing = await safe_load_json(str(CORE_PATH / f"{prefix}_state_{ticker}.json"), {})
+    if not is_paper:
+        from core.funding import live_snapshot_pair_error
+        error = live_snapshot_pair_error(str(CORE_PATH / f'real_state_{ticker}.json'),
+                                         str(CORE_PATH / f'shadow_state_{ticker}.json'), ticker)
+        if (error and config and not (CORE_PATH/f'real_state_{ticker}.json').exists()
+                and not (CORE_PATH/f'shadow_state_{ticker}.json').exists()):
+            if any(name.startswith('r_') for name in await get_running_bots_info()):
+                raise ValueError('Existing REAL worker requires snapshot reconciliation before allocation')
+            from core.real_allocation import prepare
+            connector = BinanceConnector(api_key=os.environ.get('BINANCE_API_KEY', config.get('api_key', '')),
+                secret_key=os.environ.get('BINANCE_SECRET_KEY', config.get('secret_key', '')),
+                testnet=config.get('testnet', True))
+            await connector.verify_connection()
+            existing, _ = await prepare(connector, BASE_PATH, ticker, config)
+            error = live_snapshot_pair_error(str(CORE_PATH/f'real_state_{ticker}.json'),
+                                             str(CORE_PATH/f'shadow_state_{ticker}.json'), ticker)
+        if error:
+            raise ValueError(f'REAL launch requires a reconciled snapshot: {error}')
     if existing.get("startup_blocked") or existing.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
         raise ValueError(f"Bot launch requires manual reconciliation: {ticker}")
     if config and existing.get("stop_reason") == "siphon":
@@ -448,19 +474,7 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
         logger.info(f"SAFE cooldown active; clean restart deferred: {ticker}")
         return
 
-    # Detect cash_reserve mismatch: old state has different initial_tpv than config expects
-    if is_paper and config and existing:
-        portfolio = config.get("portfolios", [{}])[0]
-        expected_capital = portfolio.get("paper_initial_capital", 1000)
-        if portfolio.get("cash_reserve_usdt", 0):
-            from core.capital import capital_with_reserve
-            expected_capital, _ = capital_with_reserve(portfolio, expected_capital)
-        old_initial = float(existing.get("initial_tpv", 0))
-        if old_initial > 0 and not math.isclose(old_initial, expected_capital, abs_tol=1e-6):
-            logger.warning(f"🔄 Cash reserve mismatch for {ticker}: state has {old_initial}, config expects {expected_capital}. Forcing state reset.")
-            await reset_bot_state_files(ticker, True, config)
-            existing = {}  # Treat as fresh start
-
+    restart_capital = None
     proc_name = f"{prefix}-{ticker.replace('USDT', '').lower()}"
     mode_flag = "--paper" if is_paper else "--real"
     if config and (existing.get("trailing_stop_triggered") or existing.get("paper_close_complete")):
@@ -468,7 +482,7 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
         wallet = await safe_load_json(str(CORE_PATH / f"{shadow}_{ticker}.json"), {})
         if (not wallet or "positions" not in wallet
                 or (is_paper and any(float(qty) != 0 for qty in wallet["positions"].values()))
-                or existing.get("rebalance_inflight") or existing.get("live_funding") is not None
+                or existing.get("rebalance_inflight") or existing.get("live_close", {}).get("status") == "pending"
                 or (existing.get("funding_halt") or {}).get("active")):
             raise ValueError(f"{'PAPER' if is_paper else 'REAL'} terminal close is unverified: {ticker}")
         if is_paper:
@@ -478,6 +492,7 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
                 raise ValueError(f"PAPER restart requires capital pool reconciliation: {ticker}")
             from core.paper_budget import release
             release(BASE_PATH, ticker, existing, wallet)
+            restart_capital = float(wallet["balance"])
         else:
             connector = BinanceConnector(
                 api_key=os.environ.get("BINANCE_API_KEY", config.get("api_key", "")),
@@ -487,7 +502,7 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
             positions = await connector.get_positions()
             if any(float(p["qty"]) != 0 for key, p in positions.items() if key.split("_")[0] == ticker):
                 raise ValueError(f"REAL terminal close is unverified: {ticker}")
-            await reset_bot_state_files(ticker, False, config)
+            await reset_bot_state_files(ticker, False, config, capital_override=float(wallet["balance"]))
     if is_paper and config and (CORE_PATH / "paper_budget.sqlite").exists():
         from core.paper_budget import reserve, bind
         portfolio = config.get("portfolios", [{}])[0]
@@ -495,6 +510,11 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
         if portfolio.get("cash_reserve_usdt", 0):
             from core.capital import capital_with_reserve
             required_capital, _ = capital_with_reserve(portfolio, required_capital)
+        if restart_capital is not None:
+            required_capital = restart_capital
+        if float(required_capital) < 5:
+            logger.warning(f"BACKTEST restart minimum not met; launch deferred: {ticker}")
+            return
         capital, fresh, identity = reserve(BASE_PATH, ticker, required_capital)
         if capital <= 0:
             logger.warning(f"PAPER cash below configured initial capital; launch deferred: {ticker}")
@@ -544,6 +564,8 @@ async def start_bot(ticker: str, is_paper: bool = True, config: dict = None):
     if key in running:
         logger.warning(f"⏭️ Process {proc_name} already running in PM2, skipping start")
         return
+    if not is_paper and sum(name.startswith('r_') for name in running) >= 1:
+        raise ValueError('Only one REAL worker is authorized for the initial launch')
 
     # Add PM2 restart limits to prevent infinite restart loops
     # max_restarts=10, min_uptime=60s (60000ms)
@@ -599,7 +621,7 @@ async def selective_merge_incubator(
     4. Сканер уже ранжирован по волатильности — берём первых из топа
     5. При первом старте (old=[]) — запускаем всех max_bots из сканера
     """
-    max_bots = config.get("max_bots", 20)
+    max_bots = config.get('paper_mode_bots', config.get('max_bots', 20))
     max_replace = config.get("max_replace_per_cycle", max_bots // 2)
     min_cycles = config.get("min_cycles_for_rank", 10)
     min_cycles_rotation = config.get("min_cycles_for_rotation", 6)
@@ -882,7 +904,22 @@ async def manage_swarm():
                 prob_key = "probation_paper" if mode_tag == "paper" else "probation_real"
                 probation = prob_paper if mode_tag == "paper" else prob_real
                 cooldown_sec = toxic_cooldown_sec if signal_type == "siphon" else probation_cooldown_sec
-                probation[ticker] = now_ts + cooldown_sec
+                closed = await safe_load_json(str(CORE_PATH / f'{mode_tag}_state_{ticker}.json'), {})
+                strategy_stop = closed.get('stop_reason') in ('equity_trailing_stop', 'max_dd_stop', 'liquidation_guard')
+                if strategy_stop:
+                    wallet_name = 'paper_shadow' if mode_tag == 'paper' else 'shadow_state'
+                    wallet = await safe_load_json(str(CORE_PATH / f'{wallet_name}_{ticker}.json'), {})
+                    if (closed.get('startup_blocked') or not closed.get('trailing_stop_triggered')
+                            or not wallet.get('positions') or any(float(q) != 0 for q in wallet['positions'].values())
+                            or (mode_tag == 'paper' and not closed.get('paper_close_complete'))
+                            or (mode_tag == 'real' and closed.get('live_close', {}).get('status') != 'complete')):
+                        raise ValueError(f'Strategy cooldown requires a confirmed terminal close: {ticker}')
+                    until = float(closed['restart_not_before'])
+                    if not math.isfinite(until) or until < 0:
+                        raise ValueError('Invalid strategy cooldown deadline')
+                    probation[ticker] = until
+                else:
+                    probation[ticker] = now_ts + cooldown_sec
                 config[prob_key] = probation
 
                 if signal_type == "siphon":
@@ -1051,7 +1088,7 @@ async def manage_swarm():
         logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; closed48h AND last24h, each Net>0, DD<=50%, cycles>=2")
 
     # Selective Rotation: мержим старых + новых
-    limit_bots = config.get("max_bots", 20)
+    limit_bots = config.get('paper_mode_bots', config.get('max_bots', 20))
     final_incubator = await selective_merge_incubator(
         old_incubator=old_incubator,
         scanner_results=clean_scanner,
@@ -1252,20 +1289,11 @@ async def manage_swarm():
     real_whitelist = config.get("real_whitelist", [])
     active_positions = {} if paper_only else await connector.get_positions()
     allowed_cleanup_tickers = set(target_real_bots).union(set(real_whitelist))
-    for pos_key in active_positions.keys():
-        # pos_key is like "SYMBOL_SIDE"
-        ticker = pos_key.split('_')[0]
-        if ticker not in allowed_cleanup_tickers:
-            qty = active_positions[pos_key].get("qty", 0.0)
-            if float(qty) != 0:
-                logger.warning(f"🧹 Authoritative Cleanup: Found stray position for {ticker} (not in live_swarm or whitelist). Closing it!")
-                cmd_stop = f'"{sys.executable}" "{BASE_PATH / "core" / "main.py"}" --config config.json --ticker {ticker} --stop --real'
-                _sub_env = os.environ.copy()
-                _sub_env["PYTHONPATH"] = str(BASE_PATH)
-                await (await asyncio.create_subprocess_shell(
-                    cmd_stop, env=_sub_env,
-                    stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
-                )).wait()
+    stray_tickers = {key.split('_')[0] for key, position in active_positions.items()
+                     if float(position.get("qty", 0)) != 0 and key.split('_')[0] not in allowed_cleanup_tickers}
+    for ticker in sorted(stray_tickers):
+        logger.warning(f"Authoritative Cleanup: closing unassigned REAL owner {ticker}")
+        await stop_bot(ticker, is_paper=False)
 
     # 4. Исполнение в PM2: Доктрина Параллельного Слежения (Защищенная версия)
     # -------------------------------------------------------------------------
@@ -1301,15 +1329,6 @@ async def manage_swarm():
             logger.info(f"🛑 Stopping Combat REAL process: {ticker} (Rolling back to pure paper tracking)")
             await stop_bot(ticker, is_paper=False)
             active_running_keys.discard(key)
-
-            # Экстренно закрываем позиции на бирже для этого тикера
-            cmd_stop = f'"{sys.executable}" "{BASE_PATH / "core" / "main.py"}" --config config.json --ticker {ticker} --stop --real'
-            _sub_env = os.environ.copy()
-            _sub_env["PYTHONPATH"] = str(BASE_PATH)
-            await (await asyncio.create_subprocess_shell(
-                cmd_stop, env=_sub_env,
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
-            )).wait()
 
     # Пауза для стабильности дескрипторов PM2
     await asyncio.sleep(1.5)

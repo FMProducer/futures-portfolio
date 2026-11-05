@@ -31,6 +31,23 @@ class StopLoop(BaseException):
     """Raised once the allowed number of funding commits has run."""
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize('failure', ['hedge', 'leverage', 'margin'])
+async def test_real_settings_failure_refuses_before_funding_or_trading(tmp_path, failure):
+    connector = _connector()
+    if failure == 'hedge':
+        connector.get_hedge_mode.return_value = False
+    elif failure == 'leverage':
+        connector.set_leverage.side_effect = RuntimeError('exchange rejected leverage')
+    else:
+        connector.set_margin_type.side_effect = RuntimeError('exchange rejected margin type')
+    state, wallet = _pair()
+    run = await _run(tmp_path, state, wallet, connector=connector)
+    assert run.outcome == 'stopped'
+    connector.get_funding_income.assert_not_awaited()
+    run.calc.calculate_rebalance.assert_not_called()
+
+
 class Run(NamedTuple):
     outcome: str
     state_path: Path
@@ -166,6 +183,7 @@ async def _run(tmp_path, state_data, wallet_data, *, expect=True, paper_override
                    if corruption_rename_fails else nullcontext())
     outcome = "stopped"
     with patch(f"{M}.self_kill_pm2", kill), \
+         patch(f'{M}.backtest_rules.strategy_minutes', AsyncMock(return_value=[(int(time.time() // 60 - 1) * 60000, 60000.)])), \
          patch(f"{M}.load_json", side_effect=counting_load), \
          patch(f"{M}.TelegramNotifier", return_value=notifier), \
          patch(f"{M}.PortfolioCalculator", return_value=calc), \
@@ -459,10 +477,10 @@ async def test_non_object_strategy_without_wal_durable_blocks_and_keeps_bytes(tm
 @pytest.mark.parametrize("payload", NON_OBJECT_STRATEGIES)
 @pytest.mark.asyncio
 async def test_non_object_strategy_without_the_flag_refuses_without_mutation(tmp_path, payload):
-    with pytest.raises(ValueError, match="not a JSON object"):
-        await _run(tmp_path, payload, _wallet(), expect=False)
-    assert (tmp_path / "state.json").read_text(encoding="utf-8") == payload
-    assert not (tmp_path / "state.json.corrupted").exists()
+    run = await _run(tmp_path, payload, _wallet(), expect=False)
+    assert run.outcome == 'blocked'
+    assert json.loads(run.state_path.read_text())['startup_blocked']
+    assert (tmp_path / 'state.json.corrupted').read_text(encoding='utf-8') == payload
 
 
 @pytest.mark.parametrize("payload", NON_OBJECT_STRATEGIES)
@@ -479,8 +497,9 @@ async def test_non_object_wallet_blocks_and_keeps_the_wallet_bytes(tmp_path, pay
 @pytest.mark.parametrize("payload", ["[]", "null"])
 @pytest.mark.asyncio
 async def test_non_object_wallet_without_the_flag_refuses_without_mutation(tmp_path, payload):
-    with pytest.raises(ValueError, match="not a JSON object"):
-        await _run(tmp_path, _state(), payload, expect=False)
+    run = await _run(tmp_path, _state(), payload, expect=False)
+    assert run.outcome == 'blocked'
+    assert json.loads(run.state_path.read_text())['startup_blocked']
     assert (tmp_path / "wallet.json").read_text(encoding="utf-8") == payload
 
 

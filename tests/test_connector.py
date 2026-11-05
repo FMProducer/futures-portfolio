@@ -23,6 +23,26 @@ def connector():
         return conn
 
 @pytest.mark.asyncio
+async def test_usdt_account_uses_asset_balance_without_usd_aggregate_fallback(connector):
+    connector.futures_client.futures_account.return_value = {
+        'canTrade': True, 'multiAssetsMargin': False, 'totalWalletBalance': '999999',
+        'assets': [{'asset': 'USDT', 'walletBalance': '6000.00000001', 'availableBalance': '6000'},
+                   {'asset': 'USDC', 'walletBalance': '999999', 'availableBalance': '999999'}]}
+    assert await connector.get_usdt_account() == {'wallet': '6000.00000001', 'available': '6000'}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('data', [
+    {'canTrade': True, 'multiAssetsMargin': True, 'assets': []},
+    {'canTrade': False, 'multiAssetsMargin': False, 'assets': []},
+    {'canTrade': True, 'multiAssetsMargin': False, 'assets': [{'asset': 'USDC'}]}])
+async def test_usdt_account_refuses_unverified_asset_or_mode(connector, data):
+    connector.futures_client.futures_account.return_value = data
+    with pytest.raises(ValueError):
+        await connector.get_usdt_account()
+
+
+@pytest.mark.asyncio
 async def test_get_positions(connector):
     mock_positions = [
         {"symbol": "BTCUSDT", "positionAmt": "0.5", "entryPrice": "60000", "positionSide": "LONG"},

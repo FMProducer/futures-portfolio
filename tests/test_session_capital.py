@@ -1,6 +1,7 @@
 """Exercise session rollover with temporary wallets and no trading imports."""
 
 import ast
+from decimal import Decimal
 import asyncio
 import gc
 import json
@@ -29,9 +30,10 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
         self.core = self.root / "core"
         self.core.mkdir()
         self.config = {"portfolios": [{"paper_initial_capital": 1000, "initial_capital": 500}]}
-        self.launch = AsyncMock(return_value=SimpleNamespace(wait=AsyncMock(return_value=0)))
+        self.launch = AsyncMock(return_value=SimpleNamespace(communicate=AsyncMock(return_value=(b'', b'')), returncode=0))
         self.connector = SimpleNamespace(verify_connection=AsyncMock(), get_positions=AsyncMock(return_value={}))
-        self.ns = dict(BASE_PATH=self.root, CORE_PATH=self.core, math=math, os=os,
+        self.ns = dict(Decimal=Decimal, BASE_PATH=self.root, CORE_PATH=self.core, math=math, os=os, _last_start_time={},
+                       _RESTART_COOLDOWN_SEC=60, get_running_bots_info=AsyncMock(return_value={}),
                        sys=sys, time=time, shutil=shutil, logger=Mock(),
                        safe_load_json=safe_load_json, safe_save_json=safe_save_json,
                        BinanceConnector=Mock(return_value=self.connector),
@@ -53,6 +55,10 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
                      rebalance_cycles=8, trailing_stop_triggered=closed,
                      paper_close_complete=closed, trailing_stop_violation_start=12)
         wallet = dict(balance=equity, positions={"QUSDT_LONG": 0, "QUSDT_SHORT": 0})
+        if not paper:
+            state.update(base_ticker='QUSDT', funding_model='signed_actual',
+                         live_funding={'symbol': 'QUSDT', 'snapshot_ms': 1000, 'boundary_ms': 1000})
+            wallet.update(base_ticker='QUSDT', live_funding_snapshot={'symbol': 'QUSDT', 'snapshot_ms': 1000})
         self.state_path.write_text(json.dumps(state))
         self.wallet_path.write_text(json.dumps(wallet))
         return state, wallet
@@ -69,19 +75,59 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(wallet["balance"], capital)
         self.assertEqual(wallet["positions"], {"QUSDT_LONG": 0, "QUSDT_SHORT": 0})
 
-    async def test_paper_profit_returns_to_pool_before_capped_new_session(self):
+    async def test_paper_profit_is_reallocated_like_backtest(self):
         state, _ = self.seed()
         initialize(self.root, 1, 1000, {"QUSDT": state})
         await self.ns["start_bot"]("QUSDT", True, self.config)
-        self.assert_fresh(1000)
+        self.assert_fresh(1147.6612)
         budget = read_budget(self.root)
-        self.assertAlmostEqual(budget["cash"], 147.6612)
-        self.assertEqual(budget["allocations"], {"QUSDT": 1000})
+        self.assertAlmostEqual(budget["cash"], 0)
+        self.assertEqual(budget["allocations"], {"QUSDT": 1147.6612})
         self.assertEqual(len(list((self.root / "history").glob("*.json"))), 2)
         # A process restart must not return or allocate the same capital twice.
         before = self.state_path.read_bytes(), self.wallet_path.read_bytes(), budget
         await self.ns["start_bot"]("QUSDT", True, self.config)
         self.assertEqual(before, (self.state_path.read_bytes(), self.wallet_path.read_bytes(), read_budget(self.root)))
+
+    async def test_fresh_real_launch_allocates_one_thousand_and_keeps_shared_reserve_outside_book(self):
+        self.config.update(max_bots=9, paper_mode_bots=8)
+        self.config['portfolios'][0].update(initial_capital=1000, cash_reserve_usdt=5000,
+            targets={'BASE_LONG': {'share': .25, 'leverage': 3}, 'BASE_SHORT': {'share': .25, 'leverage': 3},
+                     'VIRTUAL': {'share': .5, 'leverage': 1}})
+        self.connector.api_key, self.connector.testnet = 'test-account', True
+        self.connector.get_usdt_account = AsyncMock(return_value={'wallet': '6000', 'available': '6000'})
+        self.connector.get_open_orders = AsyncMock(return_value=[])
+        await self.ns['start_bot']('QUSDT', False, self.config)
+        state = json.loads((self.core/'real_state_QUSDT.json').read_text())
+        wallet = json.loads((self.core/'shadow_state_QUSDT.json').read_text())
+        self.assertEqual(state['initial_tpv'], 1000)
+        self.assertEqual(wallet['balance'], 1000)
+        self.assertEqual(state['live_funding']['opening_wallet'], '6000')
+        self.assertEqual(state['virt_debt'], 500)
+        self.assertFalse((self.core/'paper_budget.sqlite').exists())
+        self.launch.assert_awaited_once()
+        self.assertIn('--real', self.launch.call_args.args[0])
+
+    async def test_existing_real_worker_blocks_fresh_allocation_without_touching_account(self):
+        self.ns['get_running_bots_info'].return_value = {'r_OTHERUSDT': {}}
+        with self.assertRaisesRegex(ValueError, 'Existing REAL worker'):
+            await self.ns['start_bot']('QUSDT', False, self.config)
+        self.connector.verify_connection.assert_not_awaited()
+        self.launch.assert_not_awaited()
+        self.assertFalse((self.core/'real_budget.sqlite').exists())
+
+    async def test_real_session_reset_keeps_safe_outside_new_worker_wallet(self):
+        state, wallet = self.seed(equity=900, paper=False)
+        state['siphoning_reserve'] = 120
+        state['live_funding'].update(allocation={'id': 'existing-proof'}, reserve_offset='30')
+        self.state_path.write_text(json.dumps(state))
+        await self.ns['reset_bot_state_files']('QUSDT', False, self.config, capital_override=900)
+        result = json.loads(self.state_path.read_text())
+        self.assertEqual(result['initial_tpv'], 900)
+        self.assertEqual(result['siphoning_reserve'], 0)
+        self.assertEqual(Decimal(result['live_funding']['reserve_offset']), 150)
+        self.assertEqual(result['live_funding']['allocation'], {'id': 'existing-proof'})
+        self.assertEqual(json.loads(self.wallet_path.read_text())['balance'], 900)
 
     async def test_paper_loss_is_not_refilled(self):
         state, _ = self.seed(equity=900)
@@ -108,10 +154,10 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(before, (self.state_path.read_bytes(), self.wallet_path.read_bytes()))
         self.launch.assert_not_awaited()
 
-    async def test_real_profit_has_capped_fresh_baseline_after_exchange_check(self):
+    async def test_real_profit_preserves_confirmed_session_capital(self):
         self.seed(paper=False)
         await self.ns["start_bot"]("QUSDT", False, self.config)
-        self.assert_fresh(500)
+        self.assert_fresh(1147.6612)
         self.connector.verify_connection.assert_awaited_once()
         self.connector.get_positions.assert_awaited_once()
         archived = list((self.root / "history").glob("*real_state*"))
@@ -136,8 +182,8 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_reset_caps_override_and_rejects_invalid_capital(self):
         self.seed()
-        await self.ns["reset_bot_state_files"]("QUSDT", True, self.config, capital_override=2000)
-        self.assert_fresh(1000)
+        with self.assertRaisesRegex(ValueError, 'exceeds confirmed wallet'):
+            await self.ns["reset_bot_state_files"]("QUSDT", True, self.config, capital_override=2000)
         for value in (0, -1, float("nan"), float("inf")):
             with self.subTest(value=value), self.assertRaisesRegex(ValueError, "Invalid starting capital"):
                 await self.ns["reset_bot_state_files"]("QUSDT", True, self.config, capital_override=value)
@@ -164,7 +210,7 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
         names = {"state": {"initial_tpv": 900, "tpv_ath": 1200},
                  "paper_state": {"balance": 900, "positions": {"QUSDT_LONG": 0, "QUSDT_SHORT": 0}},
                  "base_ticker": "QUSDT", "target_initial_cap": 1000, "target_initial": 1000,
-                 "initial_tpv": 900, "tpv_total": 900, "tpv_ath": 0,
+                 "initial_tpv": 900, "tpv_total": 900, "tpv_active": 900, "tpv_ath": 0,
                  "paper_mode": False, "_funding_halt_active": False,
                  "connector": self.connector, "logger": Mock(), "share_trail": Mock(),
                  "save_json": AsyncMock(), "state_file_path": "unused", "paper_state_file_path": "unused"}
@@ -173,7 +219,7 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
         clean = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_apply_clean_slate")
         exec(compile(ast.Module(body=[clean], type_ignores=[]), str(source), "exec"), names)
         predicates = ("not paper_mode and", "not state.get('trailing_stop_triggered', False)",
-                      "initial_tpv > target_initial", "tpv_ath == 0 or tpv_total > tpv_ath")
+                      "initial_tpv > target_initial", "tpv_ath == 0 or tpv_active > tpv_ath")
         for predicate in predicates:
             node = next(n for n in ast.walk(tree) if isinstance(n, ast.If)
                         and ast.unparse(n.test).startswith(predicate)

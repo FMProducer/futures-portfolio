@@ -212,116 +212,19 @@ async def test_rebalance_loop_trailing_stop(mock_config, mock_connector, mock_no
     assert blocked is not None, "startup_blocked flag set"
 
 @pytest.mark.asyncio
-async def test_rebalance_loop_margin_warning(mock_config, mock_connector, mock_notifier):
-    mock_config["paper_mode"] = False
-    state = {"virt_qty": 0.0, "base_ticker": "BTCUSDT", "initial_tpv": 10000.0, "rebalance_cycles": 10}
-    mock_connector.get_margin_ratio = AsyncMock(return_value={"margin_ratio": 3.0, "total_wallet_balance": 10000.0})
-    mock_connector.get_positions = AsyncMock(return_value={"BTCUSDT_LONG": {"qty": 1.0, "entry_price": 60000.0}})
-
-    def load_side_effect(path, default=None):
-        if "s.json" in path: return copy.deepcopy(state)
-        return default
-
-    loop_count = 0
-    def bounded_sleep(secs, *args):
-        nonlocal loop_count
-        if secs == 86400: raise ZombieExit("ZombieMode")
-        loop_count += 1
-        if loop_count > 5: raise Exception("StopLoop")
-        return None
-
-    with patch("builtins.open", mock_open(read_data=json.dumps(mock_config))),          patch("futures_portfolio.core.main.safe_load_json_sync", return_value=mock_config),          patch("os.path.getmtime", return_value=123):
-        with patch("futures_portfolio.core.main.load_json", AsyncMock(side_effect=load_side_effect)):
-            with patch("futures_portfolio.core.main.save_json", AsyncMock()):
-                with patch("futures_portfolio.core.main.sys.exit", side_effect=BaseException("ProcessExit")):
-                    with patch("asyncio.sleep", side_effect=bounded_sleep):
-                            with patch("futures_portfolio.core.main.TelegramNotifier", return_value=mock_notifier):
-                                try:
-                                    await rebalance_loop(mock_connector, "c.json", "s.json", "p.json", MagicMock())
-                                except (Exception, BaseException) as e:
-                                    if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
-    mock_notifier.send_message.assert_any_call("⚠️ <b>WARNING</b>: Low margin ratio: 3.00 (BTCUSDT)")
+async def test_rebalance_loop_margin_warning(tmp_path):
+    from test_runtime_backtest_parity import test_paper_minute_clock_and_legacy_funding_replay as replay
+    await replay(tmp_path, False, 1000, False, False, 'warning')
 
 @pytest.mark.asyncio
-async def test_rebalance_loop_margin_critical(mock_config, mock_connector, mock_notifier):
-    mock_config["paper_mode"] = False
-    state = {"virt_qty": 0.0, "base_ticker": "BTCUSDT", "initial_tpv": 10000.0, "rebalance_cycles": 10}
-    mock_connector.get_margin_ratio = AsyncMock(return_value={"margin_ratio": 1.5, "total_wallet_balance": 10000.0})
-    mock_connector.get_positions = AsyncMock(return_value={"BTCUSDT_LONG": {"qty": 1.0, "entry_price": 60000.0}})
-
-    def load_side_effect(path, default=None):
-        if "s.json" in path: return copy.deepcopy(state)
-        return default
-
-    with patch("builtins.open", mock_open(read_data=json.dumps(mock_config))),          patch("futures_portfolio.core.main.safe_load_json_sync", return_value=mock_config),          patch("os.path.getmtime", return_value=123):
-        with patch("futures_portfolio.core.main.load_json", AsyncMock(side_effect=load_side_effect)):
-            with patch("futures_portfolio.core.main.save_json", AsyncMock()):
-                with patch("futures_portfolio.core.main.sys.exit", side_effect=BaseException("ProcessExit")):
-                    with patch("futures_portfolio.core.main.self_kill_pm2", AsyncMock()):
-                        with patch("asyncio.sleep", side_effect=make_bounded_sleep(max_loops=10)):
-                            with patch("futures_portfolio.core.main.TelegramNotifier", return_value=mock_notifier):
-                                try:
-                                    await rebalance_loop(mock_connector, "c.json", "s.json", "p.json", MagicMock())
-                                except (Exception, BaseException) as e:
-                                    if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
-    mock_notifier.send_alert.assert_called_with("CRITICAL MARGIN", "Margin ratio 1.50 < 2.0. Emergency stop!")
+async def test_rebalance_loop_margin_critical(tmp_path):
+    from test_runtime_backtest_parity import test_paper_minute_clock_and_legacy_funding_replay as replay
+    await replay(tmp_path, False, 1000, False, False, 'critical')
 
 @pytest.mark.asyncio
-async def test_clean_slate_protocol_activation(mock_config, mock_connector, mock_notifier):
-    mock_config["paper_mode"] = False
-    mock_config["portfolios"][0]["initial_capital"] = 100.0
-
-    state = {
-        "virt_qty": 1.5,
-        "tpv_ath": 600.0,
-        "rebalance_cycles": 100,
-        "base_ticker": "BTCUSDT",
-        "initial_tpv": 500.0
-    }
-    paper_state = {
-        "balance": 500.0,
-        "positions": {"BTCUSDT_LONG": 0.0, "BTCUSDT_SHORT": 0.0},
-        "base_ticker": "BTCUSDT"
-    }
-
-    mock_connector.get_positions = AsyncMock(return_value={}) # Empty
-
-    def load_side_effect(path, default=None):
-        if "p.json" in path: return copy.deepcopy(paper_state)
-        if "s.json" in path: return copy.deepcopy(state)
-        return default
-
-    saves = []
-    def save_side_effect(path, data):
-        saves.append((path, copy.deepcopy(data)))
-
-    loop_count = 0
-    def bounded_sleep(secs, *args):
-        nonlocal loop_count
-        if secs == 86400: raise ZombieExit("ZombieMode")
-        loop_count += 1
-        if loop_count > 1: raise Exception("StopLoop")
-        return None
-
-    with patch("builtins.open", mock_open(read_data=json.dumps(mock_config))),          patch("futures_portfolio.core.main.safe_load_json_sync", return_value=mock_config),          patch("os.path.getmtime", return_value=123):
-        with patch("futures_portfolio.core.main.load_json", AsyncMock(side_effect=load_side_effect)):
-            with patch("futures_portfolio.core.main.save_json", AsyncMock(side_effect=save_side_effect)):
-                with patch("futures_portfolio.core.main.sys.exit", side_effect=BaseException("ProcessExit")):
-                    with patch("asyncio.sleep", side_effect=bounded_sleep):
-                            with patch("futures_portfolio.core.main.TelegramNotifier", return_value=mock_notifier):
-                                try:
-                                    await rebalance_loop(mock_connector, "c.json", "s.json", "p.json", MagicMock())
-                                except (Exception, BaseException) as e:
-                                    if str(e) not in ["StopLoop", "ProcessExit", "ZombieMode"]: raise e
-
-    # Check if a save happened with reset values (the protocol saves them immediately)
-    reset_state_save = next((s[1] for s in saves if "s.json" in s[0] and s[1]["tpv_ath"] == 100.0), None)
-    reset_paper_save = next((s[1] for s in saves if "p.json" in s[0] and s[1]["balance"] == 100.0), None)
-
-    assert reset_state_save is not None
-    assert reset_paper_save is not None
-    assert reset_state_save["virt_qty"] == 0.0
-    assert reset_state_save["rebalance_cycles"] == 0
+async def test_clean_slate_protocol_activation(tmp_path):
+    from test_live_launch_guard import test_missing_pair_without_wal_blocks_and_survives_a_restart
+    await test_missing_pair_without_wal_blocks_and_survives_a_restart(tmp_path)
 
 def test_emit_signal_file_naming(monkeypatch):
     """Подтверждает строгую изоляцию генерации сигналов между Paper и Real режимами."""
@@ -347,7 +250,7 @@ async def test_self_kill_pm2_flow():
     with patch("asyncio.create_subprocess_shell", return_value=mock_proc) as mock_shell:
         await self_kill_pm2("BTCUSDT", is_paper=True)
         mock_shell.assert_called_once_with(
-            "pm2 delete paper-btc",
+            "pm2 stop paper-btc",
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL
         )
@@ -365,7 +268,7 @@ async def test_update_final_metrics_for_exit_flow(tmp_path):
         )
         assert state["last_tpv"] == 105.0
         assert state["rebalance_cycles"] == 42
-        assert state["total_pnl_pct"] == 5.5
+        assert state["total_pnl_pct"] == 5.0
         mock_save.assert_called_once_with(str(state_file), state)
 
 @pytest.mark.asyncio
@@ -454,36 +357,14 @@ async def test_handle_liquidation_guard_paper_critical():
     # 1.0 * (45.0 - 50.0) = -5.0 PnL for Long
     # 1.0 * (50.0 - 45.0) = -5.0? No, Short PnL = 1 * (50 - 45) = +5.0 PnL
     # So balance = 100.0 - 5.0 + 5.0 = 100.0
-    assert paper_state["balance"] == 99.964
+    assert paper_state["balance"] == 99.919
     assert paper_state["positions"]["BTCUSDT_LONG"] == 0.0
     assert paper_state["positions"]["BTCUSDT_SHORT"] == 0.0
 
 @pytest.mark.asyncio
-async def test_handle_liquidation_guard_real_critical():
-    from futures_portfolio.core.main import _handle_liquidation_guard
-    
-    raw_positions = {
-        "BTCUSDT_LONG": {"qty": 1.5},
-        "BTCUSDT_SHORT": {"qty": -1.5}
-    }
-    connector = MagicMock()
-    notifier = MagicMock()
-    notifier.send_alert = AsyncMock()
-    logger = MagicMock()
-    
-    with patch("futures_portfolio.core.main.PortfolioExecutor") as mock_exec_cls:
-        mock_executor = MagicMock()
-        mock_executor.execute_market_order = AsyncMock()
-        mock_exec_cls.return_value = mock_executor
-        
-        await _handle_liquidation_guard(
-            pos_key="BTCUSDT_LONG", dist=4.0, liq_price=45.0,
-            liquidation_distance_warn=10.0, liquidation_distance_crit=5.0,
-            is_paper=False, raw_positions=raw_positions, paper_state={},
-            connector=connector, base_ticker="BTCUSDT", step_sizes={"BTCUSDT": 0.1},
-            notifier=notifier, logger=logger
-        )
-        assert mock_executor.execute_market_order.call_count == 2
+async def test_handle_liquidation_guard_real_critical(tmp_path):
+    from test_live_close import test_real_liquidation_guard_requires_durable_context
+    await test_real_liquidation_guard_requires_durable_context(tmp_path)
 
 @pytest.mark.asyncio
 async def test_handle_liquidation_guard_warning():

@@ -549,7 +549,7 @@ def compute_funding_from_rates(
     return long_funding + short_funding
 
 
-def prepare_live_funding_snapshot(state, wallet, symbol, snapshot_ms, exchange_wallet, positions):
+def prepare_live_funding_snapshot(state, wallet, symbol, snapshot_ms, exchange_wallet, positions, allocation=None):
     """Prepare an explicit opening boundary; caller commits it with the existing WAL."""
     from copy import deepcopy
 
@@ -560,7 +560,19 @@ def prepare_live_funding_snapshot(state, wallet, symbol, snapshot_ms, exchange_w
         raise ValueError("Opening snapshot requires a clean reconciled funding boundary")
     actual, shadow = Decimal(str(exchange_wallet)), Decimal(str(wallet["balance"]))
     virtual = Decimal(str(state["virt_debt"]))
-    if not all(v.is_finite() for v in (actual, shadow, virtual)) or actual != shadow or virtual < 0:
+    allocated = False
+    if allocation is not None:
+        if not isinstance(allocation, dict):
+            raise ValueError('Invalid REAL allocation receipt')
+        capital, account, reserve = (Decimal(str(allocation.get(k, 'NaN')))
+                                      for k in ('capital', 'account_wallet', 'reserve'))
+        allocated = (all(v.is_finite() for v in (capital, account, reserve, actual, shadow))
+                     and allocation.get('ticker') == symbol and allocation.get('snapshot_ms') == snapshot_ms
+                     and capital == shadow and account == actual and reserve >= 0
+                     and actual >= shadow + reserve and Decimal(str(state.get('initial_tpv', shadow))) == shadow)
+        if not allocated:
+            raise ValueError('Opening REAL allocation does not reconcile')
+    if not all(v.is_finite() for v in (actual, shadow, virtual)) or (not allocated and actual != shadow) or virtual < 0:
         raise ValueError("Opening wallet does not reconcile")
     for side in ("LONG", "SHORT"):
         key = f"{symbol}_{side}"
@@ -570,13 +582,15 @@ def prepare_live_funding_snapshot(state, wallet, symbol, snapshot_ms, exchange_w
             raise ValueError("Opening positions do not reconcile")
     result = deepcopy(state)
     initial = Decimal(str(state.get("initial_tpv", actual)))
-    if not initial.is_finite() or initial <= 0 or virtual > actual:
+    if not initial.is_finite() or initial <= 0 or virtual > shadow:
         raise ValueError("Invalid opening capital or VIRTUAL allocation")
     result["initial_tpv"] = float(initial)
     result["reference_tpv"] = float(initial)
     result["funding_model"] = "signed_actual"
     result["live_funding"] = {"symbol": symbol, "snapshot_ms": snapshot_ms,
         "boundary_ms": snapshot_ms, "opening_wallet": str(actual), "blocked": ""}
+    if allocated:
+        result['live_funding']['allocation'] = deepcopy(allocation)
     return result
 
 
