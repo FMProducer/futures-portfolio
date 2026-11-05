@@ -18,6 +18,7 @@ async def test_zero_net_move_threshold_disables_guard(tmp_path):
         "max_drawdown_limit": 200,
         "portfolios": [{
             "initial_capital": 1000,
+            "cash_reserve_usdt": 5000,
             "targets": {"BASE_LONG": {"share": 0.25, "leverage": 3},
                         "BASE_SHORT": {"share": 0.25, "leverage": 3},
                         "VIRTUAL": {"share": 0.50, "leverage": 1}},
@@ -93,6 +94,7 @@ async def test_backtest_uses_configured_trend_window(tmp_path):
     config = {
         "portfolios": [{
             "initial_capital": 1000,
+            "cash_reserve_usdt": 5000,
             "targets": {
                 "BASE_LONG": {"share": 0.35, "leverage": 7},
                 "BASE_SHORT": {"share": 0.35, "leverage": 7},

@@ -38,3 +38,41 @@ Confirmed remaining examples:
 -Several REAL fixtures lack the current funding/allocation proof. Financial, recovery and lifecycle failures not yet classified individually remain open; the remaining79 failures must not all be labelled test defects.
 
 This is not production certification. All candidate changes and generated test WAL artifacts remain in this worktree; nothing was copied into live state.
+
+
+## Follow-up after checkpoint 94f7a02: full regression PASS
+
+The user authorized committing the audited checkpoint and continuing fixes in this branch with the same annual AGTUSDT replay after each group. Commit94f7a02 contains the prior equity/cooldown/isolation checkpoint. Subsequent changes below remain uncommitted and undeployed.
+
+### Product correction
+
+`reset_bot_state_files` previously rebuilt a missing or incomplete wallet from configured capital when an old strategy state existed. Eight PAPER/REAL scenarios reproduced this creation of unsupported capital. It now rejects the reset before archiving or replacing either financial file unless the old wallet contains balance and positions. These tests verify both original files remain unchanged on refusal. Actual caller/reset tests validate committed two-file WAL state and byte-preserved archives rather than counts of obsolete os.remove calls.
+
+### Test and packaging corrections
+
+- Commission/PnL expectations now use the independently specified adverse0.05% PAPER fill price and0.04% fee. Wallet preservation and reduction bounds remain checked. Runtime storage expectations include the once-per-bar funding debit and full precision.
+- Guard, initial-opening and trailing tests receive an explicit external reserve where their subject is not funding exhaustion. The dedicated liquidation test keeps its zero-reserve fixture. The supplied8/8 config is correctly PAPER-only; its REAL allocation attempt must fail before an account read.
+- Isolated metrics no longer read another checkout's SQLite budget. Supervisor tests use real temporary state/archives, confirmed-close evidence, mocked PM2 results and explicit session deadlines. They test failure propagation and preservation of terminal proof rather than erasing it.
+- The bound Client names in both connector import namespaces are mocked, in addition to binance.client.Client. Two new tests verify the effective client is mocked; CLI worker launch guards remain active.
+- The replay-corruption unit fixture now generates a flat200-USDT,10-day synthetic history and a100-USDT reserve so its prescribed4500-USDT synthetic payment exercises shortfall. All ten verdict-corruption cases remain enforced. This is synthetic unit evidence, not historical ZEC/AGT performance.
+- Restored the existing report_tables.py from the main checkout, recorded its SHA256 in report_module_provenance.json, and whitelisted only that dependency in .gitignore. Report unit tests supply a two-bar DataFrame instead of requiring local historical files at import. No recorded historical artifact or baseline was silently substituted.
+- Market partial-fill and real-process crash tests now use valid funding snapshots, normalized mocked exchange positions, complete trade facts (quantity and USDT fee asset), and real temporary files. They still kill a process after send/result/book, verify exact receipts/fees/quantities, and refuse duplicate submissions on restart.
+- Trend guard tests drive closed-minute data and capture the actual filter output before the one-leg selector, while checking that execution stays within one leg. CASH tests no longer expect an addition funded by a same-tick projected sale. Range tests derive bounds from supplied values; no real-data parameter optimization was launched.
+
+### Per-group acceptance
+
+| Group | Targeted PASS | AGT Net | MaxDD | Cycles | Equity comparison |
+|---|---:|---:|---:|---:|---|
+|1:costs/reserves/capacity|84|+379.927489%|67.421727%|386|all525600 equal|
+|2:metrics/reset archives/start mocks|11|+379.927489%|67.421727%|386|all525600 equal|
+|3:self-contained replay/report dependencies|13|+379.927489%|67.421727%|386|all525600 equal|
+|4:supervisor/reset financial refusal|146|+379.927489%|67.421727%|386|all525600 equal|
+|5:REAL funding/allocation/margin replay|131|+379.927489%|67.421727%|386|all525600 equal|
+|6:partial fill/process crash recovery|28|+379.927489%|67.421727%|386|all525600 equal|
+|7:resume/CASH/trend/exact storage|51|+379.927489%|67.421727%|386|all525600 equal|
+
+Every annual replay used the same frozen config SHA25660ceb775a9656fae8734fb7f8aaed59343a5c6668e0f850a56561763dc4c0c56 and local AGTUSDT_live.feather SHA256c6cf752e9d204a19c1e85ba6b75c5b60d817bf81b7e0cfc8eebc52e75fbc5308,2025-10-20 00:00 through2026-10-19 23:59UTC. Funding remains legacy_constant; actual historical rates are not claimed. All seven annual runs exited0.
+
+Final complete command: `.venv\Scripts\python.exe -B -m pytest tests -q --tb=short --junitxml=reports/regression_990d302/after-fixes-junit.xml`. **1159passed,0failed,0errors,0skipped,9Optuna warnings in115.89s; exit0**. Log:after-fixes-tests.log. Manifest:followup_report.json. After the run, only extra blank EOF lines in two test modules were removed; their ASTs were explicitly checked identical and before/after hashes recorded. No behavioral changes followed acceptance.
+
+The previous FAIL section is preserved as historical evidence and is superseded by this complete PASS. Generated funding_intent files are test artifacts and are excluded from delivery. No changes were copied into the running main checkout, no PM2 workers restarted, and no REAL exchange acceptance was performed. Offline PASS is not proof of exchange/runtime deployment.

@@ -131,7 +131,12 @@ def mock_connector():
 @pytest.fixture(autouse=True)
 def mock_binance_client():
     """ГЛОБАЛЬНЫЙ мок: предотвращает любые реальные Binance API-вызовы."""
-    with patch("binance.client.Client") as mock:
+    from contextlib import ExitStack
+    with patch("binance.client.Client") as mock, ExitStack() as stack:
+        for name in ('core.connector', 'futures_portfolio.core.connector'):
+            module = sys.modules.get(name)
+            if module is not None:
+                stack.enter_context(patch.object(module, 'Client', mock))
         yield mock
 
 

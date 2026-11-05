@@ -24,10 +24,15 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
     cfg = json.loads((__import__('pathlib').Path(__file__).resolve().parents[1] / 'config.json').read_text())
     cfg.update(base_ticker='BTCUSDT', tickers=['BTCUSDT'], paper_mode=not real, telegram_enabled=False)
     if real:
-        cfg['portfolios'][0]['cash_reserve_usdt'] = 0
+        cfg['portfolios'][0]['cash_reserve_usdt'] = 5000
+        cfg.update(max_bots=9, paper_mode_bots=8)
     if terminal == 'maxdd':
         cfg['max_drawdown_limit'] = 10
     cfg_path, state_path, wallet_path = [tmp_path / name for name in ['config.json', 'state.json', 'wallet.json']]
+    if real:
+        (tmp_path/'core').mkdir()
+        state_path, wallet_path = tmp_path/'core/state.json', tmp_path/'core/wallet.json'
+
     cfg_path.write_text(json.dumps(cfg))
     now = [1767225720.]
     import math
@@ -52,7 +57,7 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
         snapshot = int(now[0]*1000)-120000
         state.update(funding_model='signed_actual',
                      live_funding={'symbol': 'BTCUSDT', 'snapshot_ms': snapshot, 'boundary_ms': snapshot,
-                                   'opening_wallet': str(wallet['balance']), 'blocked': ''})
+                                   'opening_wallet': '6000', 'blocked': ''})
         wallet['live_funding_snapshot'] = {'symbol': 'BTCUSDT', 'snapshot_ms': snapshot}
     state_path.write_text(json.dumps(state)); wallet_path.write_text(json.dumps(wallet))
     connector = Mock()
@@ -86,6 +91,16 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
         if real == 'critical':
             connector.get_margin_ratio.return_value = {'margin_ratio': 1.}
 
+    if real:
+        from core.real_allocation import claim, account_key
+        connector.api_key, connector.testnet = 'runtime-fixture-key', True
+        actual_balance = [D(5000) + D(str(capital)) - D('.01')]
+        connector.get_usdt_account = AsyncMock(side_effect=lambda: {
+            'wallet': str(actual_balance[0]), 'available': '5000'})
+        state['live_funding']['allocation'] = claim(tmp_path, account_key(connector), 'BTCUSDT',
+            1000, 5000, 6000, 6000, state['live_funding']['snapshot_ms'])
+        state_path.write_text(json.dumps(state))
+
     async def candles(*args):
         boundary = int(now[0])//60*60000
         rows = []
@@ -109,6 +124,7 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
         symbol, leg = action['symbol'], action['position_side']
         qty = exchange_positions.pop(symbol)['qty']
         fill = 99.9 if leg == 'LONG' else 100.1
+        actual_balance[0] += D(str(qty*(fill-100)*(1 if leg == 'LONG' else -1) - qty*fill*.0006))
         return dict(status='SUCCESS', type=leg, symbol=symbol, side='SELL' if leg == 'LONG' else 'BUY',
                     qty=qty, price=fill, commission=qty*fill*.0006,
                     trade_pnl=qty*(fill-100)*(1 if leg == 'LONG' else -1), reduce_only=True,

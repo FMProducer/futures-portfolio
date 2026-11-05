@@ -40,6 +40,12 @@ def connector():
     conn.get_exchange_info = AsyncMock(return_value={"symbols": [{"symbol": "JCTUSDT", "filters": [
         {"filterType": "LOT_SIZE", "stepSize": "1"}, {"filterType": "MIN_NOTIONAL", "notional": "6"}]}]})
     conn.get_positions = AsyncMock(return_value={})
+    async def candles(symbol, interval, limit):
+        import time
+        end = int(time.time() // 60)*60000
+        return [[t, float(PRICE), float(PRICE), float(PRICE), float(PRICE), 1]
+                for t in range(end-limit*60000, end+1, 60000)]
+    conn.get_futures_klines = AsyncMock(side_effect=candles)
     conn.get_bnb_balance = AsyncMock(return_value=1)
     conn.get_margin_ratio = AsyncMock(return_value={"margin_ratio": 10, "total_wallet_balance": 1030.5124})
     return conn
@@ -59,8 +65,10 @@ async def test_actual_quantity_drives_fees_pnl_and_preserves_input(leg, requeste
     assert D(str(result["qty"])) == expected
     assert result["side"] == ("SELL" if leg == "LONG" else "BUY")
     assert result["reduce_only"] is True
-    assert D(str(result["commission"])) == expected * PRICE * D("0.0004")
-    assert result["trade_pnl"] == pytest.approx(float(expected * (PRICE - entry) * (1 if leg == "LONG" else -1)))
+    fill_price = PRICE * (D('0.9995') if leg == 'LONG' else D('1.0005'))
+    assert D(str(result['price'])) == fill_price
+    assert D(str(result["commission"])) == expected * fill_price * D("0.0004")
+    assert result["trade_pnl"] == pytest.approx(float(expected * (fill_price - entry) * (1 if leg == "LONG" else -1)))
     assert book == before
 
 
@@ -170,7 +178,11 @@ async def test_overfilled_result_blocks_before_wallet_mutation():
     final = [value for path, value in saves if path == "state.json"][-1]
     assert final["startup_blocked"] is True
     assert executor.execute_actions.await_count == 1
-    assert not [value for path, value in saves if path == "paper_state.json"]
+    for path, value in saves:
+        if path == 'paper_state.json':
+            assert {k: value[k] for k in ('balance', 'positions', 'long_entry_price', 'short_entry_price')} == {
+                k: book[k] for k in ('balance', 'positions', 'long_entry_price', 'short_entry_price')}
+            assert not value.get('share_fill_receipts')
 
 
 @pytest.mark.asyncio
@@ -238,8 +250,8 @@ async def test_real_executor_main_storage_reload_and_receipt_retry(tmp_path):
     saved_state = safe_load_json_sync(str(state_path), {})
     assert len(fills) == 1 and fills[0]["qty"] == 120000
     assert saved["positions"]["JCTUSDT_SHORT"] == 51096
-    expected_wallet = (D(str(book["balance"])) + D(str(fills[0]["trade_pnl"])) - D(str(fills[0]["commission"]))).quantize(D("0.0001"))
-    assert D(str(saved["balance"])) == expected_wallet
+    expected_wallet = D(str(book["balance"])) - D(str(saved_state["funding_paid"])) + D(str(fills[0]["trade_pnl"])) - D(str(fills[0]["commission"]))
+    assert saved["balance"] == pytest.approx(float(expected_wallet), abs=1e-10)
     assert saved_state["siphoning_reserve"] == 0
     validate_paper_positions(saved)
     assert share_trail.fill_receipt(saved, fills[0]) is False

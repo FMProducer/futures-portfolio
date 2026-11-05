@@ -195,6 +195,7 @@ async def _run_rebalance(config, state, paper_state, connector=None,
                     else patch('core.funding.save_funding_boundary', side_effect=lambda sp, wp, st, wa, *rest:
                                (save_side_effect(sp, st), save_side_effect(wp, wa))))
     signal_patch = nullcontext() if isinstance(sys.modules[M].emit_signal, Mock) else patch(f'{M}.emit_signal')
+    kill_patch = nullcontext() if isinstance(sys.modules[M].self_kill_pm2, Mock) else patch(f'{M}.self_kill_pm2', AsyncMock())
     if state.get('live_funding') and paper_state and 'live_funding_snapshot' not in paper_state:
         paper_state = dict(paper_state, live_funding_snapshot={
             'symbol': state['live_funding']['symbol'], 'snapshot_ms': state['live_funding']['snapshot_ms']})
@@ -211,7 +212,7 @@ async def _run_rebalance(config, state, paper_state, connector=None,
          patch(f"{M}.backtest_rules.paper_legacy_funding", return_value=Decimal('0')), \
          funding_save, \
          signal_patch, \
-         patch(f"{M}.self_kill_pm2", AsyncMock()), \
+         kill_patch, \
          patch("builtins.open", mock_open(read_data=config_file)), \
          patch("os.path.getmtime", return_value=123), \
          patch(f"{M}.load_json", AsyncMock(side_effect=load_side_effect)), \

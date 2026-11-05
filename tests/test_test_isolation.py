@@ -20,3 +20,14 @@ async def test_isolated_python_probe_is_allowed():
                                                 stdout=asyncio.subprocess.PIPE)
     output, _ = await child.communicate()
     assert child.returncode == 0 and output.strip() == b'isolated'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('module_name', ['core.connector', 'futures_portfolio.core.connector'])
+async def test_bound_binance_client_is_mocked(module_name, mock_binance_client):
+    import importlib
+    module = importlib.import_module(module_name)
+    connection = module.BinanceConnector('isolated-test', 'isolated-test')
+    await connection.verify_connection()
+    assert connection.client is mock_binance_client.return_value
+    mock_binance_client.assert_called_once()

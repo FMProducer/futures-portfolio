@@ -233,6 +233,28 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(names["paper_state"]["balance"], 900)
         self.assertEqual(names["initial_tpv"], 900)
 
+    async def test_reset_refuses_a_missing_wallet_without_recreating_capital(self):
+        for paper in (True, False):
+            with self.subTest(paper=paper):
+                self.seed(paper=paper)
+                before = self.state_path.read_bytes()
+                self.wallet_path.unlink()
+                with self.assertRaisesRegex(ValueError, 'confirmed wallet'):
+                    await self.ns['reset_bot_state_files']('QUSDT', paper, self.config)
+                self.assertEqual(self.state_path.read_bytes(), before)
+                self.assertFalse(self.wallet_path.exists())
+
+    async def test_reset_refuses_an_incomplete_wallet_without_recreating_capital(self):
+        for paper in (True, False):
+            for wallet in ({}, {'balance': 1000}, {'positions': {}}):
+                with self.subTest(paper=paper, wallet=wallet):
+                    self.seed(paper=paper)
+                    self.wallet_path.write_text(json.dumps(wallet))
+                    before = self.state_path.read_bytes(), self.wallet_path.read_bytes()
+                    with self.assertRaisesRegex(ValueError, 'confirmed wallet'):
+                        await self.ns['reset_bot_state_files']('QUSDT', paper, self.config)
+                    self.assertEqual((self.state_path.read_bytes(), self.wallet_path.read_bytes()), before)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -96,7 +96,10 @@ dmypy.json
 nul
 scan_cache.json
 scripts/query_counts.py
-experiments/
+experiments/*
+!experiments/trailing_share/
+experiments/trailing_share/*
+!experiments/trailing_share/report_tables.py
 data/intraday_90d_20260726_20261024/
 dashboard/static/ticker.js
 dashboard/templates/dashboard.html

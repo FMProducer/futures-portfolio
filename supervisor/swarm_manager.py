@@ -347,6 +347,8 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
         raise ValueError(f"State reset requires manual reconciliation: {ticker}")
 
     old_wallet = await safe_load_json(str(shadow_state_path), {})
+    if old_state and (not isinstance(old_wallet, dict) or not {'balance', 'positions'}.issubset(old_wallet)):
+        raise ValueError(f"State reset requires a confirmed wallet: {ticker}")
     if old_state and any(float(q) != 0 for q in old_wallet.get("positions", {}).values()):
         raise ValueError(f"State reset requires a confirmed flat wallet: {ticker}")
 

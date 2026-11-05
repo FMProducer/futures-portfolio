@@ -194,7 +194,7 @@ async def test_real_startup_submits_prepared_intents_as_real_market_orders():
          patch('core.funding.save_funding_boundary', side_effect=save), \
          patch('core.funding.recover_funding_boundary', return_value=('ABSENT', None, None)):
         await author._run_rebalance(author._make_config(paper_mode=False), state, wallet,
-            connector=connector, loop_limit=1)
+            connector=connector, loop_limit=1, real_mode=True)
     assert executor.execute_market_order.await_count == 2
     executor.execute_actions.assert_not_called()
     assert snapshots[-1][1]['balance'] == 99.98

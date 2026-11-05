@@ -133,6 +133,7 @@ async def test_failed_initial_leg_is_not_treated_as_complete(tmp_path):
         "min_notional_usdt": 1.0,
         "portfolios": [{
             "initial_capital": 1000.0,
+            "cash_reserve_usdt": 5000,
             "paper_initial_capital": 1000.0,
             "targets": {
                 "BASE_LONG": {"share": 0.33, "leverage": 7.0},

@@ -1,5 +1,13 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-05 — Regression follow-up after checkpoint 94f7a02
+
+- Created the requested branch checkpoint94f7a02, without push. Subsequent work remains uncommitted in codex/regression-990d302.
+- Prevented an existing session reset from recreating configured capital when its confirmed wallet is missing/incomplete; eight refusal scenarios preserve original financial facts.
+- Repaired obsolete/isolation-dependent test fixtures, restored the existing report dependency, made corruption replay tests synthetic and self-contained, and mocked bound Binance clients in both namespaces. Partial-fill/crash/restart checks retain exact receipts and duplicate-order refusal; no test was skipped/xfail-ed to obtain PASS.
+- Seven sequential groups each passed the same annual AGTUSDT:Net+379.927489%,MaxDD67.421727%,386cycles,all525600 equity points identical to control; user config and source history unchanged.
+- Final full suite:1159passed,0failed,0errors,0skipped,9warnings in115.89s,exit0. Evidence:reports/regression_990d302/followup_report.json and docs/REGRESSION_990D302.md. Main checkout, live state and swarm not modified; REAL exchange acceptance remains outside this offline result.
+
 ## 2026-11-05 — Isolated regression audit after 990d302
 
 - Fixed stale AST fixtures and explicit REAL unit-test capacity; blocked unmocked trading-worker subprocesses in tests.

@@ -55,7 +55,7 @@ def test_checkpoint_does_not_override_changed_spec():
 
 def test_equity_stop_posts_closing_fills_and_costs(tmp_path):
     cfg = _synthetic_config(tmp_path, "stop.json", distance=.01,
-                            portfolio_over={"targets": {"BASE_LONG": {"share": .7, "leverage": 1},
+                            portfolio_over={"cash_reserve_usdt": 5000, "targets": {"BASE_LONG": {"share": .7, "leverage": 1},
                                                        "BASE_SHORT": {"share": .3, "leverage": 1},
                                                        "VIRTUAL": {"share": 0., "leverage": 1}}},
                             root_over={"equity_trailing_stop_activation_pct": .01,

@@ -5,37 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from futures_portfolio.supervisor.swarm_manager import enforce_swarm_consistency
 
 @pytest.mark.asyncio
-async def test_enforce_swarm_consistency_respects_whitelist():
-    # Setup mock connector
-    connector = AsyncMock()
-    connector.get_positions.return_value = {
-        "BTCUSDT_LONG": {"qty": 1.0},
-        "ETHUSDT_SHORT": {"qty": -2.0},
-        "SOLUSDT_LONG": {"qty": 5.0}
-    }
+async def test_enforce_swarm_consistency_respects_whitelist(tmp_path):
+    connector = AsyncMock(get_positions=AsyncMock(return_value={
+        'BTCUSDT_LONG': {'qty': 1}, 'ETHUSDT_SHORT': {'qty': -2}, 'SOLUSDT_LONG': {'qty': 5}}))
+    module = 'futures_portfolio.supervisor.swarm_manager'
+    with patch(f'{module}.CORE_PATH', tmp_path), \
+         patch(f'{module}.get_running_bots_info', AsyncMock(return_value={'r_BTCUSDT': {}, 'r_ETHUSDT': {}})), \
+         patch(f'{module}.stop_bot', AsyncMock()) as stop:
+        await enforce_swarm_consistency(connector, {'live_swarm': ['BTCUSDT'], 'real_whitelist': ['ETHUSDT']})
+    stop.assert_awaited_once_with('SOLUSDT', is_paper=False)
 
-    # Setup config: BTC in live_swarm, ETH in real_whitelist, SOL in neither
-    config = {
-        "live_swarm": ["BTCUSDT"],
-        "real_whitelist": ["ETHUSDT"]
-    }
-
-    # We want to check if it tries to close SOLUSDT but NOT BTCUSDT or ETHUSDT
-    with patch("asyncio.create_subprocess_shell", new_callable=AsyncMock) as mock_shell, \
-         patch("futures_portfolio.supervisor.swarm_manager.get_running_bots_info", AsyncMock(return_value={"r_BTCUSDT": {}, "r_ETHUSDT": {}})):
-        mock_process = AsyncMock()
-        mock_shell.return_value.wait = AsyncMock(return_value=0)
-        mock_shell.return_value = mock_process
-
-        await enforce_swarm_consistency(connector, config)
-
-        # Check calls to create_subprocess_shell
-        # It should be called for SOLUSDT
-        calls = [call.args[0] for call in mock_shell.call_args_list]
-
-        assert any("--ticker SOLUSDT" in c for c in calls)
-        assert not any("--ticker BTCUSDT" in c for c in calls)
-        assert not any("--ticker ETHUSDT" in c for c in calls)
 
 @pytest.mark.asyncio
 async def test_enforce_swarm_consistency_all_allowed():

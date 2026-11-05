@@ -125,6 +125,7 @@ async def test_backtest_reads_and_records_fuse_switch(tmp_path, caplog):
     )
     portfolio = {
         "initial_capital": 1000,
+        "cash_reserve_usdt": 5000,
         "targets": {
             "BASE_LONG": {"share": .35, "leverage": 7},
             "BASE_SHORT": {"share": .35, "leverage": 7},
