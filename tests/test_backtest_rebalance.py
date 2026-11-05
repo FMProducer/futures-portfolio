@@ -780,6 +780,12 @@ def test_drawdown_budget_stays_on_configured_initial_capital():
     assert drawdown_threshold(34590.29, 1000, 2.08) == pytest.approx(34569.49)
 
 
+@pytest.mark.parametrize("limit", [100, 1000])
+def test_drawdown_stop_is_disabled_at_or_above_one_hundred(limit):
+    from core.capital import drawdown_threshold
+    assert drawdown_threshold(1672.98, 1000, limit) == float("-inf")
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("ticker", ["AGTUSDT", "ZECUSDT"])
 @pytest.mark.parametrize("mapping", [False, True])

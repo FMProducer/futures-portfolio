@@ -29,4 +29,4 @@ def drawdown_threshold(reference, initial_capital, limit_pct):
     if (not all(math.isfinite(v) for v in (reference, initial_capital, limit_pct))
             or initial_capital <= 0 or limit_pct < 0):
         raise ValueError("Drawdown inputs must be finite, capital positive and limit nonnegative")
-    return reference - initial_capital * limit_pct / 100
+    return -math.inf if limit_pct >= 100 else reference - initial_capital * limit_pct / 100
