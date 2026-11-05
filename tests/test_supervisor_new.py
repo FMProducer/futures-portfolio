@@ -69,7 +69,9 @@ async def test_selective_merge_incubator():
     assert set(res) == {"A", "B", "E", "F"}
 
 @pytest.mark.asyncio
-async def test_get_bot_efficiency():
+async def test_get_bot_efficiency(tmp_path, monkeypatch):
+    monkeypatch.setattr(f"{M}.BASE_PATH", tmp_path)
+    monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
     config = {"min_cycles_for_rank": 10}
     ticker = "BTCUSDT"
     
@@ -91,64 +93,40 @@ async def test_get_bot_efficiency():
         assert res["trailing_stop_paper_timeout_end"] == 123456789.0
 
 @pytest.mark.asyncio
-async def test_reset_bot_state_files_real():
-    config = {"portfolios": [{"initial_capital": 200.0}]}
-    ticker = "BTCUSDT"
-    with patch(f"{M}.shutil.copy") as mock_copy, \
-         patch(f"{M}.os.remove") as mock_remove, \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.safe_load_json", AsyncMock(return_value={})), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as mock_save:
-        await reset_bot_state_files(ticker, is_paper=False, config=config)
-        assert mock_copy.call_count == 2
-        assert mock_remove.call_count == 2
-        assert mock_save.call_count == 2
-        # Verify first save (base state)
-        args, kwargs = mock_save.call_args_list[0]
-        assert args[1]["balance"] == 200.0
-        assert args[1]["base_ticker"] == ticker
+@pytest.mark.parametrize("is_paper,capital", [(False, 200.0), (True, 150.0)])
+async def test_reset_bot_state_files_commits_pair_and_archives_originals(tmp_path, is_paper, capital):
+    core = tmp_path / 'core'
+    core.mkdir()
+    state_path = core / ('paper_state_BTCUSDT.json' if is_paper else 'real_state_BTCUSDT.json')
+    wallet_path = core / ('paper_shadow_BTCUSDT.json' if is_paper else 'shadow_state_BTCUSDT.json')
+    state_path.write_text(json.dumps({'base_ticker': 'BTCUSDT', 'initial_tpv': capital, 'started_at': 1}))
+    wallet_path.write_text(json.dumps({'balance': capital, 'positions': {'BTCUSDT_LONG': 0, 'BTCUSDT_SHORT': 0}}))
+    originals = [state_path.read_bytes(), wallet_path.read_bytes()]
+    config = {'portfolios': [{'initial_capital': 200, 'paper_initial_capital': 150}]}
+    with patch(f'{M}.CORE_PATH', core), patch(f'{M}.BASE_PATH', tmp_path):
+        await reset_bot_state_files('BTCUSDT', is_paper, config)
+    state, wallet = json.loads(state_path.read_text()), json.loads(wallet_path.read_text())
+    assert state['initial_tpv'] == state['reference_tpv'] == state['tpv_ath'] == wallet['balance'] == capital
+    assert state['rebalance_cycles'] == 0 and not state['trailing_stop_triggered']
+    assert not any(wallet['positions'].values())
+    archives = list((tmp_path/'history').glob('archive_BTCUSDT_*'))
+    assert len(archives) == 2 and sorted(p.read_bytes() for p in archives) == sorted(originals)
+
+
+
 
 @pytest.mark.asyncio
-async def test_reset_bot_state_files_paper():
-    config = {"portfolios": [{"paper_initial_capital": 150.0}]}
-    ticker = "BTCUSDT"
-    with patch(f"{M}.shutil.copy") as mock_copy, \
-         patch(f"{M}.os.remove") as mock_remove, \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.safe_load_json", AsyncMock(return_value={})), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as mock_save:
-        await reset_bot_state_files(ticker, is_paper=True, config=config)
-        assert mock_copy.call_count == 2
-        assert mock_remove.call_count == 2
-        assert mock_save.call_count == 2
-        args, kwargs = mock_save.call_args_list[0]
-        assert args[1]["balance"] == 150.0
+async def test_enforce_swarm_consistency(tmp_path):
+    positions = {'BTCUSDT_LONG': {'qty': 1}, 'ETHUSDT_SHORT': {'qty': -1}}
+    connector = MagicMock(get_positions=AsyncMock(return_value=positions))
+    with patch(f'{M}.CORE_PATH', tmp_path), \
+         patch(f'{M}.get_running_bots_info', AsyncMock(return_value={'r_BTCUSDT': {}})), \
+         patch(f'{M}.stop_bot', AsyncMock()) as stop, patch(f'{M}.start_bot', AsyncMock()) as start:
+        await enforce_swarm_consistency(connector, {'live_swarm': ['BTCUSDT']})
+    stop.assert_awaited_once_with('ETHUSDT', is_paper=False)
+    start.assert_not_awaited()
+    assert positions == {'BTCUSDT_LONG': {'qty': 1}, 'ETHUSDT_SHORT': {'qty': -1}}
 
-@pytest.mark.asyncio
-async def test_enforce_swarm_consistency():
-    config = {"live_swarm": ["BTCUSDT"]}
-    connector = MagicMock()
-    connector.get_positions = AsyncMock(return_value={
-        "BTCUSDT_LONG": {"qty": 1.0},
-        "ETHUSDT_SHORT": {"qty": -1.0}
-    })
-
-    with patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock()) as mock_shell, \
-         patch(f"{M}.get_running_bots_info", AsyncMock(return_value={"r_BTCUSDT": {}})), \
-         patch(f"{M}.start_bot", AsyncMock()), \
-         patch(f"{M}.Path.exists", return_value=False):
-        mock_process = AsyncMock()
-        mock_process.wait = AsyncMock()
-        mock_shell.return_value = mock_process
-
-        await enforce_swarm_consistency(connector, config)
-
-        # Should close ETHUSDT (unauthorized, no state file)
-        assert mock_shell.call_count == 1
-        cmd = mock_shell.call_args[0][0]
-        assert "--ticker ETHUSDT" in cmd
-        assert "--stop" in cmd
-        assert "--real" in cmd
 
 @pytest.mark.asyncio
 async def test_ensure_real_bots_alive():
@@ -164,93 +142,29 @@ async def test_ensure_real_bots_alive():
         mock_start.assert_called_once_with("ETHUSDT", is_paper=False, config=config)
 
 @pytest.mark.asyncio
-async def test_manage_swarm_toxic_flow():
-    # Mock config
-    config = {
-        "tickers": ["BTCUSDT"],
-        "max_bots": 2,
-        "toxic_blacklist_paper": {},
-        "live_swarm": []
-    }
-    
-    # Mock scanner to return a toxic ticker
-    scanner_results = [
-        {"symbol": "BTCUSDT", "is_toxic": False},
-        {"symbol": "TRXUSDT", "is_toxic": True}
-    ]
-    
-    mock_conn = MagicMock()
-    mock_conn.verify_connection = AsyncMock()
-    mock_conn.get_positions = AsyncMock(return_value={})
+async def test_manage_swarm_toxic_flow(tmp_path):
+    from test_supervisor import _run_manage
+    signals = tmp_path/'signals'; signals.mkdir()
+    (signals/'stop_paper_TRXUSDT.flag').touch()
+    saved, _, _ = await _run_manage(tmp_path, config_overrides={
+        'paper_mode': True, 'max_bots': 2, 'paper_mode_bots': 2, 'tickers': ['BTCUSDT']},
+        scanner=[{'symbol': 'BTCUSDT', 'is_toxic': False}, {'symbol': 'TRXUSDT', 'is_toxic': True}])
+    assert 'TRXUSDT' in saved['toxic_blacklist_paper'] and 'TRXUSDT' in saved['black_list']
+    assert not list(signals.glob('*.flag'))
 
-    with patch(f"{M}.safe_load_json", AsyncMock(return_value=config)), \
-         patch(f"{M}.BinanceConnector", return_value=mock_conn), \
-         patch(f"{M}.enforce_swarm_consistency", AsyncMock()), \
-         patch(f"{M}.run_scanner", AsyncMock(return_value=scanner_results)), \
-         patch(f"{M}.get_bot_efficiency", AsyncMock(return_value={"profit": 0.0, "cycles": 0})), \
-         patch(f"{M}.get_running_bots_info", AsyncMock(return_value={})), \
-         patch(f"{M}.start_bot", AsyncMock()), \
-         patch(f"{M}.stop_bot", AsyncMock()), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as mock_save, \
-         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())), \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.Path.glob", return_value=[MagicMock(stem="stop_paper_TRXUSDT", unlink=MagicMock())]):
-
-        await manage_swarm()
-
-        # Check if TRXUSDT was added to toxic_blacklist_paper in saved config
-        saved_config = mock_save.call_args_list[0][0][1]
-        assert "TRXUSDT" in saved_config["toxic_blacklist_paper"]
 
 @pytest.mark.asyncio
-async def test_isolated_blacklists_signal_processing():
-    """
-    B3 (2026-07-11): Маршрутизация сигналов:
-    - stop → toxic_blacklist + black_list (токсичный исход)
-    - exit → probation (прибыльный исход, без перманентного бана)
-    """
-    config = {
-        "tickers": ["BTCUSDT", "ETHUSDT"],
-        "max_bots": 2,
-        "toxic_blacklist_paper": {},
-        "toxic_blacklist_real": {},
-        "probation_paper": {},
-        "probation_real": {},
-        "black_list": [],
-        "live_swarm": []
-    }
+async def test_isolated_blacklists_signal_processing(tmp_path):
+    from test_supervisor import _run_manage
+    signals = tmp_path/'signals'; signals.mkdir()
+    for name in ['stop_paper_BTCUSDT.flag', 'exit_real_ETHUSDT.flag']:
+        (signals/name).touch()
+    saved, _, _ = await _run_manage(tmp_path, config_overrides={
+        'paper_mode': False, 'tickers': ['BTCUSDT', 'ETHUSDT']}, scanner=[{'symbol': 'BTCUSDT'}])
+    assert 'BTCUSDT' in saved['toxic_blacklist_paper'] and 'BTCUSDT' in saved['black_list']
+    assert 'ETHUSDT' in saved['probation_real']
+    assert 'ETHUSDT' not in saved['toxic_blacklist_real'] and 'BTCUSDT' not in saved['toxic_blacklist_real']
 
-    mock_conn = MagicMock()
-    mock_conn.verify_connection = AsyncMock()
-    mock_conn.get_positions = AsyncMock(return_value={})
-
-    # Эмуляция файлов-сигналов от Paper и Real ботов
-    mock_flag_paper = MagicMock(stem="stop_paper_BTCUSDT", unlink=MagicMock())
-    mock_flag_real = MagicMock(stem="exit_real_ETHUSDT", unlink=MagicMock())
-
-    with patch(f"{M}.safe_load_json", AsyncMock(return_value=config)), \
-         patch(f"{M}.BinanceConnector", return_value=mock_conn), \
-         patch(f"{M}.enforce_swarm_consistency", AsyncMock(return_value=set())), \
-         patch(f"{M}.run_scanner", AsyncMock(return_value=[{"symbol": "BTCUSDT"}])), \
-         patch(f"{M}.get_bot_efficiency", AsyncMock(return_value={"profit": 0.0, "cycles": 0})), \
-         patch(f"{M}.get_running_bots_info", AsyncMock(return_value={})), \
-         patch(f"{M}.start_bot", AsyncMock()), \
-         patch(f"{M}.stop_bot", AsyncMock()), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as mock_save, \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.Path.glob", return_value=[mock_flag_paper, mock_flag_real]), \
-         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
-
-        await manage_swarm()
-
-        saved_config = mock_save.call_args_list[0][0][1]
-        # stop_paper_BTCUSDT → toxic_blacklist_paper + black_list
-        assert "BTCUSDT" in saved_config["toxic_blacklist_paper"]
-        assert "BTCUSDT" in saved_config["black_list"]
-        # exit_real_ETHUSDT → probation_real (NOT toxic_blacklist_real)
-        assert "ETHUSDT" in saved_config["probation_real"]
-        assert "ETHUSDT" not in saved_config["toxic_blacklist_real"]
-        assert "BTCUSDT" not in saved_config["toxic_blacklist_real"]
 
 @pytest.mark.asyncio
 async def test_get_running_bots_info():
@@ -275,21 +189,30 @@ async def test_get_running_bots_info():
         assert res["r_ETHUSDT"]["paper"] is False
 
 @pytest.mark.asyncio
-async def test_stop_bot():
-    with patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())) as mock_shell:
-        await supervisor.stop_bot("BTCUSDT", is_paper=True)
-        assert "pm2 delete paper-btc" in mock_shell.call_args[0][0]
+async def test_stop_bot(tmp_path):
+    process = AsyncMock(wait=AsyncMock(return_value=0))
+    with patch(f'{M}.CORE_PATH', tmp_path), \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock(return_value=process)) as shell:
+        await supervisor.stop_bot('BTCUSDT', is_paper=True)
+    assert shell.call_args.args[0] == 'pm2 delete paper-btc'
+
 
 @pytest.mark.asyncio
-async def test_start_bot():
-    config = {"portfolios": [{"initial_capital": 100}]}
-    with patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())) as mock_shell, \
-         patch(f"{M}.reset_bot_state_files", AsyncMock()) as mock_reset, \
-         patch(f"{M}.Path.exists", return_value=False):
-        await supervisor.start_bot("BTCUSDT", is_paper=True, config=config)
-        assert mock_reset.called
-        assert "pm2 start core/main.py" in mock_shell.call_args[0][0]
-        assert "--paper" in mock_shell.call_args[0][0]
+async def test_start_bot(tmp_path):
+    config = {'portfolios': [{'paper_initial_capital': 100}]}
+    process = MagicMock(returncode=0, communicate=AsyncMock(return_value=(b'', b'')))
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path), \
+         patch(f'{M}._last_start_time', {}), \
+         patch(f'{M}.get_running_bots_info', AsyncMock(return_value={})), \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock(return_value=process)) as launch, \
+         patch(f'{M}.reset_bot_state_files', AsyncMock()) as reset:
+        from futures_portfolio.supervisor.swarm_manager import start_bot
+        await start_bot('BTCUSDT', is_paper=True, config=config)
+    reset.assert_awaited_once_with('BTCUSDT', is_paper=True, config=config)
+    launch.assert_awaited_once()
+    assert 'pm2 start core/main.py' in launch.call_args.args[0]
+    assert '--paper' in launch.call_args.args[0]
+
 
 
 # ============================================================
@@ -425,56 +348,14 @@ async def test_reset_bot_state_files_exceptions():
             await reset_bot_state_files(ticker, is_paper=False, config=config)
 
 @pytest.mark.asyncio
-async def test_manage_swarm_rotation_hysteresis_and_cushion():
-    config = {
-        "tickers": ["BTCUSDT", "ETHUSDT"],
-        "max_bots": 1,
-        "paper_mode_bots": 0, # so max_real_slots = 1
-        "toxic_blacklist_real": {},
-        "toxic_blacklist_paper": {},
-        "live_swarm": ["ETHUSDT"],
-        "use_real_whitelist": False,
-        "replacement_efficiency_threshold_pct": 20.0,
-        "min_cycles_for_rank": 5,
-        "probation_period_days": 0.001
-    }
-    
-    # Scanner returns both
-    scanner_results = [
-        {"symbol": "BTCUSDT"},
-        {"symbol": "ETHUSDT"}
-    ]
-    
-    # ETHUSDT is currently running and unprofitable (cycles=10, profit=-20) -> score = -0.2
-    # BTCUSDT is a candidate and highly profitable (cycles=10, profit=100) -> score > 0
-    running_bots = {"r_ETHUSDT": {"name": "real-ethusdt", "paper": False}}
-    
-    mock_conn = MagicMock()
-    mock_conn.verify_connection = AsyncMock()
-    mock_conn.get_positions = AsyncMock(return_value={})
-
-    # We mock get_bot_efficiency to return:
-    # ETHUSDT: profit=0.0, cycles=10
-    # BTCUSDT: profit=100, cycles=10
-    async def mock_eff(ticker, cfg):
-        if ticker == "ETHUSDT":
-            return {"profit": 0.0, "cycles": 10, "trailing_stop_paper_timeout_end": 0.0}
-        return {"profit": 100.0, "cycles": 10, "trailing_stop_paper_timeout_end": 0.0}
-
-    with patch(f"{M}.safe_load_json", AsyncMock(return_value=config)), \
-         patch(f"{M}.BinanceConnector", return_value=mock_conn), \
-         patch(f"{M}.enforce_swarm_consistency", AsyncMock(return_value=set())), \
-         patch(f"{M}.run_scanner", AsyncMock(return_value=scanner_results)), \
-         patch(f"{M}.get_bot_efficiency", side_effect=mock_eff), \
-         patch(f"{M}.get_running_bots_info", AsyncMock(return_value=running_bots)), \
-         patch(f"{M}.start_bot", AsyncMock()) as mock_start, \
-         patch(f"{M}.stop_bot", AsyncMock()) as mock_stop, \
-         patch(f"{M}.safe_save_json", AsyncMock()), \
-         patch(f"{M}.Path.exists", return_value=False), \
-         patch(f"{M}.Path.glob", return_value=[]), \
-         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
-
-        await manage_swarm()
-        # Should stop ETHUSDT and start BTCUSDT due to score cushion trigger!
-        mock_stop.assert_called_with("ETHUSDT", is_paper=False)
-        mock_start.assert_any_call("BTCUSDT", is_paper=False, config=config)
+async def test_manage_swarm_rotation_hysteresis_and_cushion(tmp_path):
+    from test_supervisor import _run_manage
+    _, stop, start = await _run_manage(tmp_path, config_overrides={
+        'paper_mode': False, 'max_bots': 2, 'paper_mode_bots': 1, 'tickers': ['ETHUSDT'],
+        'live_swarm': ['ETHUSDT'], 'real_whitelist': [], 'use_real_whitelist': False,
+        'replacement_efficiency_threshold_pct': 20, 'min_cycles_for_rank': 5},
+        scanner=[{'symbol': 'BTCUSDT'}, {'symbol': 'ETHUSDT'}],
+        running_bots={'r_ETHUSDT': {'name': 'real-eth', 'paper': False}},
+        eff_map={'ETHUSDT': {'profit': 0, 'cycles': 10}, 'BTCUSDT': {'profit': 100, 'cycles': 10}})
+    stop.assert_any_await('ETHUSDT', is_paper=False)
+    assert any(c.args[0] == 'BTCUSDT' and c.kwargs['is_paper'] is False for c in start.await_args_list)

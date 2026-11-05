@@ -173,12 +173,19 @@ def test_real_cli_account_lock_excludes_second_worker_without_locking_paper(tmp_
 
 
 @pytest.mark.asyncio
-async def test_operational_config_retains_eight_paper_slots_with_one_real_slot(tmp_path):
+async def test_operational_config_retains_eight_paper_slots_with_authorized_real_capacity(tmp_path):
     from unittest.mock import Mock
     from core.paper_budget import initialize, read_budget
     root = Path(__file__).resolve().parents[1]
     config = json.loads((root/'config.json').read_text())
-    assert config['max_bots']-config['paper_mode_bots'] == 1
+    real_slots = config['max_bots']-config['paper_mode_bots']
+    assert real_slots in (0, 1)
+    if real_slots == 0:
+        connector, _ = setup(tmp_path)
+        with pytest.raises(ValueError, match='exactly one REAL slot'):
+            await allocation.prepare(connector, tmp_path, 'ZECUSDT', config)
+        connector.get_usdt_account.assert_not_awaited()
+        assert not (tmp_path/'core/real_budget.sqlite').exists()
     assert config['paper_mode_bots'] == 8
     source = root/'supervisor/swarm_manager.py'
     function = next(n for n in ast.parse(source.read_text(encoding='utf-8')).body

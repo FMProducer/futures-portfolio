@@ -8,6 +8,11 @@ from pathlib import Path
 
 BASE_PATH = Path(__file__).resolve().parent.parent / "futures_portfolio"
 
+@pytest.fixture(autouse=True)
+def isolated_budget(tmp_path, monkeypatch):
+    monkeypatch.setattr('futures_portfolio.supervisor.swarm_manager.BASE_PATH', tmp_path)
+    monkeypatch.setattr('futures_portfolio.supervisor.swarm_manager.CORE_PATH', tmp_path)
+
 @pytest.mark.asyncio
 async def test_get_bot_efficiency_no_state():
     config = {"min_cycles_for_rank": 10}
@@ -38,6 +43,7 @@ async def test_get_bot_efficiency_with_state():
 
     assert result == {
         "profit": 100.0,
+        "session_profit": 100.0, "activity_at": None, "idle": False,
         "cycles": 20,
         "eff": 100.0 / 20,
         "trailing_stop_paper_timeout_end": 123456789.0
@@ -58,6 +64,7 @@ async def test_get_bot_efficiency_min_cycles():
 
     assert result == {
         "profit": 100.0,
+        "session_profit": 100.0, "activity_at": None, "idle": False,
         "cycles": 5,
         "eff": 100.0 / 10, # max(5, 10)
         "trailing_stop_paper_timeout_end": 0.0

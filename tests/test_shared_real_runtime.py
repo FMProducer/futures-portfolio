@@ -22,7 +22,8 @@ async def test_shared_account_runtime_spends_only_worker_cash_and_books_actual_e
     paper = tmp_path/'core/paper_budget.sqlite'
     paper.write_bytes(b'unchanged-eight-paper-slots')
     config = json.loads((Path(__file__).resolve().parents[1]/'config.json').read_text())
-    config.update(base_ticker='ZECUSDT', paper_mode=False, telegram_enabled=False)
+    config.update(base_ticker='ZECUSDT', paper_mode=False, telegram_enabled=False,
+                  max_bots=9, paper_mode_bots=8)
     cp = tmp_path/'config.json'; cp.write_text(json.dumps(config))
     sp, wp = tmp_path/'core/real_state_ZECUSDT.json', tmp_path/'core/shadow_state_ZECUSDT.json'
     now = [1767225720.]

@@ -347,6 +347,8 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
         raise ValueError(f"State reset requires manual reconciliation: {ticker}")
 
     old_wallet = await safe_load_json(str(shadow_state_path), {})
+    if old_state and (not isinstance(old_wallet, dict) or not {'balance', 'positions'}.issubset(old_wallet)):
+        raise ValueError(f"State reset requires a confirmed wallet: {ticker}")
     if old_state and any(float(q) != 0 for q in old_wallet.get("positions", {}).values()):
         raise ValueError(f"State reset requires a confirmed flat wallet: {ticker}")
 
@@ -907,7 +909,7 @@ async def manage_swarm():
                 probation = prob_paper if mode_tag == "paper" else prob_real
                 cooldown_sec = toxic_cooldown_sec if signal_type == "siphon" else probation_cooldown_sec
                 closed = await safe_load_json(str(CORE_PATH / f'{mode_tag}_state_{ticker}.json'), {})
-                strategy_stop = closed.get('stop_reason') in ('equity_trailing_stop', 'max_dd_stop', 'liquidation_guard')
+                strategy_stop = closed.get('stop_reason') in ('equity_trailing_stop', 'max_dd_stop', 'max_drawdown', 'liquidation_guard')
                 if strategy_stop:
                     wallet_name = 'paper_shadow' if mode_tag == 'paper' else 'shadow_state'
                     wallet = await safe_load_json(str(CORE_PATH / f'{wallet_name}_{ticker}.json'), {})
@@ -939,7 +941,7 @@ async def manage_swarm():
                         if any(float(p["qty"]) != 0 for key,p in positions.items() if key.split("_")[0] == ticker):
                             raise ValueError(f"SAFE credit requires verified flat REAL positions: {ticker}")
                     siphoning.credit_reserve(config, mode_tag, ticker, closed)
-                if signal_type in ("siphon", "drawdown"):
+                if strategy_stop or signal_type in ("siphon", "drawdown"):
                     await safe_save_json(CONFIG_PATH, {**config,
                         "black_list": sorted(config.get("black_list", [])),
                         "live_swarm": sorted(config.get("live_swarm", []))})

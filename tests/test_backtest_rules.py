@@ -11,8 +11,12 @@ from core.backtest_rules import closed_minutes, filter_actions, maxdd_reached, s
 
 ROOT = Path(__file__).resolve().parents[1]
 TREE = ast.parse((ROOT / 'backtest/backtest_rebalance.py').read_text(encoding='utf-8'))
-NODES = [n for n in ast.walk(TREE) if isinstance(n, ast.If) and n.col_offset == 12 and 972 <= n.lineno <= 1037]
-assert len(NODES) == 4
+NODES = sorted((n for n in ast.walk(TREE) if isinstance(n, ast.If) and (
+    ast.unparse(n.test) in ('actions and i >= tg_trend_bars', 'actions and vg_cooldown_bars > 0')
+    or (ast.unparse(n.test) == 'actions' and isinstance(n.body[0], ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == 't_cfg' for t in n.body[0].targets)))),
+    key=lambda n: n.lineno)
+assert len(NODES) == 3
 ORACLE = compile(ast.Module(body=NODES, type_ignores=[]), 'backtest_01e4df4_guards', 'exec')
 
 
@@ -70,11 +74,18 @@ def test_closed_minutes_excludes_open_candle():
     assert closed_minutes(rows, 185000) == [(60000, 100.), (120000, 100.)]
 
 
-def test_maxdd_matches_realized_equity_and_disabled_limit():
-    assert maxdd_reached(850, -150, 1000, 1000, 10) == (False, 1000)
-    assert maxdd_reached(850, 0, 1000, 1000, 10) == (True, 1000)
-    assert maxdd_reached(-100, -1100, 1000, 1000, 100) == (False, 1000)
-    assert maxdd_reached(1200, 0, 1000, 1000, 100) == (False, 1000)
+def test_maxdd_matches_full_equity_fixed_budget_and_disabled_limit():
+    assert maxdd_reached(850, 1000, 1000, 10) == (True, 1000)
+    assert maxdd_reached(1100, 1200, 1000, 10) == (True, 1200)
+    assert maxdd_reached(1101, 1200, 1000, 10) == (False, 1200)
+    assert maxdd_reached(-100, 1000, 1000, 100) == (False, 1000)
+    assert maxdd_reached(1200, 1000, 1000, 100) == (False, 1200)
+
+
+@pytest.mark.parametrize('equity', [float('nan'), float('inf'), -float('inf')])
+def test_maxdd_rejects_nonfinite_equity(equity):
+    with pytest.raises(ValueError, match='finite'):
+        maxdd_reached(equity, 1000, 1000, 10)
 
 
 @pytest.mark.asyncio

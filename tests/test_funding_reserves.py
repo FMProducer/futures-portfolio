@@ -222,7 +222,7 @@ async def test_runtime_shortfall_blocks_increases_and_preserves_wallet(paper_mod
     with patch("core.funding.save_funding_boundary", side_effect=save), \
          patch("core.funding.apply_funding_paper", side_effect=apply), \
          patch("futures_portfolio.core.main.PortfolioExecutor", return_value=executor):
-        await _run_rebalance(config, state, _make_paper_state(), loop_limit=2)
+        await _run_rebalance(config, state, _make_paper_state(), loop_limit=2, real_mode=not paper_mode)
     assert applications
     for (before, v_before), (after, v_after) in applications:
         assert v_after == v_before - 2

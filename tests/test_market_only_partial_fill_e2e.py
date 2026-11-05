@@ -78,11 +78,16 @@ def _make_connector(exchange):
         k: {"qty": v, "entry_price": 180.0 if "LONG" in k else 220.0}
         for k, v in exchange.items()})
     c.get_position_risk = AsyncMock(side_effect=lambda: {
-        k: {"positionAmt": str(v), "positionSide": k.split("_")[1]}
+        k: {"qty": v, "entry_price": 180.0 if "LONG" in k else 220.0}
         for k, v in exchange.items() if v})
+    c.get_funding_income = AsyncMock(return_value=[])
+    async def candles(symbol, interval, limit):
+        end = int(time.time() // 60) * 60000
+        return [[t, 200, 200, 200, 200, 1] for t in range(end-limit*60000, end+1, 60000)]
+    c.get_futures_klines = AsyncMock(side_effect=candles)
     c.get_margin_ratio = AsyncMock(return_value={"margin_ratio": 10.0, "total_wallet_balance": 1000.0})
     c.get_order_trades = AsyncMock(return_value=[
-        {"realizedPnl": "18.5", "commission": "0.45"}])
+        {"realizedPnl": "18.5", "commission": "0.45", "qty": "1.0", "commissionAsset": "USDT"}])
     c.futures_client = MagicMock()
     # the market order is partially filled by the "exchange"
     c.futures_client.futures_create_order = Mock(return_value={
@@ -100,9 +105,13 @@ def _make_notifier():
 
 
 def _seed_files():
+    snapshot = int(time.time()*1000)-120000
     return {
         "state.json": {
             "base_ticker": "ZECUSDT", "initial_tpv": 1000.0, "reference_tpv": 1000.0,
+            "started_at": time.time()-120, "funding_model": "signed_actual",
+            "live_funding": {"symbol": "ZECUSDT", "snapshot_ms": snapshot,
+                             "boundary_ms": snapshot, "opening_wallet": "1000"},
             "tpv_ath": 1000.0, "virt_qty": 0.0, "virt_debt": 0.0,
             "rebalance_cycles": 1, "last_rebalance_price": 200.0,
             "share_trail": {"BASE_LONG": {"peak": "0.55", "trough": None},
@@ -110,6 +119,8 @@ def _seed_files():
         },
         "paper_state.json": {
             "base_ticker": "ZECUSDT", "balance": 1000.0,
+            "profit_budget": {"balance": "0", "blocked": False, "receipts": {}},
+            "live_funding_snapshot": {"symbol": "ZECUSDT", "snapshot_ms": snapshot},
             "positions": {"ZECUSDT_LONG": 14.0, "ZECUSDT_SHORT": 2.0},
             "long_entry_price": 180.0, "short_entry_price": 220.0,
             "last_price": 200.0,
@@ -117,49 +128,48 @@ def _seed_files():
     }
 
 
-async def _run_once(files, connector, stop_after_receipt=False, stop_sleep_count=0):
-    original_sleep = asyncio.sleep
+async def _run_once(files, connector, directory, stop_after_receipt=False, stop_sleep_count=0):
+    for name, value in files.items():
+        path = directory/name
+        if not path.exists():
+            path.write_text(json.dumps(value))
+    config = directory/'config.json'
+    config.write_text(json.dumps(CONFIG))
+    original_sleep, original_save = asyncio.sleep, main.save_json
     stop = {"receipt_saved": False, "seen": 0}
 
     async def sleep(seconds, *args, **kwargs):
-        if seconds >= 86400:
+        stop['seen'] += 1
+        if seconds >= 86400 or stop['seen'] > 100 or (stop_after_receipt and stop['receipt_saved']) \
+                or (stop_sleep_count and stop['seen'] >= stop_sleep_count):
             raise EndTick()
-        stop["seen"] += 1
-        if (stop_after_receipt and stop["receipt_saved"]) \
-                or (stop_sleep_count and stop["seen"] >= stop_sleep_count):
-            raise EndTick()
-        return await original_sleep(0.0)
+        return await original_sleep(0)
 
-    def load(path, default=None):
-        return copy.deepcopy(files.get(str(path), default))
+    async def save(path, value):
+        await original_save(path, value)
+        if value.get('share_fill_receipts'):
+            stop['receipt_saved'] = True
 
-    def save(path, value):
-        files[str(path)] = json.loads(json.dumps(value))
-        if value.get("share_fill_receipts"):
-            stop["receipt_saved"] = True
-
-    with patch.object(main, "load_json", side_effect=load), \
-         patch.object(main, "save_json", side_effect=save), \
-         patch.object(main, "safe_load_json_sync", return_value=CONFIG), \
-         patch.object(main, "TelegramNotifier", return_value=_make_notifier()), \
-         patch("builtins.open", mock_open(read_data=json.dumps(CONFIG))), \
-         patch("os.path.getmtime", return_value=123), \
-         patch("asyncio.sleep", side_effect=sleep):
+    with patch.object(main, 'save_json', side_effect=save), \
+         patch.object(main, 'TelegramNotifier', return_value=_make_notifier()), \
+         patch.object(main, 'self_kill_pm2', AsyncMock()), patch('asyncio.sleep', side_effect=sleep):
         with pytest.raises(EndTick):
-            await main.rebalance_loop(connector, "config.json", "state.json",
-                                      "paper_state.json", MagicMock())
+            await main.rebalance_loop(connector, str(config), str(directory/'state.json'),
+                                      str(directory/'paper_state.json'), MagicMock())
+    for name in files:
+        files[name] = json.loads((directory/name).read_text())
     return stop
 
 
 @pytest.mark.asyncio
-async def test_market_only_partial_fill_survives_restart():
+async def test_market_only_partial_fill_survives_restart(tmp_path):
     files = _seed_files()
     exchange = {"ZECUSDT_LONG": 14.0, "ZECUSDT_SHORT": 2.0}
     connector = _make_connector(exchange)
 
     # run 1: the reduction triggers, the market order fills partially, the durable
     # save happens, then the process dies right after that save
-    await _run_once(files, connector, stop_after_receipt=True)
+    await _run_once(files, connector, tmp_path, stop_after_receipt=True)
     paper = files["paper_state.json"]
     state = files["state.json"]
     assert len(paper["share_fill_receipts"]) == 1
@@ -181,7 +191,7 @@ async def test_market_only_partial_fill_survives_restart():
 
     # run 2: restart from disk. The consumed signal must not be re-ordered; the
     # ledger must stay consistent with the exchange.
-    await _run_once(files, connector, stop_sleep_count=6)
+    await _run_once(files, connector, tmp_path, stop_sleep_count=6)
     paper = files["paper_state.json"]
     state = files["state.json"]
     assert paper["positions"]["ZECUSDT_LONG"] == 13.0 == exchange["ZECUSDT_LONG"]

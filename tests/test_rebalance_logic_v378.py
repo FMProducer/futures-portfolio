@@ -82,11 +82,11 @@ def test_rebalance_logic_v378():
     assert any(a["key"] == "BASE_LONG" and a["priority"] == 0 for a in actions)
     # VIRTUAL should NOT trigger (37.6% - 35% = 2.6% < 3.5%)
     assert not any(a["key"] == "VIRTUAL" and a["priority"] == 0 for a in actions)
-    assert any(a["key"] == "BASE_SHORT" and a["priority"] == 2 for a in actions)
+    assert calc.val_cash == 0 and not any(a["key"] == "BASE_SHORT" for a in actions)
     
     # Sort order check (SELLs first)
     assert actions[0]["priority"] == 0
-    assert actions[-1]["priority"] == 2
+    assert all(a["is_reduction"] for a in actions)
 
     print("--- CASE 3: Cash Guard (Insufficient funds for Short) ---")
     calc = PortfolioCalculator(

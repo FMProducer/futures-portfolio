@@ -3,11 +3,14 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import pandas as pd
 
 
 @pytest.fixture
 def report(monkeypatch):
     path = Path(__file__).resolve().parents[1] / "experiments/trailing_share/report_tables.py"
+    monkeypatch.setattr(pd, 'read_feather', lambda path: pd.DataFrame({
+        'time': pd.date_range('2026-01-01', periods=2, freq='min', tz='UTC'), 'close': [100., 100.]}))
     spec = importlib.util.spec_from_file_location("trailing_report", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

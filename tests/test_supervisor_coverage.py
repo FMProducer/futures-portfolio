@@ -66,42 +66,32 @@ async def test_get_pm2_processes_json_decode_error():
 
 @pytest.mark.asyncio
 async def test_reconcile_swarm_state_no_orphans():
-    """Lines 103-145: no orphans -> no kills"""
     from futures_portfolio.supervisor.swarm_manager import reconcile_swarm_state
-    pm2_data = [{"name": "paper-aliceusdt", "pm2_env": {"status": "online"}}]
-    mock_proc = AsyncMock()
-    mock_proc.communicate.return_value = (json.dumps(pm2_data).encode(), b"")
-    with patch(f"{M}.asyncio.create_subprocess_shell", return_value=mock_proc):
-        await reconcile_swarm_state(["ALICEUSDT"], "paper")
+    processes = [{'name': 'paper-alice', 'pm2_env': {'status': 'online'}}]
+    with patch(f'{M}.get_pm2_processes', AsyncMock(return_value=processes)), \
+         patch(f'{M}.stop_bot', AsyncMock()) as stop, \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock()) as shell:
+        await reconcile_swarm_state(['ALICEUSDT'], 'paper')
+    stop.assert_not_awaited()
+    shell.assert_not_awaited()
+
 
 
 @pytest.mark.asyncio
-async def test_reconcile_swarm_state_kills_orphans():
-    """Lines 117-141: orphaned process -> pm2 delete + pm2 save"""
+@pytest.mark.parametrize('mode', ['paper', 'real'])
+async def test_reconcile_swarm_state_kills_orphans(tmp_path, mode):
     from futures_portfolio.supervisor.swarm_manager import reconcile_swarm_state
-    pm2_data = [
-        {"name": "paper-aliceusdt", "pm2_env": {"status": "online"}},
-        {"name": "paper-orphonusdt", "pm2_env": {"status": "online"}},
-    ]
-    call_log = []
+    (tmp_path/'paper_budget.sqlite').touch()
+    processes = [{'name': f'{mode}-{name}', 'pm2_env': {'status': 'online'}} for name in ['alice', 'orphon']]
+    process = AsyncMock(wait=AsyncMock(return_value=0))
+    with patch(f'{M}.CORE_PATH', tmp_path), \
+         patch(f'{M}.get_pm2_processes', AsyncMock(return_value=processes)), \
+         patch(f'{M}.stop_bot', AsyncMock()) as stop, \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock(return_value=process)) as shell:
+        await reconcile_swarm_state(['ALICEUSDT'], mode)
+    stop.assert_awaited_once_with('ORPHONUSDT', is_paper=mode == 'paper')
+    assert shell.call_args.args[0] == 'pm2 save'
 
-    async def fake_exec(cmd, *args, **kwargs):
-        call_log.append((cmd, args))
-        return AsyncMock()
-
-    mock_proc = AsyncMock()
-    mock_proc.communicate.return_value = (json.dumps(pm2_data).encode(), b"")
-
-    # get_pm2_processes uses create_subprocess_shell, and so does reconcile_swarm_state for delete/save
-    with patch(f"{M}.asyncio.create_subprocess_shell", side_effect=fake_exec):
-        # Patch get_pm2_processes to return our data directly
-        with patch(f"{M}.get_pm2_processes", return_value=pm2_data):
-            await reconcile_swarm_state(["ALICEUSDT"], "paper")
-
-    # Should have called pm2 delete for orphan (shell mode: single string arg)
-    delete_calls = [c for c in call_log if isinstance(c[0], str) and "pm2 delete" in c[0]]
-    assert len(delete_calls) >= 1
-    assert any("orphonusdt" in c[0] for c in delete_calls)
 
 
 @pytest.mark.asyncio
@@ -117,35 +107,24 @@ async def test_reconcile_swarm_state_empty_pm2():
 # =====================================================================
 
 @pytest.mark.asyncio
-async def test_stop_bot_filenotfound():
-    """Lines 152-153: PM2 binary not found -> caught"""
+@pytest.mark.parametrize('is_paper,error', [(False, FileNotFoundError), (True, OSError), (False, RuntimeError)])
+async def test_stop_bot_process_failure_propagates_without_releasing_budget(tmp_path, is_paper, error):
     from futures_portfolio.supervisor.swarm_manager import stop_bot
-    mock_proc = AsyncMock()
-    mock_proc.wait = AsyncMock()
-    mock_shell = AsyncMock(return_value=mock_proc)
-    # create_subprocess_shell itself raises FileNotFoundError
-    with patch(f"{M}.asyncio.create_subprocess_shell", side_effect=FileNotFoundError):
-        await stop_bot("BTCUSDT", is_paper=False)
+    pool = tmp_path/'paper_budget.sqlite'; pool.write_bytes(b'reserved-capital')
+    with patch(f'{M}.CORE_PATH', tmp_path), \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock(side_effect=error('launch failed'))), \
+         patch(f'{M}.asyncio.create_subprocess_exec', AsyncMock()) as close:
+        with pytest.raises(error):
+            await stop_bot('BTCUSDT', is_paper)
+    close.assert_not_awaited()
+    assert pool.read_bytes() == b'reserved-capital'
 
 
-@pytest.mark.asyncio
-async def test_stop_bot_oserror():
-    """Lines 154-155: OS error -> caught"""
-    from futures_portfolio.supervisor.swarm_manager import stop_bot
-    mock_proc = AsyncMock()
-    mock_proc.wait = AsyncMock()
-    with patch(f"{M}.asyncio.create_subprocess_shell", side_effect=OSError("permission denied")):
-        await stop_bot("ETHUSDT", is_paper=True)
 
 
-@pytest.mark.asyncio
-async def test_stop_bot_general_exception():
-    """Lines 156-157: general exception -> caught"""
-    from futures_portfolio.supervisor.swarm_manager import stop_bot
-    mock_proc = AsyncMock()
-    mock_proc.wait = AsyncMock()
-    with patch(f"{M}.asyncio.create_subprocess_shell", side_effect=RuntimeError("unexpected")):
-        await stop_bot("SOLUSDT", is_paper=False)
+
+
+
 
 
 # =====================================================================
@@ -225,6 +204,8 @@ async def test_reset_bot_state_files_rebases_on_trailing_stop(tmp_path, monkeypa
     monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
     old_state = {"trailing_stop_triggered": True, "last_tpv": 200.0}
     (tmp_path / "paper_state_BTCUSDT.json").write_text(json.dumps(old_state))
+    (tmp_path / "paper_shadow_BTCUSDT.json").write_text(json.dumps({
+        "balance": 100, "positions": {"BTCUSDT_LONG": 0, "BTCUSDT_SHORT": 0}}))
     config = {"portfolios": [{"paper_initial_capital": 100.0}]}
     await reset_bot_state_files("BTCUSDT", is_paper=True, config=config)
     new_state = json.loads((tmp_path / "paper_state_BTCUSDT.json").read_text())
@@ -248,59 +229,51 @@ async def test_reset_bot_state_files_no_state_uses_config(tmp_path, monkeypatch)
 # =====================================================================
 
 @pytest.mark.asyncio
-async def test_start_bot_real_no_state_file(tmp_path, monkeypatch):
-    """Lines 373-375: real bot, no state file -> reset called"""
+async def test_start_bot_real_missing_snapshot_requires_allocation_proof(tmp_path):
     from futures_portfolio.supervisor.swarm_manager import start_bot
-    monkeypatch.setattr(f"{M}.BASE_PATH", tmp_path)
-    monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
-    reset_called = False
+    connector = MagicMock(api_key='', testnet=True, verify_connection=AsyncMock())
+    config = {'max_bots': 9, 'paper_mode_bots': 8, 'portfolios': [{'initial_capital': 100}]}
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path), \
+         patch(f'{M}.BinanceConnector', return_value=connector), \
+         patch(f'{M}.get_running_bots_info', AsyncMock(return_value={})), \
+         patch(f'{M}.reset_bot_state_files', AsyncMock()) as reset, \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock()) as launch:
+        with pytest.raises(ValueError, match='identified exchange credentials'):
+            await start_bot('BTCUSDT', False, config)
+    reset.assert_not_awaited()
+    launch.assert_not_awaited()
+    assert not (tmp_path/'real_state_BTCUSDT.json').exists()
 
-    async def fake_reset(ticker, is_paper, config):
-        nonlocal reset_called
-        reset_called = True
-
-    with patch(f"{M}.reset_bot_state_files", side_effect=fake_reset), \
-         patch(f"{M}.asyncio.create_subprocess_shell", return_value=AsyncMock(wait=AsyncMock())):
-        await start_bot("BTCUSDT", is_paper=False, config={"initial_capital": 100})
-    assert reset_called
 
 
 @pytest.mark.asyncio
-async def test_start_bot_real_with_existing_state(tmp_path, monkeypatch):
-    """Lines 373-374: real bot, state exists -> NO reset"""
+async def test_start_bot_real_incomplete_snapshot_is_not_reset(tmp_path):
     from futures_portfolio.supervisor.swarm_manager import start_bot
-    monkeypatch.setattr(f"{M}.BASE_PATH", tmp_path)
-    monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
-    (tmp_path / "real_state_BTCUSDT.json").write_text("{}")
-    reset_called = False
+    state = tmp_path/'real_state_BTCUSDT.json'; state.write_text('{}')
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path), \
+         patch(f'{M}.reset_bot_state_files', AsyncMock()) as reset, \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock()) as launch:
+        with pytest.raises(ValueError, match='reconciled snapshot'):
+            await start_bot('BTCUSDT', False, {'portfolios': [{'initial_capital': 100}]})
+    reset.assert_not_awaited()
+    launch.assert_not_awaited()
+    assert state.read_text() == '{}'
 
-    async def fake_reset(ticker, is_paper, config):
-        nonlocal reset_called
-        reset_called = True
-
-    with patch(f"{M}.reset_bot_state_files", side_effect=fake_reset), \
-         patch(f"{M}.asyncio.create_subprocess_shell", return_value=AsyncMock(wait=AsyncMock())):
-        await start_bot("BTCUSDT", is_paper=False, config={"initial_capital": 100})
-    assert not reset_called
 
 
 @pytest.mark.asyncio
-async def test_start_bot_paper_always_resets(tmp_path, monkeypatch):
-    """Lines 370-371: paper bot -> always resets"""
+async def test_start_bot_paper_invalid_state_does_not_reset(tmp_path):
     from futures_portfolio.supervisor.swarm_manager import start_bot
-    monkeypatch.setattr(f"{M}.BASE_PATH", tmp_path)
-    monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
-    (tmp_path / "paper_state_BTCUSDT.json").write_text("{}")
-    reset_called = False
+    state = tmp_path/'paper_state_BTCUSDT.json'; state.write_text('{}')
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path), \
+         patch(f'{M}.reset_bot_state_files', AsyncMock()) as reset, \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock()) as launch:
+        with pytest.raises(ValueError, match='PAPER resume requires reconciliation'):
+            await start_bot('BTCUSDT', True, {'portfolios': [{'paper_initial_capital': 100}]})
+    reset.assert_not_awaited()
+    launch.assert_not_awaited()
+    assert state.read_text() == '{}'
 
-    async def fake_reset(ticker, is_paper, config):
-        nonlocal reset_called
-        reset_called = True
-
-    with patch(f"{M}.reset_bot_state_files", side_effect=fake_reset), \
-         patch(f"{M}.asyncio.create_subprocess_shell", return_value=AsyncMock(wait=AsyncMock())):
-        await start_bot("BTCUSDT", is_paper=True, config={"initial_capital": 100})
-    assert reset_called
 
 
 # =====================================================================
@@ -366,17 +339,18 @@ async def test_enforce_swarm_consistency_no_positions():
 
 
 @pytest.mark.asyncio
-async def test_enforce_swarm_consistency_heal_failure(tmp_path, monkeypatch):
-    """Lines 228-243: orphan with no running PM2 -> attempt heal, exception caught"""
+async def test_enforce_swarm_consistency_unverified_close_failure_propagates(tmp_path):
     from futures_portfolio.supervisor.swarm_manager import enforce_swarm_consistency
-    monkeypatch.setattr(f"{M}.BASE_PATH", tmp_path)
-    monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
-    connector = MagicMock()
-    connector.get_positions = AsyncMock(return_value={
-        "ZECUSDT_LONG": {"qty": "-0.5"}
-    })
-    config = {"live_swarm": [], "real_whitelist": []}
-    with patch(f"{M}.get_running_bots_info", AsyncMock(return_value={})), \
-         patch(f"{M}.start_bot", AsyncMock(side_effect=RuntimeError("fail"))):
-        result = await enforce_swarm_consistency(connector, config)
+    positions = {'ZECUSDT_LONG': {'qty': '-.5'}}
+    connector = MagicMock(get_positions=AsyncMock(return_value=positions))
+    with patch(f'{M}.CORE_PATH', tmp_path), \
+         patch(f'{M}.get_running_bots_info', AsyncMock(return_value={})), \
+         patch(f'{M}.start_bot', AsyncMock()) as start, \
+         patch(f'{M}.stop_bot', AsyncMock(side_effect=RuntimeError('unconfirmed close'))) as stop:
+        with pytest.raises(RuntimeError, match='unconfirmed close'):
+            await enforce_swarm_consistency(connector, {'live_swarm': []})
+    stop.assert_awaited_once_with('ZECUSDT', is_paper=False)
+    start.assert_not_awaited()
+    assert positions == {'ZECUSDT_LONG': {'qty': '-.5'}}
+
     # Should not raise

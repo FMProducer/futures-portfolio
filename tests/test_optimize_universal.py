@@ -22,7 +22,11 @@ class UniversalOptimizerTests(unittest.TestCase):
         self.assertEqual(space["leverage"], ("int", 3, 10))
         for path in (P + "targets.BASE_LONG.leverage", P + "targets.BASE_SHORT.leverage"):
             self.assertNotIn(path, space)
-        self.assertEqual(space[P + "liquidation_distance_crit_pct"], ("float", 0, 0))
+        critical = self.config['portfolios'][0]['liquidation_distance_crit_pct']
+        self.assertEqual(space[P + "liquidation_distance_crit_pct"], ("float", critical*.5, critical*1.5))
+        disabled = copy.deepcopy(self.config)
+        disabled['portfolios'][0]['liquidation_distance_crit_pct'] = 0.0
+        self.assertEqual(search_space(disabled)[P + 'liquidation_distance_crit_pct'], ('float', 0, 0))
         value = self.config["rebalance_share_trail_distance"]
         self.assertEqual(space["rebalance_share_trail_distance"], ("float", value * .5, value * 1.5))
         cfg = candidate(self.config, {P + "fuse_enabled": True, "leverage": 4})

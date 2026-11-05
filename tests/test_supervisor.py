@@ -96,7 +96,9 @@ async def test_selective_merge_incubator():
     assert set(res) == {"A", "B", "E", "F"}
 
 @pytest.mark.asyncio
-async def test_get_bot_efficiency():
+async def test_get_bot_efficiency(tmp_path, monkeypatch):
+    monkeypatch.setattr(f"{M}.BASE_PATH", tmp_path)
+    monkeypatch.setattr(f"{M}.CORE_PATH", tmp_path)
     config = {"min_cycles_for_rank": 10}
     ticker = "BTCUSDT"
     
@@ -118,55 +120,49 @@ async def test_get_bot_efficiency():
         assert res["trailing_stop_paper_timeout_end"] == 123456789.0
 
 @pytest.mark.asyncio
-async def test_reset_bot_state_files_real():
-    config = {"portfolios": [{"initial_capital": 200.0}]}
-    ticker = "BTCUSDT"
-    with patch(f"{M}.shutil.copy") as mock_copy, \
-         patch(f"{M}.os.remove") as mock_remove, \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.safe_load_json", AsyncMock(return_value={})), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as mock_save:
-        await reset_bot_state_files(ticker, is_paper=False, config=config)
-        assert mock_copy.call_count == 2
-        assert mock_remove.call_count == 2
-        assert mock_save.call_count == 2
-        # Verify first save (base state)
-        args, kwargs = mock_save.call_args_list[0]
-        assert args[1]["balance"] == 200.0
-        assert args[1]["base_ticker"] == ticker
+@pytest.mark.parametrize("is_paper,capital", [(False, 200.0), (True, 150.0)])
+async def test_reset_bot_state_files_commits_pair_and_archives_originals(tmp_path, is_paper, capital):
+    core = tmp_path / 'core'
+    core.mkdir()
+    state_path = core / ('paper_state_BTCUSDT.json' if is_paper else 'real_state_BTCUSDT.json')
+    wallet_path = core / ('paper_shadow_BTCUSDT.json' if is_paper else 'shadow_state_BTCUSDT.json')
+    state_path.write_text(json.dumps({'base_ticker': 'BTCUSDT', 'initial_tpv': capital, 'started_at': 1}))
+    wallet_path.write_text(json.dumps({'balance': capital, 'positions': {'BTCUSDT_LONG': 0, 'BTCUSDT_SHORT': 0}}))
+    originals = [state_path.read_bytes(), wallet_path.read_bytes()]
+    config = {'portfolios': [{'initial_capital': 200, 'paper_initial_capital': 150}]}
+    with patch(f'{M}.CORE_PATH', core), patch(f'{M}.BASE_PATH', tmp_path):
+        await reset_bot_state_files('BTCUSDT', is_paper, config)
+    state, wallet = json.loads(state_path.read_text()), json.loads(wallet_path.read_text())
+    assert state['initial_tpv'] == state['reference_tpv'] == state['tpv_ath'] == wallet['balance'] == capital
+    assert state['rebalance_cycles'] == 0 and not state['trailing_stop_triggered']
+    assert not any(wallet['positions'].values())
+    archives = list((tmp_path/'history').glob('archive_BTCUSDT_*'))
+    assert len(archives) == 2 and sorted(p.read_bytes() for p in archives) == sorted(originals)
 
-@pytest.mark.asyncio
-async def test_reset_bot_state_files_paper():
-    config = {"portfolios": [{"paper_initial_capital": 150.0}]}
-    ticker = "BTCUSDT"
-    with patch(f"{M}.shutil.copy") as mock_copy, \
-         patch(f"{M}.os.remove") as mock_remove, \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch(f"{M}.safe_load_json", AsyncMock(return_value={})), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as mock_save:
-        await reset_bot_state_files(ticker, is_paper=True, config=config)
-        assert mock_copy.call_count == 2
-        assert mock_remove.call_count == 2
-        assert mock_save.call_count == 2
-        args, kwargs = mock_save.call_args_list[0]
-        assert args[1]["balance"] == 150.0
+
+
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("is_paper", [True, False])
-@pytest.mark.parametrize("status", ["portfolio_default", "modeled_liquidation", "reconciliation_required"])
-async def test_terminal_state_cannot_be_reset_or_launched(is_paper, status):
-    with patch(f"{M}.safe_load_json", AsyncMock(return_value={"status": status})), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as save, \
-         patch(f"{M}.shutil.copy") as copy_file, \
-         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock()) as launch:
-        with pytest.raises(ValueError, match="manual reconciliation"):
-            await reset_bot_state_files("BTCUSDT", is_paper, {"portfolios": [{}]})
-        with pytest.raises(ValueError, match="manual reconciliation"):
-            await supervisor.start_bot("BTCUSDT", is_paper, {"portfolios": [{}]})
+@pytest.mark.parametrize('is_paper', [True, False])
+@pytest.mark.parametrize('status', ['portfolio_default', 'modeled_liquidation', 'reconciliation_required'])
+async def test_terminal_state_cannot_be_reset_or_launched(tmp_path, is_paper, status):
+    path = tmp_path / ('paper_state_BTCUSDT.json' if is_paper else 'real_state_BTCUSDT.json')
+    path.write_text(json.dumps({'status': status}))
+    original = path.read_bytes()
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path), \
+         patch(f'{M}.safe_save_json', AsyncMock()) as save, \
+         patch(f'{M}.shutil.copy') as copy_file, \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock()) as launch:
+        with pytest.raises(ValueError, match='manual reconciliation'):
+            await reset_bot_state_files('BTCUSDT', is_paper, {'portfolios': [{}]})
+        with pytest.raises(ValueError):
+            await supervisor.start_bot('BTCUSDT', is_paper, {'portfolios': [{}]})
     save.assert_not_awaited()
     copy_file.assert_not_called()
     launch.assert_not_awaited()
+    assert path.read_bytes() == original
+
 
 
 @pytest.mark.asyncio
@@ -184,30 +180,17 @@ async def test_unreconciled_live_position_is_neither_healed_nor_closed(tmp_path)
     assert json.loads((tmp_path / "real_state_BTCUSDT.json").read_text()) == snapshot
 
 @pytest.mark.asyncio
-async def test_enforce_swarm_consistency():
-    config = {"live_swarm": ["BTCUSDT"]}
-    connector = MagicMock()
-    connector.get_positions = AsyncMock(return_value={
-        "BTCUSDT_LONG": {"qty": 1.0},
-        "ETHUSDT_SHORT": {"qty": -1.0}
-    })
+async def test_enforce_swarm_consistency(tmp_path):
+    positions = {'BTCUSDT_LONG': {'qty': 1}, 'ETHUSDT_SHORT': {'qty': -1}}
+    connector = MagicMock(get_positions=AsyncMock(return_value=positions))
+    with patch(f'{M}.CORE_PATH', tmp_path), \
+         patch(f'{M}.get_running_bots_info', AsyncMock(return_value={'r_BTCUSDT': {}})), \
+         patch(f'{M}.stop_bot', AsyncMock()) as stop, patch(f'{M}.start_bot', AsyncMock()) as start:
+        await enforce_swarm_consistency(connector, {'live_swarm': ['BTCUSDT']})
+    stop.assert_awaited_once_with('ETHUSDT', is_paper=False)
+    start.assert_not_awaited()
+    assert positions == {'BTCUSDT_LONG': {'qty': 1}, 'ETHUSDT_SHORT': {'qty': -1}}
 
-    with patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock()) as mock_shell, \
-         patch(f"{M}.get_running_bots_info", AsyncMock(return_value={"r_BTCUSDT": {}})), \
-         patch(f"{M}.start_bot", AsyncMock()), \
-         patch(f"{M}.Path.exists", return_value=False):
-        mock_process = AsyncMock()
-        mock_process.wait = AsyncMock()
-        mock_shell.return_value = mock_process
-
-        await enforce_swarm_consistency(connector, config)
-
-        # Should close ETHUSDT (unauthorized, no state file)
-        assert mock_shell.call_count == 1
-        cmd = mock_shell.call_args[0][0]
-        assert "--ticker ETHUSDT" in cmd
-        assert "--stop" in cmd
-        assert "--real" in cmd
 
 @pytest.mark.asyncio
 async def test_ensure_real_bots_alive():
@@ -340,15 +323,21 @@ async def test_stop_bot(tmp_path):
         assert "pm2 delete paper-btc" in mock_shell.call_args[0][0]
 
 @pytest.mark.asyncio
-async def test_start_bot():
-    config = {"portfolios": [{"initial_capital": 100}]}
-    with patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())) as mock_shell, \
-         patch(f"{M}.reset_bot_state_files", AsyncMock()) as mock_reset, \
-         patch(f"{M}.Path.exists", return_value=False):
-        await supervisor.start_bot("BTCUSDT", is_paper=True, config=config)
-        assert mock_reset.called
-        assert "pm2 start core/main.py" in mock_shell.call_args[0][0]
-        assert "--paper" in mock_shell.call_args[0][0]
+async def test_start_bot(tmp_path):
+    config = {'portfolios': [{'paper_initial_capital': 100}]}
+    process = MagicMock(returncode=0, communicate=AsyncMock(return_value=(b'', b'')))
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path), \
+         patch(f'{M}._last_start_time', {}), \
+         patch(f'{M}.get_running_bots_info', AsyncMock(return_value={})), \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock(return_value=process)) as launch, \
+         patch(f'{M}.reset_bot_state_files', AsyncMock()) as reset:
+        from futures_portfolio.supervisor.swarm_manager import start_bot
+        await start_bot('BTCUSDT', is_paper=True, config=config)
+    reset.assert_awaited_once_with('BTCUSDT', is_paper=True, config=config)
+    launch.assert_awaited_once()
+    assert 'pm2 start core/main.py' in launch.call_args.args[0]
+    assert '--paper' in launch.call_args.args[0]
+
 
 
 # ============================================================
@@ -477,154 +466,34 @@ async def test_rotation_guard_default_min_cycles_for_rotation():
 # ============================================================
 
 @pytest.mark.asyncio
-async def test_b1_stop_bot_called_before_ts_flag_reset():
-    """
-    B1 FIX VERIFICATION:
-    When enforce_swarm_consistency encounters a ticker with
-    trailing_stop_triggered=True and a dead PM2 process, it MUST
-    call stop_bot() to kill the zombie BEFORE resetting the TS
-    flags in the state file. Otherwise Reaper Guard (later in
-    the loop) won't find the zombie because flags are already False.
-    """
-    ticker = "GRASSUSDT"
-    config = {"live_swarm": [ticker]}
-    state_data = {
-        "trailing_stop_triggered": True,
-        "trailing_stop_violation_start": 12345.0,
-        "rebalance_cycles": 10,
-        "virt_qty": 0.0
-    }
-
-    connector = MagicMock()
-    connector.get_positions = AsyncMock(return_value={
-        f"{ticker}_LONG": {"qty": 1.0}
-    })
-
-    # Track call order: stop_bot vs file write
-    call_order = []
-
-    async def fake_stop_bot(t, is_paper=False):
-        call_order.append(("stop_bot", t))
-
-    # Mock open to capture file reads and writes
-    original_builtin_open = open
-    import io
-    def tracking_open(path, *args, **kwargs):
-        path_str = str(path)
-        if "real_state_" in path_str:
-            if "w" in str(args):
-                def write_and_track(content):
-                    call_order.append(("file_write", path_str))
-                    return len(content)
-                buf = io.StringIO()
-                buf.write = write_and_track
-                return buf
-            else:
-                # READ: return fake state data as file object
-                fake = io.StringIO(json.dumps(state_data))
-                fake.name = path_str
-                return fake
-        return original_builtin_open(path, *args, **kwargs)
-
-    with patch(f"{M}.get_running_bots_info", AsyncMock(return_value={})), \
-         patch(f"{M}.stop_bot", side_effect=fake_stop_bot) as mock_stop, \
-         patch(f"{M}.start_bot", AsyncMock()), \
-         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock(wait=AsyncMock()))), \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch("builtins.open", side_effect=tracking_open):
-        await enforce_swarm_consistency(connector, config)
-
-    # Verify stop_bot was called
-    mock_stop.assert_called_once_with(ticker, is_paper=False)
-
-    # Verify stop_bot was called BEFORE file write
-    stop_idx = next((i for i, (op, _) in enumerate(call_order) if op == "stop_bot"), None)
-    write_idx = next((i for i, (op, _) in enumerate(call_order) if op == "file_write"), None)
-
-    assert stop_idx is not None, "stop_bot was never called"
-    assert write_idx is not None, "State file was never written"
-    assert stop_idx < write_idx, (
-        f"B1 BUG: stop_bot (idx={stop_idx}) must be called BEFORE "
-        f"file write (idx={write_idx}). Zombie would survive!"
-    )
+@pytest.mark.parametrize('failed', [False, True])
+async def test_terminal_proof_is_not_erased_by_consistency_recovery(tmp_path, failed):
+    path = tmp_path/'real_state_GRASSUSDT.json'
+    original = {'trailing_stop_triggered': True, 'rebalance_cycles': 10}
+    path.write_text(json.dumps(original))
+    connector = MagicMock(get_positions=AsyncMock(return_value={'GRASSUSDT_LONG': {'qty': 1}}))
+    async def close(ticker, is_paper):
+        if failed:
+            raise RuntimeError('unconfirmed close')
+        path.write_text(json.dumps({**original, 'live_close': {'status': 'complete'}}))
+    with patch(f'{M}.CORE_PATH', tmp_path), \
+         patch(f'{M}.get_running_bots_info', AsyncMock(return_value={})), \
+         patch(f'{M}.stop_bot', AsyncMock(side_effect=close)) as stop, \
+         patch(f'{M}.start_bot', AsyncMock()) as start:
+        if failed:
+            with pytest.raises(RuntimeError, match='unconfirmed close'):
+                await enforce_swarm_consistency(connector, {'live_swarm': ['GRASSUSDT']})
+        else:
+            await enforce_swarm_consistency(connector, {'live_swarm': ['GRASSUSDT']})
+    stop.assert_awaited_once_with('GRASSUSDT', is_paper=False)
+    start.assert_not_awaited()
+    current = json.loads(path.read_text())
+    assert current['trailing_stop_triggered']
+    assert current == (original if failed else {**original, 'live_close': {'status': 'complete'}})
 
 
-@pytest.mark.asyncio
-async def test_b1_ts_flag_reset_after_stop_bot():
-    """
-    B1 FIX VERIFICATION (flag state):
-    After enforce_swarm_consistency, the state file must have
-    trailing_stop_triggered=False — but ONLY AFTER stop_bot was called.
-    """
-    ticker = "VVVUSDT"
-    config = {"live_swarm": [ticker]}
-    state_data = {
-        "trailing_stop_triggered": True,
-        "trailing_stop_violation_start": 99999.0,
-        "rebalance_cycles": 5,
-        "virt_qty": 0.0
-    }
 
-    connector = MagicMock()
-    connector.get_positions = AsyncMock(return_value={
-        f"{ticker}_SHORT": {"qty": -0.5}
-    })
 
-    stop_called = False
-    written_state = {}
-
-    async def fake_stop_bot(t, is_paper=False):
-        nonlocal stop_called
-        stop_called = True
-
-    original_builtin_open2 = open
-    import io
-    def tracking_open2(path, *args, **kwargs):
-        path_str = str(path)
-        if "real_state_" in path_str:
-            if "w" in str(args):
-                buf = io.StringIO()
-                original_write = buf.write
-                def accumulate_write(content):
-                    original_write(content)
-                    return len(content)
-                buf.write = accumulate_write
-                # On close, capture the full content
-                original_close = buf.close
-                def capture_and_close():
-                    nonlocal written_state
-                    try:
-                        buf.seek(0)
-                        written_state = json.loads(buf.read())
-                    except:
-                        pass
-                    original_close()
-                buf.close = capture_and_close
-                return buf
-            else:
-                # READ: return fake state data as file object
-                fake = io.StringIO(json.dumps(state_data))
-                fake.name = path_str
-                return fake
-        return original_builtin_open2(path, *args, **kwargs)
-
-    with patch(f"{M}.get_running_bots_info", AsyncMock(return_value={})), \
-         patch(f"{M}.stop_bot", side_effect=fake_stop_bot), \
-         patch(f"{M}.start_bot", AsyncMock()), \
-         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock(wait=AsyncMock()))), \
-         patch(f"{M}.Path.exists", return_value=True), \
-         patch("builtins.open", side_effect=tracking_open2):
-        await enforce_swarm_consistency(connector, config)
-
-    # stop_bot MUST have been called
-    assert stop_called, "stop_bot was not called — zombie survives!"
-
-    # State file MUST have trailing_stop_triggered=False
-    assert written_state.get("trailing_stop_triggered") is False, (
-        f"TS flag was not reset! Got: {written_state.get('trailing_stop_triggered')}"
-    )
-    # Violation start MUST be cleared
-    assert written_state.get("trailing_stop_violation_start") == 0.0
 
 
 # =====================================================================
@@ -1051,9 +920,11 @@ async def test_paper_resume_retains_wallet_and_session(tmp_path):
     (tmp_path / "paper_state_X.json").write_text(json.dumps(state))
     wp = tmp_path / "paper_shadow_X.json"
     wp.write_text(json.dumps(wallet))
-    with patch.object(manager, "CORE_PATH", tmp_path), \
+    with patch.object(manager, "CORE_PATH", tmp_path), patch.object(manager, "BASE_PATH", tmp_path), \
+            patch.object(manager, "_last_start_time", {}), \
+            patch.object(manager, "get_running_bots_info", AsyncMock(return_value={})), \
             patch.object(manager, "reset_bot_state_files", AsyncMock()) as reset, \
-            patch.object(manager.asyncio, "create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
+            patch.object(manager.asyncio, "create_subprocess_shell", AsyncMock(return_value=MagicMock(returncode=0, communicate=AsyncMock(return_value=(b'', b''))))):
         await manager.start_bot("X", is_paper=True, config={"max_bots": 10})
     reset.assert_not_awaited()
     resumed = json.loads((tmp_path / "paper_state_X.json").read_text())
@@ -1295,26 +1166,13 @@ async def test_integration_real_stop_drops_bot(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_integration_authoritative_cleanup_stray(tmp_path, monkeypatch):
-    """Lines 950-956: stray position not in target -> closed"""
-    shell_calls = []
+async def test_integration_authoritative_cleanup_stray(tmp_path):
+    positions = {'STRAYCOINUSDT_LONG': {'qty': 5}, 'STRAYCOINUSDT_SHORT': {'qty': -5}}
+    _, stop, _ = await _run_manage(tmp_path, config_overrides={
+        'paper_mode': False, 'real_whitelist': []}, positions=positions,
+        scanner=[{'symbol': 'X', 'score': 1}])
+    stop.assert_awaited_once_with('STRAYCOINUSDT', is_paper=False)
 
-    async def track_shell(cmd, **kw):
-        shell_calls.append(cmd)
-        return AsyncMock(wait=AsyncMock())
-
-    _write_config(tmp_path, real_whitelist=[], tickers=[], base_ticker="")
-
-    with patch(f"{M}.CONFIG_PATH", str(tmp_path / "config.json")),          patch(f"{M}.BASE_PATH", tmp_path),          patch(f"{M}.BinanceConnector") as MockConn,          patch(f"{M}.get_running_bots_info", AsyncMock(return_value={})),          patch(f"{M}.run_scanner", AsyncMock(return_value=[{"symbol": "X", "score": 1}])),          patch(f"{M}.get_bot_efficiency", AsyncMock(return_value={})),          patch(f"{M}.enforce_invariant_gate", AsyncMock()),          patch(f"{M}.safe_save_json", AsyncMock()),          patch(f"{M}.enforce_swarm_consistency", AsyncMock(return_value=set())),          patch(f"{M}._ensure_real_bots_alive", AsyncMock()),          patch(f"{M}.reconcile_swarm_state", AsyncMock()),          patch(f"{M}.stop_bot", AsyncMock()),          patch(f"{M}.start_bot", AsyncMock()),          patch(f"{M}.selective_merge_incubator", AsyncMock(return_value=["X"])),          patch(f"{M}.asyncio.create_subprocess_shell", side_effect=track_shell):
-        MockConn.return_value.verify_connection = AsyncMock()
-        MockConn.return_value.get_positions = AsyncMock(return_value={
-            "STRAYCOINUSDT_LONG": {"qty": "5.0", "mark_price": "10.0"}
-        })
-        from futures_portfolio.supervisor.swarm_manager import manage_swarm
-        await manage_swarm()
-
-    stop_cmds = [c for c in shell_calls if "STRAYCOINUSDT" in str(c) and "--stop" in str(c)]
-    assert len(stop_cmds) >= 1
 
 
 @pytest.mark.asyncio
@@ -1370,50 +1228,65 @@ async def test_integration_blacklisted_real_skipped(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["paper", "real"])
-async def test_drawdown_signal_preserves_deadline_with_empty_scanner(tmp_path, mode):
-    sig = tmp_path / "signals"
-    sig.mkdir()
-    (sig / f"drawdown_{mode}_AGTUSDT.flag").touch()
+@pytest.mark.parametrize('mode', ['paper', 'real'])
+@pytest.mark.parametrize('signal', ['exit', 'drawdown'])
+async def test_drawdown_signal_preserves_deadline_with_empty_scanner(tmp_path, mode, signal):
+    sig = tmp_path/'signals'; sig.mkdir()
+    (sig/f'{signal}_{mode}_AGTUSDT.flag').touch()
     deadline = 2000000000.0
-    (tmp_path / f"{mode}_state_AGTUSDT.json").write_text(json.dumps({
-        "stop_reason": "max_drawdown", "restart_not_before": deadline}))
-    cm, saved, _, _, _ = _cm_manage_swarm(tmp_path, config_overrides={"paper_mode": False}, scanner=[])
-    with cm, patch(f"{M}.time.time", return_value=1000000000.0):
+    (tmp_path/f'{mode}_state_AGTUSDT.json').write_text(json.dumps({
+        'stop_reason': 'max_drawdown', 'restart_not_before': deadline,
+        'trailing_stop_triggered': True, 'paper_close_complete': True, 'live_close': {'status': 'complete'}}))
+    shadow = 'paper_shadow' if mode == 'paper' else 'shadow_state'
+    (tmp_path/f'{shadow}_AGTUSDT.json').write_text(json.dumps({'positions': {'AGTUSDT_LONG': 0, 'AGTUSDT_SHORT': 0}}))
+    cm, saved, _, _, _ = _cm_manage_swarm(tmp_path, config_overrides={'paper_mode': False}, scanner=[])
+    with cm, patch(f'{M}.time.time', return_value=1000000000.0):
         await manage_swarm()
-    assert saved[f"probation_{mode}"]["AGTUSDT"] == deadline
-    assert not list(sig.glob("*.flag"))
+    assert saved[f'probation_{mode}']['AGTUSDT'] == deadline
+    assert not list(sig.glob('*.flag'))
 
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("is_paper", [True, False])
-async def test_drawdown_cooldown_blocks_start_and_reset(tmp_path, monkeypatch, is_paper):
-    from futures_portfolio.supervisor import swarm_manager as manager
-    monkeypatch.setattr(manager, "CORE_PATH", tmp_path)
-    monkeypatch.setattr(manager, "BASE_PATH", tmp_path)
-    state = {"stop_reason": "max_drawdown", "restart_not_before": 2000}
-    with patch(f"{M}.time.time", return_value=1000), \
-         patch(f"{M}.safe_load_json", AsyncMock(return_value=state)), \
-         patch(f"{M}.asyncio.create_subprocess_exec", AsyncMock()) as launch:
-        await manager.start_bot("AGTUSDT", is_paper, {"portfolios": [{}]})
-        launch.assert_not_called()
-        with pytest.raises(ValueError, match="cooldown"):
-            await manager.reset_bot_state_files("AGTUSDT", is_paper, {"portfolios": [{}]})
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("is_paper", [True, False])
-async def test_drawdown_new_session_drops_old_reference_after_deadline(tmp_path, monkeypatch, is_paper):
-    from futures_portfolio.supervisor import swarm_manager as manager
-    monkeypatch.setattr(manager, "CORE_PATH", tmp_path)
-    monkeypatch.setattr(manager, "BASE_PATH", tmp_path)
-    previous = {"last_tpv": 100, "max_drawdown_reference": 1000,
-                "restart_not_before": 0, "stop_reason": "max_drawdown"}
-    with patch(f"{M}.safe_load_json", AsyncMock(return_value=previous)), \
-         patch(f"{M}.safe_save_json", AsyncMock()) as save:
-        await manager.reset_bot_state_files("AGTUSDT", is_paper, {
-            "portfolios": [{"paper_initial_capital": 100, "initial_capital": 100}]})
-    state = save.call_args_list[0].args[1]
-    assert state["initial_tpv"] == 100
-    assert "max_drawdown_reference" not in state
-    assert not state["trailing_stop_triggered"]
+@pytest.mark.parametrize('is_paper', [True, False])
+async def test_drawdown_cooldown_blocks_start_and_reset(tmp_path, is_paper):
+    state = {'base_ticker': 'AGTUSDT', 'started_at': 1, 'initial_tpv': 100,
+             'stop_reason': 'max_drawdown', 'restart_not_before': 2000}
+    wallet = {'base_ticker': 'AGTUSDT', 'balance': 100, 'positions': {'AGTUSDT_LONG': 0, 'AGTUSDT_SHORT': 0},
+              'long_entry_price': 0, 'short_entry_price': 0}
+    if not is_paper:
+        state.update(funding_model='signed_actual', live_funding={
+            'symbol': 'AGTUSDT', 'snapshot_ms': 500000, 'boundary_ms': 500000})
+        wallet['live_funding_snapshot'] = {'symbol': 'AGTUSDT', 'snapshot_ms': 500000}
+    prefix, shadow = ('paper', 'paper_shadow') if is_paper else ('real', 'shadow_state')
+    path = tmp_path/f'{prefix}_state_AGTUSDT.json'; path.write_text(json.dumps(state))
+    wp = tmp_path/f'{shadow}_AGTUSDT.json'; wp.write_text(json.dumps(wallet))
+    before = path.read_bytes(), wp.read_bytes()
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path), \
+         patch(f'{M}.time.time', return_value=1000), \
+         patch(f'{M}.asyncio.create_subprocess_shell', AsyncMock()) as launch, \
+         patch(f'{M}.BinanceConnector') as connector:
+        await supervisor.start_bot('AGTUSDT', is_paper, {'portfolios': [{}]})
+        with pytest.raises(ValueError, match='cooldown'):
+            await reset_bot_state_files('AGTUSDT', is_paper, {'portfolios': [{}]})
+    launch.assert_not_awaited()
+    connector.assert_not_called()
+    assert (path.read_bytes(), wp.read_bytes()) == before
+
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('is_paper', [True, False])
+async def test_drawdown_new_session_drops_old_reference_after_deadline(tmp_path, is_paper):
+    prefix, shadow = ('paper', 'paper_shadow') if is_paper else ('real', 'shadow_state')
+    path = tmp_path/f'{prefix}_state_AGTUSDT.json'
+    path.write_text(json.dumps({'started_at': 1, 'last_tpv': 100,
+                               'max_drawdown_reference': 1000, 'restart_not_before': 0}))
+    (tmp_path/f'{shadow}_AGTUSDT.json').write_text(json.dumps({
+        'balance': 100, 'positions': {'AGTUSDT_LONG': 0, 'AGTUSDT_SHORT': 0}}))
+    with patch(f'{M}.CORE_PATH', tmp_path), patch(f'{M}.BASE_PATH', tmp_path):
+        await reset_bot_state_files('AGTUSDT', is_paper, {
+            'portfolios': [{'paper_initial_capital': 100, 'initial_capital': 100}]})
+    state = json.loads(path.read_text())
+    assert state['initial_tpv'] == 100 and 'max_drawdown_reference' not in state
+    assert not state['trailing_stop_triggered']

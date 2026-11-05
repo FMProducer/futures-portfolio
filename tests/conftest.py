@@ -131,7 +131,12 @@ def mock_connector():
 @pytest.fixture(autouse=True)
 def mock_binance_client():
     """ГЛОБАЛЬНЫЙ мок: предотвращает любые реальные Binance API-вызовы."""
-    with patch("binance.client.Client") as mock:
+    from contextlib import ExitStack
+    with patch("binance.client.Client") as mock, ExitStack() as stack:
+        for name in ('core.connector', 'futures_portfolio.core.connector'):
+            module = sys.modules.get(name)
+            if module is not None:
+                stack.enter_context(patch.object(module, 'Client', mock))
         yield mock
 
 
@@ -148,3 +153,19 @@ def guard_funding_reserve_writes(monkeypatch):
         return original(config_path, *args, **kwargs)
 
     monkeypatch.setattr(funding, "settle_funding_reserve", guarded)
+
+
+@pytest.fixture(autouse=True)
+def guard_worker_cli_children(monkeypatch):
+    import asyncio
+    from pathlib import Path
+    original = asyncio.create_subprocess_exec
+    worker = (Path(__file__).resolve().parents[1] / 'core/main.py').resolve()
+
+    async def guarded(*args, **kwargs):
+        if any(isinstance(arg, (str, os.PathLike)) and Path(arg).name == 'main.py'
+               and Path(arg).resolve() == worker for arg in args):
+            raise AssertionError('Unit tests must mock the trading worker subprocess')
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', guarded)

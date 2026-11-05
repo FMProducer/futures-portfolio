@@ -814,7 +814,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     virt_qty = float(state.get("virt_qty", 0.0))
     siphoning_reserve = float(state.get("siphoning_reserve", 0.0))
     initial_tpv = float(state.get("initial_tpv", 0.0))
-    drawdown_reference = float(state.get("max_drawdown_reference", initial_tpv + siphoning_reserve))
+    drawdown_reference = float(state.get("max_drawdown_reference", state.get("tpv_ath", initial_tpv) + siphoning_reserve))
     reference_tpv = float(state.get("reference_tpv", 0.0))
     tpv_ath = float(state.get("tpv_ath", 0.0))
     cycles = state.get("rebalance_cycles", 0)
@@ -1547,6 +1547,34 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         tuple(trail_state[key][field] for field in ("peak", "trough"))
                         for key in ("BASE_LONG", "BASE_SHORT"))
 
+                now = strategy_bar_ms / 1000
+                dd_equity = float(calc.total_tpv)
+                dd_capital = float(portfolio_cfg.get(
+                    "paper_initial_capital" if paper_mode else "initial_capital", target_initial_cap))
+                maxdd, drawdown_reference = backtest_rules.maxdd_reached(
+                    dd_equity, drawdown_reference, dd_capital, max_drawdown_limit)
+                state.update(max_drawdown_reference=drawdown_reference,
+                             max_drawdown_basis='portfolio_equity_peak')
+                state_dirty = True
+                if maxdd:
+                    cooldown_days = float(current_config.get('max_drawdown_cooldown_days', .1))
+                    if not math.isfinite(cooldown_days) or cooldown_days < 0:
+                        raise ValueError('max_drawdown_cooldown_days must be finite and non-negative')
+                    state.update(restart_not_before=now + max(1, int(cooldown_days * 1440)) * 60,
+                                 trailing_stop_triggered=True, stop_reason='max_drawdown',
+                                 strategy_bar_ms=strategy_bar_ms, rebalance_cycles=cycles)
+                    logger.critical(f"Portfolio equity drawdown stop: equity={dd_equity}; peak={drawdown_reference}; budget={dd_capital * max_drawdown_limit / 100}")
+                    asyncio.create_task(notifier.send_alert('EMERGENCY STOP', f'Portfolio equity drawdown limit reached for {base_ticker}'))
+                    from core.funding import load_funding_state, save_funding_boundary
+                    journal, halt = load_funding_state(state)
+                    save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                    await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
+                                         logger, ticker_override=base_ticker, paper_mode=paper_mode,
+                                         close_only=True, decision_price=price)
+                    emit_signal('exit', base_ticker, paper_mode)
+                    await self_kill_pm2(base_ticker, paper_mode)
+                    return
+
                 calc_res = calc.calculate_rebalance(targets, threshold_surplus, threshold_deficit, calc.tpv, ignore_limits, allow_surplus_sell,
                                                     fuse_enabled=portfolio_cfg.get("fuse_enabled", True),
                                                     share_trail=trail_state, trail_distance=trail_distance)
@@ -2111,32 +2139,6 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     return
 
                 now = strategy_bar_ms / 1000
-
-                _unrealized = float(safe_calc.tpv) - float(paper_state["balance"])
-                _maxdd, _realized_ath = backtest_rules.maxdd_reached(
-                    float(safe_calc.tpv), _unrealized, state.get("realized_ath", initial_tpv),
-                    initial_tpv, max_drawdown_limit)
-                state["realized_ath"] = _realized_ath
-                _dd_base = _realized_ath if _realized_ath > 0 else initial_tpv
-                drawdown_threshold = _dd_base * (1 - max_drawdown_limit / 100)
-                if _maxdd:
-                    cooldown_days = float(current_config.get('max_drawdown_cooldown_days', .1))
-                    if not math.isfinite(cooldown_days) or cooldown_days < 0:
-                        raise ValueError('max_drawdown_cooldown_days must be finite and non-negative')
-                    state.update(restart_not_before=now + max(1, int(cooldown_days * 1440)) * 60,
-                                 trailing_stop_triggered=True, stop_reason='max_dd_stop',
-                                 strategy_bar_ms=strategy_bar_ms, rebalance_cycles=cycles)
-                    logger.critical(f"Realized drawdown stop: wallet={paper_state['balance']}; threshold={drawdown_threshold}")
-                    asyncio.create_task(notifier.send_alert('EMERGENCY STOP', f'Realized drawdown limit reached for {base_ticker}'))
-                    from core.funding import load_funding_state, save_funding_boundary
-                    journal, halt = load_funding_state(state)
-                    save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
-                    await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
-                                         logger, ticker_override=base_ticker, paper_mode=paper_mode,
-                                         close_only=True, decision_price=price)
-                    emit_signal('exit', base_ticker, paper_mode)
-                    await self_kill_pm2(base_ticker, paper_mode)
-                    return
 
                 if tpv_ath == 0 or tpv_active > tpv_ath:
                     tpv_ath = tpv_active

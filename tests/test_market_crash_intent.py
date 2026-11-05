@@ -49,6 +49,12 @@ async def sleep(seconds, *args, **kwargs):
     if seconds >= 86400: raise SystemExit(0)
     await original_sleep(0)
 
+async def trades(symbol, order_id):
+    order = json.loads(Path('exchange_order.json').read_text())
+    return [{'realizedPnl': '18.5', 'commission': '.45', 'commissionAsset': 'USDT',
+             'qty': order['executedQty']}]
+
+connector.get_order_trades = AsyncMock(side_effect=trades)
 connector.futures_client.futures_create_order.side_effect = create
 with patch.object(main, 'save_json', side_effect=save), \
      patch.object(main, 'self_kill_pm2', new=AsyncMock()), \

@@ -49,13 +49,12 @@ def filter_actions(actions, prices, config, portfolio, memory, initial_build=Fal
     return actions
 
 
-def maxdd_reached(tpv, unrealized, realized_ath, initial_capital, limit):
-    if limit >= 100:
-        return False, realized_ath
-    realized = tpv - unrealized
-    peak = max(realized_ath, realized)
-    base = peak if peak > 0 else initial_capital
-    return limit < 100 and realized < base * (1 - limit / 100), peak
+def maxdd_reached(equity, peak, initial_capital, limit):
+    from core.capital import drawdown_threshold
+    if not math.isfinite(equity):
+        raise ValueError("Drawdown equity must be finite")
+    peak = max(peak, equity)
+    return equity <= drawdown_threshold(peak, initial_capital, limit), peak
 
 
 def closed_minutes(rows, now_ms):

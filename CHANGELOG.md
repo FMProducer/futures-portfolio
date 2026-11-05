@@ -1,5 +1,20 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-05 — Regression follow-up after checkpoint 94f7a02
+
+- Created the requested branch checkpoint94f7a02, without push. Subsequent work remains uncommitted in codex/regression-990d302.
+- Prevented an existing session reset from recreating configured capital when its confirmed wallet is missing/incomplete; eight refusal scenarios preserve original financial facts.
+- Repaired obsolete/isolation-dependent test fixtures, restored the existing report dependency, made corruption replay tests synthetic and self-contained, and mocked bound Binance clients in both namespaces. Partial-fill/crash/restart checks retain exact receipts and duplicate-order refusal; no test was skipped/xfail-ed to obtain PASS.
+- Seven sequential groups each passed the same annual AGTUSDT:Net+379.927489%,MaxDD67.421727%,386cycles,all525600 equity points identical to control; user config and source history unchanged.
+- Final full suite:1159passed,0failed,0errors,0skipped,9warnings in115.89s,exit0. Evidence:reports/regression_990d302/followup_report.json and docs/REGRESSION_990D302.md. Main checkout, live state and swarm not modified; REAL exchange acceptance remains outside this offline result.
+
+## 2026-11-05 — Isolated regression audit after 990d302
+
+- Fixed stale AST fixtures and explicit REAL unit-test capacity; blocked unmocked trading-worker subprocesses in tests.
+- Fixed confirmed strategy-exit cooldown persistence before flag deletion/empty-scanner return. Per user choice, PAPER/REAL MaxDD below100 follows BACKTEST full equity and a fixed initial-capital loss budget before rebalance; >=100 stays disabled.22 policy and66 isolation/lifecycle tests passed.
+- Exact supplied config: annual AGT+379.927489%/DD67.421727%/386cycles; ZEC+89.177330%/DD80.968951%/236cycles. All525600 equity points checked against saved controls.
+- Full suite remains FAIL:1060passed,79failed,13errors, exit1. Missing artifacts and unresolved mismatches are documented in docs/REGRESSION_990D302.md. No deployment, commit, push or live-state changes.
+
 ## 2026-11-05 — Isolated PAPER/REAL parity candidate for 01e4df4
 
 - Worktree/branch: `codex/paper-real-backtest-parity`; uncommitted, no deployment, no PM2/account changes. Reference BACKTEST, calculator and financial parameters unchanged; slot capacity is now max_bots=9/paper_mode_bots=8, as approved.

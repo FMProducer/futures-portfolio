@@ -127,6 +127,18 @@ async def _run_rebalance(config, state, paper_state, connector=None,
         connector.set_leverage = AsyncMock()
         connector.set_margin_type = AsyncMock()
 
+    if real_mode:
+        snapshot = int(time.time() * 1000) - 60000
+        state = copy.deepcopy(state)
+        state.update(funding_model='signed_actual', live_funding={
+            'symbol': 'BTCUSDT', 'snapshot_ms': snapshot, 'boundary_ms': snapshot,
+            'opening_wallet': str(state['initial_tpv'])})
+        connector.get_funding_income = AsyncMock(return_value=[])
+        connector.get_position_risk = AsyncMock(return_value={})
+        connector.get_commission_rates = AsyncMock(return_value={'takerCommissionRate': '.0004'})
+        connector.get_order_book = AsyncMock(side_effect=lambda *a, **kw: {
+            'bids': [[str(price), '100']], 'asks': [[str(price), '100']], '_fetched_at': time.time()})
+
     notifier = MagicMock()
     notifier.send_message = AsyncMock()
     notifier.send_alert = AsyncMock()
@@ -183,6 +195,7 @@ async def _run_rebalance(config, state, paper_state, connector=None,
                     else patch('core.funding.save_funding_boundary', side_effect=lambda sp, wp, st, wa, *rest:
                                (save_side_effect(sp, st), save_side_effect(wp, wa))))
     signal_patch = nullcontext() if isinstance(sys.modules[M].emit_signal, Mock) else patch(f'{M}.emit_signal')
+    kill_patch = nullcontext() if isinstance(sys.modules[M].self_kill_pm2, Mock) else patch(f'{M}.self_kill_pm2', AsyncMock())
     if state.get('live_funding') and paper_state and 'live_funding_snapshot' not in paper_state:
         paper_state = dict(paper_state, live_funding_snapshot={
             'symbol': state['live_funding']['symbol'], 'snapshot_ms': state['live_funding']['snapshot_ms']})
@@ -199,7 +212,7 @@ async def _run_rebalance(config, state, paper_state, connector=None,
          patch(f"{M}.backtest_rules.paper_legacy_funding", return_value=Decimal('0')), \
          funding_save, \
          signal_patch, \
-         patch(f"{M}.self_kill_pm2", AsyncMock()), \
+         kill_patch, \
          patch("builtins.open", mock_open(read_data=config_file)), \
          patch("os.path.getmtime", return_value=123), \
          patch(f"{M}.load_json", AsyncMock(side_effect=load_side_effect)), \
@@ -1357,12 +1370,12 @@ async def test_equity_stop_persists_fixed_budget_and_cooldown(paper_mode, refere
     with patch(f"{M}.emergency_stop", AsyncMock()) as close:
         before = time.time()
         saves, _, _ = await _run_rebalance(config, state, _make_paper_state(balance=ledger),
-                                          loop_limit=2, calc_return=calc)
+                                          loop_limit=2, calc_return=calc, real_mode=not paper_mode)
     stopped = [s for _, s in saves if s.get("stop_reason") == "max_drawdown"]
     assert stopped and close.await_count == 1
     assert stopped[-1]["max_drawdown_reference"] == reference
     assert stopped[-1]["max_drawdown_basis"] == "portfolio_equity_peak"
-    assert stopped[-1]["restart_not_before"] >= before + 365 * 86400
+    assert stopped[-1]["restart_not_before"] == stopped[-1]["strategy_bar_ms"] / 1000 + 365 * 86400
 
 
 @pytest.mark.asyncio
@@ -1375,7 +1388,7 @@ async def test_equity_stop_counts_open_mtm_and_persisted_peak(paper_mode):
     with patch(f"{M}.emergency_stop", AsyncMock()) as close:
         saves, _, _ = await _run_rebalance(config, _make_state(started_at=1, tpv_ath=5000),
                                           _make_paper_state(balance=100.0),
-                                          loop_limit=2, calc_return=calc)
+                                          loop_limit=2, calc_return=calc, real_mode=not paper_mode)
     close.assert_awaited_once()
     assert any(s.get("stop_reason") == "max_drawdown" for _, s in saves)
 
@@ -1393,3 +1406,35 @@ def test_wallet_ledger_matches_portfolio_equity_without_open_mtm(price):
                  "VIRTUAL": {"share": .5}})
     open_pnl = Decimal(3) * (price - 100) + Decimal(2) * (100 - price)
     assert calculator.total_tpv - open_pnl == Decimal(1000 + 25)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_equity_stop_precedes_rebalance_submission(paper_mode):
+    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
+                          max_drawdown_cooldown_days=365, equity_trailing_stop_pct=0)
+    config['portfolios'][0]['siphoning_threshold_pct'] = 0
+    executor = MagicMock(execute_actions=AsyncMock())
+    calc = {'total_tpv': 97, 'tpv': 97, 'total_pnl_pct': -3, 'actions': [
+        {'key': 'BASE_LONG', 'diff_usdt': 10, 'is_reduction': False}]}
+    with patch(f'{M}.emergency_stop', AsyncMock()) as close, \
+         patch(f'{M}.PortfolioExecutor', return_value=executor):
+        await _run_rebalance(config, _make_state(started_at=1), _make_paper_state(balance=97),
+                             calc_return=calc, real_mode=not paper_mode, loop_limit=2)
+    close.assert_awaited_once()
+    executor.execute_actions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("paper_mode", [True, False])
+async def test_equity_stop_counts_safe_in_total_equity(paper_mode):
+    config = _make_config(paper_mode=paper_mode, max_drawdown_limit=2.08,
+                          equity_trailing_stop_pct=0)
+    config['portfolios'][0]['siphoning_threshold_pct'] = 0
+    state = _make_state(started_at=1, siphoning_reserve=30, max_drawdown_reference=100)
+    calc = {'total_tpv': 100, 'tpv': 70, 'total_pnl_pct': 0, 'actions': []}
+    with patch(f'{M}.emergency_stop', AsyncMock()) as close:
+        saves, _, _ = await _run_rebalance(config, state, _make_paper_state(balance=70),
+                                          calc_return=calc, real_mode=not paper_mode, loop_limit=2)
+    close.assert_not_awaited()
+    assert any(value.get('max_drawdown_reference') == 100 for _, value in saves)

@@ -2,6 +2,8 @@
 import copy
 from pathlib import Path
 import pickle
+import json
+import pandas as pd
 import shutil
 import subprocess
 import sys
@@ -21,10 +23,13 @@ def replay_payload(tmp_path_factory):
             destination = isolated / directory / path.name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, destination)
-    for relative in ('config.json', 'data/ZECUSDT_12m.feather'):
-        destination = isolated / relative
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / relative, destination)
+    config = json.loads((root/'config.json').read_text(encoding='utf-8'))
+    config['portfolios'][0]['cash_reserve_usdt'] = 100
+    (isolated/'config.json').write_text(json.dumps(config), encoding='utf-8')
+    (isolated/'data').mkdir()
+    times = pd.date_range('2026-10-10', periods=10*1440, freq='min', tz='UTC')
+    pd.DataFrame({'time': times, 'open': 200., 'high': 200., 'low': 200.,
+                  'close': 200., 'volume': 1.}).to_feather(isolated/'data/ZECUSDT_12m.feather')
     scope = {'__file__': str(isolated / 'scripts/run_zec_replay.py'), '__name__': 'replay_fixture'}
     old_path = sys.path[:]
     try:

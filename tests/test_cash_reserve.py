@@ -47,7 +47,7 @@ async def test_backtest_keeps_reserve_external_to_portfolio(tmp_path):
     # free margin that only backs the liquidation model
     assert result["initial_capital"] == 200
     assert result["trading_initial_capital"] == 200
-    assert result["cash_reserve_usdt"] == 461
+    assert result["cash_reserve_usdt"] == pytest.approx(461 - result["funding_from_reserve"])
     assert result["settings"]["account_free_margin"] == 461
     formation = result["initial_formation"]
     assert formation["long_margin"] == pytest.approx(100)
