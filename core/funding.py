@@ -424,10 +424,8 @@ import json as _json
 
 def atomic_save_json(path: str, data: Dict) -> None:
     """Write data to path atomically via temp+rename."""
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        _json.dump(data, f, indent=2, default=str)
-    _os.replace(tmp, path)
+    from core.storage import _atomic_save_json
+    _atomic_save_json(path, data, default=str)
 
 
 def save_funding_boundary(strategy_path: str, wallet_path: str,
