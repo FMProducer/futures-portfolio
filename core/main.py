@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import time
-import random
 import shutil
 from collections import deque
 from typing import Dict, List, Any
@@ -420,7 +419,6 @@ async def _handle_liquidation_guard(
 async def rebalance_loop(connector: BinanceConnector, config_path: str, state_file_path: str, paper_state_file_path: str, logger: logging.Logger, ticker_override: str = None, paper_mode_override: bool = None, expect_live_snapshot: bool = False):
     # [SSOT] Absolute Scope Safety - Initialize all variables at function start
     i = 0
-    status_offset = random.randint(0, 99)
     target_initial = 0.0
     max_spread = 0.0015 # 0.15%
     max_velocity = 0.01 # 1.0%
@@ -983,7 +981,6 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
     # [Safety] Absolute Scope Safety - Initialize all variables before the loop
     i = 0
-    status_offset = random.randint(0, 99)
     target_initial = target_initial_cap
     velocity_cfg = portfolio_cfg.get("safety_guards", {})
     max_spread = velocity_cfg.get("max_spread_pct", 0.15) / 100
@@ -1626,29 +1623,28 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 state_dirty = True
 
 
-                if i % 5 == 0:
-                    res_str = f" | SAFE:{siphoning_reserve:.2f}" if siphoning_reserve > 0 else ""
-                    def get_dev(actual, target): return (actual - target) * 100
+                res_str = f" | SAFE:{siphoning_reserve:.2f}" if siphoning_reserve > 0 else ""
+                def get_dev(actual, target): return (actual - target) * 100
 
-                    l_p, s_p, v_p = calc_res['share_long_pct'], calc_res['share_short_pct'], calc_res['share_virt_pct']
-                    c_p = calc_res['share_cash_pct']
-                    
-                    # Values for absolute breakdown
-                    v_l, v_s, v_v, v_c = calc_res['val_long'], calc_res['val_short'], calc_res['val_virt'], calc_res['val_cash']
-                    total_pnl = calc_res.get("total_pnl", tpv_total - initial_tpv)
+                l_p, s_p, v_p = calc_res['share_long_pct'], calc_res['share_short_pct'], calc_res['share_virt_pct']
+                c_p = calc_res['share_cash_pct']
 
-                    l_target = Decimal(str(targets['BASE_LONG']['share']))
-                    s_target = Decimal(str(targets['BASE_SHORT']['share']))
-                    v_target = Decimal(str(targets['VIRTUAL']['share']))
+                # Values for absolute breakdown
+                v_l, v_s, v_v, v_c = calc_res['val_long'], calc_res['val_short'], calc_res['val_virt'], calc_res['val_cash']
+                total_pnl = calc_res.get("total_pnl", tpv_total - initial_tpv)
 
-                    h_msg = (
-                        f"Heartbeat: TPV={tpv_active:.2f}{res_str} | PnL={total_pnl:+.2f} | {base_ticker}={price:.6g} | "
-                        f"L:{l_p:.1f}% [{get_dev(Decimal(str(l_p))/100, l_target):+.1f}%] {{{v_l:+.2f}$}} | "
-                        f"S:{s_p:.1f}% [{get_dev(Decimal(str(s_p))/100, s_target):+.1f}%] {{{v_s:+.2f}$}} | "
-                        f"V:{v_p:.1f}% [{get_dev(Decimal(str(v_p))/100, v_target):+.1f}%] {{{v_v:+.2f}$}} | "
-                        f"C:{c_p:.1f}% {{{v_c:.2f}$}}"
-                    )
-                    logger.info(h_msg)
+                l_target = Decimal(str(targets['BASE_LONG']['share']))
+                s_target = Decimal(str(targets['BASE_SHORT']['share']))
+                v_target = Decimal(str(targets['VIRTUAL']['share']))
+
+                h_msg = (
+                    f"Heartbeat: TPV={tpv_active:.2f}{res_str} | PnL={total_pnl:+.2f} | {base_ticker}={price:.6g} | "
+                    f"L:{l_p:.1f}% [{get_dev(Decimal(str(l_p))/100, l_target):+.1f}%] {{{v_l:+.2f}$}} | "
+                    f"S:{s_p:.1f}% [{get_dev(Decimal(str(s_p))/100, s_target):+.1f}%] {{{v_s:+.2f}$}} | "
+                    f"V:{v_p:.1f}% [{get_dev(Decimal(str(v_p))/100, v_target):+.1f}%] {{{v_v:+.2f}$}} | "
+                    f"C:{c_p:.1f}% {{{v_c:.2f}$}} | Bar={strategy_bar_ms}"
+                )
+                logger.info(h_msg)
 
                 # Логика ребалансировки
                 valid_actions = []
@@ -2347,10 +2343,6 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     await save_json(state_file_path, state)
                 if paper_state_dirty:
                     await save_json(paper_state_file_path, paper_state)
-
-                if (i + status_offset) % 100 == 0:
-                    total_pnl_final = safe_calc_res.get("total_pnl", total_tpv_final - initial_tpv)
-                    logger.info(f"Heartbeat: TPV={float(safe_calc.tpv):.2f} | SAFE={siphoning_reserve:.2f} | PnL={total_pnl_final:+.2f} | {base_ticker}={price:.6g} | Cycles={cycles}")
 
             except Exception as e:
                 if paper_mode and isinstance(e, ValueError) and str(e).startswith("Invalid PAPER"):
