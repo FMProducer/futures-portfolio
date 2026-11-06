@@ -93,7 +93,7 @@ def safe_save_json_sync(path: str, data: Dict[str, Any]) -> None:
         _atomic_save_json(path, data)
 
 
-def _atomic_save_json(path: str, data: Dict[str, Any]) -> None:
+def _atomic_save_json(path: str, data: Dict[str, Any], *, default=None) -> None:
     """Синхронная версия атомарной записи JSON."""
     dir_name = os.path.dirname(os.path.abspath(path))
     if dir_name:
@@ -102,7 +102,7 @@ def _atomic_save_json(path: str, data: Dict[str, Any]) -> None:
     fd, temp_path = tempfile.mkstemp(dir=dir_name or ".", prefix=".tmp_state_", suffix=".json")
     try:
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, default=default)
 
         max_retries = 5
         for i in range(max_retries):
