@@ -150,6 +150,13 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
         assert not logger.error.called, logger.error.call_args_list
     final = json.loads(state_path.read_text())
     final_wallet = json.loads(wallet_path.read_text())
+    if not terminal and not stress and real in (False, True, 'warning'):
+        heartbeats = [call.args[0] for call in logger.info.call_args_list
+                      if call.args and str(call.args[0]).startswith('Heartbeat:')]
+        expected_bars = range(origin, final['strategy_bar_ms'] + 1, 60000)
+        assert [int(message.rsplit('Bar=', 1)[1]) for message in heartbeats] == list(expected_bars)
+        assert all('L:' in message and 'S:' in message and 'V:' in message and 'C:' in message
+                   for message in heartbeats)
     if real:
         if terminal or real == 'critical':
             assert final_wallet['balance'] == pytest.approx(capital*.9976, abs=1e-9)
