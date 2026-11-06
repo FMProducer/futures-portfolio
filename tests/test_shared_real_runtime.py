@@ -94,14 +94,14 @@ async def test_shared_account_runtime_spends_only_worker_cash_and_books_actual_e
     state, wallet = json.loads(sp.read_text()), json.loads(wp.read_text())
     assert len(orders) == 2, (logger.error.call_args_list, logger.warning.call_args_list, logger.critical.call_args_list)
     assert wallet['positions'] == {'ZECUSDT_LONG': 7.5, 'ZECUSDT_SHORT': 7.482}
-    assert wallet['balance'] == pytest.approx(999.39072)
+    assert wallet['balance'] == pytest.approx(999.40072)
     assert state['funding_paid'] == .01 and len(state['funding_journal']) == 1
     assert state['initial_tpv'] == 1000 and wallet['balance'] < 1000
     assert paper.read_bytes() == b'unchanged-eight-paper-slots'
     if unexplained_credit:
         assert state['startup_blocked'] and 'unexplained cashflows' in state['startup_block_reason']
-        assert D(str(wallet['balance']))+5000 == actual[0]-1
+        assert D(str(wallet['balance']))+D('4999.99') == actual[0]-1
     else:
         assert not state.get('startup_blocked') and not logger.error.called, logger.error.call_args_list
-        assert D(str(wallet['balance']))+5000 == actual[0]
+        assert D(str(wallet['balance']))+D('4999.99') == actual[0]
         assert state['last_tpv'] == pytest.approx(wallet['balance'])

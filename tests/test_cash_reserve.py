@@ -29,10 +29,14 @@ def test_cash_reserve_keeps_initial_exposure_and_does_not_mutate():
     assert capital_with_reserve(portfolio(0), 200) == (200, original["targets"])
 
 
-@pytest.mark.parametrize("bad", [-1, float("nan"), float("inf"), True, "461"])
+@pytest.mark.parametrize("bad", [-1, float("nan"), float("inf"), True, "invalid", "NaN", "-1"])
 def test_cash_reserve_rejects_invalid_values(bad):
     with pytest.raises(ValueError):
         capital_with_reserve(portfolio(bad), 200)
+
+
+def test_cash_reserve_accepts_exact_decimal_snapshot():
+    assert capital_with_reserve(portfolio("4999.999999999999999999"), 200)[0] == 200
 
 
 @pytest.mark.asyncio

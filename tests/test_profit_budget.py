@@ -54,6 +54,29 @@ def test_unconfirmed_fill_blocks_but_negative_profit_ledger_does_not():
     assert pb.balance(book) == -2 and not pb.ledger(book)['blocked']
 
 
+def test_internal_virtual_transfer_does_not_require_exchange_trade_financials():
+    book = {}
+    transfer = dict(type='VIRTUAL_ORDER', status='SUCCESS', execution_id='internal-release', diff_usdt=-40)
+    assert pb.record_fill(book, transfer, require_confirmed=True)
+    assert not pb.ledger(book)['blocked'] and pb.balance(book) == 0
+    assert not pb.record_fill(book, transfer, require_confirmed=True)
+
+
+@pytest.mark.asyncio
+async def test_real_virtual_release_does_not_block_the_following_confirmed_order():
+    connector = MagicMock()
+    connector.get_order_book = AsyncMock(return_value={'bids': [['100', '1000']], 'asks': [['100', '1000']]})
+    executor = PortfolioExecutor(connector)
+    transfer = dict(type='VIRTUAL_ORDER', key='VIRTUAL', position_side='BOTH', diff_usdt=-40, is_reduction=True)
+    cfg = {'targets': {'BASE_LONG': {'leverage': 3}}, 'fuse_gate': {'LONG': {'taker_fee': .0004}}}
+    results = [dict(type='VIRTUAL_ORDER', status='SUCCESS', execution_id='release', diff_usdt=-40),
+               fill('confirmed-buy', False, qty=1, fee=.04, financials_confirmed=True)]
+    with patch.object(executor, '_execute_single_action', AsyncMock(side_effect=results)) as execute:
+        actual = await executor.execute_actions([transfer, action('LONG', False, 100)], 100, False, cfg,
+            {'TESTUSDT': .001}, {'balance': 1000, 'positions': {}}, cash_budget=D(100))
+    assert execute.await_count == 2 and all(result['status'] == 'SUCCESS' for result in actual)
+
+
 def test_calculator_does_not_buy_deficit_from_large_collateral_reserve():
     targets = {'BASE_LONG': {'share': .5, 'leverage': 3},
                'BASE_SHORT': {'share': .5, 'leverage': 3}, 'VIRTUAL': {'share': 0, 'leverage': 1}}

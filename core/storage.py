@@ -64,9 +64,8 @@ def merge_funding_receipts(data, latest):
         value = Decimal(str(portfolio.get(key, 0))) + Decimal(receipt["settled"])
         if not value.is_finite() or value < 0:
             raise ValueError("Stale config cannot reconcile funding reserve")
-        if Decimal(str(float(value))) != value:
-            raise ValueError("Stale reserve reconciliation would lose precision")
-        portfolio[key] = float(value)
+        from core.funding import json_decimal
+        portfolio[key] = json_decimal(value)
         receipts[identity] = receipt
     return merged
 

@@ -32,9 +32,10 @@ async def test_funding_survives_cooldown_and_restart(tmp_path, amount, event_bar
     stop = next(event for event in result['events'] if event['kind'] == 'cooldown_start')
     resume = next(event for event in result['events'] if event['kind'] == 'cooldown_end')
     assert stop['bar'] == 1 and resume['bar'] == 4
-    assert resume['rebased'] == pytest.approx(stop['tpv'] + amount)
+    assert resume['rebased'] == pytest.approx(stop['tpv'])
+    assert result['cash_reserve_usdt'] == 1000 + amount
     if event_bar == 2:
-        assert result['equity_curve'][event_bar] == pytest.approx(stop['tpv'] + amount)
+        assert result['equity_curve'][event_bar] == pytest.approx(stop['tpv'])
 
 
 @pytest.mark.parametrize('funding,expected', [(-10, 10), (5, -5)])

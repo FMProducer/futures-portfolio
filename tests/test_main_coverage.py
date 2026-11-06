@@ -1185,7 +1185,7 @@ async def test_a2_paper_liquidation_price_is_diagnostic_only():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("legacy_free_margin", [0.0, 1000.0])
-async def test_a2_canonical_guard_closes_critical_paper_position_and_ignores_legacy_margin(
+async def test_a2_canonical_guard_counts_external_paper_reserve(
     legacy_free_margin,
 ):
     collateral = 4.0 / 0.93
@@ -1217,6 +1217,11 @@ async def test_a2_canonical_guard_closes_critical_paper_position_and_ignores_leg
         )
     final_state = [value for path, value in saves if path == "state.json"][-1]
     final_paper = [value for path, value in saves if path == "paper_state.json"][-1]
+    if legacy_free_margin:
+        assert final_paper['positions'] == paper_state['positions']
+        emit.assert_not_called()
+        notifier.send_alert.assert_not_awaited()
+        return
     assert final_paper["positions"]["BTCUSDT_LONG"] == 0.0
     assert final_paper["positions"]["BTCUSDT_SHORT"] == 0.0
     assert final_paper["long_entry_price"] == 0.0

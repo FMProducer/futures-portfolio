@@ -109,14 +109,15 @@ def test_paper_legacy_funding_matches_backtest_and_is_idempotent(cash):
     targets = {'BASE_LONG': {'leverage': 3}, 'BASE_SHORT': {'leverage': 3}}
     bt = BacktestState(initial_capital=D(1000), base_ticker='TEST', val_cash=D(cash),
                        pos_long=D(3), pos_short=D(3), long_entry_price=D(100), short_entry_price=D(100),
-                       virt_debt=D(500))
+                       virt_debt=D(500), account_free_margin=D(5000))
     wallet = {'balance': str(D(700) + D(cash)), 'positions': {'TEST_LONG': 3, 'TEST_SHORT': 3},
               'long_entry_price': 100, 'short_entry_price': 100}
     state = {'virt_debt': 500}
     bt.pay_funding_legacy(D(600)*D('.0002')/1440)
     amount = paper_legacy_funding(wallet, state, targets, 'TEST', 100, 60000)
     assert D(state['virt_debt']) == bt.virt_debt
-    assert D(state['funding_paid']) == bt.funding_paid == amount
+    assert bt.funding_paid == amount
+    assert bt.account_free_margin == D(5000)-amount
     assert abs(D(wallet['balance']) - D(state['virt_debt']) - 200 - bt.val_cash) < D('1e-24')
     before = deepcopy((wallet, state))
     assert paper_legacy_funding(wallet, state, targets, 'TEST', 100, 60000) == 0

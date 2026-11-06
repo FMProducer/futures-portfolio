@@ -59,7 +59,8 @@ def reconcile(root, source, state, wallet, actual_wallet, key):
     proof = source['allocation']
     validate(root, proof, state['base_ticker'], key)
     expected = (amount(proof['account_wallet']) + amount(wallet['balance']) - amount(proof['capital'])
-                + amount(state.get('siphoning_reserve', 0)) + amount(source.get('reserve_offset', 0)))
+                + amount(state.get('siphoning_reserve', 0)) + amount(source.get('reserve_offset', 0))
+                - amount(state.get('funding_paid', 0)))
     if abs(amount(actual_wallet)-expected) > Decimal('.00000001'):
         raise ValueError('Shared REAL wallet has unexplained cashflows; reconciliation required')
 
@@ -88,11 +89,18 @@ async def retire(connector, root, actual_wallet):
     validate(root, proof, ticker, account_key(connector))
     _, halt = funding.load_funding_state(state)
     journal = None
+    reserve_after = None
     try:
         journal = await funding.poll_live_funding(connector, state, ticker, int(time.time()*1000))
         for event in journal.get_received():
-            funding.apply_funding_paper(event.signed_amount, wallet, state)
+            import asyncio
+            receipt = await asyncio.to_thread(funding.settle_funding_reserve,
+                str(Path(root)/'config.json'), 'real', ticker, event)
+            result = funding.apply_funding_paper(event.signed_amount, wallet, state, receipt)
+            reserve_after = receipt['current_reserve']
             journal.mark_applied(event.event_id)
+            if result['shortfall']:
+                raise ValueError('Closed REAL owner has an external funding reserve shortfall')
         if amount(state.get('virt_debt', 0)) < 0:
             raise ValueError('Closed REAL owner has a funding shortfall')
         state['last_tpv'] = float(amount(wallet['balance'])+amount(state.get('siphoning_reserve', 0)))
@@ -116,6 +124,7 @@ async def retire(connector, root, actual_wallet):
         result = db.execute('UPDATE allocations SET active=0,closed=? WHERE id=? AND active=1', (closed, proof['id']))
         if result.rowcount != 1:
             raise ValueError('REAL owner changed during handover')
+    return reserve_after
 
 
 async def prepare(connector, root, ticker, config):
@@ -144,7 +153,9 @@ async def prepare(connector, root, ticker, config):
     virtual = capital*amount(portfolio['targets']['VIRTUAL']['share'])
     if not 0 <= virtual <= capital or capital <= 0 or reserve < 0 or amount(after['wallet']) < capital+reserve or amount(after['available']) < capital+reserve:
         raise ValueError('Insufficient confirmed account funds for REAL capital and shared reserve')
-    await retire(connector, root, after['wallet'])
+    reserve_after = await retire(connector, root, after['wallet'])
+    if reserve_after is not None:
+        reserve = amount(reserve_after)
     stamp = int(time.time()*1000)
     proof = claim(root, key, ticker, capital, reserve, after['wallet'], after['available'], stamp)
     state = dict(base_ticker=ticker, started_at=stamp/1000, initial_tpv=float(capital), reference_tpv=float(capital),

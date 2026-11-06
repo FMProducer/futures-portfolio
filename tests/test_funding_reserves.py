@@ -31,11 +31,11 @@ def test_backtest_funding_preserves_portfolio_and_records_expense(amount, expect
                           account_free_margin=D(5000), profit_book={"profit_budget": {"balance": "50", "receipts": {}, "blocked": False}})
     apply_funding_backtest(D(amount), state)
     assert state.account_free_margin == expected
-    assert state.virt_debt == 340 + D(amount) and state.val_cash == 660
-    assert state.get_tpv(D(100)) == 1000 + D(amount)
+    assert state.virt_debt == 340 and state.val_cash == 660
+    assert state.get_tpv(D(100)) == 1000
     assert state.get_tpv(D(100)) + state.funding_accounting_offset == 1000
     assert state.check_accounting(D(100), 0) == 0
-    assert D(state.profit_book["profit_budget"]["balance"]) == 50 + min(D(amount), D(0))
+    assert D(state.profit_book["profit_budget"]["balance"]) == 50
 
 
 @pytest.mark.parametrize("live,key", [(False, "paper_account_free_margin"), (True, "cash_reserve_usdt")])
@@ -48,10 +48,8 @@ def test_wallet_funding_only_changes_mode_reserve(live, key, amount, expected):
         state["live_funding"] = {"symbol": "TESTUSDT"}
     apply_funding_paper(D(amount), wallet, state)
     assert wallet["positions"] == before["positions"]
-    assert D(str(wallet["balance"])) + D(str(state["funding_accounting_offset"])) == 1000
-    assert state["virt_debt"] == 340 + D(amount)
-    if D(amount) < 0:
-        assert D(wallet["profit_budget"]["balance"]) == D(amount)
+    assert wallet == before
+    assert state["virt_debt"] == 340
     assert state[key] == expected and state["funding_paid"] == -D(amount)
 
 
@@ -60,7 +58,7 @@ def test_insufficient_reserve_never_borrows_from_portfolio():
     result = apply_funding_backtest(D(-10), state)
     assert state.account_free_margin == 0 and result["shortfall"] == 7
     assert state.get_funding_shortfall() == 7
-    assert state.get_tpv(D(100)) + state.funding_accounting_offset == 1000 and state.virt_debt == 330
+    assert state.get_tpv(D(100)) == 1000 and state.virt_debt == 340
     assert state.check_accounting(D(100), 0) == 0
 
 
@@ -117,7 +115,7 @@ def test_reserve_receipt_recovers_failure_before_wallet_commit(tmp_path):
     save_funding_boundary(sp, wp, state, wallet, journal, FundingHalt())
     assert recover_funding_boundary(sp, wp)[0] == "ABSENT"
     assert json.loads(path.read_text())["portfolios"][0]["paper_account_free_margin"] == 4997
-    assert json.loads((tmp_path / "wallet.json").read_text())["balance"] == 997
+    assert json.loads((tmp_path / "wallet.json").read_text())["balance"] == 1000
     assert json.loads((tmp_path / "strategy.json").read_text())["funding_paid"] == 3
 
 
@@ -140,20 +138,35 @@ async def test_paper_loop_commits_only_external_reserve(amount, expected):
         await _run_rebalance(config, state, _make_paper_state(), loop_limit=2)
     assert committed
     strategy, wallet = committed[-1]
-    assert wallet["balance"] == 100 + D(amount) and strategy["virt_debt"] == 34 + D(amount)
-    assert D(str(wallet["balance"])) + D(str(strategy["funding_accounting_offset"])) == 100
+    assert wallet["balance"] == 100 and strategy["virt_debt"] == 34
     assert strategy["funding_paid"] == -D(amount)
     assert strategy["funding_reserve_key"] == "paper_account_free_margin"
     assert strategy["funding_reserve_balance"] == expected
     assert strategy["funding_journal"][0]["status"] == "applied"
 
 
-def test_config_precision_loss_blocks_instead_of_discarding_payment(tmp_path):
+def test_config_preserves_payment_below_float_precision(tmp_path):
     path = account(tmp_path)
-    before = path.read_bytes()
-    with pytest.raises(ValueError, match="precision"):
-        settle_funding_reserve(str(path), "real", "TESTUSDT", event(amount="-0.000000000000000001"))
-    assert path.read_bytes() == before
+    payment = event(amount="-0.000000000000000001")
+    before = D(str(json.loads(path.read_text())['portfolios'][0]['cash_reserve_usdt']))
+    first = settle_funding_reserve(str(path), "real", "TESTUSDT", payment)
+    assert D(str(json.loads(path.read_text())['portfolios'][0]['cash_reserve_usdt'])) == before+payment.signed_amount
+    assert settle_funding_reserve(str(path), "real", "TESTUSDT", payment) == first
+
+
+def test_funding_event_roundtrip_preserves_synthetic_payment():
+    payment = event(amount="-0.0002059397495034722222222222222")
+    restored = FundingEvent.from_dict(json.loads(json.dumps(payment.to_dict())))
+    assert restored.signed_amount == payment.signed_amount
+
+
+def test_legacy_funding_snapshot_blocks_before_accounting_mutation():
+    wallet = {'balance': 1000, 'positions': {'TESTUSDT_LONG': 0}}
+    state = {'funding_paid': 3, 'virt_debt': 340, 'paper_account_free_margin': 5000}
+    before = copy.deepcopy((wallet, state))
+    with pytest.raises(ValueError, match='Legacy funding snapshot'):
+        apply_funding_paper(D(-1), wallet, state)
+    assert (wallet, state) == before
 
 
 def test_reserve_funding_is_not_subtracted_from_dashboard_portfolio_pnl():
@@ -225,15 +238,13 @@ async def test_runtime_shortfall_blocks_increases_and_preserves_wallet(paper_mod
         await _run_rebalance(config, state, _make_paper_state(), loop_limit=2, real_mode=not paper_mode)
     assert applications
     for (before, v_before), (after, v_after) in applications:
-        assert v_after == v_before - 2
+        assert v_after == v_before
         assert {k: v for k, v in before.items() if k not in ("profit_budget", "balance")} == {
             k: v for k, v in after.items() if k not in ("profit_budget", "balance")}
-        assert after["balance"] == before["balance"] - 2
-        assert D(after["profit_budget"]["balance"]) == D(before.get("profit_budget", {}).get("balance", "0")) - 2
+        assert after == before
     assert any(current.get("funding_halt", {}).get("active") for current, _ in committed)
     assert committed[-1][0]["funding_reserve_shortfall"] == 1
-    assert committed[-1][1]["balance"] == 98
-    assert committed[-1][0]["funding_accounting_offset"] == 2
+    assert committed[-1][1]["balance"] == 100
     executor.execute_actions.assert_not_awaited()
 
 
@@ -260,7 +271,7 @@ def test_reserve_and_wallet_recover_crash_between_pair_writes(tmp_path, monkeypa
             save_funding_boundary(sp, wp, state, wallet, journal, FundingHalt())
     status, recovered, restored_wallet = recover_funding_boundary(sp, wp)
     assert status == "RECOVERED"
-    assert restored_wallet["balance"] == 997 and recovered["virt_debt"] == 337
+    assert restored_wallet["balance"] == 1000 and recovered["virt_debt"] == 340
     assert recovered["funding_paid"] == 3
     assert not FundingJournal.from_list(recovered["funding_journal"]).get_received()
     assert json.loads(path.read_text())["portfolios"][0]["cash_reserve_usdt"] == 4997

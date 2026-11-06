@@ -51,7 +51,7 @@ def record_fill(book, fill, leverage=1, initial_build=False, require_confirmed=F
         if old != payload:
             raise ValueError("Changed confirmed fill requires profit-budget reconciliation")
         return False
-    if fill.get("execution_pending") or (require_confirmed and fill.get("financials_confirmed") is not True):
+    if fill.get("execution_pending") or (require_confirmed and not virtual and fill.get("financials_confirmed") is not True):
         row["blocked"] = True
         row["reason"] = "unconfirmed_execution_financials"
         row["receipts"][identity] = payload

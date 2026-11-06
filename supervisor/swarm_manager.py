@@ -414,7 +414,7 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
         if key in old_state:
             new_state[key] = old_state[key]
     if not is_paper and old_state.get("live_funding") is not None:
-        for key in ("live_funding", "funding_model", "funding_journal", "funding_halt", "funding_paid"):
+        for key in ("live_funding", "funding_model", "funding_journal", "funding_halt", "funding_paid", "funding_strategy_accounting"):
             if key in old_state:
                 new_state[key] = old_state[key]
         if "live_funding_snapshot" in old_wallet:

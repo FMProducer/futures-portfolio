@@ -578,7 +578,7 @@ def build_payload(prefix: str) -> Dict[str, Any]:
         kpi("Commissions", f"-{_money(commissions)} USDT", "Taker commissions, mark-to-mid attribution basis.", "neg"),
         kpi("Funding", f"-{_money(funding)} USDT", "Funding drag reconstructed from open notional per bar.", "neg"),
         kpi("Funding from external reserve (net)", f"{_money(result.get('funding_from_reserve', 0))} USDT",
-            "Positive means paid, negative means received. Shadow strategy capital retains funding; actual equity includes the accounting offset.", ""),
+            "Positive means paid, negative means received. Funding changes only the external account reserve; portfolio CASH and VIRTUAL are unchanged.", ""),
         kpi("Funding from VIRTUAL", f"{_money(funding_from_virtual)} USDT",
             "Portion of funding paid by transferring VIRTUAL cash. Already included in Funding; not deducted again in PnL attribution.", ""),
         kpi("Realized PnL", f"{_money(realized)} USDT", "Mark-to-mid realized PnL; slippage is shown separately.", "pos" if realized >= 0 else "neg"),

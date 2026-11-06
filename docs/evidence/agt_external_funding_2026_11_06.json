@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "record_date": "2026-11-06",
+  "branch": "codex/agt-annual-runtime-parity",
+  "validation": {
+    "head": "89223439a0e4d84f57dbcdc65d137d2e7bfb7f0d",
+    "period": [
+      "2025-10-20 00:00 UTC",
+      "2026-10-19 23:59 UTC"
+    ],
+    "bars": 525600,
+    "config_sha256": "9f192358cb5fdd7522cc264fc0b89147dc9c3cc1bc72c448d9c879b17742deb0",
+    "data_sha256": "c6cf752e9d204a19c1e85ba6b75c5b60d817bf81b7e0cfc8eebc52e75fbc5308",
+    "matched_fills": 588,
+    "matched_funding_events": 514100,
+    "equity_errors": {
+      "backtest_paper": 8.185452315956354e-12,
+      "backtest_real": 4.547473508864641e-12
+    },
+    "maximum_pnl_error": 1.0800249583553523e-12,
+    "independent_real_wallet_residual": "3.248400000012E-12",
+    "min_cash": {
+      "backtest": "0E-25",
+      "paper": "0E-13",
+      "real": "0E-13"
+    },
+    "min_virtual": {
+      "backtest": "325.8198158829787451333333333",
+      "paper": "0",
+      "real": "0"
+    },
+    "trading_profit_pct": 421.25640353062215,
+    "trading_max_dd_pct": 67.3820487674812,
+    "cycles": 391,
+    "stops": 85,
+    "funding_paid": 274.35420149127003,
+    "external_reserve": 4725.64579850873,
+    "profit_after_external_funding_usdt": 3938.209833820164,
+    "profit_after_external_funding_pct": 393.8209833820164,
+    "real_journal_adapter": "archived_applied_with_two_event_overlap",
+    "source_sha256": {
+      "CHANGELOG.md": "a657da78bc43788e06d8a696cc399233fb7efa8901fbdc7ffd53b39533a321bf",
+      "backtest/backtest_rebalance.py": "591b586cadcdc4af102beb6a25143cd784d629738bd5ce29c0a2d5ea89999fdb",
+      "core/backtest_rules.py": "98f0cab08ac062e349abcf99d797aa7ab8545be1d51d5e4871ff2cc5df06614a",
+      "core/capital.py": "a8dc83372fb08f9d15471e676478abf88b29c8705dc49d35ebdf1ba7f51ea7a5",
+      "core/executor.py": "22b0a5759349125677c804ebaba356ac0c83aa996021c5f35d7ff09d15e6ac07",
+      "core/funding.py": "acb94ec18489db849aeafb7b273626b62e0046e58522d79a38edcb445961236f",
+      "core/main.py": "8840d9b54469bd950c38b93cf19f0d5859c31be0b0f527cf58bc8dfe6c04badf",
+      "core/profit_budget.py": "d6121985067df1f13ad16742620bbda9528544b6deee45db019b606620610eb1",
+      "core/real_allocation.py": "825cb362556d850350bbbc4bd4d646513f778218f3a25fe399cd6cdbbd28670a",
+      "core/siphoning.py": "30a60625a95ac0cc1233e665c454fa97bb9fa20036507a6c3c29be6885492ab1",
+      "core/storage.py": "072eb6d22a1b84f8e74c2dfe40fe67107924ef92285be81cc1a100d5214983a4",
+      "scripts/run_zec_replay.py": "ef6c02e14d1995486acc6d3395cc9c493606e0ad8663008bbfaefd0969b87342",
+      "scripts/verify_runtime_parity.py": "cbc2239b7d30ae2988e8ceb818037757a4e72b9114bb045fb5067860bbbbd3e3",
+      "scripts/visualize_zec_dashboard.py": "e144af8c58abc20244af84b5cd690753d0f77029f486a11f5d034810f9f92587",
+      "supervisor/swarm_manager.py": "4e28627513b3f35cff516ee34314b7d256a7b6899a88cd260e0d42ad37eb298d",
+      "tests/test_backtest_rebalance.py": "687fea6d374b96986fd441cec0e7914ccdf19afb6fb45af0a4236a196ddc96f6",
+      "tests/test_backtest_rules.py": "46350793f7a21c592c9fdf3e87c56e2b8eed77d9a977d42f5c1ee780a4c2c5a3",
+      "tests/test_cash_reserve.py": "6d9f605b99a7a0b60851d1d9eee41799de531e9ee6b3f3c173c42fcbdc24bdd7",
+      "tests/test_funding_b1.py": "e1602df3b18123a88d48a9089d490265cf79898e36f6af3d6fe7094a37d3b0e3",
+      "tests/test_funding_reserves.py": "7d51d4e8778ae8c2236ab1c1487fb18d11a58a62fcd71256973062855e13de41",
+      "tests/test_live_funding_polling.py": "564a61015421187de871ecee9ee9f7910ed984ffc9541803a73161f70e93950f",
+      "tests/test_live_launch_guard.py": "3f2be0e08f55309041a82c9d8c249f1927d61e98b496cfd4926931fc8c3f2347",
+      "tests/test_main_coverage.py": "3ab8d5e5857aab6925098b83facb358e9251cdb9bb9a649e296216f8a94b123c",
+      "tests/test_paper_reduce_guard.py": "edcb67a47c4e89d642da846a1854431ea74d3b13c2c8986b69a48d111b858b1c",
+      "tests/test_profit_budget.py": "4be73ad1704d42e01c0645824a5ac26f95e6e65ba5cc5675499f5b7e33122ad3",
+      "tests/test_real_allocation.py": "37157e1a75d8494c736870017fdb5c9f1811b4bfe2ba04b4f3a1ceddc8c2030a",
+      "tests/test_realized_pnl_audit.py": "c173ba7f1b360e61998e198d4c50ec9fdf90ad631efac6357fb71d05add2cdad",
+      "tests/test_runtime_backtest_parity.py": "b55c47b8c19ce0de1086cd6f6f6968140a18e810860e36fb04885c40de4b53ed",
+      "tests/test_shared_real_runtime.py": "f8cecb02de6da494b6eb622f818d8492f787cd2e7329107e4b616f0d3e67836c",
+      "scripts/verify_real_runtime_parity.py": "746d0c919f6342357352246b18d96b4edeacd094d9901c6f271a0a9326f6f103",
+      "tests/test_annual_replay_driver.py": "6175703598f66d65e6e35638180651a9310e1fffc259773e78351eb595b3d402",
+      "docs/FUNDING_EXTERNAL_RESERVE_PARITY_2026_11_06.md": "8d703a607aafb838fe81a5164f981e6112e22f8d28fba304715371820fa50142",
+      "scripts/verify_agt_external_funding_results.py": "24da4ee9c45c8d7e7c4813f604f080906ef746cf232f5f66766ae9356003a346"
+    }
+  },
+  "frozen_public_parameters": {
+    "funding_model": "legacy_constant",
+    "rebalance_share_trail_distance": 0.05800887342949769,
+    "equity_trailing_stop_pct": 0.3,
+    "equity_trailing_stop_activation_pct": 1.55,
+    "equity_trailing_stop_timeout_sec": 34.454466312271094,
+    "max_drawdown_limit": 100.0,
+    "max_drawdown_cooldown_days": 365.0,
+    "toxic_cooldown_days": 0.09014340672051
+  },
+  "portfolio_parameters": {
+    "initial_capital": 1000.0,
+    "paper_initial_capital": 1000.0,
+    "cash_reserve_usdt": 5000.0,
+    "paper_account_free_margin": 5000.0,
+    "targets": {
+      "BASE_LONG": {
+        "share": 0.25,
+        "leverage": 3
+      },
+      "BASE_SHORT": {
+        "share": 0.25,
+        "leverage": 3
+      },
+      "VIRTUAL": {
+        "share": 0.5,
+        "leverage": 1
+      }
+    },
+    "rebalance_threshold_surplus": 0.04,
+    "rebalance_threshold_deficit": 0.04,
+    "siphoning_threshold_pct": 0.0
+  },
+  "execution_model": {
+    "quantity_step": "0.001",
+    "adverse_slippage": "0.0005",
+    "taker_commission": "0.0004",
+    "maintenance_margin_rate": "0.004",
+    "funding_daily_gross_rate": "0.0002"
+  },
+  "initial_comparison": {
+    "results": [
+      {
+        "mode": "BACKTEST",
+        "net": 379.9274890953397,
+        "max_dd": 67.42172698397806,
+        "cycles": 386,
+        "stops": 82,
+        "fills": 573,
+        "funding": 262.94369740647585,
+        "final_tpv": 4799.274890958196
+      },
+      {
+        "mode": "PAPER",
+        "net": 379.9274890958197,
+        "max_dd": 67.42172698401842,
+        "cycles": 386,
+        "stops": 82,
+        "fills": 573,
+        "funding": 262.94369740647585,
+        "final_tpv": 4799.274890958197
+      },
+      {
+        "mode": "SIMULATED_REAL (precision fix)",
+        "net": 542.9465489826845,
+        "max_dd": 67.54762257231542,
+        "cycles": 441,
+        "stops": 86,
+        "fills": 579,
+        "funding": 284.35918786160624,
+        "final_tpv": 6429.4654898268445
+      }
+    ],
+    "native_real_failure": {
+      "status": "BLOCKED",
+      "bar": 1,
+      "bar_utc": "2025-10-20 00:01:00+00:00",
+      "error": "('Error in cycle: Funding reserve cannot be persisted without precision loss',)"
+    },
+    "real_cash_guard_blocks": 321
+  },
+  "rejected_external_funding_real": {
+    "mode": "SIMULATED_REAL",
+    "profit_pct": 420.6222947387493,
+    "max_dd_pct": 67.3820487675205,
+    "cycles": 392,
+    "stops": 85,
+    "fills": 588,
+    "funding": 274.0999168817106,
+    "funding_events": 514100,
+    "funding_reserve": "4725.900083118289380138888909",
+    "final_tpv": 5206.222947387493,
+    "bars": 525600,
+    "min_cash": "-5.35056008667E-13",
+    "min_virtual": "0"
+  },
+  "diagnostic_prefix": {
+    "paper": {
+      "mode": "PAPER",
+      "profit_pct": -13.600771934485634,
+      "max_dd_pct": 67.38204876752054,
+      "cycles": 139,
+      "stops": 26,
+      "fills": 193,
+      "funding": 65.20841378273622,
+      "funding_events": 243476,
+      "funding_reserve": "4934.791586217263741250000031",
+      "final_tpv": 863.9922806551436,
+      "bars": 246901,
+      "min_cash": "0E-13",
+      "min_virtual": "0"
+    },
+    "real": {
+      "mode": "SIMULATED_REAL",
+      "profit_pct": -13.579290888660934,
+      "max_dd_pct": 67.3820487675205,
+      "cycles": 140,
+      "stops": 26,
+      "fills": 193,
+      "funding": 65.20838811087201,
+      "funding_events": 243476,
+      "funding_reserve": "4934.791611889127992916666700",
+      "final_tpv": 864.2070911133907,
+      "bars": 246901,
+      "min_cash": "0E-13",
+      "min_virtual": "0"
+    }
+  },
+  "test_runs": [
+    {
+      "path": "reports/agt_three_modes_8922343/precision_tests.log",
+      "summary": "============================= 51 passed in 3.24s ==============================",
+      "sha256": "52e2cc7b14f376170e3d6cf22e4efd1f4c050cc9e1a3d673c5c109e803001c76"
+    },
+    {
+      "path": "reports/agt_three_modes_8922343/final_tests.log",
+      "summary": "============================= 128 passed in 4.06s =============================",
+      "sha256": "0218ffaf72973eddf6c89340b37031ddad0967c22e1163156cc2bfb06842093e"
+    },
+    {
+      "path": "reports/agt_three_modes_8922343/full_tests.log",
+      "summary": "================ 1165 passed, 9 warnings in 128.48s (0:02:08) =================",
+      "sha256": "d0e93ceef2d606d1a4ae02ccd9a3470364a0f44e9f0b9e7845253ef78ac8a62b"
+    },
+    {
+      "path": "reports/agt_three_modes_8922343/driver_tests_final.log",
+      "summary": "============================== 4 passed in 2.61s ==============================",
+      "sha256": "3c533539a04bd25ae43faaf113b17915879b77762867265212b2b34b89f80fd7"
+    },
+    {
+      "path": "reports/funding_reserve_initial_tests.log",
+      "summary": "======================== 18 failed, 50 passed in 5.27s ========================",
+      "sha256": "a7ce7f0bd1db7ea376103bff80c2b43109f8f3907a1ac644b73d9374c37d0bb4"
+    },
+    {
+      "path": "reports/funding_reserve_full_tests.log",
+      "summary": "=========== 44 failed, 1123 passed, 9 warnings in 134.33s (0:02:14) ===========",
+      "sha256": "9b360486e6fd91d6a944fb8e4f4bbd40801890f1b8d4cc5ddbc15aab4c6b1ff6"
+    },
+    {
+      "path": "reports/agt_external_funding_20261106/affected_tests.log",
+      "summary": "======================= 6 failed, 254 passed in 33.16s ========================",
+      "sha256": "bfaba1dda5bfe9e773232b7c90e9fce4aa935505c74986b37a4607ccaaa77e6f"
+    },
+    {
+      "path": "reports/agt_external_funding_20261106/corrected_tests.log",
+      "summary": "============================ 150 passed in 25.15s =============================",
+      "sha256": "5ca4a69856bfe4fa352bc8c1e63aace51e189dfb9ec558d066f068c045a7ef9f"
+    },
+    {
+      "path": "reports/agt_external_funding_20261106/full_tests_final.log",
+      "summary": "=========== 1 failed, 1167 passed, 9 warnings in 139.27s (0:02:19) ============",
+      "sha256": "4edbd396d43539cdaf5bae284c366ac5a4d010505f3d8ea56c13f43cf108f775"
+    },
+    {
+      "path": "reports/agt_external_funding_20261106/full_tests_verified.log",
+      "summary": "================ 1168 passed, 9 warnings in 136.29s (0:02:16) =================",
+      "sha256": "181c928832035706716020afed0fffc43d1baca84835a2a6bfaf5abf48108493"
+    },
+    {
+      "path": "reports/agt_external_funding_20261106/internal_transfer_tests.log",
+      "summary": "============================= 12 passed in 2.01s ==============================",
+      "sha256": "97fdf39512aed83dd76c6af5b98b739d40158f5f05c389163ca85e83d2407aca"
+    },
+    {
+      "path": "reports/agt_external_funding_20261106/full_tests_accepted.log",
+      "summary": "================ 1170 passed, 9 warnings in 138.21s (0:02:18) =================",
+      "sha256": "7035260a2590b1fc4b0c9c64c152c40a890a450953c7c6859701d7580b6a0b72"
+    }
+  ],
+  "limits": [
+    "No main-checkout, live account, running-swarm or live-state mutation",
+    "No automatic legacy-state migration",
+    "No proof of annual native JSON/WAL throughput or real exchange execution",
+    "Large raw artifacts remain local and Git-ignored; this compact record preserves metrics and hashes"
+  ],
+  "reproduction": {
+    "runtime_drivers": [
+      "scripts/verify_runtime_parity.py",
+      "scripts/verify_real_runtime_parity.py"
+    ],
+    "verifier": "python scripts/verify_agt_external_funding_results.py reports/agt_external_funding_20261106",
+    "local_history": "C:/Python/Prosperous_Bot/futures_portfolio/data/AGTUSDT_live.feather",
+    "local_reports": "reports/agt_external_funding_20261106"
+  }
+}
