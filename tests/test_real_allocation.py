@@ -23,6 +23,7 @@ def setup(tmp_path):
         get_positions=AsyncMock(return_value={}), get_open_orders=AsyncMock(return_value=[]))
     config = {'max_bots': 9, 'paper_mode_bots': 8, 'portfolios': [{
         'initial_capital': 1000, 'cash_reserve_usdt': 5000, 'targets': {'VIRTUAL': {'share': .5}}}]}
+    (tmp_path/'config.json').write_text(json.dumps(config))
     return connector, config
 
 
@@ -124,7 +125,7 @@ async def test_handover_reconciles_actual_funding_and_never_copies_old_profit_in
     assert current['balance'] == 1000 and new['initial_tpv'] == 1000
     assert new['live_funding']['opening_wallet'] == '6099.75'
     closed, final_wallet = json.loads(sp.read_text()), json.loads(wp.read_text())
-    assert final_wallet['balance'] == 1099.75 and closed['funding_paid'] == .25
+    assert final_wallet['balance'] == 1100 and closed['funding_paid'] == .25
     assert closed['funding_journal'][0]['status'] == 'applied'
     with pytest.raises(ValueError, match='active confirmed owner'):
         allocation.validate(tmp_path, old['live_funding']['allocation'], 'ZECUSDT', allocation.account_key(connector))

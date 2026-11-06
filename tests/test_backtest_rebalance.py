@@ -71,41 +71,41 @@ def test_siphon_from_virtual_pays_v_not_cash():
     assert state.val_cash == Decimal('666')
 
 
-def test_funding_waterfall_preserves_tpv_on_virtual_transfer():
-    """B1 V-only: funding debits V, CASH unchanged."""
+def test_external_funding_preserves_portfolio_tpv():
+    """Funding debits only external free margin."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('300'), base_ticker="BTCUSDT", account_free_margin=Decimal("5000"))
     before = state.get_tpv(Decimal('100'))
     state.pay_funding(Decimal('-1.00'))  # signed: negative = debit
     assert state.val_cash == Decimal('0.20')  # CASH unchanged
-    assert state.virt_debt == Decimal('299.00')
+    assert state.virt_debt == Decimal('300') and state.account_free_margin == Decimal('4999')
     assert state.funding_paid == Decimal('1.00')  # opposite sign
-    assert state.get_tpv(Decimal('100')) == before - Decimal('1.00')
+    assert state.get_tpv(Decimal('100')) == before
 
 
-def test_funding_waterfall_exhausts_virtual_before_negative_cash():
-    """B1 V-only: V goes negative on excess debit; CASH untouched."""
+def test_external_funding_does_not_exhaust_virtual():
+    """A payment larger than VIRTUAL still uses the external reserve."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('0.50'), base_ticker="BTCUSDT", account_free_margin=Decimal("5000"))
     before = state.get_tpv(Decimal('100'))
-    state.pay_funding(Decimal('-1.00'))  # debit 1.0 > V 0.5 → V = -0.50
-    assert state.virt_debt == Decimal('-0.50')  # negative V (shortfall)
+    state.pay_funding(Decimal('-1.00'))
+    assert state.virt_debt == Decimal('0.50') and state.account_free_margin == Decimal('4999')
     assert state.val_cash == Decimal('0.20')  # CASH unchanged
     assert state.funding_paid == Decimal('1.00')
-    assert state.get_funding_shortfall() == Decimal('0.50')
-    assert state.get_tpv(Decimal('100')) == before - Decimal('1.00')
+    assert state.get_funding_shortfall() == Decimal('0')
+    assert state.get_tpv(Decimal('100')) == before
 
 
 def test_negative_funding_credits_cash_without_virtual_transfer():
-    """B1 V-only: funding credit increases V, CASH unchanged."""
+    """A funding credit increases the external reserve."""
     state = BacktestState(initial_capital=Decimal('1000'), val_cash=Decimal('0.20'),
                           virt_debt=Decimal('300'), base_ticker="BTCUSDT", account_free_margin=Decimal("5000"))
     before = state.get_tpv(Decimal('100'))
     state.pay_funding(Decimal('1.00'))  # signed: positive = credit
     assert state.val_cash == Decimal('0.20')  # CASH unchanged
-    assert state.virt_debt == Decimal('301.00')  # V increased
+    assert state.virt_debt == Decimal('300') and state.account_free_margin == Decimal('5001')
     assert state.funding_paid == Decimal('-1.00')  # opposite sign
-    assert state.get_tpv(Decimal('100')) == before + Decimal('1.00')
+    assert state.get_tpv(Decimal('100')) == before
 
 
 def test_cross_margin_guard_counts_external_free_margin():
@@ -114,9 +114,9 @@ def test_cross_margin_guard_counts_external_free_margin():
                           l_lev=Decimal('5'), s_lev=Decimal('5'))
     state.pos_long = Decimal('10')
     state.long_entry_price = Decimal('100')
-    state.pay_funding(Decimal('-1.00'))  # V goes -0.50, CASH 0.20 unchanged
+    state.pay_funding(Decimal('-1.00'))
     assert state.val_cash == Decimal('0.20')  # CASH unchanged
-    assert state.virt_debt == Decimal('-0.50')  # negative V
+    assert state.virt_debt == Decimal('0.50') and state.account_free_margin == Decimal('4999')
     assert state.cross_margin_distance_pct(Decimal('100'), Decimal('0.004')) > Decimal('8')
     assert state.cross_margin_distance_pct(Decimal('80'), Decimal('0.004')) > Decimal('8')
 
@@ -742,7 +742,7 @@ async def test_backtest_legacy_free_margin_does_not_change_results(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_external_funding_retains_original_ledger_stop(tmp_path):
+async def test_external_funding_does_not_trigger_portfolio_drawdown_stop(tmp_path):
     times = pd.date_range("2026-01-01", periods=6, freq="min", tz="UTC")
     journal = tmp_path / "funding.json"
     journal.write_text(json.dumps([
@@ -760,8 +760,8 @@ async def test_external_funding_retains_original_ledger_stop(tmp_path):
                   "close": prices, "volume": prices}).to_feather(tmp_path / "BTCUSDT_live.feather")
     result = await run_backtest(str(cfg), str(tmp_path), days=1, commission=0.0, slippage=0.0, quiet=True)
     assert result and result["accounting_ok"]
-    assert [e["bar"] for e in result["events"] if e["kind"] == "max_dd_stop"] == [1, 4]
-    assert result["final_equity"] == pytest.approx(958)
+    assert [e["bar"] for e in result["events"] if e["kind"] == "max_dd_stop"] == []
+    assert result["final_equity"] == pytest.approx(1000)
     assert result["actual_portfolio_equity"] == pytest.approx(1000)
     assert result["cash_reserve_usdt"] == pytest.approx(4958)
     assert result["funding_from_reserve"] == pytest.approx(42)
@@ -823,7 +823,7 @@ async def test_external_funding_preserves_signed_events_and_trade_path(tmp_path)
     config["portfolios"][0]["post_factum_liquidation_check"] = False
     config["portfolios"][0]["liquidation_distance_crit_pct"] = 0
     results = []
-    for name, amounts in (("control", [-7, 3, 0]), ("funded", [-7, 3, 0])):
+    for name, amounts in (("control", []), ("funded", [-7, 3, 0])):
         events = [{"event_id": f"fixed:{i}", "signed_amount": amount,
                    "event_time": times[bar].timestamp(), "symbol": "BTCUSDT",
                    "source": "binance_fundingRate_history",
@@ -834,20 +834,11 @@ async def test_external_funding_preserves_signed_events_and_trade_path(tmp_path)
         config["funding_scenario"] = str(journal)
         cfg = tmp_path / "config.json"
         cfg.write_text(json.dumps(config), encoding="utf-8")
-        def original_funding(amount, state):
-            from core.profit_budget import charge
-            if amount < 0:
-                charge(state.profit_book, -amount)
-            state.virt_debt += amount
-            state.funding_paid -= amount
-        if name == "control":
-            with patch.dict(run_backtest.__globals__, apply_funding_backtest=original_funding):
-                results.append(await run_backtest(str(cfg), str(tmp_path), days=1, quiet=True))
-        else:
-            results.append(await run_backtest(str(cfg), str(tmp_path), days=1, quiet=True))
+        results.append(await run_backtest(str(cfg), str(tmp_path), days=1, quiet=True))
     control, funded = results
     assert control and funded and control["accounting_ok"] and funded["accounting_ok"]
-    assert funded["fills"] == control["fills"]
+    assert [{k:v for k,v in fill.items() if k != 'funding_cum'} for fill in funded['fills']] == [
+        {k:v for k,v in fill.items() if k != 'funding_cum'} for fill in control['fills']]
     assert funded["final_equity"] == control["final_equity"]
     assert funded["cycles"] == control["cycles"]
     assert [e for e in funded["events"] if e["kind"] != "funding"] == [
@@ -858,7 +849,7 @@ async def test_external_funding_preserves_signed_events_and_trade_path(tmp_path)
     assert funded["funding_paid"] == funded["funding_from_reserve"] == 4
     assert funded["funding_amount_basis"] == "signed_amount"
     assert funded["actual_portfolio_equity"] + funded["cash_reserve_usdt"] == pytest.approx(
-        control["final_equity"] + control["cash_reserve_usdt"])
+        control["final_equity"] + control["cash_reserve_usdt"] - 4)
 
 
 @pytest.mark.asyncio

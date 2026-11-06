@@ -361,8 +361,8 @@ async def test_restart_after_receipt_applies_exactly_once(tmp_path):
             apply_funding_paper(event.signed_amount, wallet, state)
             journal.mark_applied(event.event_id)
         save_funding_boundary(sp, wp, state, wallet, journal, FundingHalt())
-    assert wallet["balance"] == 99.0
-    assert state["virt_debt"] == 33.0
+    assert wallet["balance"] == 100.0
+    assert state["virt_debt"] == 34.0
     assert state["funding_paid"] == 1.0
 
 
@@ -388,8 +388,8 @@ async def test_restart_after_apply_never_debits_again(tmp_path):
         replay = await poll_live_funding(c, state, "BTCUSDT", 3000)
         assert not replay.get_received()
         save_funding_boundary(sp, wp, state, wallet, replay, FundingHalt())
-    assert wallet["balance"] == 99.0
-    assert state["virt_debt"] == 33.0
+    assert wallet["balance"] == 100.0
+    assert state["virt_debt"] == 34.0
     assert state["funding_paid"] == 1.0
 
 

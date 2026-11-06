@@ -152,7 +152,7 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
     final_wallet = json.loads(wallet_path.read_text())
     if real:
         if terminal or real == 'critical':
-            assert final_wallet['balance'] == pytest.approx(capital*.9976-.01, abs=1e-9)
+            assert final_wallet['balance'] == pytest.approx(capital*.9976, abs=1e-9)
             assert not any(final_wallet['positions'].values())
             assert final['live_close']['status'] == 'complete' and final['trailing_stop_triggered']
             assert final['funding_paid'] == .01
@@ -165,10 +165,10 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
             assert final['last_tpv'] == 1000 and final['last_profit'] == 0
             connector.get_funding_income.assert_not_awaited()
             return
-        assert final_wallet['balance'] == 999.99
-        assert final['virt_debt'] == 499.99
+        assert final_wallet['balance'] == 1000
+        assert final['virt_debt'] == 500
         assert final['funding_paid'] == .01
-        assert final['last_tpv'] == pytest.approx(999.99)
+        assert final['last_tpv'] == pytest.approx(1000)
         assert final_wallet['positions'] == wallet['positions']
         assert 'legacy_funding_bar_ms' not in final
         assert len(final['funding_journal']) == 1
@@ -209,7 +209,8 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
         return
     expected = D(str(capital))*D('1.5')*D('.0002')/1440*3
     assert abs(D(str(final['funding_paid']))-expected) < D('1e-20')
-    assert abs(D(str(final_wallet['balance'])) - (D(capital)-expected)) < D('1e-12')
+    assert D(str(final_wallet['balance'])) == D(capital)
+    assert abs(D(str(final['funding_reserve_balance']))-(D(str(cfg['portfolios'][0]['paper_account_free_margin']))-expected)) < D('1e-12')
     assert final_wallet['positions'] == wallet['positions']
 
 

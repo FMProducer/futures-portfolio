@@ -2,6 +2,7 @@
 import ast
 import asyncio
 from copy import deepcopy
+from decimal import Decimal as D
 import hashlib
 import json
 import logging
@@ -43,7 +44,9 @@ class Notifier:
 
 async def replay(config_path, feather, count):
     config = json.loads(config_path.read_text())
-    ticker = 'ZECUSDT'
+    ticker = feather.stem.split('_')[0]
+    if not ticker.isascii() or not ticker.isalnum() or ticker != ticker.upper() or not ticker.endswith('USDT'):
+        raise ValueError('Replay history filename must identify a USDT ticker')
     config.update(base_ticker=ticker, paper_mode=True)
     frame = pd.read_feather(feather).iloc[:count]
     prices = frame.close.to_numpy()
@@ -51,7 +54,9 @@ async def replay(config_path, feather, count):
     assert len(frame) == count and np.all(np.diff(stamps) == 60000)
     index = [0]
     capital = config['portfolios'][0]['paper_initial_capital']
-    paths = [str(ROOT / 'reports/parity_reference_01e4df4' / n) for n in ['paper_state_ZECUSDT.json', 'paper_shadow_ZECUSDT.json']]
+    state_root = ROOT / 'reports' / f'runtime_parity_{ticker.lower()}'
+    state_root.mkdir(parents=True, exist_ok=True)
+    paths = [str(state_root / n) for n in [f'paper_state_{ticker}.json', f'paper_shadow_{ticker}.json']]
     strategy, wallet_path = paths
     docs = {strategy: {'base_ticker': ticker, 'initial_tpv': capital, 'reference_tpv': capital,
                       'tpv_ath': capital, 'started_at': float(stamps[0]/1000-1), 'rebalance_cycles': 0,
@@ -62,6 +67,9 @@ async def replay(config_path, feather, count):
     curve = np.full(count, np.nan)
     totals = {'cycles': 0, 'funding': 0., 'fills': 0, 'stops': 0}
     seen, fills = set(), []
+    archived_funding = {}
+    minimum_cash, minimum_virtual = [D(str(capital))], [D(0)]
+    trace = []
 
     def record_wallet(wallet):
         for identity, receipt in wallet.get('share_fill_receipts', {}).items():
@@ -83,6 +91,10 @@ async def replay(config_path, feather, count):
 
     def boundary(sp, wp, state, wallet, journal, halt):
         funding.save_funding_state(journal, halt, state)
+        applied = [row for row in state['funding_journal'] if row['status'] == 'applied']
+        for row in applied:
+            assert archived_funding.setdefault(row['event_id'], row) == row
+        state['funding_journal'] = applied[-1:] + [row for row in state['funding_journal'] if row['status'] != 'applied']
         docs[sp], docs[wp] = deepcopy(state), deepcopy(wallet)
         record_wallet(wallet)
 
@@ -92,7 +104,17 @@ async def replay(config_path, feather, count):
         if seconds == 86400:
             raise ReplayFailure('Unexpected quarantine or terminal zombie')
         curve[index[0]] = docs[strategy]['last_tpv']
+        state, wallet = docs[strategy], docs[wallet_path]
+        if 246500 <= index[0] <= 246900:
+            trace.append(dict(bar=index[0], state={key:deepcopy(state.get(key)) for key in
+                ('virt_debt', 'share_trail', 'velocity_cooldown_bars', 'rebalance_preferred_side', 'last_rebalance_price', 'rebalance_cycles', 'cash_invariant_violation')},
+                wallet={key:deepcopy(wallet.get(key)) for key in ('balance', 'positions', 'long_entry_price', 'short_entry_price')}))
+        virtual = D(str(state.get('virt_debt', 0)))
+        cash = D(str(wallet['balance']))-virtual-sum(D(str(wallet['positions'].get(f'{ticker}_{leg}', 0)))*D(str(wallet.get(f'{leg.lower()}_entry_price', 0)))/D(str(config['portfolios'][0]['targets'][f'BASE_{leg}']['leverage'])) for leg in ('LONG', 'SHORT'))
+        minimum_cash[0], minimum_virtual[0] = min(minimum_cash[0], cash), min(minimum_virtual[0], virtual)
         index[0] += 1
+        if index[0] % 50000 == 0:
+            print(f'PAPER replay: {index[0]}/{count} bars', flush=True)
         if index[0] >= count:
             raise EndReplay()
         await real_sleep(0)
@@ -113,7 +135,7 @@ async def replay(config_path, feather, count):
     tree = ast.parse(source.read_text(encoding='utf-8'))
     function = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'reset_bot_state_files')
     import math, os, shutil
-    namespace = dict(BASE_PATH=ROOT / 'reports/parity_reference_01e4df4', CORE_PATH=Path(strategy).parent,
+    namespace = dict(BASE_PATH=state_root, CORE_PATH=Path(strategy).parent,
                      math=math, os=os, shutil=shutil, time=time, logger=Quiet(), safe_load_json=load)
     exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), namespace)
 
@@ -129,6 +151,7 @@ async def replay(config_path, feather, count):
          patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), patch('core.main.load_json', new=load), \
          patch('core.main.save_json', new=save), patch('core.main.safe_load_json_sync', new=lambda *a, **kw: config), \
          patch('core.funding.save_funding_boundary', new=boundary), \
+         patch('core.storage.update_json_sync', new=lambda path, updater: updater(config)), \
          patch('core.main.self_kill_pm2', new=noop), patch('core.main.emit_signal', new=lambda *a, **kw: None):
         while index[0] < count:
             try:
@@ -151,15 +174,18 @@ async def replay(config_path, feather, count):
             await namespace['reset_bot_state_files'](ticker, True, config, capital_override=wallet['balance'])
     assert np.all(np.isfinite(curve))
     peak = np.maximum(np.maximum.accumulate(curve), capital)
-    return dict(totals, final_tpv=float(curve[-1]), profit_pct=float((curve[-1]/capital-1)*100),
+    return dict(totals, ticker=ticker, mode='PAPER', final_tpv=float(curve[-1]), profit_pct=float((curve[-1]/capital-1)*100),
                 max_dd_pct=float(np.max((peak-curve)/peak)*100), positions=docs[wallet_path]['positions'],
-                bars=count, config_sha256=hashlib.sha256(config_path.read_bytes()).hexdigest(),
+                bars=count, min_cash=str(minimum_cash[0]), min_virtual=str(minimum_virtual[0]),
+                funding_reserve=config['portfolios'][0].get('paper_account_free_margin', 0),
+                funding_events=len(archived_funding), _funding=list(archived_funding.values()), _trace=trace,
+                config_sha256=hashlib.sha256(config_path.read_bytes()).hexdigest(),
                 data_sha256=hashlib.sha256(feather.read_bytes()).hexdigest(), _curve=curve.tolist(), _fills=fills)
 
 
 if __name__ == '__main__':
     result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])))
-    for key in ('_curve', '_fills'):
+    for key in ('_curve', '_fills', '_funding', '_trace'):
         output = Path(sys.argv[4])
         output.with_name(output.stem + key + '.json').write_text(json.dumps(result.pop(key)), encoding='utf-8')
     Path(sys.argv[4]).write_text(json.dumps(result, indent=2), encoding='utf-8')

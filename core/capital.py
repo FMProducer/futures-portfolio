@@ -1,11 +1,16 @@
 """Keep external account margin outside trading capital and portfolio shares."""
 import copy
 import math
+from decimal import Decimal, InvalidOperation
 
 
 def capital_with_reserve(portfolio, trading_capital):
     reserve = portfolio.get("cash_reserve_usdt", 0)
-    if (type(reserve) not in (int, float) or not math.isfinite(reserve) or reserve < 0
+    try:
+        reserve = Decimal(str(reserve)) if type(reserve) in (int, float, str) else Decimal('NaN')
+    except InvalidOperation:
+        reserve = Decimal('NaN')
+    if (not reserve.is_finite() or reserve < 0
             or type(trading_capital) not in (int, float) or not math.isfinite(trading_capital)
             or trading_capital <= 0):
         raise ValueError("Trading capital must be positive and CASH reserve finite and nonnegative")

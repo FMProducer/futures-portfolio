@@ -609,6 +609,7 @@ class PortfolioExecutor:
         # B7 FIX: Получаем mid_price для всех уникальных символов
         # Это обеспечивает симметричный qty для LONG и SHORT
         mid_prices: Dict[str, Decimal] = {}
+        fill_ratios = {}
         for action in actions:
             if action.get("type") == "VIRTUAL_ORDER":
                 continue
@@ -625,6 +626,7 @@ class PortfolioExecutor:
                     best_bid = Decimal(str(order_book["bids"][0][0]))
                     best_ask = Decimal(str(order_book["asks"][0][0]))
                     mid_prices[base_symbol] = (best_bid + best_ask) / Decimal('2')
+                    fill_ratios[base_symbol] = {'LONG': best_ask/mid_prices[base_symbol], 'SHORT': best_bid/mid_prices[base_symbol]}
                 except Exception as e:
                     logger.warning(f"⚠️ B7 FIX: Failed to get order_book for {base_symbol}: {e}. Falling back to mark price.")
                     mid_prices[base_symbol] = Decimal(str(price))
@@ -660,6 +662,11 @@ class PortfolioExecutor:
                     continue
                 spendable = max(Decimal('0'), confirmed_funds)
                 fill_ratio = (1 + PAPER_SLIPPAGE_RATE if leg == 'LONG' else 1 - PAPER_SLIPPAGE_RATE) if paper_mode and not virtual else Decimal('1')
+                if not paper_mode and not virtual:
+                    if symbol not in fill_ratios:
+                        results_map[id(action)] = {'status': 'SKIPPED', 'message': 'Unconfirmed expansion execution price'}
+                        continue
+                    fill_ratio = fill_ratios[symbol][leg]
                 limit = spendable if virtual else spendable / (fill_ratio * (Decimal('1') / lev + Decimal(str(fee))))
                 approved["diff_usdt"] = float(min(abs(Decimal(str(action["diff_usdt"]))), limit))
                 approved["approved_usdt"] = approved["diff_usdt"]

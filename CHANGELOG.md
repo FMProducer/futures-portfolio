@@ -1,5 +1,31 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-06 — External-reserve funding and annual BACKTEST/PAPER/REAL parity
+
+- Branch `codex/agt-annual-runtime-parity`, based on `89223439a0e4d84f57dbcdc65d137d2e7bfb7f0d`. This records the complete uncommitted annual-comparison and funding change set; main checkout, running swarm, exchange account and live snapshots were not modified. No parameter optimization or push.
+- Funding debits/credits now affect only `paper_account_free_margin` for PAPER and `cash_reserve_usdt` / `account_free_margin` for REAL/BACKTEST. Worker balance, CASH, VIRTUAL, positions and expansion-profit ledger are unchanged by funding. Insufficient reserve retains the existing halt and unpaid-liability record without portfolio fallback. REAL shared-wallet reconciliation includes cumulative external funding exactly once, including late settlement during terminal handover.
+- Preserved exact decimal funding/receipt/reserve amounts through JSON, stale-writer merges and siphon credits. Old funded snapshots without `external_reserve_only` accounting metadata require reconciliation before launch; no historical reimbursement, reset, migration or fabricated balance was performed.
+- Aligned REAL quote/fee admission with PAPER, flat restart VIRTUAL initialization and CASH-block recovery. Initial VIRTUAL allocation rounds down instead of exceeding exact CASH by a float rounding fraction. Fixed the confirmed mixed-batch bug: an internal `VIRTUAL RELEASE` was incorrectly treated as an unconfirmed exchange fill and blocked the following LONG increase. Real exchange financial confirmation, duplicate/conflict detection and crash protections remain active.
+- Generalized the PAPER driver from hardcoded ZEC to the input ticker; added independent simulated exchange facts, REAL runtime replay, bucket audits and result verification. Corrected test-clock handling so trade-confirmation delays do not advance historical bars. Historical funding rates are not used in this controlled comparison: all modes use the agreed synthetic gross-position rate, 0.02% daily, charged each minute.
+
+Annual AGTUSDT, 2025-10-20 00:00 through 2026-10-19 23:59 UTC, 525600 bars, targets 25/25/50, initial trading capital 1000 USDT plus a separate 5000-USDT reserve, unchanged trailing distance `0.05800887342949769`:
+
+| Stage / mode | Trading return | Trading MaxDD | Cycles | Stops | Exchange fills | Status |
+|---|---:|---:|---:|---:|---:|---|
+| Original BACKTEST / PAPER | +379.93% | 67.42% | 386 | 82 | 573 | Prior accounting model, matched |
+| REAL after decimal-storage fix, before external-only funding | +542.95% | 67.55% | 441 | 86 | 579 | Completed, not strategy parity |
+| External funding REAL, before internal-transfer fix | +420.62% | 67.38% | 392 | 85 | 588 | Rejected: delayed order and negative rounding fraction |
+| Final BACKTEST | +421.26% | 67.38% | 391 | 85 | 588 | Verified |
+| Final PAPER | +421.26% | 67.38% | 391 | 85 | 588 | Verified |
+| Final simulated REAL | +421.26% | 67.38% | 391 | 85 | 588 | Verified |
+
+- Final active TPV `5212.564035311434` USDT; funding expense `274.35420149127003` USDT; reserve `4725.64579850873` USDT. Profit including external funding expense is `3938.209833820164` USDT, **+393.820983% of initial trading capital**, not +421.26%. Trading MaxDD refers to the active-portfolio curve, not to a funding-adjusted total-account curve.
+- All 588 exchange fills and 514100 funding events matched; all 525600 equity points checked. Maximum equity errors: BACKTEST/PAPER `8.185452315956354e-12`, BACKTEST/REAL `4.547473508864641e-12` USDT; maximum fill PnL error `1.0800249583553523e-12`; independent REAL wallet residual `3.248400000012e-12` USDT. Observed CASH and VIRTUAL were nonnegative in all final runs; no REAL CASH-block messages.
+- Final full suite: **1170 passed, 0 failed, 9 warnings, 138.21 seconds, exit 0**. Final diff whitespace check passed. Earlier failing assertions of portfolio-funded/VIRTUAL-funded behavior were updated to the user's new reserve-only contract; failure/isolation/recovery protections were retained.
+- Config SHA256 `9f192358cb5fdd7522cc264fc0b89147dc9c3cc1bc72c448d9c879b17742deb0`; AGT history SHA256 `c6cf752e9d204a19c1e85ba6b75c5b60d817bf81b7e0cfc8eebc52e75fbc5308`. Working-config changes observed during the original comparison affected only ticker selection; all comparisons used the frozen snapshot.
+- Full protocol: [external funding and parity](docs/FUNDING_EXTERNAL_RESERVE_PARITY_2026_11_06.md); committed compact evidence: `docs/evidence/agt_external_funding_2026_11_06.json`. Raw local-only curves/fills/receipts/logs: `reports/agt_three_modes_8922343/` and `reports/agt_external_funding_20261106/`. Interrupted runs and diagnostic prefixes are not annual PASS results.
+- Obsidian protocol: `Projects/futures-portfolio-external-funding-parity-2026-11-06.md`, indexed in `Docs/changelog.md`. Live exchange execution, annual native JSON/WAL throughput and existing-snapshot migration remain unverified; bounded hot-journal adapters are simulation infrastructure, not a live deployment certificate.
+
 ## 2026-11-05 — Regression follow-up after checkpoint 94f7a02
 
 - Created the requested branch checkpoint94f7a02, without push. Subsequent work remains uncommitted in codex/regression-990d302.

@@ -254,7 +254,7 @@ class BacktestState:
     def accounting_equity(self, price: Decimal) -> Decimal:
         base = self.initial_capital if self.ledger_base is None else self.ledger_base
         return (base + self.realized_total + self.unrealized(price)
-                - self.commission_paid - self.funding_paid - self.liquidation_loss_total)
+                - self.commission_paid - self.liquidation_loss_total)
 
     def accounting_residual(self, price: Decimal) -> Decimal:
         return (self.get_tpv(price) + self.siphoning_reserve) - self.accounting_equity(price)
@@ -994,7 +994,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 state.val_cash = state.initial_capital - virt_cost
                 state.ledger_base = (
                     state.initial_capital - state.realized_total + state.commission_paid
-                    + state.funding_paid + state.liquidation_loss_total + state.siphoning_reserve
+                    + state.liquidation_loss_total + state.siphoning_reserve
                 )
                 state.cooldown_until_bar = 0
                 if state.share_trail is not None:
@@ -1819,9 +1819,9 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "actual_portfolio_equity": float(final_tpv_with_reserve + state.funding_accounting_offset),
             "funding_reserve_shortfall": float(state.funding_reserve_shortfall),
             "funding_source": "none" if funding_model == "disabled" else "cash_reserve_usdt",
-            "funding_strategy_accounting": "legacy_shadow",
+            "funding_strategy_accounting": "external_reserve_only",
             "funding_amount_basis": ("disabled" if funding_model == "disabled" else "signed_amount" if funding_model == "signed_actual" else "legacy_rate"),
-            "portfolio_profit_after_funding": float(final_tpv_with_reserve - Decimal(str(initial_capital))),
+            "portfolio_profit_after_funding": float(final_tpv_with_reserve - Decimal(str(initial_capital)) - state.funding_paid),
             "funding_events": [f for f in state.fills if f.get("trigger") == "funding_shortfall"],
             "funding_halt_active": state.funding_halt_active,
             "slippage_paid": float(state.slippage_paid),

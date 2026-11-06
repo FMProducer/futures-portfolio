@@ -11,6 +11,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def json_decimal(value: Decimal):
+    """Retain exact monetary values when JSON numbers would discard precision."""
+    number = float(value)
+    return number if Decimal(str(number)) == value else str(value)
+
 # ── data model ───────────────────────────────────────────────────────────────
 
 @dataclass
@@ -37,7 +43,7 @@ class FundingEvent:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "event_id": self.event_id,
-            "signed_amount": float(self.signed_amount),
+            "signed_amount": json_decimal(self.signed_amount),
             "event_time": self.event_time,
             "source": self.source, "source_ref": self.source_ref,
             "portfolio_id": self.portfolio_id, "symbol": self.symbol,
@@ -297,9 +303,7 @@ def settle_funding_reserve(config_path, mode, symbol, event):
         receipt = reserve_funding(event.signed_amount, portfolio.get(key, 0))
         receipt.update(reserve_key=key, event_time=event.event_time)
         value = Decimal(receipt["reserve_after"])
-        if Decimal(str(float(value))) != value:
-            raise ValueError("Funding reserve cannot be persisted without precision loss")
-        portfolio[key] = float(value)
+        portfolio[key] = json_decimal(value)
         receipts[identity] = receipt
         return {**receipt, "current_reserve": receipt["reserve_after"]}
 
@@ -308,8 +312,10 @@ def settle_funding_reserve(config_path, mode, symbol, event):
 
 def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
                          strategy_state: Dict, reserve_result=None) -> Dict:
-    """Settle externally while retaining the original shadow-wallet strategy inputs."""
+    """Settle funding exclusively outside the worker's trading portfolio."""
     amount = Decimal(str(signed_amount))
+    if strategy_state.get('funding_paid', 0) and strategy_state.get('funding_strategy_accounting') != 'external_reserve_only':
+        raise ValueError('Legacy funding snapshot requires explicit accounting reconciliation')
     previous = [Decimal(str(strategy_state.get(key, 0))) for key in
                 ("funding_paid", "funding_from_reserve", "funding_reserve_shortfall")]
     if not amount.is_finite() or not all(value.is_finite() for value in previous) or previous[2] < 0:
@@ -317,52 +323,36 @@ def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
     if reserve_result is None:
         key = "cash_reserve_usdt" if strategy_state.get("live_funding") is not None else "paper_account_free_margin"
         reserve_result = reserve_funding(amount, strategy_state.get(key, 0))
-        strategy_state[key] = float(Decimal(reserve_result["reserve_after"]))
+        strategy_state[key] = json_decimal(Decimal(reserve_result["reserve_after"]))
     if Decimal(reserve_result["amount"]) != amount:
         raise ValueError("Funding reserve amount mismatch")
-    if amount < 0:
-        from core.profit_budget import charge
-        charge(paper_wallet, -amount)
     virtual = Decimal(str(strategy_state.get("virt_debt", 0)))
-    paper_wallet["balance"] = float(Decimal(str(paper_wallet.get("balance", 0))) + amount)
-    strategy_state["virt_debt"] = float(virtual + amount)
-    strategy_state["funding_accounting_offset"] = float(
-        Decimal(str(strategy_state.get("funding_accounting_offset", 0))) - amount)
+    strategy_state['funding_strategy_accounting'] = 'external_reserve_only'
     strategy_state["funding_paid"] = float(Decimal(str(strategy_state.get("funding_paid", 0))) - amount)
     strategy_state["funding_from_reserve"] = float(Decimal(str(strategy_state.get("funding_from_reserve", 0))) - amount)
     strategy_state["funding_reserve_shortfall"] = float(
         Decimal(str(strategy_state.get("funding_reserve_shortfall", 0))) + Decimal(reserve_result["shortfall"]))
-    return {**reserve_result, "shortfall": float(max(Decimal(str(strategy_state["funding_reserve_shortfall"])), -(virtual + amount), Decimal(0))),
-            "v_before": float(virtual), "v_after": float(virtual + amount), "cash_change": 0.0}
+    return {**reserve_result, "shortfall": float(strategy_state["funding_reserve_shortfall"]),
+            "v_before": float(virtual), "v_after": float(virtual), "cash_change": 0.0}
 
 
 def apply_funding_backtest(signed_amount: Decimal, state) -> Dict:
-    """Reserve settles the cash; VIRTUAL retains the original strategy calculation."""
+    """Debit or credit the external reserve without changing trading buckets."""
     amount = Decimal(str(signed_amount))
     result = reserve_funding(amount, state.account_free_margin)
-    if amount < 0 and hasattr(state, "profit_book"):
-        from core.profit_budget import charge
-        charge(state.profit_book, -amount)
     state.account_free_margin = Decimal(result["reserve_after"])
     v_before = state.virt_debt
-    state.virt_debt += amount
-    state.funding_accounting_offset -= amount
     state.funding_paid -= amount
     state.funding_from_reserve -= amount
     state.funding_reserve_shortfall += Decimal(result["shortfall"])
-    return {**result, "shortfall": float(max(state.funding_reserve_shortfall, -state.virt_debt, Decimal(0))),
+    return {**result, "shortfall": float(state.funding_reserve_shortfall),
             "v_before": float(v_before), "v_after": float(state.virt_debt), "cash_change": 0.0}
 
 
 def pay_funding_legacy(state, amount: Decimal) -> Decimal:
     """Keep the legacy rate model; settle its expense from the same reserve."""
     amount = Decimal(str(amount))
-    virtual = state.virt_debt
     apply_funding_backtest(-amount, state)
-    state.virt_debt = virtual
-    if amount > 0 and amount > state.val_cash:
-        state.funding_from_virtual += state.release_virtual(amount - state.val_cash)
-    state.val_cash -= amount
     return amount
 
 

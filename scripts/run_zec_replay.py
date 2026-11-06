@@ -316,8 +316,8 @@ if sf_evs:
     # positions are closed, the per-bar change equals the funding cost delta.
     eq_curve = r1.get("equity_curve", [])
     post_fund = [e for e in funding_evs if e.get("bar", -1) > halt_bar]
-    expected_delta = sum(-e["funding_amount"] for e in post_fund
-                         if e.get("funding_amount") is not None)
+    expected_delta = 0 if r1.get('funding_source') == 'cash_reserve_usdt' else sum(
+        -e['funding_amount'] for e in post_fund if e.get('funding_amount') is not None)
     eq_delta = float(eq_curve[halt_bar]) - float(eq_curve[-1])
     print(f"  (4) post-halt funding events: {len(post_fund)}, "
           f"sum signed cost = {expected_delta:.6f}, equity delta = {eq_delta:.6f}")
@@ -349,6 +349,7 @@ attribution = reconstruct_attribution(
     initial_capital=float(r1.get("initial_capital", 1000)),
     final_equity=float(final_tpv),
     funding_model="signed_actual",
+    funding_source=r1.get('funding_source', 'portfolio'),
     events=r1.get("events", []),
     siphoning_log=r1.get("siphoning_log", []),
 )
@@ -371,7 +372,7 @@ print(f"  accounting_ok: {accounting_ok}  "
 
 # Attribution funding cost must equal the engine's total funding_paid.
 attr_funding = float(totals["funding"])
-engine_funding_paid = float(r1.get("funding_paid", 0.0))
+engine_funding_paid = float(r1.get("funding_paid", 0.0))-float(r1.get('funding_from_reserve', 0.0))
 funding_parity_ok = abs(attr_funding - engine_funding_paid) < 1e-6
 print(f"  attribution funding={attr_funding:.6f} == engine "
       f"funding_paid={engine_funding_paid:.6f}: {funding_parity_ok}")

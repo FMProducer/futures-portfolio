@@ -58,7 +58,8 @@ def credit_reserve(config, mode, ticker, state):
     reserve = Decimal(str(portfolio.get(key, 0)))
     if not reserve.is_finite() or reserve < 0:
         raise ValueError("Invalid external margin reserve")
-    portfolio[key] = float(reserve + amount)
+    from core.funding import json_decimal
+    portfolio[key] = json_decimal(reserve + amount)
     config.setdefault("siphoning_credits", {})[identity] = str(amount)
     return True
 

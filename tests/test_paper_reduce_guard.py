@@ -204,6 +204,7 @@ async def test_real_executor_main_storage_reload_and_receipt_retry(tmp_path):
     config = author._make_config(base_ticker="JCTUSDT", equity_trailing_stop_activation_pct=9000,
         max_drawdown_limit=200, rebalance_share_trail_distance=0)
     config["portfolios"][0].update(deepcopy(CFG), initial_capital=1000, paper_initial_capital=1000,
+        paper_account_free_margin=5000,
         siphoning_threshold_pct=0, reinvestment_ratio=1, liquidation_distance_crit_pct=0,
         liquidation_distance_warn_pct=0)
     config_path, state_path, wallet_path = [tmp_path / name for name in ("config.json", "state.json", "wallet.json")]
@@ -250,7 +251,7 @@ async def test_real_executor_main_storage_reload_and_receipt_retry(tmp_path):
     saved_state = safe_load_json_sync(str(state_path), {})
     assert len(fills) == 1 and fills[0]["qty"] == 120000
     assert saved["positions"]["JCTUSDT_SHORT"] == 51096
-    expected_wallet = D(str(book["balance"])) - D(str(saved_state["funding_paid"])) + D(str(fills[0]["trade_pnl"])) - D(str(fills[0]["commission"]))
+    expected_wallet = D(str(book["balance"])) + D(str(fills[0]["trade_pnl"])) - D(str(fills[0]["commission"]))
     assert saved["balance"] == pytest.approx(float(expected_wallet), abs=1e-10)
     assert saved_state["siphoning_reserve"] == 0
     validate_paper_positions(saved)

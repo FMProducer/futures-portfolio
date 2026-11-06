@@ -544,6 +544,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
     if share_trail.spec_mismatch(state.get("share_trail_spec"), _startup_trail_spec):
         state["share_trail"] = share_trail.fresh_state()
     state["share_trail_spec"] = _startup_trail_spec
+    if state.get('funding_paid', 0) and state.get('funding_strategy_accounting') != 'external_reserve_only':
+        state.update(startup_blocked=True, startup_block_reason='Legacy funding snapshot requires explicit accounting reconciliation')
+        await save_json(state_file_path, state)
 
     # Persisted startup block — checked immediately after strategy state load,
     # before any migration, ticker-change reset, wallet fallback or Clean Slate.
@@ -1282,7 +1285,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # In calculator.py, real_equity is treated as Wallet Balance.
                 positions = paper_state["positions"] if paper_mode else {k: v for k, v in ticker_positions.items()}
 
-                if state.get("live_funding") is None and (virt_qty == 0 or initial_tpv == 0):
+                fresh_live = (not paper_mode and cycles == 0 and not state.get('initial_build_pending')
+                              and not any(abs(float(q)) for q in positions.values())
+                              and Decimal(str(state.get('virt_debt', 0))) == 0)
+                if (state.get("live_funding") is None or fresh_live) and (virt_qty == 0 or initial_tpv == 0):
                     if initial_tpv == 0:
                         # For shared accounts, we MUST use assigned initial_capital as base
                         initial_tpv = (target_initial_cap if configured_cash_reserve else
@@ -1352,14 +1358,17 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         continue
 
                 if paper_mode and current_config.get("funding_model", "legacy_constant") == "legacy_constant":
-                    backtest_rules.paper_legacy_funding(paper_state, state, targets, base_ticker, price, strategy_bar_ms)
-                    from core.funding import save_funding_boundary, load_funding_state
+                    funding_amount = backtest_rules.paper_legacy_funding(paper_state, state, targets, base_ticker, price, strategy_bar_ms)
+                    from core.funding import save_funding_boundary, load_funding_state, FundingEvent
                     journal, halt = load_funding_state(state)
+                    if funding_amount:
+                        journal.receive(FundingEvent(event_id=f'legacy:{base_ticker}:{strategy_bar_ms}',
+                            signed_amount=-funding_amount, event_time=strategy_bar_ms/1000, symbol=base_ticker))
                     save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                     state_dirty = paper_state_dirty = True
 
                 # --- B1: Funding BEFORE calculator (per canonical order §3) ---
-                if funding_model == "signed_actual":
+                if funding_model == "signed_actual" or (paper_mode and current_config.get('funding_model', 'legacy_constant') == 'legacy_constant'):
                     from core.funding import FundingJournal, apply_funding_paper, settle_funding_reserve
                     journal = FundingJournal.from_list(state.get("funding_journal"))
                     for event in journal.get_received():
@@ -1507,6 +1516,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 fuse_fill = None
                 if not paper_mode:
                     fuse_fill = await _live_fuse_fill(connector, base_ticker, logger)
+                cost_slippage = PAPER_SLIPPAGE_RATE if paper_mode else Decimal('0')
+                if fuse_fill and fuse_fill['bids'] and fuse_fill['asks']:
+                    cost_slippage = max(abs(fuse_fill[side][0][0]/Decimal(str(price))-1) for side in ('bids', 'asks'))
 
                 calc = PortfolioCalculator(
                     positions=positions,
@@ -1523,7 +1535,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     last_rebalance_price=state.get("last_rebalance_price", 0.0),
                     # live FUSE gate must price real closing costs, not zero
                     commission_pct=float(PAPER_COMMISSION_RATE if paper_mode or fuse_fill.get("taker") is None else fuse_fill["taker"]),
-                    slippage_pct=float(PAPER_SLIPPAGE_RATE) if paper_mode else 0.0,
+                    slippage_pct=float(cost_slippage),
                     fuse_fill=fuse_fill,
                     profit_budget=profit_budget.balance(paper_state),
                     initial_build=initial_build,
@@ -1590,7 +1602,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 tpv_active = calc_res["tpv"]
                 actions = calc_res["actions"]
 
-                if (paper_mode and state.get("cash_invariant_violation")
+                if (state.get("cash_invariant_violation")
                         and calc.val_cash.is_finite() and calc.val_cash >= 0):
                     logger.warning(
                         "Cash invariant restored: CASH=%s; increases unblocked. Previous violation: %s",
@@ -1952,7 +1964,15 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 state["initial_build_pending"] = None
                                 state.setdefault("initial_build_completed_at", time.time())
                                 keep_cash = configured_cash_reserve > 0 and float(targets["VIRTUAL"]["share"]) == 0
-                                state["virt_debt"] = float(post_virt if keep_cash else post_virt + residual)
+                                capacity = Decimal(str(paper_state['balance']))-sum(
+                                    Decimal(str(paper_state['positions'].get(f'{base_ticker}_{leg}', 0)))
+                                    *Decimal(str(paper_state.get(f'{leg.lower()}_entry_price', 0)))
+                                    /Decimal(str(targets[f'BASE_{leg}']['leverage'])) for leg in ('LONG', 'SHORT'))
+                                allocation = post_virt if keep_cash else min(post_virt + residual, capacity)
+                                allocated = float(allocation)
+                                if Decimal(str(allocated)) > allocation:
+                                    allocated = math.nextafter(allocated, 0.0)
+                                state["virt_debt"] = allocated
                                 state_dirty = True
                                 logger.info(f"Initial residual {float(residual):.8f} USDT: {'kept in CASH' if keep_cash else 'moved to VIRTUAL'}")
 
@@ -2032,7 +2052,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 if paper_mode:
                     collateral, maintenance, distance = _paper_guard_metrics(
                         paper_state, base_ticker, price, calc.tpv, logger,
-                        portfolio_cfg.get("cash_reserve_usdt", 0)
+                        portfolio_cfg.get("paper_account_free_margin", 0)
                     )
                     predictive_liquidation = liquidation_distance_crit != 0 and distance <= liquidation_distance_crit
                     hard_liquidation = (not predictive_liquidation and post_factum_liquidation_check

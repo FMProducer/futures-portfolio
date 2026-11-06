@@ -53,7 +53,7 @@ async def test_pending_journal_survives_restart_before_application(tmp_path):
     assert len(journal.get_received()) == 1
     event = journal.get_received()[0]
     apply_funding_paper(event.signed_amount, wallet, state)
-    assert wallet["balance"] == 103 and state["virt_debt"] == 37
+    assert wallet["balance"] == 100 and state["virt_debt"] == 34
     assert state["cash_reserve_usdt"] == 103
     assert state["funding_paid"] == -3
 
@@ -169,7 +169,7 @@ async def test_wallet_write_failure_restores_event_and_wallet_together(tmp_path,
             save_funding_boundary(sp, wp, state, wallet, journal, FundingHalt())
     status, recovered, shadow = recover_funding_boundary(sp, wp)
     assert status == RECOVERY_RECOVERED
-    assert shadow["balance"] == 99 and recovered["virt_debt"] == 33
+    assert shadow["balance"] == 100 and recovered["virt_debt"] == 34
     assert recovered["cash_reserve_usdt"] == 99
     assert shadow["live_funding_snapshot"] == {"symbol": "ZECUSDT", "snapshot_ms": 1000}
     assert recovered["funding_paid"] == 1

@@ -104,21 +104,10 @@ def paper_legacy_funding(wallet, state, targets, ticker, price, bar_ms):
     if state.get('legacy_funding_bar_ms', -1) >= bar_ms:
         return Decimal('0')
     value = Decimal(str(price))
-    margin, notional = Decimal('0'), Decimal('0')
+    notional = Decimal('0')
     for leg in ('LONG', 'SHORT'):
         qty = abs(Decimal(str(wallet['positions'].get(f'{ticker}_{leg}', 0))))
-        entry = Decimal(str(wallet.get(f'{leg.lower()}_entry_price', 0)))
-        leverage = Decimal(str(targets[f'BASE_{leg}']['leverage']))
-        margin += qty * entry / leverage
         notional += qty * value
     amount = notional * Decimal('.0002') / 1440
-    balance = Decimal(str(wallet['balance']))
-    virtual = Decimal(str(state.get('virt_debt', 0)))
-    cash = balance - virtual - margin
-    released = min(max(Decimal('0'), virtual), max(Decimal('0'), amount - cash)) if amount > 0 else Decimal('0')
-    wallet['balance'] = str(balance - amount)
-    state['virt_debt'] = str(virtual - released)
-    state['funding_paid'] = str(Decimal(str(state.get('funding_paid', 0))) + amount)
-    state['funding_from_virtual'] = str(Decimal(str(state.get('funding_from_virtual', 0))) + released)
     state['legacy_funding_bar_ms'] = bar_ms
     return amount
