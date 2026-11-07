@@ -1,5 +1,22 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-07 — Writer coordination, paired backups and annual replay recheck
+
+- On `codex/funding-journal-storage`, fixed mixed JSON/SQLite snapshot acceptance using transactional checkpoints and exact legacy-bootstrap fingerprints. All locked config writers now reject missing databases. A four-process repro also exposed stale writers dropping Siphon credits; shared storage now preserves immutable credit identities and exact reserve increments alongside funding deltas.
+- Added `scripts/backup_funding_config.py`: a locked SQLite-backup-API snapshot of config plus ledger, with last-written manifest, SHA256 verification and matching checkpoint. Tests cover committed WAL contents, pending recovery, mixed restores, tampered bundles, zero/net-zero funding and interrupted first checkpoint initialization. No production backup/restore or restart was performed.
+- Fresh isolated production-config copy: 7111 receipts preserved, JSON 2758436 to 3267 bytes, both reserves unchanged after backup, verification, restore and duplicate event replay. Full final suite: 1193 passed, 9 warnings, 167.92 seconds, exit 0; focused final tests: 32 passed.
+- New annual PAPER and simulated REAL completed all 525600 AGTUSDT bars, exit 0. Both match the verified BACKTEST reference: trading TPV return +421.26%, MaxDD 67.38%, 391 cycles, 85 stops, 588 fills; all 514100 funding events match. Full-curve maximum errors are 8.19e-12 and 4.55e-12 USDT. Funding expense 274.35420149 USDT; external reserve 4725.64579851 USDT; profit after funding +393.82%. CASH/VIRTUAL stayed nonnegative.
+- Annual SQL uses an explicitly labelled in-memory SQLite adapter with isolated JSON projection I/O; disk and memory adapters match on short runtime replays, while disk durability/concurrency/backup tests remain native. Native annual disk throughput and live execution are not certified. Preliminary or superseded annual runs are excluded. The running main checkout was still `7a7647b`, without the SQLite change; coordinated production upgrade is not claimed.
+- Protocol: `docs/FUNDING_WRITERS_BACKUP_2026_11_07.md`; compact evidence: `docs/evidence/funding_writers_backup_2026_11_07.json`; raw local artifacts: `reports/funding_store_annual_accepted_20261107/`.
+
+## 2026-11-07 — Bounded funding config and SQLite receipt journal
+
+- Isolated branch `codex/funding-journal-storage`: moved full funding identities/receipts to `<config path>.funding.sqlite`. Config retains compatible scalar reserve projections and bounded cumulative totals; no growing event map. Existing history is validated and imported without reapplying already-booked debits.
+- SQLite receipt and pending JSON projection commit together. Interrupted writes recover before another settlement/config writer; duplicate events, stale writers and siphon credits retain exact-once funding arithmetic. Missing databases or conflicting projections require reconciliation. All writers must upgrade together; config and SQLite must be backed up/restored as one set.
+- Isolated working-config copy: 6663 receipts migrated, JSON reduced from 2583732 to 3198 bytes, both reserves unchanged, repeated event replay unchanged. Actual working config and swarm were not modified.
+- Final full suite: 1183 passed, 9 warnings, 137.51 seconds, exit 0. The initial suite exposed an obsolete replay persistence hook; both runtime adapters now exercise an isolated real SQLite store and short PAPER/REAL parity passes. The full native annual AGTUSDT result exactly matches the prior frozen baseline: +421.25640353%, MaxDD 67.38204877%, 391 cycles, final TPV 5212.564035311434 USDT. Annual PAPER/REAL replays and live deployment were not performed in this change.
+- Protocol: `docs/FUNDING_STORE_2026_11_07.md`. Local evidence: `reports/funding_store_full_tests_final.log`, `reports/funding_store_migration.json`, `reports/funding_store_backtest.json`.
+
 ## 2026-11-06 — External-reserve funding and annual BACKTEST/PAPER/REAL parity
 
 - Branch `codex/agt-annual-runtime-parity`, based on `89223439a0e4d84f57dbcdc65d137d2e7bfb7f0d`. This records the complete uncommitted annual-comparison and funding change set; main checkout, running swarm, exchange account and live snapshots were not modified. No parameter optimization or push.

@@ -51,6 +51,38 @@ async def safe_save_json(path: str, data: Dict[str, Any]) -> None:
 def merge_funding_receipts(data, latest):
     """Preserve reserve settlements when a config writer holds an older snapshot."""
     merged = deepcopy(data)
+    credits = merged.get("siphoning_credits", {})
+    for identity, amount in latest.get("siphoning_credits", {}).items():
+        if identity in credits:
+            if Decimal(str(credits[identity])) != Decimal(str(amount)):
+                raise ValueError("Siphon credit receipt changed")
+            continue
+        mode = identity.split(":", 1)[0]
+        value = Decimal(str(amount))
+        if mode not in ("real", "paper") or not value.is_finite() or value <= 0:
+            raise ValueError("Invalid siphon credit receipt")
+        key = "cash_reserve_usdt" if mode == "real" else "paper_account_free_margin"
+        from core.funding import json_decimal
+        merged["portfolios"][0][key] = json_decimal(Decimal(str(merged["portfolios"][0].get(key, 0))) + value)
+        credits[identity] = amount
+        merged["siphoning_credits"] = credits
+    if "funding_reserve_totals" in latest:
+        old_totals = merged.get("funding_reserve_totals", {})
+        if "funding_reserve_receipts" in merged:
+            old_totals = {key: str(sum((Decimal(r["settled"]) for r in merged["funding_reserve_receipts"].values()
+                                       if r["reserve_key"] == key), Decimal(0)))
+                          for key in ("cash_reserve_usdt", "paper_account_free_margin")}
+        for key, value in latest["funding_reserve_totals"].items():
+            reserve = Decimal(str(merged["portfolios"][0].get(key, 0))) + Decimal(value) - Decimal(old_totals.get(key, "0"))
+            if not reserve.is_finite() or reserve < 0:
+                raise ValueError("Stale config cannot reconcile funding reserve")
+            from core.funding import json_decimal
+            merged["portfolios"][0][key] = json_decimal(reserve)
+        merged.pop("funding_reserve_receipts", None)
+        merged["funding_reserve_totals"] = deepcopy(latest["funding_reserve_totals"])
+        if "funding_reserve_checkpoint" in latest:
+            merged["funding_reserve_checkpoint"] = latest["funding_reserve_checkpoint"]
+        return merged
     receipts = merged.setdefault("funding_reserve_receipts", {})
     for identity, receipt in latest.get("funding_reserve_receipts", {}).items():
         if identity in receipts:
@@ -73,6 +105,8 @@ def merge_funding_receipts(data, latest):
 def update_json_sync(path, update):
     """Commit a read-modify-write under the same lock as other config writers."""
     with FileLock(os.path.abspath(path) + ".lock"):
+        from core.funding_store import recover_projection
+        recover_projection(path)
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
         result = update(data)
@@ -83,10 +117,12 @@ def update_json_sync(path, update):
 def safe_save_json_sync(path: str, data: Dict[str, Any]) -> None:
     if isinstance(data, dict) and "portfolios" in data:
         with FileLock(os.path.abspath(path) + ".lock"):
+            from core.funding_store import recover_projection
+            recover_projection(path)
             if os.path.exists(path):
                 with open(path, encoding="utf-8") as handle:
                     latest = json.load(handle)
-                if latest.get("funding_reserve_receipts"):
+                if latest.get("funding_reserve_receipts") or "funding_reserve_totals" in latest or latest.get("siphoning_credits"):
                     data = merge_funding_receipts(data, latest)
             _atomic_save_json(path, data)
     else:

@@ -1,0 +1,97 @@
+{
+  "head": "5014857f4f28f8d2506cc36b5d36fce645f0cdae",
+  "period": [
+    "2025-10-20 00:00 UTC",
+    "2026-10-19 23:59 UTC"
+  ],
+  "bars": 525600,
+  "config_sha256": "9f192358cb5fdd7522cc264fc0b89147dc9c3cc1bc72c448d9c879b17742deb0",
+  "data_sha256": "c6cf752e9d204a19c1e85ba6b75c5b60d817bf81b7e0cfc8eebc52e75fbc5308",
+  "matched_fills": 588,
+  "matched_funding_events": 514100,
+  "equity_errors": {
+    "backtest_paper": 8.185452315956354e-12,
+    "backtest_real": 4.547473508864641e-12
+  },
+  "maximum_pnl_error": 1.0800249583553523e-12,
+  "independent_real_wallet_residual": "3.248400000012E-12",
+  "min_cash": {
+    "backtest": "0E-25",
+    "paper": "0E-13",
+    "real": "0E-13"
+  },
+  "min_virtual": {
+    "backtest": "325.8198158829787451333333333",
+    "paper": "0",
+    "real": "0"
+  },
+  "trading_profit_pct": 421.25640353062215,
+  "trading_max_dd_pct": 67.3820487674812,
+  "cycles": 391,
+  "stops": 85,
+  "funding_paid": 274.35420149127003,
+  "external_reserve": 4725.64579850873,
+  "profit_after_external_funding_usdt": 3938.209833820164,
+  "profit_after_external_funding_pct": 393.8209833820164,
+  "real_journal_adapter": "archived_applied_with_two_event_overlap",
+  "reserve_store_adapter": {
+    "paper": "sqlite_memory",
+    "real": "sqlite_memory"
+  },
+  "source_sha256": {
+    "core/funding_store.py": "d6015d62226f16f3551d5622ed61e94906a23470eae891af0b8492925f085cea",
+    "core/storage.py": "dad24896f0a0caa8b9289550fb7681a6ee20ee54227b9c7944355a54f9c0f9c7",
+    "scripts/verify_agt_external_funding_results.py": "7c0f60a95d3a770062fa58ea8c8c76a80069a9db9d845070d1ecabf6a7bac28b",
+    "scripts/verify_real_runtime_parity.py": "f5b66fd1671b8ffc596107f02a6e2be67a9f05bd998ac6dd0311dfb9fa91b6c4",
+    "scripts/verify_runtime_parity.py": "dc0c8e7797cdf8536366dddf84d916760520ec0522e1852769565b0cd66ce181",
+    "tests/test_annual_replay_driver.py": "66d625e8fa87fbfc5d3bbaef1e159cc3c1df7fd2cbff7a9fe04a806274cf08af",
+    "tests/test_funding_store.py": "d7a13ddc29f25b16851455661c3cd5c836d14d3129f89ac8b01e573c0b836cc8",
+    "docs/FUNDING_EXTERNAL_RESERVE_PARITY_2026_11_06.md": "8d703a607aafb838fe81a5164f981e6112e22f8d28fba304715371820fa50142",
+    "scripts/backup_funding_config.py": "bb2c07fe221dfb3b86ce23d257c8267bcc8d2ad6d274dd59c894e71ba49d6228",
+    "tests/test_funding_backup.py": "63bd2309a2556016d638a6db9a649589f69bb06f62c41804bcc2da29c25eefaa"
+  },
+  "branch": "codex/funding-journal-storage",
+  "tested_tree": "working tree over base HEAD; see source_sha256 and candidate_sources",
+  "runtime_sources_unchanged": true,
+  "runtime_source_sha256": {
+    "core/funding.py": "66909f1489cc2d52438d38de5aaca3a3e88b4bddc34dbb49b82a04c7f56616a9",
+    "core/funding_store.py": "d6015d62226f16f3551d5622ed61e94906a23470eae891af0b8492925f085cea",
+    "core/storage.py": "dad24896f0a0caa8b9289550fb7681a6ee20ee54227b9c7944355a54f9c0f9c7",
+    "core/siphoning.py": "7adf85aabc6c7db74b646126df407024b81500e468f584c11566333fb4176b6a",
+    "core/main.py": "daa0c6a9888fd8ee334b3e8d2d142927214e3cead199fa4fb35f4259d793ae60",
+    "core/executor.py": "22b0a5759349125677c804ebaba356ac0c83aa996021c5f35d7ff09d15e6ac07",
+    "core/real_allocation.py": "825cb362556d850350bbbc4bd4d646513f778218f3a25fe399cd6cdbbd28670a",
+    "supervisor/swarm_manager.py": "4e28627513b3f35cff516ee34314b7d256a7b6899a88cd260e0d42ad37eb298d",
+    "scripts/verify_runtime_parity.py": "dc0c8e7797cdf8536366dddf84d916760520ec0522e1852769565b0cd66ce181",
+    "scripts/verify_real_runtime_parity.py": "f5b66fd1671b8ffc596107f02a6e2be67a9f05bd998ac6dd0311dfb9fa91b6c4",
+    "scripts/backup_funding_config.py": "bb2c07fe221dfb3b86ce23d257c8267bcc8d2ad6d274dd59c894e71ba49d6228"
+  },
+  "disk_writer_tests": {
+    "passed": 1193,
+    "warnings": 9,
+    "seconds": 167.92,
+    "exit_code": 0,
+    "log_sha256": "2766e2c5d27d4b5d69cd87d403e59a6439f5cf3663c1eca774ee0246369d113b"
+  },
+  "backup_migration": {
+    "source_sha256": "2b3ea5a5007ca8571600e1d83442f0ce9d62132adfaac3acf3fcbb5799d2b5f7",
+    "legacy_receipts": 7111,
+    "restored_receipts": 7111,
+    "source_bytes": 2758436,
+    "compact_bytes": 3267,
+    "reserves_unchanged": true,
+    "backup_verified": true,
+    "replayed_event_debited_again": false
+  },
+  "deployment": {
+    "main_checkout_head": "7a7647b",
+    "main_checkout_modified": false,
+    "swarm_restarted": false,
+    "production_updated": false
+  },
+  "limits": [
+    "Annual funding SQL used SQLite memory with isolated JSON projection I/O",
+    "Disk retries, recovery, WAL backup and multi-process writers tested separately",
+    "Full native annual disk throughput and live exchange execution not certified"
+  ]
+}
