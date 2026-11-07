@@ -47,7 +47,7 @@ def test_retry_after_database_commit_before_json_write(tmp_path, monkeypatch, fa
     original = storage._atomic_save_json
 
     def fail(target, data, **kwargs):
-        if str(target) == str(path):
+        if str(target) == str(path) and 'funding_reserve_totals' in data:
             raise PermissionError("injected config sharing violation")
         return original(target, data, **kwargs)
 
@@ -67,8 +67,11 @@ def test_retry_after_database_commit_before_json_write(tmp_path, monkeypatch, fa
 def test_stale_writer_recovers_pending_projection_before_siphon_credit(tmp_path, monkeypatch):
     path = account(tmp_path)
     stale = json.loads(path.read_text())
+    original = storage._atomic_save_json
     with monkeypatch.context() as scoped:
-        scoped.setattr(storage, "_atomic_save_json", lambda *a, **kw: (_ for _ in ()).throw(OSError("disk error")))
+        scoped.setattr(storage, "_atomic_save_json", lambda target, data, **kw:
+                       (_ for _ in ()).throw(OSError("disk error")) if 'funding_reserve_totals' in data
+                       else original(target, data, **kw))
         with pytest.raises(OSError):
             funding.settle_funding_reserve(str(path), "real", "TESTUSDT", event())
     stale["portfolios"][0]["cash_reserve_usdt"] += 10

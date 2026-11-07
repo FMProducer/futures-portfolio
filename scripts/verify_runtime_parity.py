@@ -10,7 +10,10 @@ from pathlib import Path
 import sys
 import time
 import tempfile
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack, nullcontext, closing
+import builtins
+import io
+import sqlite3
 from unittest.mock import patch
 
 import numpy as np
@@ -45,7 +48,7 @@ class Notifier:
 
 
 @contextmanager
-def isolated_reserve_store(config):
+def isolated_reserve_store(config, memory=False):
     """Exercise the real SQLite ledger without modifying the replay input configuration."""
     from core import funding_store
     original = funding_store.settle
@@ -53,20 +56,46 @@ def isolated_reserve_store(config):
         path = Path(directory) / 'config.json'
         path.write_text(json.dumps(config), encoding='utf-8')
 
+        snapshot = [deepcopy(config)]
+        original_open = builtins.open
+        original_save = __import__('core.storage', fromlist=['_atomic_save_json'])._atomic_save_json
+
+        def read(file, *args, **kwargs):
+            return io.StringIO(json.dumps(snapshot[0])) if str(file) == str(path) else original_open(file, *args, **kwargs)
+
+        def save(file, value, **kwargs):
+            if str(file) == str(path):
+                snapshot[0] = deepcopy(value)
+            else:
+                original_save(file, value, **kwargs)
+
         def settle(_path, mode, symbol, event):
             result = original(str(path), mode, symbol, event)
-            saved = json.loads(path.read_text(encoding='utf-8'))
+            saved = snapshot[0] if memory else json.loads(path.read_text(encoding='utf-8'))
             for key in funding_store.KEYS:
                 if key in saved['portfolios'][0]:
                     config['portfolios'][0][key] = saved['portfolios'][0][key]
             config.pop('funding_reserve_receipts', None)
             config['funding_reserve_totals'] = saved.get('funding_reserve_totals', {})
+            config['funding_reserve_checkpoint'] = saved.get('funding_reserve_checkpoint')
             return result
 
-        yield settle
+        with ExitStack() as stack:
+            if memory:
+                class Connection(sqlite3.Connection):
+                    def close(self): pass
+                db = sqlite3.connect(':memory:', factory=Connection, check_same_thread=False)
+                stack.callback(sqlite3.Connection.close, db)
+                with closing(funding_store.connect(path)) as source:
+                    source.backup(db)
+                stack.enter_context(patch('core.funding_store.connect', new=lambda _: db))
+                stack.enter_context(patch('core.funding_store.FileLock', new=lambda *a, **kw: nullcontext()))
+                stack.enter_context(patch('core.storage._atomic_save_json', new=save))
+                stack.enter_context(patch('builtins.open', new=read))
+            yield settle
 
 
-async def replay(config_path, feather, count):
+async def replay(config_path, feather, count, memory_reserve_store=False):
     config = json.loads(config_path.read_text())
     ticker = feather.stem.split('_')[0]
     if not ticker.isascii() or not ticker.isalnum() or ticker != ticker.upper() or not ticker.endswith('USDT'):
@@ -171,7 +200,7 @@ async def replay(config_path, feather, count):
 
     async def noop(*args, **kwargs): pass
 
-    with isolated_reserve_store(config) as settle, patch('core.funding_store.settle', new=settle), \
+    with isolated_reserve_store(config, memory_reserve_store) as settle, patch('core.funding_store.settle', new=settle), \
          patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
          patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), patch('core.main.load_json', new=load), \
          patch('core.main.save_json', new=save), patch('core.main.safe_load_json_sync', new=lambda *a, **kw: config), \
@@ -201,7 +230,8 @@ async def replay(config_path, feather, count):
     peak = np.maximum(np.maximum.accumulate(curve), capital)
     return dict(totals, ticker=ticker, mode='PAPER', final_tpv=float(curve[-1]), profit_pct=float((curve[-1]/capital-1)*100),
                 max_dd_pct=float(np.max((peak-curve)/peak)*100), positions=docs[wallet_path]['positions'],
-                bars=count, min_cash=str(minimum_cash[0]), min_virtual=str(minimum_virtual[0]),
+                bars=count, reserve_store_adapter='sqlite_memory' if memory_reserve_store else 'sqlite_disk',
+                min_cash=str(minimum_cash[0]), min_virtual=str(minimum_virtual[0]),
                 funding_reserve=config['portfolios'][0].get('paper_account_free_margin', 0),
                 funding_events=len(archived_funding), _funding=list(archived_funding.values()), _trace=trace,
                 config_sha256=hashlib.sha256(config_path.read_bytes()).hexdigest(),
@@ -209,7 +239,7 @@ async def replay(config_path, feather, count):
 
 
 if __name__ == '__main__':
-    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])))
+    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--memory-reserve-store' in sys.argv[5:]))
     for key in ('_curve', '_fills', '_funding', '_trace'):
         output = Path(sys.argv[4])
         output.with_name(output.stem + key + '.json').write_text(json.dumps(result.pop(key)), encoding='utf-8')

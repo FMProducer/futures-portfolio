@@ -134,7 +134,7 @@ class ReplayLogger(Quiet):
         raise ReplayFailure(str((message, *args)))
 
 
-async def replay(config_path, feather, count, archive_applied=False):
+async def replay(config_path, feather, count, archive_applied=False, memory_reserve_store=False):
     config = json.loads(config_path.read_text())
     ticker = feather.stem.split('_')[0]
     assert ticker.isascii() and ticker.isalnum() and ticker == ticker.upper() and ticker.endswith('USDT')
@@ -221,7 +221,7 @@ async def replay(config_path, feather, count, archive_applied=False):
             totals['cycles'] += state['rebalance_cycles']
             sessions.append(dict(bar=index[0], tpv=state['last_tpv'], funding=state.get('funding_paid', 0)))
 
-        with isolated_reserve_store(config) as settle, patch('core.funding_store.settle', new=settle), \
+        with isolated_reserve_store(config, memory_reserve_store) as settle, patch('core.funding_store.settle', new=settle), \
              patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
              patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), \
              patch('core.main.load_json', new=load), patch('core.main.save_json', new=save), \
@@ -267,6 +267,7 @@ async def replay(config_path, feather, count, archive_applied=False):
             funding=float(-sum(D(row['income']) for row in exchange.income)),
             funding_events=len(archived) if archive_applied else len(docs[strategy].get('funding_journal', [])),
             journal_adapter='archived_applied_with_two_event_overlap' if archive_applied else 'native',
+            reserve_store_adapter='sqlite_memory' if memory_reserve_store else 'sqlite_disk',
             cash_guard_block_messages=runtime_logger.cash_blocks,
             min_cash=str(minimum_cash[0]), min_virtual=str(minimum_virtual[0]),
             funding_reserve=config['portfolios'][0]['cash_reserve_usdt'],
@@ -280,7 +281,7 @@ async def replay(config_path, feather, count, archive_applied=False):
 
 
 if __name__ == '__main__':
-    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--archive-applied' in sys.argv[5:]))
+    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--archive-applied' in sys.argv[5:], '--memory-reserve-store' in sys.argv[5:]))
     output = Path(sys.argv[4])
     for key in ('_curve', '_fills', '_sessions', '_funding', '_funding_receipts', '_trace'):
         output.with_name(output.stem+key+'.json').write_text(json.dumps(result.pop(key)), encoding='utf-8')

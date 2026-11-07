@@ -85,9 +85,13 @@ if __name__ == '__main__':
         stops=b['trailing_stops'], funding_paid=b['funding_paid'], external_reserve=b['cash_reserve_usdt'],
         profit_after_external_funding_usdt=after_funding, profit_after_external_funding_pct=after_funding/10,
         real_journal_adapter=r['journal_adapter'])
+    output['reserve_store_adapter'] = dict(paper=p.get('reserve_store_adapter', 'legacy'),
+                                          real=r.get('reserve_store_adapter', 'legacy'))
     files = subprocess.check_output(['git', 'diff', '--name-only'], cwd=ROOT, text=True).splitlines()
     files += ['scripts/verify_real_runtime_parity.py', 'tests/test_annual_replay_driver.py', 'docs/FUNDING_EXTERNAL_RESERVE_PARITY_2026_11_06.md']
     files.append('scripts/verify_agt_external_funding_results.py')
+    files += [name for name in ('core/funding_store.py', 'scripts/backup_funding_config.py', 'tests/test_funding_backup.py')
+              if (ROOT/name).exists()]
     output['source_sha256'] = {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in files}
     (HERE/'candidate.patch').write_bytes(subprocess.check_output(['git', 'diff', '--binary'], cwd=ROOT))
     (HERE/'verification.json').write_text(json.dumps(output, indent=2), encoding='utf-8')

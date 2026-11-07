@@ -57,6 +57,11 @@ async def test_real_archived_adapter_matches_native_journal_and_confirmed_exchan
     assert float(paper['funding_reserve']) == float(archived['funding_reserve'])
     assert float(paper['min_cash']) >= 0 and float(archived['min_cash']) >= 0
     assert float(paper['min_virtual']) >= 0 and float(archived['min_virtual']) >= 0
+    memory_real = await real_replay(path, feather, count, archive_applied=True, memory_reserve_store=True)
+    memory_paper = await replay(path, feather, count, memory_reserve_store=True)
+    for disk, memory in ((archived, memory_real), (paper, memory_paper)):
+        for key in ('_curve', '_fills', '_funding', 'funding', 'funding_reserve', 'cycles', 'stops', 'positions'):
+            assert disk[key] == memory[key], key
 
 
 @pytest.mark.asyncio

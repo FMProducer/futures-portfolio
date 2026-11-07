@@ -1,5 +1,14 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-07 — Writer coordination, paired backups and annual replay recheck
+
+- On `codex/funding-journal-storage`, fixed mixed JSON/SQLite snapshot acceptance using transactional checkpoints and exact legacy-bootstrap fingerprints. All locked config writers now reject missing databases. A four-process repro also exposed stale writers dropping Siphon credits; shared storage now preserves immutable credit identities and exact reserve increments alongside funding deltas.
+- Added `scripts/backup_funding_config.py`: a locked SQLite-backup-API snapshot of config plus ledger, with last-written manifest, SHA256 verification and matching checkpoint. Tests cover committed WAL contents, pending recovery, mixed restores, tampered bundles, zero/net-zero funding and interrupted first checkpoint initialization. No production backup/restore or restart was performed.
+- Fresh isolated production-config copy: 7111 receipts preserved, JSON 2758436 to 3267 bytes, both reserves unchanged after backup, verification, restore and duplicate event replay. Full final suite: 1193 passed, 9 warnings, 167.92 seconds, exit 0; focused final tests: 32 passed.
+- New annual PAPER and simulated REAL completed all 525600 AGTUSDT bars, exit 0. Both match the verified BACKTEST reference: trading TPV return +421.26%, MaxDD 67.38%, 391 cycles, 85 stops, 588 fills; all 514100 funding events match. Full-curve maximum errors are 8.19e-12 and 4.55e-12 USDT. Funding expense 274.35420149 USDT; external reserve 4725.64579851 USDT; profit after funding +393.82%. CASH/VIRTUAL stayed nonnegative.
+- Annual SQL uses an explicitly labelled in-memory SQLite adapter with isolated JSON projection I/O; disk and memory adapters match on short runtime replays, while disk durability/concurrency/backup tests remain native. Native annual disk throughput and live execution are not certified. Preliminary or superseded annual runs are excluded. The running main checkout was still `7a7647b`, without the SQLite change; coordinated production upgrade is not claimed.
+- Protocol: `docs/FUNDING_WRITERS_BACKUP_2026_11_07.md`; compact evidence: `docs/evidence/funding_writers_backup_2026_11_07.json`; raw local artifacts: `reports/funding_store_annual_accepted_20261107/`.
+
 ## 2026-11-07 — Bounded funding config and SQLite receipt journal
 
 - Isolated branch `codex/funding-journal-storage`: moved full funding identities/receipts to `<config path>.funding.sqlite`. Config retains compatible scalar reserve projections and bounded cumulative totals; no growing event map. Existing history is validated and imported without reapplying already-booked debits.
