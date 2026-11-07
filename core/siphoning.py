@@ -72,10 +72,16 @@ def funded_reserve_change(previous, current):
     amounts = [Decimal(str(value)) for key,value in new.items() if key.startswith("real:") and key not in old]
     old_funding = previous.get("funding_reserve_receipts", {})
     new_funding = current.get("funding_reserve_receipts", {})
-    if any(new_funding.get(key) != value for key, value in old_funding.items()):
+    if "funding_reserve_totals" not in current and any(new_funding.get(key) != value for key, value in old_funding.items()):
         return False
     funding_delta = sum((Decimal(value["settled"]) for key, value in new_funding.items()
                          if key not in old_funding and value["reserve_key"] == "cash_reserve_usdt"), Decimal(0))
+    if "funding_reserve_totals" in current:
+        previous_total = Decimal(previous.get("funding_reserve_totals", {}).get("cash_reserve_usdt", "0"))
+        if old_funding:
+            previous_total = sum((Decimal(r["settled"]) for r in old_funding.values()
+                                  if r["reserve_key"] == "cash_reserve_usdt"), Decimal(0))
+        funding_delta = Decimal(current["funding_reserve_totals"].get("cash_reserve_usdt", "0")) - previous_total
     before = Decimal(str(previous["portfolios"][0].get("cash_reserve_usdt", 0)))
     after = Decimal(str(current["portfolios"][0].get("cash_reserve_usdt", 0)))
     return (all(v.is_finite() and v > 0 for v in amounts) and before.is_finite() and after.is_finite()

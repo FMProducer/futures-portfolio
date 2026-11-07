@@ -80,7 +80,8 @@ def test_shared_reserve_duplicate_and_stale_config_write(tmp_path, mode, key):
     safe_save_json_sync(str(path), stale)
     latest = json.loads(path.read_text())
     assert latest["portfolios"][0][key] == 4997
-    assert len(latest["funding_reserve_receipts"]) == 1
+    assert "funding_reserve_receipts" not in latest
+    assert latest["funding_reserve_totals"][key] == "-3"
     assert latest["probation_paper"] == {"OTHER": 1000}
     with pytest.raises(ValueError, match="identity"):
         settle_funding_reserve(str(path), mode, "TESTUSDT", event(amount="-4"))
@@ -96,7 +97,8 @@ def test_concurrent_bots_share_one_reserve(tmp_path, duplicate):
             future.result()
     config = json.loads(path.read_text())
     assert config["portfolios"][0]["cash_reserve_usdt"] == (4997 if duplicate else 4964)
-    assert len(config["funding_reserve_receipts"]) == (1 if duplicate else 12)
+    assert "funding_reserve_receipts" not in config
+    assert D(config["funding_reserve_totals"]["cash_reserve_usdt"]) == (-3 if duplicate else -36)
 
 
 def test_reserve_receipt_recovers_failure_before_wallet_commit(tmp_path):
@@ -288,7 +290,7 @@ def test_real_reserve_reload_requires_matching_funding_receipts(tmp_path):
     forged["portfolios"][0]["cash_reserve_usdt"] -= 1
     assert not funded_reserve_change(previous, forged)
     forged = copy.deepcopy(current)
-    forged["funding_reserve_receipts"] = {}
+    forged["funding_reserve_totals"] = {}
     assert not funded_reserve_change(current, forged)
 
 

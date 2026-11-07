@@ -1,5 +1,13 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-07 — Bounded funding config and SQLite receipt journal
+
+- Isolated branch `codex/funding-journal-storage`: moved full funding identities/receipts to `<config path>.funding.sqlite`. Config retains compatible scalar reserve projections and bounded cumulative totals; no growing event map. Existing history is validated and imported without reapplying already-booked debits.
+- SQLite receipt and pending JSON projection commit together. Interrupted writes recover before another settlement/config writer; duplicate events, stale writers and siphon credits retain exact-once funding arithmetic. Missing databases or conflicting projections require reconciliation. All writers must upgrade together; config and SQLite must be backed up/restored as one set.
+- Isolated working-config copy: 6663 receipts migrated, JSON reduced from 2583732 to 3198 bytes, both reserves unchanged, repeated event replay unchanged. Actual working config and swarm were not modified.
+- Final full suite: 1183 passed, 9 warnings, 137.51 seconds, exit 0. The initial suite exposed an obsolete replay persistence hook; both runtime adapters now exercise an isolated real SQLite store and short PAPER/REAL parity passes. The full native annual AGTUSDT result exactly matches the prior frozen baseline: +421.25640353%, MaxDD 67.38204877%, 391 cycles, final TPV 5212.564035311434 USDT. Annual PAPER/REAL replays and live deployment were not performed in this change.
+- Protocol: `docs/FUNDING_STORE_2026_11_07.md`. Local evidence: `reports/funding_store_full_tests_final.log`, `reports/funding_store_migration.json`, `reports/funding_store_backtest.json`.
+
 ## 2026-11-06 — External-reserve funding and annual BACKTEST/PAPER/REAL parity
 
 - Branch `codex/agt-annual-runtime-parity`, based on `89223439a0e4d84f57dbcdc65d137d2e7bfb7f0d`. This records the complete uncommitted annual-comparison and funding change set; main checkout, running swarm, exchange account and live snapshots were not modified. No parameter optimization or push.

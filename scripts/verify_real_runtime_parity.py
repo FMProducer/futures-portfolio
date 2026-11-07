@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT))
 from core import funding
 from core.main import rebalance_loop
 from core.real_allocation import prepare
-from scripts.verify_runtime_parity import EndReplay, ReplayFailure, Quiet, Notifier
+from scripts.verify_runtime_parity import EndReplay, ReplayFailure, Quiet, Notifier, isolated_reserve_store
 
 
 class Exchange:
@@ -221,7 +221,8 @@ async def replay(config_path, feather, count, archive_applied=False):
             totals['cycles'] += state['rebalance_cycles']
             sessions.append(dict(bar=index[0], tpv=state['last_tpv'], funding=state.get('funding_paid', 0)))
 
-        with patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
+        with isolated_reserve_store(config) as settle, patch('core.funding_store.settle', new=settle), \
+             patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
              patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), \
              patch('core.main.load_json', new=load), patch('core.main.save_json', new=save), \
              patch('core.main.safe_load_json_sync', new=lambda *a, **kw: config), \

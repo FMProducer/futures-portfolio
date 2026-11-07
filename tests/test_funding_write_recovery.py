@@ -68,4 +68,5 @@ def test_exhausted_write_and_failed_recovery_preserve_single_settlement(tmp_path
     funding.settle_funding_reserve(str(config), mode, "TESTUSDT", payment)
     saved = json.loads(config.read_text())
     assert saved["portfolios"][0][key] == 4997
-    assert len(saved["funding_reserve_receipts"]) == 1
+    assert "funding_reserve_receipts" not in saved
+    assert saved["funding_reserve_totals"][key] == "-3"

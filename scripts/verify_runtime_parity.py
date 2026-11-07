@@ -9,6 +9,8 @@ import logging
 from pathlib import Path
 import sys
 import time
+import tempfile
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import numpy as np
@@ -40,6 +42,28 @@ class Notifier:
     async def send_alert(self, *args, **kwargs): pass
     async def send_status(self, *args, **kwargs): pass
     async def close(self): pass
+
+
+@contextmanager
+def isolated_reserve_store(config):
+    """Exercise the real SQLite ledger without modifying the replay input configuration."""
+    from core import funding_store
+    original = funding_store.settle
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / 'config.json'
+        path.write_text(json.dumps(config), encoding='utf-8')
+
+        def settle(_path, mode, symbol, event):
+            result = original(str(path), mode, symbol, event)
+            saved = json.loads(path.read_text(encoding='utf-8'))
+            for key in funding_store.KEYS:
+                if key in saved['portfolios'][0]:
+                    config['portfolios'][0][key] = saved['portfolios'][0][key]
+            config.pop('funding_reserve_receipts', None)
+            config['funding_reserve_totals'] = saved.get('funding_reserve_totals', {})
+            return result
+
+        yield settle
 
 
 async def replay(config_path, feather, count):
@@ -147,7 +171,8 @@ async def replay(config_path, feather, count):
 
     async def noop(*args, **kwargs): pass
 
-    with patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
+    with isolated_reserve_store(config) as settle, patch('core.funding_store.settle', new=settle), \
+         patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
          patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), patch('core.main.load_json', new=load), \
          patch('core.main.save_json', new=save), patch('core.main.safe_load_json_sync', new=lambda *a, **kw: config), \
          patch('core.funding.save_funding_boundary', new=boundary), \

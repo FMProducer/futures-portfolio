@@ -283,31 +283,10 @@ def reserve_funding(signed_amount, reserve):
 
 def settle_funding_reserve(config_path, mode, symbol, event):
     """Persist a shared-account settlement once, before committing the bot journal."""
-    from core.storage import update_json_sync
     if mode not in ("paper", "real") or not symbol or not event.event_id:
         raise ValueError("Funding settlement requires mode, symbol and event identity")
-    key = "paper_account_free_margin" if mode == "paper" else "cash_reserve_usdt"
-    identity = f"{mode}:{symbol}:{event.event_id}"
-
-    def update(config):
-        receipts = config.setdefault("funding_reserve_receipts", {})
-        if identity in receipts:
-            receipt = receipts[identity]
-            if (Decimal(receipt["amount"]) != event.signed_amount
-                    or receipt["reserve_key"] != key
-                    or receipt["event_time"] != event.event_time):
-                raise ValueError("Funding reserve event identity conflict")
-            current = reserve_funding(0, config["portfolios"][0][key])["reserve_after"]
-            return {**receipt, "current_reserve": current}
-        portfolio = config["portfolios"][0]
-        receipt = reserve_funding(event.signed_amount, portfolio.get(key, 0))
-        receipt.update(reserve_key=key, event_time=event.event_time)
-        value = Decimal(receipt["reserve_after"])
-        portfolio[key] = json_decimal(value)
-        receipts[identity] = receipt
-        return {**receipt, "current_reserve": receipt["reserve_after"]}
-
-    return update_json_sync(config_path, update)
+    from core.funding_store import settle
+    return settle(config_path, mode, symbol, event)
 
 
 def apply_funding_paper(signed_amount: Decimal, paper_wallet: Dict,
