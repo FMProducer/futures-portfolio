@@ -87,11 +87,11 @@ async def retire(connector, root, actual_wallet):
             or not wallet.get('positions') or any(amount(q) != 0 for q in wallet['positions'].values())):
         raise ValueError('Existing REAL owner has no confirmed terminal close')
     validate(root, proof, ticker, account_key(connector))
-    _, halt = funding.load_funding_state(state)
+    _, halt = funding.load_funding_state(state, config_path=str(Path(root)/'config.json'))
     journal = None
     reserve_after = None
     try:
-        journal = await funding.poll_live_funding(connector, state, ticker, int(time.time()*1000))
+        journal = await funding.poll_live_funding(connector, state, ticker, int(time.time()*1000), config_path=str(Path(root)/'config.json'))
         for event in journal.get_received():
             import asyncio
             receipt = await asyncio.to_thread(funding.settle_funding_reserve,
@@ -113,7 +113,7 @@ async def retire(connector, root, actual_wallet):
         reconcile(root, source, state, wallet, actual['wallet'], account_key(connector))
     except Exception as error:
         if journal is None:
-            journal, halt = funding.load_funding_state(state)
+            journal, halt = funding.load_funding_state(state, config_path=str(Path(root)/'config.json'))
         source['blocked'] = str(error)
         state['startup_blocked'] = True
         funding.save_funding_boundary(str(sp), str(wp), state, wallet, journal, halt)
@@ -166,6 +166,6 @@ async def prepare(connector, root, ticker, config):
                   long_entry_price=0., short_entry_price=0., last_price=0.)
     state = funding.prepare_live_funding_snapshot(state, wallet, ticker, stamp, after['wallet'], positions,
                                           allocation=proof)
-    journal, halt = funding.load_funding_state(state)
+    journal, halt = funding.load_funding_state(state, config_path=str(Path(root)/'config.json'))
     funding.save_funding_boundary(str(strategy), str(shadow), state, wallet, journal, halt)
     return state, wallet

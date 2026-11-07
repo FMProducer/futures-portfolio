@@ -153,6 +153,15 @@ def guard_funding_reserve_writes(monkeypatch):
         return original(config_path, *args, **kwargs)
 
     monkeypatch.setattr(funding, "settle_funding_reserve", guarded)
+    from core import funding_store
+    original_archive = funding_store.archive_events
+
+    def guarded_archive(config_path, *args, **kwargs):
+        if Path(config_path).resolve().is_relative_to(workspace):
+            raise AssertionError("Funding archive tests must use a temporary config or explicit mock")
+        return original_archive(config_path, *args, **kwargs)
+
+    monkeypatch.setattr(funding_store, 'archive_events', guarded_archive)
 
 
 @pytest.fixture(autouse=True)

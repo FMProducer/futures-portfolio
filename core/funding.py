@@ -183,8 +183,15 @@ class FundingJournal:
         return [self.events[eid].to_dict() for eid in self._order]
 
     @classmethod
-    def from_list(cls, data: Optional[List[Dict]]) -> "FundingJournal":
+    def from_list(cls, data: Optional[List[Dict]], *, config_path=None, state=None) -> "FundingJournal":
         journal = cls()
+        journal.archive_context = (config_path, 'real' if (state or {}).get('live_funding') is not None else 'paper',
+                                   (state or {}).get('base_ticker'), bool((state or {}).get('funding_journal_archived')),
+                                   (state or {}).get('funding_archive_sequence', 0))
+        if journal.archive_context[3] and (type(journal.archive_context[4]) is not int or journal.archive_context[4] <= 0):
+            raise ValueError('Archived funding checkpoint is missing or invalid')
+        if not journal.archive_context[3] and journal.archive_context[4] != 0:
+            raise ValueError('Funding archive checkpoint requires its archive marker')
         if not data:
             return journal
         for d in data:
@@ -202,6 +209,23 @@ class FundingJournal:
 
     def receive(self, event: FundingEvent) -> str:
         existing = self.events.get(event.event_id)
+        context = getattr(self, 'archive_context', None)
+        if context and context[3] and not context[0]:
+            raise ValueError('Archived funding requires its ledger context')
+        if existing is None and context and context[0] and context[2]:
+            from core.funding_store import archived_event
+            archived = archived_event(*context[:3], event.event_id, required=context[3], checkpoint=context[4])
+            if archived is not None:
+                existing = FundingEvent.from_dict(archived)
+                if self._payload_match(existing, event):
+                    # A newer archive must not acknowledge money absent from a restored bot snapshot.
+                    if archived['_archive_sequence'] <= context[4]:
+                        return 'duplicate'
+                    event = existing
+                    existing = None
+                else:
+                    self.events[event.event_id] = existing
+                    self._order.append(event.event_id)
         if existing is not None:
             if existing.status == "applied":
                 if self._payload_match(existing, event):
@@ -228,7 +252,7 @@ class FundingJournal:
         event = self.events.get(event_id)
         if event and event.status == "received":
             event.status = "applied"
-            event.applied_at = time.time()
+            event.applied_at = event.applied_at if event.applied_at is not None else time.time()
 
     def mark_quarantined(self, event_id: str, reason: str = "late_event") -> None:
         event = self.events.get(event_id)
@@ -237,8 +261,22 @@ class FundingJournal:
             logger.warning(f"Funding event {event_id} quarantined: {reason}")
 
     def get_received(self) -> List[FundingEvent]:
-        return [self.events[eid] for eid in self._order
-                if self.events[eid].status == "received"]
+        received = [self.events[eid] for eid in self._order if self.events[eid].status == "received"]
+        context = getattr(self, 'archive_context', None)
+        if context and context[3] and not context[0]:
+            raise ValueError('Archived funding requires its ledger context')
+        if context and context[0] and context[2]:
+            from core.funding_store import archived_event
+            for index,event in enumerate(received):
+                archived = archived_event(*context[:3], event.event_id, required=context[3], checkpoint=context[4])
+                if archived is not None:
+                    canonical = FundingEvent.from_dict(archived)
+                    if not self._payload_match(canonical,event):
+                        event.status = 'conflict'
+                        raise ValueError('Received funding conflicts with archived application')
+                    canonical.status = 'received'
+                    received[index] = self.events[event.event_id] = canonical
+        return received
 
     def latest_applied_time(self) -> float:
         latest = 0.0
@@ -259,9 +297,9 @@ def save_funding_state(journal: FundingJournal, halt: FundingHalt,
     return state
 
 
-def load_funding_state(state: Dict) -> Tuple[FundingJournal, FundingHalt]:
+def load_funding_state(state: Dict, config_path=None) -> Tuple[FundingJournal, FundingHalt]:
     """Restore journal + halt from persisted state dict."""
-    journal = FundingJournal.from_list(state.get("funding_journal"))
+    journal = FundingJournal.from_list(state.get("funding_journal"), config_path=config_path, state=state)
     halt = FundingHalt.from_dict(state.get("funding_halt"))
     return journal, halt
 
@@ -431,6 +469,20 @@ def save_funding_boundary(strategy_path: str, wallet_path: str,
     }
     intent_path = strategy_path + ".funding_intent"
     atomic_save_json(intent_path, intent)
+    context = getattr(journal, 'archive_context', None)
+    applied = [eid for eid in journal._order if journal.events[eid].status == 'applied']
+    if context and context[0] and context[2] and applied:
+        from core.funding_store import archive_events
+        sequence = archive_events(*context[:3], [journal.events[eid].to_dict() for eid in applied])
+        removed = set(applied[:-2])
+        journal._order = [eid for eid in journal._order if eid not in removed]
+        for eid in removed:
+            del journal.events[eid]
+        sequence = max(context[4], sequence)
+        journal.archive_context = (*context[:3], True, sequence)
+        state['funding_journal_archived'] = True
+        state['funding_archive_sequence'] = sequence
+        state['funding_journal'] = journal.to_list()
     atomic_save_json(strategy_path, state)
     atomic_save_json(wallet_path, paper_state)
     if _os.path.exists(intent_path):
@@ -631,7 +683,7 @@ def live_snapshot_pair_error(strategy_path: str, wallet_path: str, ticker: str) 
     return "; ".join(problems)
 
 
-async def poll_live_funding(connector, state, symbol, end_ms):
+async def poll_live_funding(connector, state, symbol, end_ms, config_path=None):
     """Receive a bounded overlap without applying cashflows or advancing on errors."""
     import hashlib
     from copy import deepcopy
@@ -646,7 +698,7 @@ async def poll_live_funding(connector, state, symbol, end_ms):
     if source.get("blocked"):
         raise ValueError("Live funding source requires operator reconciliation")
     rows = await connector.get_funding_income(symbol, source["snapshot_ms"], end_ms)
-    journal = FundingJournal.from_list(deepcopy(state.get("funding_journal")))
+    journal = FundingJournal.from_list(deepcopy(state.get("funding_journal")), config_path=config_path, state=state)
     for row in rows:
         timestamp = row["time"]
         if timestamp <= source["snapshot_ms"]:

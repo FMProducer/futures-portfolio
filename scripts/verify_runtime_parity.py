@@ -48,12 +48,13 @@ class Notifier:
 
 
 @contextmanager
-def isolated_reserve_store(config, memory=False):
+def isolated_reserve_store(config, memory=False, directory=None):
     """Exercise the real SQLite ledger without modifying the replay input configuration."""
     from core import funding_store
     original = funding_store.settle
-    with tempfile.TemporaryDirectory() as directory:
-        path = Path(directory) / 'config.json'
+    original_archive, original_lookup = funding_store.archive_events, funding_store.archived_event
+    with (tempfile.TemporaryDirectory() if directory is None else nullcontext(str(directory))) as location:
+        path = Path(location) / 'config.json'
         path.write_text(json.dumps(config), encoding='utf-8')
 
         snapshot = [deepcopy(config)]
@@ -81,6 +82,10 @@ def isolated_reserve_store(config, memory=False):
             return result
 
         with ExitStack() as stack:
+            stack.enter_context(patch('core.funding_store.archive_events',
+                                      new=lambda _path, *args: original_archive(str(path), *args)))
+            stack.enter_context(patch('core.funding_store.archived_event',
+                                      new=lambda _path, *args, **kwargs: original_lookup(str(path), *args, **kwargs)))
             if memory:
                 class Connection(sqlite3.Connection):
                     def close(self): pass
@@ -88,14 +93,16 @@ def isolated_reserve_store(config, memory=False):
                 stack.callback(sqlite3.Connection.close, db)
                 with closing(funding_store.connect(path)) as source:
                     source.backup(db)
-                stack.enter_context(patch('core.funding_store.connect', new=lambda _: db))
+                stack.enter_context(patch('core.funding_store.connect', new=lambda *a, **kw: db))
                 stack.enter_context(patch('core.funding_store.FileLock', new=lambda *a, **kw: nullcontext()))
                 stack.enter_context(patch('core.storage._atomic_save_json', new=save))
                 stack.enter_context(patch('builtins.open', new=read))
             yield settle
 
 
-async def replay(config_path, feather, count, memory_reserve_store=False):
+async def replay(config_path, feather, count, memory_reserve_store=False, native_persistence=False):
+    if native_persistence and memory_reserve_store:
+        raise ValueError('Native persistence cannot use a memory reserve store')
     config = json.loads(config_path.read_text())
     ticker = feather.stem.split('_')[0]
     if not ticker.isascii() or not ticker.isalnum() or ticker != ticker.upper() or not ticker.endswith('USDT'):
@@ -108,6 +115,8 @@ async def replay(config_path, feather, count, memory_reserve_store=False):
     index = [0]
     capital = config['portfolios'][0]['paper_initial_capital']
     state_root = ROOT / 'reports' / f'runtime_parity_{ticker.lower()}'
+    if native_persistence:
+        state_root = Path(tempfile.mkdtemp(prefix='native-paper-', dir=config_path.parent))
     state_root.mkdir(parents=True, exist_ok=True)
     paths = [str(state_root / n) for n in [f'paper_state_{ticker}.json', f'paper_shadow_{ticker}.json']]
     strategy, wallet_path = paths
@@ -117,6 +126,12 @@ async def replay(config_path, feather, count, memory_reserve_store=False):
             wallet_path: {'base_ticker': ticker, 'balance': capital,
                           'positions': {f'{ticker}_LONG': 0, f'{ticker}_SHORT': 0},
                           'long_entry_price': 0, 'short_entry_price': 0}}
+    from core import storage
+    native_boundary = funding.save_funding_boundary
+    runtime_config_path = state_root/'config.json' if native_persistence else config_path
+    if native_persistence:
+        for path, value in docs.items():
+            storage.safe_save_json_sync(path, value)
     curve = np.full(count, np.nan)
     totals = {'cycles': 0, 'funding': 0., 'fills': 0, 'stops': 0}
     seen, fills = set(), []
@@ -134,20 +149,28 @@ async def replay(config_path, feather, count, memory_reserve_store=False):
         return (int(stamps[min(index[0], count-1)]) + 60000) / 1000
 
     async def load(path, default=None):
+        if native_persistence and str(path) in docs:
+            return storage.safe_load_json_sync(str(path), default)
         return deepcopy(docs.get(str(path), default))
 
     async def save(path, value):
+        if native_persistence and str(path) in docs:
+            storage.safe_save_json_sync(str(path), value)
         if str(path) in docs:
             docs[str(path)] = deepcopy(value)
             if str(path) == wallet_path:
                 record_wallet(value)
 
     def boundary(sp, wp, state, wallet, journal, halt):
-        funding.save_funding_state(journal, halt, state)
+        if native_persistence:
+            native_boundary(sp, wp, state, wallet, journal, halt)
+        else:
+            funding.save_funding_state(journal, halt, state)
         applied = [row for row in state['funding_journal'] if row['status'] == 'applied']
         for row in applied:
             assert archived_funding.setdefault(row['event_id'], row) == row
-        state['funding_journal'] = applied[-1:] + [row for row in state['funding_journal'] if row['status'] != 'applied']
+        if not native_persistence:
+            state['funding_journal'] = applied[-1:] + [row for row in state['funding_journal'] if row['status'] != 'applied']
         docs[sp], docs[wp] = deepcopy(state), deepcopy(wallet)
         record_wallet(wallet)
 
@@ -200,16 +223,16 @@ async def replay(config_path, feather, count, memory_reserve_store=False):
 
     async def noop(*args, **kwargs): pass
 
-    with isolated_reserve_store(config, memory_reserve_store) as settle, patch('core.funding_store.settle', new=settle), \
+    with isolated_reserve_store(config, memory_reserve_store, state_root if native_persistence else None) as settle, patch('core.funding_store.settle', new=settle), \
          patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
          patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), patch('core.main.load_json', new=load), \
-         patch('core.main.save_json', new=save), patch('core.main.safe_load_json_sync', new=lambda *a, **kw: config), \
+         patch('core.main.save_json', new=save), patch('core.main.safe_load_json_sync', new=storage.safe_load_json_sync if native_persistence else lambda *a, **kw: config), \
          patch('core.funding.save_funding_boundary', new=boundary), \
          patch('core.storage.update_json_sync', new=lambda path, updater: updater(config)), \
          patch('core.main.self_kill_pm2', new=noop), patch('core.main.emit_signal', new=lambda *a, **kw: None):
         while index[0] < count:
             try:
-                await rebalance_loop(Connector(), str(config_path), strategy, wallet_path, Quiet(),
+                await rebalance_loop(Connector(), str(runtime_config_path), strategy, wallet_path, Quiet(),
                                      ticker_override=ticker, paper_mode_override=True)
             except EndReplay:
                 finish_session()
@@ -230,7 +253,9 @@ async def replay(config_path, feather, count, memory_reserve_store=False):
     peak = np.maximum(np.maximum.accumulate(curve), capital)
     return dict(totals, ticker=ticker, mode='PAPER', final_tpv=float(curve[-1]), profit_pct=float((curve[-1]/capital-1)*100),
                 max_dd_pct=float(np.max((peak-curve)/peak)*100), positions=docs[wallet_path]['positions'],
-                bars=count, reserve_store_adapter='sqlite_memory' if memory_reserve_store else 'sqlite_disk',
+                bars=count, persistence_adapter='native_json_wal' if native_persistence else 'isolated',
+                persistence_root=str(state_root) if native_persistence else None,
+                reserve_store_adapter='sqlite_memory' if memory_reserve_store else 'sqlite_disk',
                 min_cash=str(minimum_cash[0]), min_virtual=str(minimum_virtual[0]),
                 funding_reserve=config['portfolios'][0].get('paper_account_free_margin', 0),
                 funding_events=len(archived_funding), _funding=list(archived_funding.values()), _trace=trace,
@@ -239,7 +264,7 @@ async def replay(config_path, feather, count, memory_reserve_store=False):
 
 
 if __name__ == '__main__':
-    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--memory-reserve-store' in sys.argv[5:]))
+    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--memory-reserve-store' in sys.argv[5:], '--native-persistence' in sys.argv[5:]))
     for key in ('_curve', '_fills', '_funding', '_trace'):
         output = Path(sys.argv[4])
         output.with_name(output.stem + key + '.json').write_text(json.dumps(result.pop(key)), encoding='utf-8')

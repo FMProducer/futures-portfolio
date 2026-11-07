@@ -1,5 +1,6 @@
 """Offline REAL strategy replay with independent exchange facts and synthetic funding."""
 import ast
+from contextlib import nullcontext
 import asyncio
 from copy import deepcopy
 from decimal import Decimal as D
@@ -134,7 +135,9 @@ class ReplayLogger(Quiet):
         raise ReplayFailure(str((message, *args)))
 
 
-async def replay(config_path, feather, count, archive_applied=False, memory_reserve_store=False):
+async def replay(config_path, feather, count, archive_applied=False, memory_reserve_store=False, native_persistence=False):
+    if native_persistence and memory_reserve_store:
+        raise ValueError('Native persistence cannot use a memory reserve store')
     config = json.loads(config_path.read_text())
     ticker = feather.stem.split('_')[0]
     assert ticker.isascii() and ticker.isalnum() and ticker == ticker.upper() and ticker.endswith('USDT')
@@ -155,29 +158,41 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
     docs, sessions, archived = {}, [], {}
     trace = []
     real_sleep = asyncio.sleep
+    from core import storage
+    native_boundary = funding.save_funding_boundary
 
     def current(): return (int(stamps[min(index[0], count-1)])+60000)/1000
 
-    async def load(path, default=None): return deepcopy(docs.get(str(path), default))
+    async def load(path, default=None):
+        if native_persistence and str(path) in docs:
+            return storage.safe_load_json_sync(str(path),default)
+        return deepcopy(docs.get(str(path), default))
 
     async def save(path, value):
+        if native_persistence and str(path) in docs:
+            storage.safe_save_json_sync(str(path),value)
         if str(path) in docs: docs[str(path)] = deepcopy(value)
 
     def boundary(sp, wp, state, wallet, journal, halt):
-        funding.save_funding_state(journal, halt, state)
+        if native_persistence:
+            native_boundary(sp,wp,state,wallet,journal,halt)
+        else:
+            funding.save_funding_state(journal, halt, state)
         if archive_applied:
             applied = [row for row in state['funding_journal'] if row['status'] == 'applied']
             for row in applied:
                 assert archived.setdefault(row['event_id'], row) == row
             keep = applied[-1:]
-            state['funding_journal'] = keep + [row for row in state['funding_journal'] if row['status'] != 'applied']
+            if not native_persistence:
+                state['funding_journal'] = keep + [row for row in state['funding_journal'] if row['status'] != 'applied']
         docs[str(sp)], docs[str(wp)] = deepcopy(state), deepcopy(wallet)
 
     def update_config(path, updater): return updater(config)
 
     async def noop(*args, **kwargs): pass
 
-    with tempfile.TemporaryDirectory(prefix='agt-real-replay-', ignore_cleanup_errors=True) as temporary:
+    with (nullcontext(tempfile.mkdtemp(prefix='native-real-',dir=config_path.parent)) if native_persistence
+          else tempfile.TemporaryDirectory(prefix='agt-real-replay-', ignore_cleanup_errors=True)) as temporary:
         root = Path(temporary)
         (root/'core').mkdir()
         sp, wp = root/f'core/real_state_{ticker}.json', root/f'core/shadow_state_{ticker}.json'
@@ -221,11 +236,12 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
             totals['cycles'] += state['rebalance_cycles']
             sessions.append(dict(bar=index[0], tpv=state['last_tpv'], funding=state.get('funding_paid', 0)))
 
-        with isolated_reserve_store(config, memory_reserve_store) as settle, patch('core.funding_store.settle', new=settle), \
+        runtime_config_path=root/'config.json' if native_persistence else config_path
+        with isolated_reserve_store(config, memory_reserve_store, root if native_persistence else None) as settle, patch('core.funding_store.settle', new=settle), \
              patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
              patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), \
              patch('core.main.load_json', new=load), patch('core.main.save_json', new=save), \
-             patch('core.main.safe_load_json_sync', new=lambda *a, **kw: config), \
+             patch('core.main.safe_load_json_sync', new=storage.safe_load_json_sync if native_persistence else lambda *a, **kw: config), \
              patch('core.storage.update_json_sync', new=update_config), \
              patch('core.funding.save_funding_boundary', new=boundary), \
              patch('core.main.self_kill_pm2', new=noop), patch('core.main.emit_signal', new=lambda *a, **kw: None):
@@ -233,7 +249,7 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
                 for path in (strategy, wallet_path):
                     Path(path).write_text(json.dumps(docs[path]), encoding='utf-8')
                 try:
-                    await rebalance_loop(exchange, str(config_path), strategy, wallet_path, runtime_logger,
+                    await rebalance_loop(exchange, str(runtime_config_path), strategy, wallet_path, runtime_logger,
                                          ticker_override=ticker, paper_mode_override=False)
                 except EndReplay:
                     finish()
@@ -266,7 +282,9 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
         return dict(totals, ticker=ticker, mode='SIMULATED_REAL', bars=count, fills=len(exchange.fills),
             funding=float(-sum(D(row['income']) for row in exchange.income)),
             funding_events=len(archived) if archive_applied else len(docs[strategy].get('funding_journal', [])),
-            journal_adapter='archived_applied_with_two_event_overlap' if archive_applied else 'native',
+            journal_adapter='native_sqlite_archive' if native_persistence else 'archived_applied_with_two_event_overlap' if archive_applied else 'native',
+            persistence_adapter='native_json_wal' if native_persistence else 'isolated',
+            persistence_root=str(root) if native_persistence else None,
             reserve_store_adapter='sqlite_memory' if memory_reserve_store else 'sqlite_disk',
             cash_guard_block_messages=runtime_logger.cash_blocks,
             min_cash=str(minimum_cash[0]), min_virtual=str(minimum_virtual[0]),
@@ -281,7 +299,7 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
 
 
 if __name__ == '__main__':
-    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--archive-applied' in sys.argv[5:], '--memory-reserve-store' in sys.argv[5:]))
+    result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--archive-applied' in sys.argv[5:], '--memory-reserve-store' in sys.argv[5:], '--native-persistence' in sys.argv[5:]))
     output = Path(sys.argv[4])
     for key in ('_curve', '_fills', '_sessions', '_funding', '_funding_receipts', '_trace'):
         output.with_name(output.stem+key+'.json').write_text(json.dumps(result.pop(key)), encoding='utf-8')

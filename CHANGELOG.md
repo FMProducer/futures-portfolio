@@ -1,5 +1,14 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-07 — Bounded worker funding journal
+
+- Applied funding history now resides in the existing SQLite ledger; worker JSON retains two applied events while preserving unresolved events. The full recovery intent is durable before archival. Archive sequence tracking supports replay from older worker snapshots without another reserve debit, and missing archives or conflicting identities block processing.
+- Reuse thread-local SQLite connections for each runtime task, retaining WAL and synchronous=FULL. Cancellation leaves active thread connections valid until their final release. No strategy thresholds, sizing, funding economics or production worker state changed.
+- Final 1000-event native persistence diagnostic: 12,317,185 JSON bytes written versus 1,030,481,107 before the fix; final strategy JSON 1,653 versus 498,494 bytes; all 1000 events archived, two hot applied events. This is persistence-only measurement, not annual disk or strategy certification. The 6.33 GB annual JSON rewrite estimate excludes SQLite/filesystem writes and is not retained disk space.
+- Final full regression: 1212 passed, 9 warnings, 177.32 seconds, exit 0. Includes rejecting an older archive paired with a newer worker snapshot. Annual economic replay results are recorded separately after completion. Production deployment and actual REAL restore remain outside this candidate's acceptance.
+- Evidence and deployment boundary: `docs/SWARM_NATIVE_DISK_ACCEPTANCE_2026_11_07.md`, `reports/funding_archive_20261107/`.
+- Completed annual economic controls: PAPER and simulated REAL each processed 525600 AGTUSDT minutes, exit 0, and matched the unchanged audited BACKTEST reference: +421.25640353%, MaxDD 67.38204877%, 391 cycles, 85 stops, 588 fills, 514100 funding events, external reserve 4725.64579851 USDT. Both use isolated JSON and in-memory SQLite, not native annual persistence. These processes started before the final archive-checkpoint-existence guard; that guard is covered by the final full test suite. See `annual_control_scope.json` before interpreting verification-time source hashes as launch provenance.
+
 ## 2026-11-07 — Writer coordination, paired backups and annual replay recheck
 
 - On `codex/funding-journal-storage`, fixed mixed JSON/SQLite snapshot acceptance using transactional checkpoints and exact legacy-bootstrap fingerprints. All locked config writers now reject missing databases. A four-process repro also exposed stale writers dropping Siphon credits; shared storage now preserves immutable credit identities and exact reserve increments alongside funding deltas.
