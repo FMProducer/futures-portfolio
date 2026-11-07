@@ -119,7 +119,7 @@ async def test_real_loop_polls_and_commits_before_calculator(api_error):
     wallet = _make_paper_state()
     saves = []
 
-    async def poll(connector, current, symbol, end_ms):
+    async def poll(connector, current, symbol, end_ms, config_path=None):
         item = dict(fact(timestamp=now - 1000), symbol="BTCUSDT")
         connector.get_funding_income = AsyncMock(return_value=[item])
         if api_error:connector.get_funding_income.side_effect = RuntimeError("API unavailable")
@@ -185,7 +185,7 @@ async def test_live_snapshot_zero_virtual_qty_never_adds_virtual_again():
     state = _make_state(virt_qty=0, virt_debt=34., funding_model="signed_actual",
         live_funding={"symbol": "BTCUSDT", "snapshot_ms": now-1000, "boundary_ms": now-1000, "blocked": ""})
     observed = []
-    async def poll(c, current, symbol, end_ms):
+    async def poll(c, current, symbol, end_ms, config_path=None):
         observed.append(current["virt_debt"])
         raise BaseException("ProcessExit")
     with patch("core.funding.poll_live_funding", side_effect=poll):

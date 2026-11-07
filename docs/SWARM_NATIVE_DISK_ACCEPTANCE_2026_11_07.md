@@ -1,0 +1,41 @@
+# Swarm deployment and native disk acceptance
+
+## Production observation
+
+Main checkout HEAD is `d0cfd60`. The production source text matches `7cd1405`; the raw-byte difference in `core/funding_store.py` is CRLF only. Its source update preceded the observed supervisor start at 15:20:49 and eight PAPER worker starts at 15:21:54–15:22:02, Kaliningrad time, on 2026-11-07. PID files were matched to actual running Python processes and OS start times.
+
+Eight fresh state files match the eight open SQLite PAPER-budget allocations, each 1000 USDT, total 8000 USDT and budget cash 0. Repeated observations found advancing minute bars and valuations less than 60 seconds old, no startup blocks, no received-but-unapplied funding and no pending funding intents. Funding SQLite quick_check returned `ok` with no pending config projection. A consistent production config/funding-SQLite backup was created and verified at `reports/swarm_acceptance_20261107/funding_bundle/`; that snapshot contains 86 receipts.
+
+This is observed acceptance of the already-running deployment, not an agent-initiated restart. PM2 control was unavailable: the absolute Node/PM2 invocation returned `EPERM` on `//./pipe/rpc.sock`. The failed CLI probes auto-spawned two empty daemon processes (16584 and 26196) and overwrote `pm2.pid`. Their identities and absence of children were verified before removing only those probe-created processes. All eight bots and supervisor belonged to active manager PID 1760, which was left running; the PID file was restored to that verified owner. Worker start times did not change. No active daemon reset, worker kill, budget reset or trading-state reset occurred. Complete PM2 inventory/control remains unverified. Evidence: `pm2_metadata_repair.json`.
+
+## REAL restore boundary
+
+Production currently has `max_bots=8`, `paper_mode_bots=8`, and no REAL strategy snapshots. There is no active REAL owner to certify against live exchange facts. No REAL bot or position was created for testing.
+
+77 targeted tests passed in 12.95 seconds, exit 0: native-prefix assertions, live launch pair validation, allocation/account identity, unexplained wallet cashflow refusal, funding WAL recovery, exactly-once restart, unknown fills and confirmed-exchange reconciliation. Exchange facts in these tests are simulated. This does not certify a live restore.
+
+Before any actual REAL restore: stop its trading writer and prevent supervisor reallocation; verify the config/ledger pair together with the matching strategy, shadow wallet, funding intent and REAL allocation ledger; use native WAL recovery before any fallback; verify account/owner/snapshot identity; compare actual positions, orders, private fills/commissions, funding income and wallet cashflows. Unexplained differences must keep trading blocked. A matched file backup does not rewind exchange events. Do not manually clear `startup_blocked`, reset capital or fabricate receipts to pass reconciliation.
+
+## Native persistence diagnostic
+
+The former accepted annual comparison used archived applied journals and isolated in-memory SQLite. It did not prove native annual JSON/WAL performance. Native `save_funding_boundary` writes the complete journal into an intent and strategy snapshot. Native REAL polling retains history from its opening funding snapshot, and the supervisor preserves REAL funding history across session resets. Therefore the total repeated JSON serialization grows quadratically with event count.
+
+`scripts/measure_native_funding_disk.py` replays a recorded funding prefix through the unmodified production reserve settlement and native funding WAL writers, using isolated physical files. It uses a minimal fixed worker wallet and does not simulate market decisions, orders or lifecycle resets. The byte counter measures JSON file content written, excluding SQLite/filesystem metadata/device amplification. Its annual figure is a quadratic extrapolation, not a completed annual benchmark. The supplied stream contains 514100 nonzero minute-synthetic events from the accepted annual AGTUSDT scenario; this is not the frequency of actual Binance funding payments.
+
+Pilot prefix: 1000 events, 69.47 seconds, 1030486793 JSON bytes written, final strategy snapshot 498485 bytes. The conditional full-stream estimate is approximately 272 TB JSON. This is a scalability blocker for certifying the requested synthetic annual native workload. A full multi-terabyte run was not launched; no annual disk PASS is claimed. A durable applied-event archive with bounded hot state, duplicate/conflict detection and crash-safe handover is required before attempting that acceptance again. No such archive or production persistence policy was changed in this task.
+
+Final prefix on the exact tested diagnostic script: 1000 events, **67.59 seconds**, **1030481107 JSON bytes** written, final strategy snapshot **498494 bytes**. The annual extrapolation is **272354930307583 bytes**, about **272 TB**. The 77 targeted tests passed, exit 0; `git diff --check` passed. Production code was not modified. Final observation still found eight fresh PAPER workers without blocks or unfinished funding.
+
+Artifacts: `reports/swarm_acceptance_20261107/runtime_sample.json`, `summary.json`, `recovery_tests.log`, `native_disk_prefix/result.json` and the final `native_disk_verified/result.json`. All raw config/SQLite snapshots remain local and are not committed.
+
+## Applied-event archive follow-up
+
+The statements above describe the pre-fix diagnostic. The current uncommitted candidate archives applied events in the existing funding SQLite database and retains only two applied events in each worker JSON. Received, quarantined and conflicting events remain in the hot journal. A full post-apply funding intent precedes archival; an archive sequence prevents a restored older worker snapshot from mistaking a newer archived event for an already applied local payment. Missing required archives and conflicting event payloads fail closed. Per-runtime, per-thread connections preserve WAL with synchronous=FULL and close on runtime completion, including cancellation with an outstanding worker thread.
+
+Final isolated persistence prefix: 1000 events in 32.89 seconds, 12317185 JSON bytes written, 1653-byte strategy JSON, two hot applied events and all 1000 archived events. JSON write volume decreased 83.66 times relative to the measured 1030481107-byte baseline. The linear full-stream estimate is 6.33 GB of JSON rewrites, excluding SQLite and filesystem amplification; it is not a measured annual disk result or retained disk usage. Artifact: `reports/funding_archive_20261107/native_prefix_checkpoint/result.json`.
+
+100 focused archive, connection, polling and Siphon tests passed in 10.44 seconds. A 7000-minute native simulated REAL control completed with 6870 funding events, four cycles, one stop and eight fills; all applied events were archived and two remained in JSON. That control preceded the final removal of a redundant intent rewrite and is not certification of the final annual native candidate. Production workers were not upgraded to this candidate or restarted. Live REAL recovery still requires actual exchange reconciliation.
+
+Final full suite after the additional archive-checkpoint guard: 1212 passed, 9 warnings, 177.32 seconds, exit 0. The guard rejects an older SQLite archive paired with a newer worker JSON. Log: `reports/funding_archive_20261107/full_tests_checkpoint.log`.
+
+Completed annual economic controls: PAPER and simulated REAL each processed 525600 AGTUSDT minutes, exit 0, and matched the reused unchanged audited BACKTEST reference: +421.25640353%, MaxDD 67.38204877%, 391 cycles, 85 stops, 588 fills and 514100 funding events. Funding expense is 274.35420149 USDT; reserve is 4725.64579851 USDT; worker buckets stayed nonnegative. Full curves, fill financials and funding conservation passed `scripts/verify_agt_external_funding_results.py`, exit 0. These runs use isolated JSON and in-memory SQLite and began before the final checkpoint-existence guard. They do not certify native annual disk throughput or that last guard branch. Exact scope is recorded in `reports/funding_archive_20261107/annual_control_scope.json`; verification-time hashes alone must not be read as launch hashes.

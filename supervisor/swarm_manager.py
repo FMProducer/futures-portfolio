@@ -414,7 +414,7 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
         if key in old_state:
             new_state[key] = old_state[key]
     if not is_paper and old_state.get("live_funding") is not None:
-        for key in ("live_funding", "funding_model", "funding_journal", "funding_halt", "funding_paid", "funding_strategy_accounting"):
+        for key in ("live_funding", "funding_model", "funding_journal", "funding_halt", "funding_paid", "funding_strategy_accounting", "funding_journal_archived", "funding_archive_sequence"):
             if key in old_state:
                 new_state[key] = old_state[key]
         if "live_funding_snapshot" in old_wallet:
@@ -427,7 +427,7 @@ async def reset_bot_state_files(ticker: str, is_paper: bool, config: dict, capit
                 + Decimal(str(old_state.get('siphoning_reserve', 0))))
 
     from core.funding import load_funding_state, save_funding_boundary
-    journal, halt = load_funding_state(new_state)
+    journal, halt = load_funding_state(new_state, config_path=str(BASE_PATH/'config.json'))
     save_funding_boundary(str(base_state_path), str(shadow_state_path), new_state, new_shadow_state, journal, halt)
     logger.info(f"✨ Reset {'paper' if is_paper else 'real'} state files for {ticker} to clean initial values (capital: {final_capital}).")
 

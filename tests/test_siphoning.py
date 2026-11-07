@@ -160,7 +160,7 @@ async def test_runtime_siphon_stops_only_after_persisted_close(monkeypatch, clos
     calc=PortfolioCalculator(**kwargs)
     notifier=Mock(send_message=AsyncMock())
     events=[]
-    monkeypatch.setattr("core.funding.load_funding_state", lambda state: ({},{}))
+    monkeypatch.setattr("core.funding.load_funding_state", lambda state, **kwargs: ({},{}))
     persist=Mock(side_effect=lambda *args: events.append("persist"))
     monkeypatch.setattr("core.funding.save_funding_boundary",persist)
     async def close(*args,**kwargs):

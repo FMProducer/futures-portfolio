@@ -62,6 +62,15 @@ async def test_real_archived_adapter_matches_native_journal_and_confirmed_exchan
     for disk, memory in ((archived, memory_real), (paper, memory_paper)):
         for key in ('_curve', '_fills', '_funding', 'funding', 'funding_reserve', 'cycles', 'stops', 'positions'):
             assert disk[key] == memory[key], key
+    native_real = await real_replay(path, feather, count, archive_applied=True, native_persistence=True)
+    native_paper = await replay(path, feather, count, native_persistence=True)
+    for expected, native in ((archived, native_real), (paper, native_paper)):
+        for key in ('_curve', '_fills', '_funding', 'funding', 'funding_reserve', 'cycles', 'stops', 'positions'):
+            assert expected[key] == native[key], key
+        import sqlite3
+        from contextlib import closing
+        with closing(sqlite3.connect(Path(native['persistence_root'])/'config.json.funding.sqlite')) as db:
+            assert db.execute('select count(*) from applied_events').fetchone()[0] == count-1
 
 
 @pytest.mark.asyncio
@@ -83,3 +92,6 @@ async def test_real_close_confirmation_delays_do_not_advance_historical_bar(tmp_
     stop_bar = result['_sessions'][0]['bar']
     close = [row for row in result['_fills'] if row['bar'] == stop_bar]
     assert len(close) == 2 and {row['side'] for row in close} == {'BUY', 'SELL'}
+    native_disk = await real_replay(path, feather, 6, archive_applied=True, native_persistence=True)
+    assert native_disk['_curve'] == result['_curve'] and native_disk['_fills'] == result['_fills']
+    assert native_disk['final_state']['funding_journal_archived']

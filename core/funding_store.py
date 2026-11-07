@@ -3,28 +3,145 @@ import json
 import os
 import sqlite3
 import hashlib
-from contextlib import closing
+from contextlib import closing, contextmanager
+from contextvars import ContextVar
+from functools import wraps
+from threading import RLock, get_ident
+from types import SimpleNamespace
 from decimal import Decimal
 from uuid import uuid4
+from pathlib import Path
 
 from filelock import FileLock
 
 
 KEYS = ("cash_reserve_usdt", "paper_account_free_margin")
+_connections = ContextVar('funding_connections', default=None)
+
+
+class _Connection(sqlite3.Connection):
+    _scope = None
+    _leases = 0
+
+    def close(self):
+        if self._scope is None:
+            return super().close()
+        with self._scope.lock:
+            self._leases -= 1
+            if self._scope.closed and self._leases == 0:
+                super().close()
+
+
+@contextmanager
+def connection_session():
+    """Keep per-thread WAL anchors only for the lifetime of a runtime task."""
+    existing = _connections.get()
+    if existing is not None and not existing.closed:
+        yield
+        return
+    scope = SimpleNamespace(lock=RLock(), connections={}, closed=False)
+    token = _connections.set(scope)
+    try:
+        yield
+    finally:
+        with scope.lock:
+            scope.closed = True
+            for connection in scope.connections.values():
+                if connection._leases == 0:
+                    sqlite3.Connection.close(connection)
+            scope.connections.clear()
+        _connections.reset(token)
+
+
+def with_connections(function):
+    @wraps(function)
+    async def wrapped(*args, **kwargs):
+        with connection_session():
+            return await function(*args, **kwargs)
+    return wrapped
 
 
 def database_path(config_path):
     return os.path.abspath(config_path) + ".funding.sqlite"
 
 
-def connect(config_path):
-    db = sqlite3.connect(database_path(config_path), timeout=30)
-    db.execute("PRAGMA synchronous=FULL")
-    db.execute("CREATE TABLE IF NOT EXISTS receipts (identity TEXT PRIMARY KEY, payload TEXT NOT NULL)")
-    db.execute("CREATE TABLE IF NOT EXISTS pending (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)")
-    db.execute("CREATE TABLE IF NOT EXISTS checkpoint (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)")
-    db.commit()
+def connect(config_path, require_archive=False, readonly=False):
+    scope = _connections.get()
+    key = (get_ident(), os.path.normcase(database_path(config_path)), readonly)
+    if scope is not None:
+        with scope.lock:
+            db = scope.connections.get(key) if not scope.closed else None
+            if db is not None:
+                db._leases += 1
+        if db is not None:
+            if require_archive and not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='applied_events'").fetchone():
+                db.close()
+                raise ValueError('Applied funding archive is missing')
+            return db
+    target = Path(database_path(config_path)).as_uri()+'?mode=ro' if readonly else database_path(config_path)
+    db = sqlite3.connect(target, timeout=30, uri=readonly, factory=_Connection, check_same_thread=False)
+    if require_archive and not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='applied_events'").fetchone():
+        db.close()
+        raise ValueError('Applied funding archive is missing')
+    if not readonly:
+        db.execute("PRAGMA journal_mode=WAL")
+        db.execute("PRAGMA synchronous=FULL")
+        db.execute("CREATE TABLE IF NOT EXISTS receipts (identity TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS pending (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS checkpoint (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS applied_events (identity TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+        db.commit()
+    if scope is not None:
+        with scope.lock:
+            if not scope.closed:
+                db._scope, db._leases = scope, 1
+                scope.connections[key] = db
     return db
+
+
+def archived_event(config_path, mode, symbol, event_id, required=False, checkpoint=0):
+    if not os.path.exists(database_path(config_path)):
+        if required:
+            raise ValueError("Archived funding database is missing")
+        return None
+    with closing(connect(config_path, require_archive=required, readonly=True)) as db:
+        prefix=f'{mode}:{symbol}:'
+        if checkpoint and not db.execute('SELECT 1 FROM applied_events WHERE rowid=? AND identity>=? AND identity<?',
+                                          (checkpoint,prefix,prefix+'\uffff')).fetchone():
+            raise ValueError('Applied funding archive checkpoint is missing')
+        if required and not db.execute('SELECT 1 FROM applied_events WHERE identity>=? AND identity<? LIMIT 1',
+                                       (prefix,prefix+'\uffff')).fetchone():
+            raise ValueError('Applied funding archive for this worker is missing')
+        try:
+            row = db.execute("SELECT rowid,payload FROM applied_events WHERE identity=?", (f"{mode}:{symbol}:{event_id}",)).fetchone()
+        except sqlite3.OperationalError as error:
+            if not required and 'no such table' in str(error):
+                return None
+            raise
+    return {**json.loads(row[1]), '_archive_sequence': row[0]} if row else None
+
+
+def archive_events(config_path, mode, symbol, events):
+    """Caller has already persisted a full post-apply WAL snapshot."""
+    with FileLock(os.path.abspath(config_path) + ".lock", timeout=30):
+        recover_projection(config_path)
+        with closing(connect(config_path)) as db, db:
+            sequence = 0
+            for event in events:
+                identity = f"{mode}:{symbol}:{event['event_id']}"
+                row = db.execute("SELECT payload FROM receipts WHERE identity=?", (identity,)).fetchone()
+                if not row:
+                    raise ValueError("Applied funding has no durable reserve receipt")
+                receipt = json.loads(row[0])
+                if (event['status'] != 'applied' or Decimal(receipt['amount']) != Decimal(str(event['signed_amount']))
+                        or receipt['event_time'] != event['event_time']):
+                    raise ValueError("Applied funding archive receipt conflict")
+                old = db.execute("SELECT payload FROM applied_events WHERE identity=?", (identity,)).fetchone()
+                if old and json.loads(old[0]) != event:
+                    raise ValueError("Applied funding archive payload conflict")
+                db.execute("INSERT OR IGNORE INTO applied_events VALUES (?, ?)", (identity, json.dumps(event,sort_keys=True)))
+                sequence = max(sequence, db.execute('SELECT rowid FROM applied_events WHERE identity=?',(identity,)).fetchone()[0])
+            return sequence
 
 
 def validate_checkpoint(config, db):

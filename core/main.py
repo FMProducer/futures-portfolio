@@ -22,7 +22,7 @@ from core.capital import capital_with_reserve
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, PAPER_SLIPPAGE_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
-from core import share_trail, profit_budget, siphoning
+from core import share_trail, profit_budget, siphoning, funding_store
 
 from pathlib import Path
 
@@ -416,6 +416,7 @@ async def _handle_liquidation_guard(
         )
 
 
+@funding_store.with_connections
 async def rebalance_loop(connector: BinanceConnector, config_path: str, state_file_path: str, paper_state_file_path: str, logger: logging.Logger, ticker_override: str = None, paper_mode_override: bool = None, expect_live_snapshot: bool = False):
     # [SSOT] Absolute Scope Safety - Initialize all variables at function start
     i = 0
@@ -867,7 +868,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             await _run_live_funding_closes(
                 connector, executor, halt_obj, state, paper_state, base_ticker,
                 state_file_path, paper_state_file_path,
-                FundingJournal.from_list(state.get("funding_journal")),
+                FundingJournal.from_list(state.get("funding_journal"), config_path=config_path, state=state),
                 step_sizes, portfolio_cfg, logger)
             await self_kill_pm2(base_ticker, paper_mode)
             while True:
@@ -892,7 +893,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 if verdict == "handled":
                     state["funding_halt"] = halt_obj.to_dict()
                     state["funding_journal"] = state.get("funding_journal", [])
-                    journal = FundingJournal.from_list(state.get("funding_journal"))
+                    journal = FundingJournal.from_list(state.get("funding_journal"), config_path=config_path, state=state)
                     save_funding_boundary(state_file_path, paper_state_file_path,
                                            state, paper_state, journal, halt_obj)
                     continue
@@ -934,7 +935,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # Per-leg durable save
                 state["funding_halt"] = halt_obj.to_dict()
                 state["funding_journal"] = state.get("funding_journal", [])
-                journal = FundingJournal.from_list(state.get("funding_journal"))
+                journal = FundingJournal.from_list(state.get("funding_journal"), config_path=config_path, state=state)
                 save_funding_boundary(state_file_path, paper_state_file_path,
                                        state, paper_state, journal, halt_obj)
         logger.critical(f"🚨 Funding halt for {base_ticker}. Trading blocked.")
@@ -1117,7 +1118,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         from core.funding import save_funding_boundary, FundingHalt, FundingJournal
                         source["blocked"] = source.get("blocked") or "Snapshot/config rebase requires operator reconciliation"
                         save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
-                                              FundingJournal.from_list(state.get("funding_journal")),
+                                              FundingJournal.from_list(state.get("funding_journal"), config_path=config_path, state=state),
                                               FundingHalt.from_dict(state.get("funding_halt")))
                         await asyncio.sleep(check_interval)
                         continue
@@ -1343,31 +1344,35 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 if funding_model != "disabled" and not paper_mode and state.get("live_funding") is not None:
                     from core.funding import poll_live_funding, save_funding_boundary, FundingHalt, FundingJournal
                     try:
-                        live_journal = await poll_live_funding(connector, state, base_ticker, int(time.time() * 1000))
+                        live_journal = await poll_live_funding(connector, state, base_ticker, int(time.time() * 1000), config_path=config_path)
                         save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
                                               live_journal, FundingHalt.from_dict(state.get("funding_halt")))
                     except Exception as error:
                         state["live_funding"]["blocked"] = str(error)
                         logger.critical("Live funding reconciliation blocked: %s", error)
                         save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state,
-                                              FundingJournal.from_list(state.get("funding_journal")),
+                                              FundingJournal.from_list(state.get("funding_journal"), config_path=config_path, state=state),
                                               FundingHalt.from_dict(state.get("funding_halt")))
                         continue
 
                 if paper_mode and current_config.get("funding_model", "legacy_constant") == "legacy_constant":
                     funding_amount = backtest_rules.paper_legacy_funding(paper_state, state, targets, base_ticker, price, strategy_bar_ms)
                     from core.funding import save_funding_boundary, load_funding_state, FundingEvent
-                    journal, halt = load_funding_state(state)
+                    journal, halt = load_funding_state(state, config_path=config_path)
                     if funding_amount:
-                        journal.receive(FundingEvent(event_id=f'legacy:{base_ticker}:{strategy_bar_ms}',
+                        received = journal.receive(FundingEvent(event_id=f'legacy:{base_ticker}:{strategy_bar_ms}',
                             signed_amount=-funding_amount, event_time=strategy_bar_ms/1000, symbol=base_ticker))
+                        if received not in ('new', 'duplicate'):
+                            state['startup_blocked'] = True
+                            save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
+                            raise ValueError('Conflicting PAPER funding event requires reconciliation')
                     save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                     state_dirty = paper_state_dirty = True
 
                 # --- B1: Funding BEFORE calculator (per canonical order §3) ---
                 if funding_model == "signed_actual" or (paper_mode and current_config.get('funding_model', 'legacy_constant') == 'legacy_constant'):
                     from core.funding import FundingJournal, apply_funding_paper, settle_funding_reserve
-                    journal = FundingJournal.from_list(state.get("funding_journal"))
+                    journal = FundingJournal.from_list(state.get("funding_journal"), config_path=config_path, state=state)
                     for event in journal.get_received():
                         if event.event_time > (strategy_bar_ms / 1000 if paper_mode else time.time()):
                             continue
@@ -1575,7 +1580,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     logger.critical(f"Portfolio equity drawdown stop: equity={dd_equity}; peak={drawdown_reference}; budget={dd_capital * max_drawdown_limit / 100}")
                     asyncio.create_task(notifier.send_alert('EMERGENCY STOP', f'Portfolio equity drawdown limit reached for {base_ticker}'))
                     from core.funding import load_funding_state, save_funding_boundary
-                    journal, halt = load_funding_state(state)
+                    journal, halt = load_funding_state(state, config_path=config_path)
                     save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                     await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
                                          logger, ticker_override=base_ticker, paper_mode=paper_mode,
@@ -2074,7 +2079,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                      terminal_price=price, terminal_collateral=float(collateral),
                                      terminal_maintenance=float(maintenance))
                         from core.funding import save_funding_boundary, load_funding_state
-                        journal, halt = load_funding_state(state)
+                        journal, halt = load_funding_state(state, config_path=config_path)
                         save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                         logger.warning(f"PAPER {terminal_status}: TPV={final_tpv}; trading blocked until manual reconciliation")
                         continue
@@ -2106,7 +2111,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         paper_state_dirty = True
                         state_dirty = True
                         from core.funding import save_funding_boundary, load_funding_state
-                        journal, halt = load_funding_state(state)
+                        journal, halt = load_funding_state(state, config_path=config_path)
                         save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                         logger.critical(
                             "PAPER COLLATERAL CRITICAL: trading halted pending supervisor stop"
@@ -2146,7 +2151,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                  siphon_amount=float(amount), rebalance_cycles=cycles, initial_build_pending=None,
                                  restart_not_before=time.time() + float(current_config.get("toxic_cooldown_days", 0.1)) * 86400)
                     from core.funding import save_funding_boundary, load_funding_state
-                    journal, halt = load_funding_state(state)
+                    journal, halt = load_funding_state(state, config_path=config_path)
                     save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                     await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
                                          logger, ticker_override=base_ticker, paper_mode=paper_mode, close_only=True)
@@ -2217,7 +2222,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                              trailing_stop_violation_start=0., share_trail=share_trail.fresh_state(),
                                              share_trail_receipts=[], last_update=time.time())
                                 from core.funding import load_funding_state, save_funding_boundary
-                                journal, halt = load_funding_state(state)
+                                journal, halt = load_funding_state(state, config_path=config_path)
                                 save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                                 emit_signal('exit', base_ticker, paper_mode)
                                 await self_kill_pm2(base_ticker, paper_mode)
@@ -2251,7 +2256,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 state.update(stop_reason='exchange_margin_critical', strategy_bar_ms=strategy_bar_ms,
                                              rebalance_cycles=cycles)
                                 from core.funding import load_funding_state, save_funding_boundary
-                                journal, halt = load_funding_state(state)
+                                journal, halt = load_funding_state(state, config_path=config_path)
                                 save_funding_boundary(state_file_path, paper_state_file_path, state, paper_state, journal, halt)
                                 await emergency_stop(connector, config_path, state_file_path, paper_state_file_path,
                                     logger, ticker_override=base_ticker, paper_mode=False, close_only=True)
@@ -2386,7 +2391,7 @@ async def emergency_stop(connector: BinanceConnector, config_path: str, state_fi
         state.update(last_tpv=equity, last_profit=equity - float(state["initial_tpv"]),
                      paper_close_complete=True, trailing_stop_triggered=True, last_update=time.time())
         state["total_pnl_pct"] = state["last_profit"] / float(state["initial_tpv"]) * 100
-        journal, halt = load_funding_state(state)
+        journal, halt = load_funding_state(state, config_path=config_path)
         save_funding_boundary(state_file_path, paper_state_file_path, state, wallet, journal, halt)
         archive = Path(state_file_path).resolve().parent.parent / "history"
         archive.mkdir(exist_ok=True)
@@ -2408,7 +2413,7 @@ async def emergency_stop(connector: BinanceConnector, config_path: str, state_fi
                             steps, state_file_path, paper_state_file_path, "emergency_stop")
     state["trailing_stop_triggered"] = True
     state["share_trail"] = share_trail.fresh_state()
-    journal, halt = load_funding_state(state)
+    journal, halt = load_funding_state(state, config_path=config_path)
     save_funding_boundary(state_file_path, paper_state_file_path, state, wallet, journal, halt)
     logger.info(f"REAL close confirmed for {base_ticker}; financial state preserved")
 
