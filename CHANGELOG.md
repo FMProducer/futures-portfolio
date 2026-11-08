@@ -1,5 +1,23 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-08 — JCTUSDT three-mode parity after the swarm wipe-out
+
+- Isolated comparison on `codex/jct-real-parity`: JCTUSDT, 2026-11-07 15:40 through 2026-11-08 15:40 UTC, 1441 contiguous minutes, frozen config and window from `reports/jct_parity_20261108_1d`. The window reproduces the swarm PAPER wipe-out of 2026-11-08 13:03:38 UTC (`Total Equity -9.46 … EMERGENCY STOP`, pre-fix code, `SAFE=0.00`).
+- REAL over-reduction cap (`core/executor.py`, commit `12e3d37`, merged via PR #27): reduce-only execution is now capped by the available position. At bar 1283 the uncapped request (16446.996 vs 3776.513 available) aborted the REAL replay. Test: `tests/test_real_reduction_cap.py`.
+- Zero-effect VIRTUAL RELEASE cycles (`core/main.py`, commit `caa4273`): a RELEASE without virtual balance no longer increments `rebalance_cycles` nor the rebalance baseline, matching BACKTEST's skip. PAPER/REAL cycle counts drop from 33 to 24 with unchanged curve and fills. Test: `tests/test_main_coverage.py::test_virtual_release_counts_cycle_only_with_balance`.
+
+| Stage / mode | Trading TPV return | MaxDD | Cycles | Stops | Fills | Funding paid |
+|---|---:|---:|---:|---:|---:|---:|
+| BACKTEST | +40.32912622% | 146.94014992% | 24 | 2 | 15 | 0.3141994166 |
+| PAPER | +40.32912622% | 146.94014992% | 24 | 2 | 15 | 0.3141994166 |
+| Simulated REAL | +40.32912622% | 146.94014992% | 24 | 2 | 15 | 0.3141994166 |
+
+- Equity curve errors: BACKTEST/PAPER 3.410605131648481e-13, BACKTEST/REAL 4.547473508864641e-13 USDT over all 1441 points. All 15 fills match per mode; 1172/1172 nonzero funding events match within 1e-18 USDT. REAL funding timestamps stay +60s versus BACKTEST (bar close vs bar open) — a harness convention, not a strategy divergence.
+- Full suite after the fix: 1221 passed, 9 warnings, 156.77 seconds, exit 0 (1219 before the two new tests). Focused suites: 123 passed.
+- Incident protections re-checked on the same window: PAPER collateral guard counts `paper_account_free_margin` 5000 (worst collateral 4521.26 vs maintenance 34.22); `max_drawdown_limit=100` renders the equity drawdown threshold `-inf`; equity trailing stop 30%/155% fired the two stops; REAL margin-ratio guard critical < 2.0 with observed minimum 132.13 at bar 1308. Active TPV still reaches -478.47 USDT at bar 1308 — the external reserve, not the curve, carries the account. Live-exchange behavior remains unverified by design.
+- Evidence: `reports/jct_parity_20261108_1d_v2/REPORT.md`, `comparison.json` (PASS); the v1 report is marked superseded. `caa4273` is local on `codex/jct-real-parity` with no push; running swarm, exchange and live state were not modified.
+- Obsidian protocol: `Projects/futures-portfolio-jct-real-parity-2026-11-08.md`, indexed in `Docs/changelog.md`.
+
 ## 2026-11-07 — Bounded worker funding journal
 
 - Applied funding history now resides in the existing SQLite ledger; worker JSON retains two applied events while preserving unresolved events. The full recovery intent is durable before archival. Archive sequence tracking supports replay from older worker snapshots without another reserve debit, and missing archives or conflicting identities block processing.
