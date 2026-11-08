@@ -219,7 +219,7 @@ async def test_execute_single_action_partial_limit_blocked_fallback(executor, mo
             {"min_notional_usdt": 6.0, "limit_order_enabled": True,
              "fuse_gate": {"LONG": {"entry_price": "100", "taker_fee": "0.0004"},
                            "SHORT": {"entry_price": "100", "taker_fee": "0.0004"}}},
-            {"BTCUSDT": 0.001}
+            {"BTCUSDT": 0.001}, {"positions": {"BTCUSDT_LONG": 1}}
         )
     assert res["status"] == "SUCCESS"
     assert res["qty"] == 0.05

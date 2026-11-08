@@ -162,7 +162,8 @@ async def test_exact_full_close_quantity_survives_notional_float_rounding():
                   diff_usdt=-33377.123, qty=str(quantity), is_reduction=True, client_order_id='close-exact')
     with patch.object(executor, 'execute_market_order', AsyncMock(return_value={'status': 'ERROR'})) as submit:
         await executor._execute_single_action(action, .0270353, False,
-            {'limit_order_enabled': False, 'min_notional_usdt': 0}, {'TESTUSDT': .001})
+            {'limit_order_enabled': False, 'min_notional_usdt': 0}, {'TESTUSDT': .001},
+            {'positions': {'TESTUSDT_LONG': str(quantity)}})
     assert submit.call_args.kwargs['qty'] == quantity
     action['diff_usdt'] = abs(action['diff_usdt'])
     with pytest.raises(ValueError, match='positive reduction'):
