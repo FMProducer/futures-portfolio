@@ -395,6 +395,40 @@ async def test_coverage_virtual_order_processing():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("virt_debt,expect_cycle", [(0.0, False), (10.0, True)])
+async def test_virtual_release_counts_cycle_only_with_balance(virt_debt, expect_cycle):
+    """Backtest parity: zero-effect RELEASE must not bump cycles or the rebalance baseline."""
+    config = _make_config()
+    state = _make_state(virt_debt=virt_debt, rebalance_cycles=0, started_at="test")
+    paper_state = _make_paper_state()
+    calc_return = {
+        "total_tpv": 100.0, "tpv": 100.0, "total_pnl_pct": 0.0,
+        "actions": [{"type": "VIRTUAL_ORDER", "key": "VIRTUAL", "position_side": "BOTH",
+                     "diff_usdt": -5.0, "symbol": None, "side": "SELL"}],
+        "share_long_pct": 0.0, "share_short_pct": 0.0,
+        "share_virt_pct": 0.0, "share_cash_pct": 100.0,
+    }
+    executor_mock = MagicMock()
+    executor_mock.execute_actions = AsyncMock(return_value=[{
+        "type": "VIRTUAL_ORDER", "status": "SUCCESS", "execution_id": "virtual:test-release",
+        "diff_usdt": -5.0, "side": "SELL",
+    }])
+
+    with patch(f"{M}.PortfolioExecutor", return_value=executor_mock):
+        saves, _, _ = await _run_rebalance(
+            config, state, paper_state, loop_limit=3, calc_return=calc_return)
+
+    assert executor_mock.execute_actions.call_count >= 1
+    state_saves = [
+        s for p, s in saves
+        if p.endswith("state.json") and not p.endswith("paper_state.json")
+    ]
+    assert state_saves
+    assert state_saves[-1].get("rebalance_cycles", 0) == (1 if expect_cycle else 0)
+    assert ("last_rebalance_price" in state_saves[-1]) is expect_cycle
+
+
+@pytest.mark.asyncio
 async def test_initial_cash_violation_saves_facts_and_blocks_increases():
     config = _make_config()
     state = _make_state(virt_qty=0.0, rebalance_cycles=0)
