@@ -36,7 +36,7 @@
       "name": "SyntheticMarketNeutral",
       "initial_capital": 1000.0,
       "paper_initial_capital": 1000.0,
-      "paper_account_free_margin": "4997.891841582545833333333340",
+      "paper_account_free_margin": 5000.0,
       "cash_reserve_usdt": 5000.0,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
@@ -88,22 +88,17 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "ARIAUSDT",
-    "BIRBUSDT",
-    "CTUSDT",
-    "JCTUSDT",
-    "LYNUSDT",
+    "AINUSDT",
+    "BMTUSDT",
+    "ICNTUSDT",
+    "KOMAUSDT",
     "ONUSDT",
-    "UAIUSDT"
+    "QUSDT",
+    "SKYAIUSDT",
+    "TAUSDT"
   ],
-  "base_ticker": "ARIAUSDT",
-  "probation_paper": {
-    "IDOLUSDT": 1794084300.0
-  },
+  "base_ticker": "AINUSDT",
+  "probation_paper": {},
   "probation_real": {},
-  "paper_backtest_gate": true,
-  "funding_reserve_checkpoint": "424b2e1a2329482888155ef70d7e2b87",
-  "funding_reserve_totals": {
-    "paper_account_free_margin": "-0.5924078977008333333333333323"
-  }
+  "paper_backtest_gate": true
 }
