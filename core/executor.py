@@ -469,12 +469,15 @@ class PortfolioExecutor:
         step_size = Decimal(str(step_sizes.get(base_symbol, 0.0))) if step_sizes else Decimal('0.0')
         min_notional = Decimal(str(portfolio_cfg.get("min_notional_usdt", 6.0)))
 
+        if reduce_only:
+            if paper_state is None:
+                raise ValueError(f"Invalid {'PAPER' if paper_mode else 'REAL'} reduction without wallet")
+            available = Decimal(str(paper_state["positions"].get(f"{base_symbol}_{pos_side}", 0)))
+            if not available.is_finite() or available < 0:
+                raise ValueError("Invalid reduction position")
+            order_qty = min(order_qty, available)
+
         if paper_mode:
-            if reduce_only:
-                if paper_state is None:
-                    raise ValueError("Invalid PAPER reduction without wallet")
-                available = Decimal(str(paper_state["positions"].get(f"{base_symbol}_{pos_side}", 0)))
-                order_qty = min(order_qty, available)
             qty_rounded = self.round_quantity(order_qty, step_size)
             # B7 FIX: Используем qty_price (mid_price) для расчёта order_value
             fill_price = qty_price * (1 + PAPER_SLIPPAGE_RATE if side == "BUY" else 1 - PAPER_SLIPPAGE_RATE)
@@ -686,13 +689,13 @@ class PortfolioExecutor:
                 budget -= Decimal(str(result["diff_usdt"]))
                 continue
             qty = Decimal(str(result.get("qty", 0)))
-            if paper_mode and paper_state is not None and qty > 0:
+            if paper_state is not None and qty > 0:
                 leg = result.get("type", leg)
                 pos_key = result.get("symbol", f"{symbol}_{leg}")
                 old_qty = Decimal(str(batch_state["positions"].get(pos_key, 0)))
                 new_qty = old_qty - qty if result.get("reduce_only") else old_qty + qty
                 if not new_qty.is_finite() or new_qty < 0:
-                    raise ValueError("Invalid PAPER fill quantity")
+                    raise ValueError(f"Invalid {'PAPER' if paper_mode else 'REAL'} fill quantity")
                 batch_state["positions"][pos_key] = str(new_qty)
             fill_price = Decimal(str(result.get("price", mid_prices.get(symbol, price))))
             commission = Decimal(str(result.get("commission", 0)))
