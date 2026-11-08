@@ -26,7 +26,7 @@
   "toxic_cooldown_days": 0.09014340672051,
   "use_v2_scoring": true,
   "scoring_drawdown_weight": 2.0,
-  "funding_model": "legacy_constant",
+  "funding_model": "disabled",
   "funding_scenario": "",
   "telegram_enabled": false,
   "telegram_use_queue": false,
