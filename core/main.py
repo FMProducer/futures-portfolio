@@ -1737,8 +1737,17 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 if res.get("type") == "VIRTUAL_ORDER":
                                     if not profit_budget.record_fill(paper_state, res, 1, initial_build):
                                         continue
-                                    any_success = True
+                                    paper_state_dirty = True
                                     diff_usdt = Decimal(str(res.get("diff_usdt", 0.0)))
+                                    # Backtest parity: a RELEASE with no virtual balance is a
+                                    # no-op and must not count as a rebalance cycle/baseline.
+                                    if diff_usdt < 0 and Decimal(str(state.get("virt_debt", 0.0))) <= 0:
+                                        logger.info(
+                                            f"Zero-effect VIRTUAL RELEASE {float(diff_usdt):.2f} USDT "
+                                            "ignored: no virtual balance"
+                                        )
+                                        continue
+                                    any_success = True
 
                                     # [V-CASH] VIRTUAL = чистый USDT-кэш: ордер только
                                     # перекладывает метку «свободный кэш <-> V» (value-neutral).
