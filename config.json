@@ -7,7 +7,7 @@
   "paper_mode": true,
   "max_orders_per_second": 10,
   "min_cycles_for_rank": 15,
-  "min_cycles_for_rotation": 6,
+  "min_cycles_for_rotation": 10,
   "max_bots": 8,
   "paper_mode_bots": 8,
   "paper_idle_hours": 0,
@@ -87,17 +87,8 @@
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
-  "tickers": [
-    "ACTUSDT",
-    "AINUSDT",
-    "BMTUSDT",
-    "ONEUSDT",
-    "ONUSDT",
-    "QUSDT",
-    "SKYAIUSDT",
-    "TAUSDT"
-  ],
-  "base_ticker": "AINUSDT",
+  "tickers": [],
+  "base_ticker": "",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
