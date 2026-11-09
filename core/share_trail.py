@@ -50,14 +50,8 @@ def step(state: Dict[str, Dict[str, Any]], key: str, share: Any, target: Any,
     peak, trough = _dec(row.get("peak")), _dec(row.get("trough"))
     if sh >= up:
         peak = sh if peak is None else max(peak, sh)
-    elif sh <= tgt:
-        # shortcut:reset-on-equilibrium-cross, prevent stale peak leak
-        peak = None
     if sh <= lo:
         trough = sh if trough is None else min(trough, sh)
-    elif sh >= tgt:
-        # shortcut:reset-on-equilibrium-cross, prevent stale trough leak
-        trough = None
     row["peak"] = str(peak) if peak is not None else None
     row["trough"] = str(trough) if trough is not None else None
     return (peak is not None and sh > tgt and peak - sh >= dist,
