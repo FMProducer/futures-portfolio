@@ -239,12 +239,18 @@ class BinanceConnector:
 
     @retry_on_network_error(retries=3, delay=2.0)
     async def get_margin_ratio(self) -> Dict[str, float]:
+        """Calculates margin coverage ratio (balance/maint) and native Binance ratio (maint/balance)."""
         account_info = await asyncio.to_thread(self.futures_client.futures_account)
+        t_mb = float(account_info.get("totalMarginBalance", 0))
+        t_mm = float(account_info.get("totalMaintMargin", 0))
+        coverage_ratio = (t_mb / t_mm) if t_mm > 0 else float('inf')
+        binance_ratio = (t_mm / t_mb) if t_mb > 0 else (float('inf') if t_mm > 0 else 0.0)
         return {
-            "margin_ratio": float(account_info.get("totalMarginBalance", 0)) / float(account_info.get("totalMaintMargin", 1)) if float(account_info.get("totalMaintMargin", 0)) > 0 else float('inf'),
+            "margin_ratio": coverage_ratio,
+            "binance_margin_ratio": binance_ratio,
             "available_balance": float(account_info.get("availableBalance", 0)),
-            "total_maint_margin": float(account_info.get("totalMaintMargin", 0)),
-            "total_margin_balance": float(account_info.get("totalMarginBalance", 0)),
+            "total_maint_margin": t_mm,
+            "total_margin_balance": t_mb,
             "total_wallet_balance": float(account_info.get("totalWalletBalance", 0)),
             "liquidation_price": float(account_info.get("liquidationPrice", 0)) if account_info.get("liquidationPrice") else None
         }
