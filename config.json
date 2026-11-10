@@ -90,12 +90,12 @@
   "tickers": [
     "ACTUSDT",
     "AINUSDT",
-    "BMTUSDT",
-    "ONEUSDT",
-    "ONUSDT",
-    "QUSDT",
-    "SKYAIUSDT",
-    "TAUSDT"
+    "AKEUSDT",
+    "BTWUSDT",
+    "INITUSDT",
+    "JCTUSDT",
+    "MERLUSDT",
+    "ONUSDT"
   ],
   "base_ticker": "AINUSDT",
   "probation_paper": {},
