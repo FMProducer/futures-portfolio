@@ -667,6 +667,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         reinvestment_ratio: float = float(portfolio_cfg.get("reinvestment_ratio") or 0.0)
         siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0),
                                  reinvestment_ratio, portfolio_cfg.get("siphoning_pct"))
+        delta_limit_threshold: float = float(portfolio_cfg.get("delta_limit_threshold", config.get("delta_limit_threshold", 0.0)))
         trail_distance: float = float(config.get("rebalance_share_trail_distance", 0.0))
         if not math.isfinite(trail_distance) or trail_distance < 0:
             raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -1094,8 +1095,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 share_trail=state.share_trail,
                 trail_distance=trail_distance,
                 share_basis_scale=share_basis_scale,
+                delta_limit_threshold=delta_limit_threshold,
             )
             actions = calc_res["actions"]
+
+            if calc_res.get("delta_limit_triggered"):
+                state.log_event(i, "delta_limit_guard", float(state.get_tpv_fast(float(mid_price))),
+                                f"imbalance {calc_res.get('delta_imbalance', 0.0)*100:.2f}% > {delta_limit_threshold*100:.1f}%; excess {calc_res.get('excess_leg')}",
+                                excess_leg=calc_res.get("excess_leg"))
 
             # Trailing diagnostics: arm/reset events and generated signals
             if state.share_trail is not None:
@@ -1199,7 +1206,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     if a.get("key") in missing and not a.get("is_reduction", False)
                 ]
 
-            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key)
+            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key,
+                                         preferred_reduction=calc_res.get("excess_leg") if calc_res.get("delta_limit_triggered") else None)
 
             if actions:
                 is_initial_formation = (
@@ -1709,13 +1717,25 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         max_eq: npt.NDArray[np.float64] = np.maximum(np.maximum.accumulate(equity_curve), initial_capital)
         dd: npt.NDArray[np.float64] = (max_eq - equity_curve) / (max_eq + 1e-9)
         max_dd_pct: float = np.max(dd) * 100 if len(dd) > 0 else 0.0
+
+        # Account-level drawdown normalized to total margin capital (initial_capital + cash_reserve_usdt)
+        total_account_initial = initial_capital + float(state.account_free_margin)
+        total_account_curve = equity_curve + float(state.account_free_margin)
+        max_account_eq: npt.NDArray[np.float64] = np.maximum(np.maximum.accumulate(total_account_curve), total_account_initial)
+        account_dd: npt.NDArray[np.float64] = (max_account_eq - total_account_curve) / (max_account_eq + 1e-9)
+        account_max_dd_pct: float = np.max(account_dd) * 100 if len(account_dd) > 0 else 0.0
+
         asset_chg_pct: float = (close_prices[-1] / (close_prices[0] + 1e-9) - 1) * 100
 
-        # --- Sortino Ratio ---
-        # Средняя доходность за бар / downside deviation
+        # --- Sortino & Sharpe Ratios ---
+        # Средняя доходность за бар / downside deviation & total std dev
+        annual_bars = float(bars_per_day) * 365.0
+        ann_factor = math.sqrt(annual_bars)
         if len(equity_curve) > 1:
             bar_returns = np.diff(equity_curve) / (equity_curve[:-1] + 1e-9)
             mean_return = np.mean(bar_returns)
+            std_return = np.std(bar_returns)
+            sharpe_ratio = float(mean_return / (std_return + 1e-9) * ann_factor) if std_return > 0 else 0.0
             # Downside deviation: только отрицательные доходности
             negative_returns = bar_returns[bar_returns < 0]
             if len(negative_returns) > 0:
@@ -1723,13 +1743,17 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 sortino_ratio = mean_return / (downside_dev + 1e-9)
             else:
                 sortino_ratio = mean_return / 1e-9  # нет отрицательных — идеально
+            sortino_annualized = float(sortino_ratio * ann_factor)
         else:
             sortino_ratio = 0.0
+            sortino_annualized = 0.0
+            sharpe_ratio = 0.0
 
         if not quiet:
             logger.info(f"Refactored Cross-Margin Backtest for {base_ticker}:")
-            logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% | Cycles: {state.cycles}")
-            logger.info(f"Sortino: {sortino_ratio:.4f} | Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
+            logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% (Account MaxDD: {account_max_dd_pct:.2f}%) | Cycles: {state.cycles}")
+            logger.info(f"Sortino (ann/raw): {sortino_annualized:.4f} / {sortino_ratio:.6f} | Sharpe (ann): {sharpe_ratio:.4f}")
+            logger.info(f"Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
             logger.info(f"Skipped Expansions: {state.skipped_expansions_counter} | Stops: {state.stops_counter} | Liqs: {state.liquidations_counter}")
             logger.info(f"Trend Guard blocks: {tg_blocked_count} | Velocity Guard blocks: {vg_blocked_count} | Trend-add blocks: {trend_add_blocks}")
             logger.info(f"Share trailing LONG/SHORT: distance={trail_distance:g} | model=pullback_rebound | consumed fills={state.share_trail_consumes}")
@@ -1754,6 +1778,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "stopped_bar": stopped_bar,
             "profit_pct": float(profit_pct),
             "max_dd_pct": float(max_dd_pct),
+            "account_max_dd_pct": float(account_max_dd_pct),
+            "total_account_initial": float(total_account_initial),
             "cycles": int(state.cycles),
             "asset_chg_pct": float(asset_chg_pct),
             "siphoning_reserve": float(state.siphoning_reserve),
@@ -1787,6 +1813,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "signal_counts": dict(htf_signal_counts),
             },
             "sortino_ratio": float(sortino_ratio),
+            "sortino_annualized": float(sortino_annualized),
+            "sharpe_ratio": float(sharpe_ratio),
             "equity_curve": equity_curve.tolist(),
             "fills": state.fills,
             "fill_count": state.fill_count,
