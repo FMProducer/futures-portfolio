@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 import asyncio
+import time
 from decimal import Decimal
 
 from futures_portfolio.core.executor import PortfolioExecutor
@@ -392,6 +393,128 @@ async def test_execute_single_action_skipped_dust(executor):
     assert "too small" in res["message"]
 
 @pytest.mark.asyncio
+async def test_execute_actions_dead_leg_unwind(executor, mock_connector):
+    """Companion leg fills, paired leg fails -> kill-switch flattens the filled leg (reduce-only market)."""
+    actions = [
+        {"symbol": "BTCUSDT_LONG", "base_symbol": "BTCUSDT", "position_side": "LONG",
+         "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+        {"symbol": "BTCUSDT_SHORT", "base_symbol": "BTCUSDT", "position_side": "SHORT",
+         "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+    ]
+    mock_connector.get_order_book.return_value = {"bids": [["59990", "1"]], "asks": [["60010", "1"]]}
+    cfg = {"limit_order_enabled": False, "min_notional_usdt": 6.0,
+           "fuse_gate": {"LONG": {"taker_fee": 0.0004}, "SHORT": {"taker_fee": 0.0004}},
+           "targets": {"BASE_LONG": {"leverage": 5}, "BASE_SHORT": {"leverage": 5}},
+           "dead_leg_timeout_sec": 1.0}
+
+    def fake_single(action, price, paper_mode, portfolio_cfg, step_sizes, batch_state, mid_prices=None):
+        if action["position_side"] == "LONG":
+            return {"type": "LONG", "symbol": "BTCUSDT_LONG", "side": "BUY", "qty": 0.01, "price": 60000.0,
+                    "status": "SUCCESS", "execution_id": "binance:BTCUSDT:1", "financials_confirmed": True,
+                    "reduce_only": False, "trade_pnl": 0.0, "commission": 0.02}
+        raise RuntimeError("rate limited on SHORT leg")
+
+    with patch.object(executor, "_execute_single_action", new=AsyncMock(side_effect=fake_single)), \
+         patch.object(executor, "execute_market_order",
+                      new=AsyncMock(return_value={"status": "SUCCESS", "executed_qty": Decimal("0.01")})) as mock_mkt:
+        results = await executor.execute_actions(actions, price=60000.0, paper_mode=False, portfolio_cfg=cfg,
+                                                 step_sizes={"BTCUSDT": 0.001},
+                                                 paper_state={"balance": "1000.0",
+                                                              "positions": {"BTCUSDT_LONG": 0.0, "BTCUSDT_SHORT": 0.0}},
+                                                 cash_budget=Decimal("1000"))
+    assert results[0]["status"] == "SUCCESS"
+    assert results[1]["status"] == "ERROR"
+    assert results[0].get("unwound") is True
+    assert results[0].get("unwind_status") == "SUCCESS"
+    req = mock_mkt.call_args.kwargs
+    assert req["reduce_only"] is True
+    assert req["position_side"] == "LONG"
+    assert req["side"] == "SELL"
+
+
+@pytest.mark.asyncio
+async def test_execute_actions_dead_leg_timeout(executor, mock_connector):
+    """Complementary leg not confirmed within dead_leg_timeout_sec -> TIMEOUT + companion flattened."""
+    actions = [
+        {"symbol": "BTCUSDT_LONG", "base_symbol": "BTCUSDT", "position_side": "LONG",
+         "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+        {"symbol": "BTCUSDT_SHORT", "base_symbol": "BTCUSDT", "position_side": "SHORT",
+         "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+    ]
+    mock_connector.get_order_book.return_value = {"bids": [["59990", "1"]], "asks": [["60010", "1"]]}
+    cfg = {"limit_order_enabled": False, "min_notional_usdt": 6.0,
+           "fuse_gate": {"LONG": {"taker_fee": 0.0004}, "SHORT": {"taker_fee": 0.0004}},
+           "targets": {"BASE_LONG": {"leverage": 5}, "BASE_SHORT": {"leverage": 5}},
+           "dead_leg_timeout_sec": 0.05}
+
+    async def fake_single(action, price, paper_mode, portfolio_cfg, step_sizes, batch_state, mid_prices=None):
+        if action["position_side"] == "LONG":
+            return {"type": "LONG", "symbol": "BTCUSDT_LONG", "side": "BUY", "qty": 0.01, "price": 60000.0,
+                    "status": "SUCCESS", "execution_id": "binance:BTCUSDT:2", "financials_confirmed": True,
+                    "reduce_only": False, "trade_pnl": 0.0, "commission": 0.02}
+        await asyncio.sleep(10)
+
+    with patch.object(executor, "_execute_single_action", new=AsyncMock(side_effect=fake_single)), \
+         patch.object(executor, "execute_market_order",
+                      new=AsyncMock(return_value={"status": "SUCCESS", "executed_qty": Decimal("0.01")})):
+        results = await executor.execute_actions(actions, price=60000.0, paper_mode=False, portfolio_cfg=cfg,
+                                                 step_sizes={"BTCUSDT": 0.001},
+                                                 paper_state={"balance": "1000.0",
+                                                              "positions": {"BTCUSDT_LONG": 0.0, "BTCUSDT_SHORT": 0.0}},
+                                                 cash_budget=Decimal("1000"))
+    assert results[0]["status"] == "SUCCESS"
+    assert results[1]["status"] == "TIMEOUT"
+    assert results[0].get("unwound") is True
+
+
+@pytest.mark.asyncio
+async def test_execute_actions_unwind_disabled(executor, mock_connector):
+    actions = [
+        {"symbol": "BTCUSDT_LONG", "base_symbol": "BTCUSDT", "position_side": "LONG",
+         "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+        {"symbol": "BTCUSDT_SHORT", "base_symbol": "BTCUSDT", "position_side": "SHORT",
+         "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+    ]
+    mock_connector.get_order_book.return_value = {"bids": [["59990", "1"]], "asks": [["60010", "1"]]}
+    cfg = {"limit_order_enabled": False, "min_notional_usdt": 6.0,
+           "fuse_gate": {"LONG": {"taker_fee": 0.0004}, "SHORT": {"taker_fee": 0.0004}},
+           "targets": {"BASE_LONG": {"leverage": 5}, "BASE_SHORT": {"leverage": 5}},
+           "dead_leg_unwind": False}
+
+    def fake_single(action, price, paper_mode, portfolio_cfg, step_sizes, batch_state, mid_prices=None):
+        if action["position_side"] == "LONG":
+            return {"type": "LONG", "symbol": "BTCUSDT_LONG", "side": "BUY", "qty": 0.01, "price": 60000.0,
+                    "status": "SUCCESS", "execution_id": "binance:BTCUSDT:3", "financials_confirmed": True,
+                    "reduce_only": False, "trade_pnl": 0.0, "commission": 0.02}
+        return {"status": "ERROR", "message": "API down"}
+
+    with patch.object(executor, "_execute_single_action", new=AsyncMock(side_effect=fake_single)), \
+         patch.object(executor, "execute_market_order", AsyncMock()) as mock_mkt:
+        results = await executor.execute_actions(actions, price=60000.0, paper_mode=False, portfolio_cfg=cfg,
+                                                 step_sizes={"BTCUSDT": 0.001},
+                                                 paper_state={"balance": "1000.0",
+                                                              "positions": {"BTCUSDT_LONG": 0.0, "BTCUSDT_SHORT": 0.0}},
+                                                 cash_budget=Decimal("1000"))
+    assert results[1]["status"] == "ERROR"
+    assert not mock_mkt.called
+
+
+@pytest.mark.asyncio
+async def test_execute_actions_paper_mode_never_unwinds(executor, mock_connector):
+    actions = [
+        {"symbol": "BTCUSDT_LONG", "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+        {"symbol": "BTCUSDT_SHORT", "diff_usdt": 600.0, "type": "ORDER", "is_reduction": False},
+    ]
+    with patch.object(executor, "execute_market_order", AsyncMock()) as mock_mkt:
+        results = await executor.execute_actions(actions, price=60000.0, paper_mode=True,
+                                                 paper_state={"balance": "1000.0",
+                                                              "positions": {"BTCUSDT_LONG": 0.0, "BTCUSDT_SHORT": 0.0}},
+                                                 cash_budget=Decimal("1000"))
+    assert all(r.get("status") in ("SUCCESS", "SKIPPED") for r in results)
+    assert not mock_mkt.called
+
+
+@pytest.mark.asyncio
 async def test_execute_single_action_real_limit(executor, mock_connector):
     action = {"symbol": "BTCUSDT_LONG", "diff_usdt": 100.0, "type": "ORDER", "is_reduction": False}
     mock_connector.client = MagicMock()
@@ -404,3 +527,36 @@ async def test_execute_single_action_real_limit(executor, mock_connector):
     assert res["status"] == "SUCCESS"
     assert res["commission"] == 0.02
     assert res["execution_id"] == "binance:BTCUSDT:123"
+
+@pytest.mark.asyncio
+async def test_execute_limit_maker_price_bounds(executor, mock_connector):
+    # Tests that limit price respects bounds to avoid immediate post-only taker rejection
+    mock_connector.get_order_book.return_value = {
+        "bids": [["59990", "1"]],
+        "asks": [["60010", "1"]],
+        "_fetched_at": time.time()
+    }
+    mock_connector.place_limit_maker_order.return_value = {"orderId": 124}
+    mock_connector.get_order_status.return_value = {"status": "FILLED", "executedQty": "0.1", "avgPrice": "60000"}
+
+    with patch.object(mock_connector, "get_order_trades", AsyncMock(return_value=[])):
+        # For SELL with large offset that could exceed ask or drop below bid
+        res = await executor.execute_limit_with_fallback("BTCUSDT", 0.1, "SELL", offset_pct=Decimal("0.5"), timeout_sec=1)
+        assert res["status"] == "SUCCESS_LIMIT"
+        args, kwargs = mock_connector.place_limit_maker_order.call_args
+        # price should not exceed best_ask
+        assert kwargs["price"] <= 60010.0
+
+@pytest.mark.asyncio
+async def test_order_book_depth_and_freshness(executor, mock_connector):
+    # Stale book (> 5s) triggers fallback error branch
+    mock_connector.get_order_book.return_value = {
+        "bids": [["59990", "1"]],
+        "asks": [["60010", "1"]],
+        "_fetched_at": time.time() - 10.0
+    }
+    with patch.object(executor, "execute_market_order", AsyncMock(return_value={"status": "FALLBACK_MARKET"})):
+        res = await executor.execute_limit_with_fallback("BTCUSDT", 0.1, "BUY", timeout_sec=1)
+        assert res["status"] == "FALLBACK_MARKET"
+        # Verifies that limit=20 was requested
+        mock_connector.get_order_book.assert_called_with("BTCUSDT", limit=20)

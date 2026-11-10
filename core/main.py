@@ -114,6 +114,17 @@ def _paper_guard_metrics(paper_state: dict, base_ticker: str, price: float,
 FUSE_BOOK_MAX_AGE_SEC = 5.0
 
 
+def _margin_warning_due(state: dict, m_ratio: float, warning: float, hysteresis_pct: float) -> bool:
+    """Hysteresis latch: alert on a fresh drop below warning; re-arm only after recovery above warning*(1+h)."""
+    if m_ratio >= warning * (1 + hysteresis_pct / 100.0):
+        state["margin_warning_latched"] = False
+        return False
+    if not state.get("margin_warning_latched", False):
+        state["margin_warning_latched"] = True
+        return True
+    return False
+
+
 async def _live_fuse_fill(connector, base_ticker: str, logger: logging.Logger):
     """Live FUSE verdict inputs: account taker rate plus a fresh stamped order book.
     Any unverified input => unconfirmed levels, so dependent reductions are blocked."""
@@ -1010,6 +1021,12 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             state_dirty = False
             paper_state_dirty = False
             any_success = False
+            # Push heartbeat for external watchdogs: catches a stalled event loop even without log activity
+            try:
+                with open(f"{state_file_path}.heartbeat", "w") as _hb:
+                    _hb.write(f"{time.time():.3f}")
+            except OSError:
+                pass
             try:
                 if state.get("startup_blocked") or state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
                     logger.critical("Unreconciled execution: trading remains blocked")
@@ -1171,13 +1188,19 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 state.setdefault("strategy_origin_ms", minute_bars[0][0])
                 strategy_prices = [value for _, value in minute_bars]
                 spread_blocked = False
-                if not paper_mode:
-                    try:
-                        depth = await connector.get_order_book(base_ticker, limit=5)
-                        best_bid, best_ask = float(depth['bids'][0][0]), float(depth['asks'][0][0])
-                        spread_blocked = best_bid <= 0 or best_ask < best_bid or (best_ask-best_bid)/best_bid > max_spread
-                    except Exception as error:
-                        logger.error(f"Spread unconfirmed; rebalance blocked: {error}")
+                mark_sanity_blocked = False
+                max_mark_mid_divergence = float(portfolio_cfg.get("max_mark_mid_divergence", 0.005))
+                try:
+                    depth = await connector.get_order_book(base_ticker, limit=20)
+                    best_bid, best_ask = float(depth['bids'][0][0]), float(depth['asks'][0][0])
+                    spread_blocked = best_bid <= 0 or best_ask < best_bid or (best_ask-best_bid)/best_bid > max_spread
+                    mid_px = (best_bid + best_ask) / 2.0
+                    if price > 0 and abs(price - mid_px) / price > max_mark_mid_divergence:
+                        logger.warning(f"Mark-Sanity Guard: price {price} diverged from mid {mid_px:.6f} > {max_mark_mid_divergence*100:.2f}%; rebalance blocked")
+                        mark_sanity_blocked = True
+                except Exception as error:
+                    if not paper_mode:
+                        logger.error(f"Spread/order book unconfirmed; rebalance blocked: {error}")
                         spread_blocked = True
 
                 # Fetch current data for deviation calculation
@@ -1589,9 +1612,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     await self_kill_pm2(base_ticker, paper_mode)
                     return
 
+                delta_limit_threshold = float(portfolio_cfg.get("delta_limit_threshold", current_config.get("delta_limit_threshold", 0.0)))
                 calc_res = calc.calculate_rebalance(targets, threshold_surplus, threshold_deficit, calc.tpv, ignore_limits, allow_surplus_sell,
                                                     fuse_enabled=portfolio_cfg.get("fuse_enabled", True),
-                                                    share_trail=trail_state, trail_distance=trail_distance)
+                                                    share_trail=trail_state, trail_distance=trail_distance,
+                                                    delta_limit_threshold=delta_limit_threshold)
 
                 if trail_snapshot_before is not None:
                     trail_snapshot_after = tuple(
@@ -1623,7 +1648,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 actions = backtest_rules.filter_actions(actions, strategy_prices, current_config,
                     portfolio_cfg, state, initial_build, ignore_limits and not initial_build_pending)
-                if spread_blocked or (not paper_mode and fuse_fill.get("taker") is None):
+                if spread_blocked or mark_sanity_blocked or (not paper_mode and fuse_fill.get("taker") is None):
                     actions = []
                 state_dirty = True
 
@@ -2281,10 +2306,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 emit_signal('stop', base_ticker, paper_mode)
                                 await self_kill_pm2(base_ticker, paper_mode)
                                 return
-                            elif m_ratio < portfolio_cfg.get("margin_ratio_warning", 5.0):
-                                msg = f"Low margin ratio: {m_ratio:.2f}"
-                                logger.warning(msg)
-                                asyncio.create_task(notifier.send_message(f"⚠️ <b>WARNING</b>: {msg} ({base_ticker})"))
+                            elif m_ratio < margin_warning:
+                                if _margin_warning_due(state, m_ratio, margin_warning, float(portfolio_cfg.get("margin_warning_hysteresis_pct", 10.0))):
+                                    msg = f"Low margin ratio: {m_ratio:.2f}"
+                                    logger.warning(msg)
+                                    asyncio.create_task(notifier.send_message(f"⚠️ <b>WARNING</b>: {msg} ({base_ticker})", dedup_key="margin_warning"))
                     except Exception as e:
                         logger.error(f"Failed to check margin: {e}")
 
