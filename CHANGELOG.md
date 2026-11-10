@@ -1,5 +1,20 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-10 — Delta Limit Gate & Account MaxDD Normalization (Stage 1 Risk Management)
+
+- Dynamic Delta Limit Gate (`core/calculator.py`, `core/main.py`, `backtest/backtest_rebalance.py`):
+  - Added physical delta imbalance metric $\text{delta\_imbalance} = |Q_{\text{long}} - Q_{\text{short}}| / \max(Q_{\text{long}}, Q_{\text{short}})$.
+  - Added configurable `delta_limit_threshold` (defaulting to 0.0 for 100% backward compatibility and parity).
+  - When delta imbalance breaches threshold, trailing pullback wait is bypassed for the excess leg (`red_ready = True`).
+  - Updated `select_tick_actions` with `preferred_reduction` parameter to prioritize reducing the excess leg on rebalance ticks across BACKTEST, PAPER, and REAL modes.
+- Account-level Max Drawdown Normalization (`backtest/backtest_rebalance.py`, `dashboard/swarm_curve.py`, `dashboard/swarm_history.py`):
+  - Normalized account drawdown against total margin capital (`initial_capital + cash_reserve_usdt` / `account_free_margin`) to eliminate misleading >100% drawdown metrics when external collateral buffer is present.
+  - Backtest results report both portfolio TPV `max_dd_pct` and `account_max_dd_pct` (e.g. ZECUSDT Account MaxDD 31.58% vs 110.36%, AGTUSDT 17.20% vs 67.38%, AINUSDT 16.73% vs 93.96%, IDOLUSDT 7.92% vs 39.52%).
+  - Swarm curve and session history in dashboard now calculate and expose `account_max_drawdown_pct`.
+- Tests and verification:
+  - Added unit test suite `tests/test_delta_limit.py` covering imbalance calculations, trailing pullback bypass, action prioritization, and backtest account MaxDD computation.
+  - Full backtests on ZECUSDT, JCTUSDT, AGTUSDT, AINUSDT, and IDOLUSDT show zero regression against baseline.
+
 ## 2026-11-08 — JCTUSDT three-mode parity after the swarm wipe-out
 
 - Isolated comparison on `codex/jct-real-parity`: JCTUSDT, 2026-11-07 15:40 through 2026-11-08 15:40 UTC, 1441 contiguous minutes, frozen config and window from `reports/jct_parity_20261108_1d`. The window reproduces the swarm PAPER wipe-out of 2026-11-08 13:03:38 UTC (`Total Equity -9.46 … EMERGENCY STOP`, pre-fix code, `SAFE=0.00`).
