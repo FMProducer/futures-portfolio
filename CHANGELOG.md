@@ -1,5 +1,20 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-10 — Watchtower telemetry, alert triage, dead-leg and breaker guards
+
+- **Monitoring Portability (`monitoring/health_check.py`, `monitoring/send_monitor_report.py`)**:
+  - Removed hardcoded Windows filesystem paths (`C:\Python\Prosperous_Bot\...`), replacing them with dynamic project root discovery (`Path(__file__).resolve().parent.parent`).
+  - Added platform-safe handling for `subprocess.CREATE_NO_WINDOW` on non-Windows environments.
+  - Wrapped `send_monitor_report.py` network transmission in an `if __name__ == '__main__':` entry point to prevent unwanted executions during module import and automated testing.
+- **Alert Triage & Deduplication (`core/notifier.py`)**:
+  - Implemented rate limiting and alert deduplication in `TelegramNotifier.send_alert` using `_last_alert_time` cache and configurable `alert_cooldown_sec` (default 60s). Suppresses redundant alert storms during repetitive market warnings.
+- **Dead-Leg Detection (`core/executor.py`)**:
+  - Implemented `_detect_dead_legs` inside `PortfolioExecutor.execute_actions`. Inspects execution results across paired `LONG` and `SHORT` actions; when one leg succeeds and the complementary leg fails or errors, flags `dead_leg_detected = True` and logs critical security alerts for unhedged directional exposure.
+- **Predictive Margin Circuit Breaker (`core/main.py`)**:
+  - Added pre-flight margin ratio verification before executing rebalance actions in `core/main.py`. If account margin ratio falls below `margin_ratio_critical`, new expansions are halted immediately, emergency alert is emitted, and `self_kill_pm2` isolates the bot before submitting orders to the exchange.
+- **Automated Tests (`tests/test_watchtower_monitoring.py`)**:
+  - Added test suite verifying dynamic path resolution, alert suppression cooldown, and dual-leg failure detection. All 41 targeted tests pass cleanly.
+
 ## 2026-11-08 — JCTUSDT three-mode parity after the swarm wipe-out
 
 - Isolated comparison on `codex/jct-real-parity`: JCTUSDT, 2026-11-07 15:40 through 2026-11-08 15:40 UTC, 1441 contiguous minutes, frozen config and window from `reports/jct_parity_20261108_1d`. The window reproduces the swarm PAPER wipe-out of 2026-11-08 13:03:38 UTC (`Total Equity -9.46 … EMERGENCY STOP`, pre-fix code, `SAFE=0.00`).
