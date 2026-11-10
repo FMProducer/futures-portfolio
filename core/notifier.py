@@ -36,9 +36,6 @@ class TelegramNotifier:
         self._session = None
         # Максимальное время ожидания при 429, чтобы не блокировать логику бота
         self.max_retry_wait = 30 
-        # Rate-limiting для однотипных предупреждений: подавляем повторный dedup_key в течение кулдауна
-        self.dedup_cooldown_sec = float(self.config.get("telegram_dedup_cooldown_sec", 300.0))
-        self._last_dedup_sent: dict = {}
         
         if not self.enabled:
             if not self.token or not self.chat_id:
@@ -75,16 +72,9 @@ class TelegramNotifier:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def send_message(self, text: str, max_retries: int = 2, force_direct: bool = False, dedup_key=None):
+    async def send_message(self, text: str, max_retries: int = 2, force_direct: bool = False):
         if not self.enabled:
             return False
-
-        if dedup_key is not None and self.dedup_cooldown_sec > 0:
-            now = time.time()
-            if now - self._last_dedup_sent.get(dedup_key, 0.0) < self.dedup_cooldown_sec:
-                logger.info(f"Telegram dedup: suppressing '{dedup_key}' (cooldown {self.dedup_cooldown_sec:.0f}s)")
-                return True
-            self._last_dedup_sent[dedup_key] = now
 
         if self.use_queue and not force_direct:
             return await self._queue_message({"type": "text", "text": text})

@@ -1,7 +1,6 @@
 """Исполнение ордеров на Binance Futures (Hedge Mode)."""
 import logging
 import asyncio
-import time
 from copy import deepcopy
 from uuid import uuid4
 from typing import Dict, Optional, Tuple, Any, List, TYPE_CHECKING
@@ -209,11 +208,8 @@ class PortfolioExecutor:
                 return {"status": "NO_ORDER", "message": "Округлилось до нуля"}
 
         try:
-            # 1. Получаем mid-price и проверяем стоимость с валидацией свежести
-            order_book = await self.connector.get_order_book(symbol, limit=20)
-            stamp = order_book.get("_fetched_at")
-            if stamp is not None and time.time() - stamp > 5.0:
-                raise ValueError(f"Order book for {symbol} is stale: {time.time() - stamp:.2f}s > 5s")
+            # 1. Получаем mid-price и проверяем стоимость
+            order_book = await self.connector.get_order_book(symbol, limit=5)
             best_bid = Decimal(str(order_book["bids"][0][0]))
             best_ask = Decimal(str(order_book["asks"][0][0]))
             mid_price = (best_bid + best_ask) / 2
@@ -223,24 +219,13 @@ class PortfolioExecutor:
                 logger.info(msg)
                 return {"status": "SKIPPED", "message": msg}
 
-            # 2. Рассчитываем цену лимитки (POST-ONLY maker ценообразование)
-            # Чтобы гарантировать maker-статус и избежать мгновенного rejection биржей (-2010),
-            # цена BUY должна быть строго ниже best_ask, а цена SELL строго выше best_bid.
-            # Если mid_price пересекает границу или спред минимальный, держим безопасный буфер внутри спреда.
-            spread = best_ask - best_bid
-            min_buffer = (spread * Decimal('0.1')) if spread > 0 else (mid_price * Decimal('0.0001'))
+            # 2. Рассчитываем цену лимитки (выгоднее mid-price)
             if side == "SELL":
                 limit_price = mid_price * (1 + offset_pct / 100)
-                if limit_price <= best_bid:
-                    limit_price = best_bid + min_buffer
-                if limit_price >= best_ask:
-                    limit_price = max(best_bid + min_buffer, best_ask - min_buffer)
+                if limit_price > best_ask: limit_price = best_ask
             else:
                 limit_price = mid_price * (1 - offset_pct / 100)
-                if limit_price >= best_ask:
-                    limit_price = best_ask - min_buffer
-                if limit_price <= best_bid:
-                    limit_price = min(best_ask - min_buffer, best_bid + min_buffer)
+                if limit_price < best_bid: limit_price = best_bid
 
             # Логирование для статистики
             expected_improvement_pct = abs(limit_price - mid_price) / mid_price * 100
@@ -301,7 +286,6 @@ class PortfolioExecutor:
 
             # Добиваем остаток market-ордером
             remaining_qty = qty - filled_qty
-            # FUSE gate for reductions (existing)
             if remaining_qty > 0 and fuse_gate and reduce_only:
                 # Mandatory live re-confirmation before crossing the spread: a reduction reaches
                 # the market fallback only when closing is confirmed profitable at taker prices;
@@ -311,10 +295,7 @@ class PortfolioExecutor:
                 taker_fee = Decimal(str(raw_fee)) if raw_fee is not None else None
                 px = None
                 try:
-                    fresh = await self.connector.get_order_book(symbol, limit=20)
-                    fresh_stamp = fresh.get("_fetched_at")
-                    if fresh_stamp is not None and time.time() - fresh_stamp > 5.0:
-                        raise ValueError(f"Fresh order book for {symbol} is stale")
+                    fresh = await self.connector.get_order_book(symbol, limit=5)
                     book_side = "bids" if side == "SELL" else "asks"
                     px = book_vwap([(Decimal(str(p)), Decimal(str(q))) for p, q in fresh.get(book_side, [])],
                                    remaining_qty)
@@ -329,36 +310,6 @@ class PortfolioExecutor:
                 if not profitable:
                     logger.warning(f"FUSE pre-fallback gate: {side} {symbol} close unconfirmed or unprofitable; market remainder skipped")
                     remaining_qty = Decimal('0')
-
-            # FUSE gate for expansions (ADD orders) - prevents market fallback without slippage check
-            if remaining_qty > 0 and fuse_gate and not reduce_only:
-                # For expansions, we must confirm that market order won't exceed acceptable slippage
-                raw_fee = fuse_gate.get("taker_fee")
-                taker_fee = Decimal(str(raw_fee)) if raw_fee is not None else None
-                px = None
-                try:
-                    fresh = await self.connector.get_order_book(symbol, limit=20)
-                    stamp = fresh.get("_fetched_at")
-                    if stamp is None or time.time() - stamp > 5.0:
-                        raise ValueError("order book snapshot is stale")
-                    book_side = "asks" if side == "BUY" else "bids"
-                    px = book_vwap([(Decimal(str(p)), Decimal(str(q))) for p, q in fresh.get(book_side, [])],
-                                   remaining_qty)
-                except Exception:
-                    px = None
-                confirmed = taker_fee is not None and Decimal('0') <= taker_fee < 1 and px is not None
-                if not confirmed:
-                    logger.warning(f"FUSE pre-fallback gate: {side} {symbol} expansion unconfirmed (missing rate/book/depth); market remainder skipped")
-                    remaining_qty = Decimal('0')
-                else:
-                    # Check slippage doesn't exceed reasonable bounds
-                    if side == "BUY":
-                        max_slippage = px * (Decimal('1') + taker_fee) - mid_price
-                    else:
-                        max_slippage = mid_price - px * (Decimal('1') - taker_fee)
-                    if max_slippage > mid_price * Decimal('0.005'):  # 0.5% max slippage
-                        logger.warning(f"FUSE pre-fallback gate: {side} {symbol} expansion slippage {max_slippage/mid_price*100:.3f}% exceeds 0.5%; market remainder skipped")
-                        remaining_qty = Decimal('0')
             market_pnl = Decimal('0.0')
             market_comm = Decimal('0.0')
             market_financials_confirmed = True
@@ -436,10 +387,7 @@ class PortfolioExecutor:
         diff_usdt = Decimal(str(action["diff_usdt"]))
         # B7 FIX: Получаем mid_price для симметричного qty
         try:
-            order_book = await self.connector.get_order_book(base_symbol, limit=20)
-            stamp = order_book.get("_fetched_at")
-            if stamp is None or time.time() - stamp > 5.0:
-                raise ValueError("order book snapshot is stale")
+            order_book = await self.connector.get_order_book(base_symbol, limit=5)
             best_bid = Decimal(str(order_book["bids"][0][0]))
             best_ask = Decimal(str(order_book["asks"][0][0]))
             qty_price = (best_bid + best_ask) / Decimal('2')
@@ -677,10 +625,7 @@ class PortfolioExecutor:
                     mid_prices[base_symbol] = Decimal(str(price))
                     continue
                 try:
-                    order_book = await self.connector.get_order_book(base_symbol, limit=20)
-                    stamp = order_book.get("_fetched_at")
-                    if stamp is not None and time.time() - stamp > 5.0:
-                        raise ValueError(f"Order book for {base_symbol} is stale: {time.time() - stamp:.2f}s > 5s")
+                    order_book = await self.connector.get_order_book(base_symbol, limit=5)
                     best_bid = Decimal(str(order_book["bids"][0][0]))
                     best_ask = Decimal(str(order_book["asks"][0][0]))
                     mid_prices[base_symbol] = (best_bid + best_ask) / Decimal('2')
@@ -732,20 +677,11 @@ class PortfolioExecutor:
                     results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient confirmed CASH"}
                     continue
             try:
-                coro = self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)
-                if not paper_mode and not virtual:
-                    # hard deadline so a stalled complementary leg cannot leave an unhedged dead leg
-                    result = await asyncio.wait_for(coro, float((portfolio_cfg or {}).get("dead_leg_timeout_sec", 5.0)))
-                else:
-                    result = await coro
-            except asyncio.TimeoutError:
-                result = {"status": "TIMEOUT", "message": "Dead-leg confirmation timeout"}
+                result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)
             except Exception as exc:
                 result = {"status": "ERROR", "message": str(exc)}
             results_map[id(action)] = result
             if result.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
-                if not paper_mode and not virtual and (portfolio_cfg or {}).get("dead_leg_unwind", True):
-                    await self._flatten_dead_legs(actions, action, leg, symbol, result, results_map, step_sizes, mid_prices, price, batch_state, portfolio_cfg)
                 continue
             if not profit_budget.record_fill(batch_state, result, lev, initial_build, require_confirmed=not paper_mode):
                 continue
@@ -775,30 +711,3 @@ class PortfolioExecutor:
             if budget < 0:
                 logger.error("Paper execution exhausted CASH; blocking remaining increases")
         return [results_map[id(action)] for action in actions]
-
-    async def _flatten_dead_legs(self, actions: List[Dict[str, Any]], failed_action: Dict[str, Any], failed_leg: str, symbol: str, failed_result: Dict[str, Any], results_map: Dict[int, Dict[str, Any]], step_sizes: Optional[Dict[str, float]], mid_prices: Dict[str, Decimal], price: float, batch_state: Dict, portfolio_cfg: Dict[str, Any]) -> None:
-        """Dead-leg kill-switch: flatten already-filled companion legs when the paired leg fails."""
-        for other in actions:
-            if other is failed_action or other.get("type") == "VIRTUAL_ORDER":
-                continue
-            o_res = results_map.get(id(other))
-            if not o_res or o_res.get("unwound") or o_res.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
-                continue
-            o_leg = other.get("position_side")
-            if o_leg in (None, failed_leg) or (other.get("base_symbol") or other.get("symbol", "").split("_")[0]) != symbol:
-                continue
-            o_qty = Decimal(str(o_res.get("qty", 0)))
-            if o_qty <= 0:
-                continue
-            unwind = await self.execute_market_order(
-                symbol=symbol, qty=o_qty, side="SELL" if o_res.get("side") == "BUY" else "BUY",
-                step_size=Decimal(str((step_sizes or {}).get(symbol, 0.0))),
-                reduce_only=True, position_side=o_leg,
-                min_notional=Decimal(str((portfolio_cfg or {}).get("min_notional_usdt", 6.0))),
-                price=mid_prices.get(symbol, price))
-            o_res["unwound"] = True
-            o_res["unwind_status"] = unwind.get("status")
-            logger.critical(f"🚨 DEAD-LEG UNWIND {symbol}: {failed_leg} leg {failed_result.get('status', 'ERROR')}; flattened {o_leg} qty={o_qty} -> {unwind.get('status')}")
-            if unwind.get("status") in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK") and batch_state.get("positions") is not None:
-                left = Decimal(str(batch_state["positions"].get(f"{symbol}_{o_leg}", 0))) - Decimal(str(unwind.get("executed_qty", o_qty)))
-                batch_state["positions"][f"{symbol}_{o_leg}"] = str(left if left > 0 else 0)

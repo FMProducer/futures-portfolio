@@ -667,7 +667,6 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         reinvestment_ratio: float = float(portfolio_cfg.get("reinvestment_ratio") or 0.0)
         siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0),
                                  reinvestment_ratio, portfolio_cfg.get("siphoning_pct"))
-        delta_limit_threshold: float = float(portfolio_cfg.get("delta_limit_threshold", config.get("delta_limit_threshold", 0.0)))
         trail_distance: float = float(config.get("rebalance_share_trail_distance", 0.0))
         if not math.isfinite(trail_distance) or trail_distance < 0:
             raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -1095,14 +1094,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 share_trail=state.share_trail,
                 trail_distance=trail_distance,
                 share_basis_scale=share_basis_scale,
-                delta_limit_threshold=delta_limit_threshold,
             )
             actions = calc_res["actions"]
-
-            if calc_res.get("delta_limit_triggered"):
-                state.log_event(i, "delta_limit_guard", float(state.get_tpv_fast(float(mid_price))),
-                                f"imbalance {calc_res.get('delta_imbalance', 0.0)*100:.2f}% > {delta_limit_threshold*100:.1f}%; excess {calc_res.get('excess_leg')}",
-                                excess_leg=calc_res.get("excess_leg"))
 
             # Trailing diagnostics: arm/reset events and generated signals
             if state.share_trail is not None:
@@ -1518,12 +1511,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             m_short = state.margin_short()
 
             if state.pos_long > 0 or state.pos_short > 0:
-                # Continuous margin evaluation: check against adverse bar extreme
-                if state.pos_short >= state.pos_long:
-                    pred_price = Decimal(str(max(high_prices[i], close_prices[i])))
-                else:
-                    pred_price = Decimal(str(min(low_prices[i], close_prices[i])))
-                cross_liq_dist_pct = state.cross_margin_distance_pct(pred_price, mmr)
+                cross_liq_dist_pct = state.cross_margin_distance_pct(mid_price, mmr)
 
                 liq_distance_warn_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)))
                 liq_distance_crit_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)))
