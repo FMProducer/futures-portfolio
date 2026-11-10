@@ -113,3 +113,5 @@ core/paper_budget.sqlite
 data/*USDT_data_manifest.json
 
 *.funding.sqlite*
+core/paper_state_*USDT.json.heartbeat
+core/paper_budget.sqlite

@@ -677,11 +677,20 @@ class PortfolioExecutor:
                     results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient confirmed CASH"}
                     continue
             try:
-                result = await self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)
+                coro = self._execute_single_action(approved, price, paper_mode, portfolio_cfg or {}, step_sizes or {}, batch_state, mid_prices)
+                if not paper_mode and not virtual:
+                    # hard deadline so a stalled complementary leg cannot leave an unhedged dead leg
+                    result = await asyncio.wait_for(coro, float((portfolio_cfg or {}).get("dead_leg_timeout_sec", 5.0)))
+                else:
+                    result = await coro
+            except asyncio.TimeoutError:
+                result = {"status": "TIMEOUT", "message": "Dead-leg confirmation timeout"}
             except Exception as exc:
                 result = {"status": "ERROR", "message": str(exc)}
             results_map[id(action)] = result
             if result.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
+                if not paper_mode and not virtual and (portfolio_cfg or {}).get("dead_leg_unwind", True):
+                    await self._flatten_dead_legs(actions, action, leg, symbol, result, results_map, step_sizes, mid_prices, price, batch_state, portfolio_cfg)
                 continue
             if not profit_budget.record_fill(batch_state, result, lev, initial_build, require_confirmed=not paper_mode):
                 continue
@@ -711,3 +720,30 @@ class PortfolioExecutor:
             if budget < 0:
                 logger.error("Paper execution exhausted CASH; blocking remaining increases")
         return [results_map[id(action)] for action in actions]
+
+    async def _flatten_dead_legs(self, actions: List[Dict[str, Any]], failed_action: Dict[str, Any], failed_leg: str, symbol: str, failed_result: Dict[str, Any], results_map: Dict[int, Dict[str, Any]], step_sizes: Optional[Dict[str, float]], mid_prices: Dict[str, Decimal], price: float, batch_state: Dict, portfolio_cfg: Dict[str, Any]) -> None:
+        """Dead-leg kill-switch: flatten already-filled companion legs when the paired leg fails."""
+        for other in actions:
+            if other is failed_action or other.get("type") == "VIRTUAL_ORDER":
+                continue
+            o_res = results_map.get(id(other))
+            if not o_res or o_res.get("unwound") or o_res.get("status") not in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK"):
+                continue
+            o_leg = other.get("position_side")
+            if o_leg in (None, failed_leg) or (other.get("base_symbol") or other.get("symbol", "").split("_")[0]) != symbol:
+                continue
+            o_qty = Decimal(str(o_res.get("qty", 0)))
+            if o_qty <= 0:
+                continue
+            unwind = await self.execute_market_order(
+                symbol=symbol, qty=o_qty, side="SELL" if o_res.get("side") == "BUY" else "BUY",
+                step_size=Decimal(str((step_sizes or {}).get(symbol, 0.0))),
+                reduce_only=True, position_side=o_leg,
+                min_notional=Decimal(str((portfolio_cfg or {}).get("min_notional_usdt", 6.0))),
+                price=mid_prices.get(symbol, price))
+            o_res["unwound"] = True
+            o_res["unwind_status"] = unwind.get("status")
+            logger.critical(f"🚨 DEAD-LEG UNWIND {symbol}: {failed_leg} leg {failed_result.get('status', 'ERROR')}; flattened {o_leg} qty={o_qty} -> {unwind.get('status')}")
+            if unwind.get("status") in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK") and batch_state.get("positions") is not None:
+                left = Decimal(str(batch_state["positions"].get(f"{symbol}_{o_leg}", 0))) - Decimal(str(unwind.get("executed_qty", o_qty)))
+                batch_state["positions"][f"{symbol}_{o_leg}"] = str(left if left > 0 else 0)
