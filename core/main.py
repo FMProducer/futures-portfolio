@@ -1709,6 +1709,22 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                         )
                         asyncio.create_task(notifier.send_message(rebalance_msg))
 
+                        # Predictive Circuit Breaker: check margin ratio before submitting new live expansions
+                        if not paper_mode and margin_critical > 0:
+                            try:
+                                pred_m_info = await connector.get_margin_ratio()
+                                pred_ratio = pred_m_info.get("margin_ratio", float('inf'))
+                                if pred_ratio < margin_critical:
+                                    logger.critical(
+                                        f"🚨 [PREDICTIVE CIRCUIT BREAKER] Margin ratio {pred_ratio:.2f} < critical {margin_critical:.2f}. "
+                                        f"Halting rebalance expansions on {base_ticker}."
+                                    )
+                                    await notifier.send_alert("CIRCUIT BREAKER", f"Margin ratio critical ({pred_ratio:.2f}) before rebalance!")
+                                    await self_kill_pm2(base_ticker, paper_mode)
+                                    return
+                            except Exception as _mc_err:
+                                logger.error(f"Predictive margin check error: {_mc_err}")
+
                         # 1. Execute actions concurrently
                         budget_args = {"cash_budget": calc.val_cash, "initial_build": initial_build}
                         if not paper_mode:

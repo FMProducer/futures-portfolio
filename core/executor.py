@@ -710,4 +710,35 @@ class PortfolioExecutor:
                 budget -= qty * fill_price / lev
             if budget < 0:
                 logger.error("Paper execution exhausted CASH; blocking remaining increases")
-        return [results_map[id(action)] for action in actions]
+
+        # Dead-Leg Watchtower: detect asymmetric failures between paired legs
+        ordered_results = [results_map[id(action)] for action in actions]
+        self._detect_dead_legs(actions, ordered_results)
+        return ordered_results
+
+    def _detect_dead_legs(self, actions: List[Dict[str, Any]], results: List[Dict[str, Any]]) -> None:
+        """Inspect paired execution outcomes and flag unhedged dead-leg states."""
+        by_pair: Dict[str, Dict[str, Any]] = {}
+        for action, res in zip(actions, results):
+            if action.get("type") == "VIRTUAL_ORDER":
+                continue
+            base = action.get("base_symbol") or (action.get("symbol", "").split("_")[0])
+            leg = action.get("position_side", "LONG")
+            status = res.get("status")
+            is_success = status in ("SUCCESS", "SUCCESS_LIMIT", "SUCCESS_FALLBACK")
+            by_pair.setdefault(base, {})[leg] = {"success": is_success, "status": status, "result": res}
+
+        for base, legs in by_pair.items():
+            if "LONG" in legs and "SHORT" in legs:
+                long_ok = legs["LONG"]["success"]
+                short_ok = legs["SHORT"]["success"]
+                if long_ok != short_ok:
+                    failed_leg = "SHORT" if long_ok else "LONG"
+                    success_leg = "LONG" if long_ok else "SHORT"
+                    logger.critical(
+                        f"🚨 [DEAD-LEG DETECTED] Asymmetric execution on {base}: "
+                        f"{success_leg} succeeded but {failed_leg} failed ({legs[failed_leg]['status']}). "
+                        f"Unhedged exposure risk active!"
+                    )
+                    legs[failed_leg]["result"]["dead_leg_detected"] = True
+                    legs[success_leg]["result"]["dead_leg_detected"] = True
