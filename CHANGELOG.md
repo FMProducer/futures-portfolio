@@ -1,5 +1,30 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-10 — Agnes REAL Runtime Parity & Execution Unwind (`agnes-verify_real_runtime_parity`)
+
+- Dead-leg Unwind & Execution Protection on REAL (`core/executor.py`, commit `65b570b`):
+  - Hard deadline `dead_leg_timeout_sec` (5.0s default) added to `_execute_single_action` for REAL/non-virtual legs.
+  - If a leg execution times out or fails on REAL, any previously executed opening leg is automatically unwound via market order to prevent unhedged directional exposure (`dead_leg_unwind` enabled). Paper mode never unwinds.
+  - Added unit test suite `tests/test_executor.py` covering unwind triggers, timeout handling, and safety guards.
+- Margin Warning Hysteresis & Telegram Dedup (`core/main.py`, `core/notifier.py`, `monitoring/send_monitor_report.py`):
+  - Added hysteresis latch `_margin_warning_due` in `core/main.py` with `margin_warning_hysteresis_pct` (10.0% default) to avoid flapping alerts.
+  - Added `dedup_key` mechanism in `TelegramNotifier.send_message` with cooldown `dedup_cooldown_sec` (60.0s default) to prevent alert spamming.
+- Heartbeat Watchdog Integration (`core/main.py`, `monitoring/health_check.py`):
+  - Added periodic `.heartbeat` file write in `rebalance_loop` to detect stalled async event loops even without log emissions.
+  - Extended `health_check.py` to inspect `.heartbeat` files and report stale worker threads.
+
+## 2026-11-09 — Execution Engine Audit Fixes (`worktree-fix-execution-engine-audit`)
+
+- Order Book & Execution Hardening (`core/executor.py`, commit `c7ef9bf`):
+  - Increased order book depth from `limit=5` to `limit=20` across order book queries.
+  - Added order book staleness validation checking `_fetched_at` timestamp (rejecting snapshots older than 5.0s).
+  - Offset POST-ONLY limit order placement by `tick_size` (0.1) when price meets best bid/ask to avoid post-only rejections.
+  - Added slippage FUSE gate for expansion (ADD) orders in `execute_limit_with_fallback`, preventing market fallbacks when slippage exceeds 0.5%.
+- Mark-Sanity & Spread Guards (`core/main.py`, `backtest/backtest_rebalance.py`):
+  - Added Mark-Sanity Guard in `core/main.py`: blocks rebalancing if basis divergence between Mark Price and Mid Price exceeds 0.3%.
+  - Enabled spread filter validation in PAPER mode.
+  - Predictive liquidation guard in `backtest/backtest_rebalance.py` updated to evaluate against intrabar `adverse_price` (high for net short, low for net long).
+
 ## 2026-11-10 — Delta Limit Gate & Account MaxDD Normalization (Stage 1 Risk Management)
 
 - Dynamic Delta Limit Gate (`core/calculator.py`, `core/main.py`, `backtest/backtest_rebalance.py`):
