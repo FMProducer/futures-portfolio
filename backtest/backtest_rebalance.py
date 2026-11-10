@@ -1199,7 +1199,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     if a.get("key") in missing and not a.get("is_reduction", False)
                 ]
 
-            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key)
+            delta_threshold = float(portfolio_cfg.get("delta_limit_threshold", 0.0) or 0.0)
+            delta_bias = None
+            if delta_threshold > 0:
+                ql, qs = float(state.pos_long), float(state.pos_short)
+                max_q = max(ql, qs)
+                if max_q > 0 and abs(ql - qs) / max_q > delta_threshold:
+                    delta_bias = "BASE_LONG" if ql > qs else "BASE_SHORT"
+            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key, delta_bias_side=delta_bias)
 
             if actions:
                 is_initial_formation = (
@@ -1704,13 +1711,24 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         max_eq: npt.NDArray[np.float64] = np.maximum(np.maximum.accumulate(equity_curve), initial_capital)
         dd: npt.NDArray[np.float64] = (max_eq - equity_curve) / (max_eq + 1e-9)
         max_dd_pct: float = np.max(dd) * 100 if len(dd) > 0 else 0.0
+        # Account MaxDD: normalized to total collateral (bot trading capital + external cash reserve)
+        acc_reserve = float(cash_reserve_usdt)
+        acc_curve = equity_curve + acc_reserve
+        acc_init = initial_capital + acc_reserve
+        max_acc_eq = np.maximum(np.maximum.accumulate(acc_curve), acc_init)
+        acc_dd = (max_acc_eq - acc_curve) / (max_acc_eq + 1e-9)
+        account_max_dd_pct: float = np.max(acc_dd) * 100 if len(acc_dd) > 0 else 0.0
         asset_chg_pct: float = (close_prices[-1] / (close_prices[0] + 1e-9) - 1) * 100
 
-        # --- Sortino Ratio ---
-        # Средняя доходность за бар / downside deviation
+        # --- Sortino & Sharpe Ratios ---
+        # Средняя доходность за бар / downside deviation & total std dev
+        annual_bars = float(bars_per_day) * 365.0
+        ann_factor = math.sqrt(annual_bars)
         if len(equity_curve) > 1:
             bar_returns = np.diff(equity_curve) / (equity_curve[:-1] + 1e-9)
             mean_return = np.mean(bar_returns)
+            std_return = np.std(bar_returns)
+            sharpe_ratio = float(mean_return / (std_return + 1e-9) * ann_factor) if std_return > 0 else 0.0
             # Downside deviation: только отрицательные доходности
             negative_returns = bar_returns[bar_returns < 0]
             if len(negative_returns) > 0:
@@ -1718,13 +1736,17 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 sortino_ratio = mean_return / (downside_dev + 1e-9)
             else:
                 sortino_ratio = mean_return / 1e-9  # нет отрицательных — идеально
+            sortino_annualized = float(sortino_ratio * ann_factor)
         else:
             sortino_ratio = 0.0
+            sortino_annualized = 0.0
+            sharpe_ratio = 0.0
 
         if not quiet:
             logger.info(f"Refactored Cross-Margin Backtest for {base_ticker}:")
-            logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% | Cycles: {state.cycles}")
-            logger.info(f"Sortino: {sortino_ratio:.4f} | Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
+            logger.info(f"Profit: {profit_pct:+.2f}% | Bot MaxDD: {max_dd_pct:.2f}% | Account MaxDD: {account_max_dd_pct:.2f}% | Cycles: {state.cycles}")
+            logger.info(f"Sortino (ann/raw): {sortino_annualized:.4f} / {sortino_ratio:.6f} | Sharpe (ann): {sharpe_ratio:.4f}")
+            logger.info(f"Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
             logger.info(f"Skipped Expansions: {state.skipped_expansions_counter} | Stops: {state.stops_counter} | Liqs: {state.liquidations_counter}")
             logger.info(f"Trend Guard blocks: {tg_blocked_count} | Velocity Guard blocks: {vg_blocked_count} | Trend-add blocks: {trend_add_blocks}")
             logger.info(f"Share trailing LONG/SHORT: distance={trail_distance:g} | model=pullback_rebound | consumed fills={state.share_trail_consumes}")
@@ -1749,6 +1771,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "stopped_bar": stopped_bar,
             "profit_pct": float(profit_pct),
             "max_dd_pct": float(max_dd_pct),
+            "account_max_dd_pct": float(account_max_dd_pct),
             "cycles": int(state.cycles),
             "asset_chg_pct": float(asset_chg_pct),
             "siphoning_reserve": float(state.siphoning_reserve),
@@ -1782,6 +1805,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 "signal_counts": dict(htf_signal_counts),
             },
             "sortino_ratio": float(sortino_ratio),
+            "sortino_annualized": float(sortino_annualized),
+            "sharpe_ratio": float(sharpe_ratio),
             "equity_curve": equity_curve.tolist(),
             "fills": state.fills,
             "fill_count": state.fill_count,

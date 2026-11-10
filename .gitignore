@@ -14,7 +14,6 @@ node_modules/
 reports/
 
 # ── Data artifacts (large binaries, never commit) ──────────────
-data/*.feather
 data/*.npz
 data/*.parquet
 *.npz
@@ -109,10 +108,7 @@ core/paper_budget.sqlite
 best_netdd_config_*.json
 tickers.txt
 config.json
-data/funding_AGTUSDT.json
-data/AGTUSDT_funding_rates.json
 core/paper_budget.sqlite
-data/*USDT_funding_rates.json
 .gitignore
 data/*USDT_data_manifest.json
 
