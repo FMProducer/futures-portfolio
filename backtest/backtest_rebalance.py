@@ -1199,7 +1199,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     if a.get("key") in missing and not a.get("is_reduction", False)
                 ]
 
-            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key)
+            delta_threshold = float(portfolio_cfg.get("delta_limit_threshold", 0.0) or 0.0)
+            delta_bias = None
+            if delta_threshold > 0:
+                ql, qs = float(state.pos_long), float(state.pos_short)
+                max_q = max(ql, qs)
+                if max_q > 0 and abs(ql - qs) / max_q > delta_threshold:
+                    delta_bias = "BASE_LONG" if ql > qs else "BASE_SHORT"
+            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key, delta_bias_side=delta_bias)
 
             if actions:
                 is_initial_formation = (
@@ -1704,6 +1711,13 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         max_eq: npt.NDArray[np.float64] = np.maximum(np.maximum.accumulate(equity_curve), initial_capital)
         dd: npt.NDArray[np.float64] = (max_eq - equity_curve) / (max_eq + 1e-9)
         max_dd_pct: float = np.max(dd) * 100 if len(dd) > 0 else 0.0
+        # Account MaxDD: normalized to total collateral (bot trading capital + external cash reserve)
+        acc_reserve = float(cash_reserve_usdt)
+        acc_curve = equity_curve + acc_reserve
+        acc_init = initial_capital + acc_reserve
+        max_acc_eq = np.maximum(np.maximum.accumulate(acc_curve), acc_init)
+        acc_dd = (max_acc_eq - acc_curve) / (max_acc_eq + 1e-9)
+        account_max_dd_pct: float = np.max(acc_dd) * 100 if len(acc_dd) > 0 else 0.0
         asset_chg_pct: float = (close_prices[-1] / (close_prices[0] + 1e-9) - 1) * 100
 
         # --- Sortino & Sharpe Ratios ---
@@ -1730,7 +1744,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
         if not quiet:
             logger.info(f"Refactored Cross-Margin Backtest for {base_ticker}:")
-            logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% | Cycles: {state.cycles}")
+            logger.info(f"Profit: {profit_pct:+.2f}% | Bot MaxDD: {max_dd_pct:.2f}% | Account MaxDD: {account_max_dd_pct:.2f}% | Cycles: {state.cycles}")
             logger.info(f"Sortino (ann/raw): {sortino_annualized:.4f} / {sortino_ratio:.6f} | Sharpe (ann): {sharpe_ratio:.4f}")
             logger.info(f"Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
             logger.info(f"Skipped Expansions: {state.skipped_expansions_counter} | Stops: {state.stops_counter} | Liqs: {state.liquidations_counter}")
@@ -1757,6 +1771,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "stopped_bar": stopped_bar,
             "profit_pct": float(profit_pct),
             "max_dd_pct": float(max_dd_pct),
+            "account_max_dd_pct": float(account_max_dd_pct),
             "cycles": int(state.cycles),
             "asset_chg_pct": float(asset_chg_pct),
             "siphoning_reserve": float(state.siphoning_reserve),
