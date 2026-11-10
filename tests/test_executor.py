@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 import asyncio
+import time
 from decimal import Decimal
 
 from futures_portfolio.core.executor import PortfolioExecutor
@@ -404,3 +405,36 @@ async def test_execute_single_action_real_limit(executor, mock_connector):
     assert res["status"] == "SUCCESS"
     assert res["commission"] == 0.02
     assert res["execution_id"] == "binance:BTCUSDT:123"
+
+@pytest.mark.asyncio
+async def test_execute_limit_maker_price_bounds(executor, mock_connector):
+    # Tests that limit price respects bounds to avoid immediate post-only taker rejection
+    mock_connector.get_order_book.return_value = {
+        "bids": [["59990", "1"]],
+        "asks": [["60010", "1"]],
+        "_fetched_at": time.time()
+    }
+    mock_connector.place_limit_maker_order.return_value = {"orderId": 124}
+    mock_connector.get_order_status.return_value = {"status": "FILLED", "executedQty": "0.1", "avgPrice": "60000"}
+
+    with patch.object(mock_connector, "get_order_trades", AsyncMock(return_value=[])):
+        # For SELL with large offset that could exceed ask or drop below bid
+        res = await executor.execute_limit_with_fallback("BTCUSDT", 0.1, "SELL", offset_pct=Decimal("0.5"), timeout_sec=1)
+        assert res["status"] == "SUCCESS_LIMIT"
+        args, kwargs = mock_connector.place_limit_maker_order.call_args
+        # price should not exceed best_ask
+        assert kwargs["price"] <= 60010.0
+
+@pytest.mark.asyncio
+async def test_order_book_depth_and_freshness(executor, mock_connector):
+    # Stale book (> 5s) triggers fallback error branch
+    mock_connector.get_order_book.return_value = {
+        "bids": [["59990", "1"]],
+        "asks": [["60010", "1"]],
+        "_fetched_at": time.time() - 10.0
+    }
+    with patch.object(executor, "execute_market_order", AsyncMock(return_value={"status": "FALLBACK_MARKET"})):
+        res = await executor.execute_limit_with_fallback("BTCUSDT", 0.1, "BUY", timeout_sec=1)
+        assert res["status"] == "FALLBACK_MARKET"
+        # Verifies that limit=20 was requested
+        mock_connector.get_order_book.assert_called_with("BTCUSDT", limit=20)

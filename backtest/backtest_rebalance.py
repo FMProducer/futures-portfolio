@@ -1504,7 +1504,12 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             m_short = state.margin_short()
 
             if state.pos_long > 0 or state.pos_short > 0:
-                cross_liq_dist_pct = state.cross_margin_distance_pct(mid_price, mmr)
+                # Continuous margin evaluation: check against adverse bar extreme
+                if state.pos_short >= state.pos_long:
+                    pred_price = Decimal(str(max(high_prices[i], close_prices[i])))
+                else:
+                    pred_price = Decimal(str(min(low_prices[i], close_prices[i])))
+                cross_liq_dist_pct = state.cross_margin_distance_pct(pred_price, mmr)
 
                 liq_distance_warn_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)))
                 liq_distance_crit_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)))
