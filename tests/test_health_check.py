@@ -3,7 +3,6 @@ import json
 import os
 import io
 import sys
-import time
 import subprocess
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -144,37 +143,6 @@ def test_check_recent_errors(tmp_path):
             assert len(res) == 1
             assert res[0]["file"] == "err_active.log"
             assert res[0]["last_errors"] == ["line 2", "line 3", "line 4", "line 5", "line 6"]
-
-def test_check_heartbeats(tmp_path):
-    fresh = tmp_path / "real_state_BTCUSDT.json.heartbeat"
-    fresh.write_text(f"{time.time()}", encoding="utf-8")
-    stale = tmp_path / "real_state_ETHUSDT.json.heartbeat"
-    stale.write_text(f"{time.time() - 3600}", encoding="utf-8")
-    broken = tmp_path / "real_state_SOLUSDT.json.heartbeat"
-    broken.write_text("not-a-number", encoding="utf-8")
-
-    with patch("futures_portfolio.monitoring.health_check.STATE_DIR", tmp_path):
-        res = health_check.check_heartbeats()
-
-    assert res["real_state_BTCUSDT.json.heartbeat"]["stale"] is False
-    assert res["real_state_ETHUSDT.json.heartbeat"]["stale"] is True
-    assert "error" in res["real_state_SOLUSDT.json.heartbeat"]
-
-
-def test_main_includes_heartbeats(tmp_path):
-    captured_output = io.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = captured_output
-    try:
-        with patch("futures_portfolio.monitoring.health_check.STATE_DIR", tmp_path), \
-             patch("futures_portfolio.monitoring.health_check.LOG_DIR", tmp_path), \
-             patch("futures_portfolio.monitoring.health_check.check_pm2", return_value={"status": "ok"}):
-            health_check.main()
-    finally:
-        sys.stdout = old_stdout
-    data = json.loads(captured_output.getvalue())
-    assert "heartbeats" in data
-
 
 def test_main(tmp_path):
     captured_output = io.StringIO()
