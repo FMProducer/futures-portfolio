@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-PROJECT_DIR = Path(r"C:\Python\Prosperous_Bot\futures_portfolio")
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = PROJECT_DIR / "logs"
 STATE_DIR = PROJECT_DIR
 
@@ -28,7 +28,7 @@ def check_pm2():
         r = subprocess.run(
             ["pm2", "jlist"],
             capture_output=True, text=True, timeout=10,
-            creationflags=subprocess.CREATE_NO_WINDOW
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
         )
         if r.returncode != 0:
             return {"status": "error", "detail": r.stderr[:200]}
@@ -109,13 +109,27 @@ def check_recent_errors():
             pass
     return errors
 
+def check_heartbeats():
+    """Проверяет свежесть push-heartbeat, который каждый бот пишет каждый цикл."""
+    results = {}
+    for hb in sorted(STATE_DIR.glob("*.heartbeat")):
+        try:
+            with open(hb, "r", encoding="utf-8") as f:
+                ts = float(f.read().strip())
+            age_min = (time.time() - ts) / 60
+            results[hb.name] = {"age_min": round(age_min, 1), "stale": age_min > 5}
+        except Exception:
+            results[hb.name] = {"error": "unreadable heartbeat"}
+    return results
+
 def main():
     result = {
         "timestamp": datetime.now().isoformat(),
         "pm2": check_pm2(),
         "real_states": check_state_files(),
         "blacklist": check_blacklist(),
-        "recent_errors": check_recent_errors()
+        "recent_errors": check_recent_errors(),
+        "heartbeats": check_heartbeats()
     }
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

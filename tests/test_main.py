@@ -368,3 +368,17 @@ async def test_handle_liquidation_guard_no_config_write(tmp_path):
     with patch.object(Path, 'write_text') as write:
         await test_real_liquidation_guard_requires_durable_context(tmp_path)
     write.assert_not_called()
+
+
+def test_margin_warning_hysteresis_latch():
+    from futures_portfolio.core.main import _margin_warning_due
+    state = {}
+    assert _margin_warning_due(state, 4.0, 5.0, 10.0) is True    # fresh drop -> alert + latch
+    assert state["margin_warning_latched"] is True
+    assert _margin_warning_due(state, 4.5, 5.0, 10.0) is False   # still below threshold -> suppressed
+    assert _margin_warning_due(state, 5.3, 5.0, 10.0) is False   # hysteresis band 5.0..5.5 -> stays latched
+    assert state["margin_warning_latched"] is True
+    assert _margin_warning_due(state, 5.6, 5.0, 10.0) is False   # recovered above 5.5 -> un-latch
+    assert state["margin_warning_latched"] is False
+    assert _margin_warning_due(state, 4.9, 5.0, 10.0) is True    # new drop -> alert again
+

@@ -308,6 +308,65 @@ async def test_send_photo_exception(env_setup, tmp_path):
         assert result is False
 
 @pytest.mark.asyncio
+async def test_send_message_dedup_suppresses_repeat(env_setup):
+    notifier = TelegramNotifier()
+    notifier.use_queue = False
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=None)
+    mock_session = MagicMock()
+    mock_session.closed = False
+    mock_session.post.return_value = mock_resp
+    notifier._session = mock_session
+
+    assert await notifier.send_message("Low margin ratio: 4.90", force_direct=True, dedup_key="margin_warning") is True
+    assert await notifier.send_message("Low margin ratio: 4.80", force_direct=True, dedup_key="margin_warning") is True
+    assert mock_session.post.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_send_message_dedup_rearm_after_cooldown(env_setup):
+    notifier = TelegramNotifier()
+    notifier.use_queue = False
+    notifier.dedup_cooldown_sec = 0.01
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=None)
+    mock_session = MagicMock()
+    mock_session.closed = False
+    mock_session.post.return_value = mock_resp
+    notifier._session = mock_session
+
+    assert await notifier.send_message("A", force_direct=True, dedup_key="k") is True
+    await asyncio.sleep(0.02)
+    assert await notifier.send_message("B", force_direct=True, dedup_key="k") is True
+    assert mock_session.post.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_send_message_without_dedup_key_is_never_suppressed(env_setup):
+    notifier = TelegramNotifier()
+    notifier.use_queue = False
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=None)
+    mock_session = MagicMock()
+    mock_session.closed = False
+    mock_session.post.return_value = mock_resp
+    notifier._session = mock_session
+
+    assert await notifier.send_message("A", force_direct=True) is True
+    assert await notifier.send_message("A", force_direct=True) is True
+    assert mock_session.post.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_send_alert(env_setup):
     notifier = TelegramNotifier()
     with patch.object(notifier, "send_message", AsyncMock()) as mock_send:

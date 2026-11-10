@@ -114,6 +114,17 @@ def _paper_guard_metrics(paper_state: dict, base_ticker: str, price: float,
 FUSE_BOOK_MAX_AGE_SEC = 5.0
 
 
+def _margin_warning_due(state: dict, m_ratio: float, warning: float, hysteresis_pct: float) -> bool:
+    """Hysteresis latch: alert on a fresh drop below warning; re-arm only after recovery above warning*(1+h)."""
+    if m_ratio >= warning * (1 + hysteresis_pct / 100.0):
+        state["margin_warning_latched"] = False
+        return False
+    if not state.get("margin_warning_latched", False):
+        state["margin_warning_latched"] = True
+        return True
+    return False
+
+
 async def _live_fuse_fill(connector, base_ticker: str, logger: logging.Logger):
     """Live FUSE verdict inputs: account taker rate plus a fresh stamped order book.
     Any unverified input => unconfirmed levels, so dependent reductions are blocked."""
@@ -1010,6 +1021,12 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
             state_dirty = False
             paper_state_dirty = False
             any_success = False
+            # Push heartbeat for external watchdogs: catches a stalled event loop even without log activity
+            try:
+                with open(f"{state_file_path}.heartbeat", "w") as _hb:
+                    _hb.write(f"{time.time():.3f}")
+            except OSError:
+                pass
             try:
                 if state.get("startup_blocked") or state.get("status") in ("portfolio_default", "modeled_liquidation", "reconciliation_required"):
                     logger.critical("Unreconciled execution: trading remains blocked")
@@ -2275,10 +2292,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 emit_signal('stop', base_ticker, paper_mode)
                                 await self_kill_pm2(base_ticker, paper_mode)
                                 return
-                            elif m_ratio < portfolio_cfg.get("margin_ratio_warning", 5.0):
-                                msg = f"Low margin ratio: {m_ratio:.2f}"
-                                logger.warning(msg)
-                                asyncio.create_task(notifier.send_message(f"⚠️ <b>WARNING</b>: {msg} ({base_ticker})"))
+                            elif m_ratio < margin_warning:
+                                if _margin_warning_due(state, m_ratio, margin_warning, float(portfolio_cfg.get("margin_warning_hysteresis_pct", 10.0))):
+                                    msg = f"Low margin ratio: {m_ratio:.2f}"
+                                    logger.warning(msg)
+                                    asyncio.create_task(notifier.send_message(f"⚠️ <b>WARNING</b>: {msg} ({base_ticker})", dedup_key="margin_warning"))
                     except Exception as e:
                         logger.error(f"Failed to check margin: {e}")
 
