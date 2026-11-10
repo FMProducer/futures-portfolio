@@ -1,26 +1,19 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
-## 2026-11-09 — Quant & Backtest Audit, Delta Drift Stabilization & Metric Hardening
+## 2026-11-10 — Watchtower telemetry, alert triage, dead-leg and breaker guards
 
-- **Quant & Backtest Audit across 5 local 1-year minute-candle datasets (data/):**
-  - **ZECUSDT (525600 bars):** Net Profit +103.27%, MaxDD 110.36%, Sortino (ann) 0.5908, Sharpe (ann) 0.5870, Cycles 260, Stops 46, Liqs 0 (Asset +388.70%).
-  - **AGTUSDT (525600 bars):** Net Profit +421.26%, MaxDD 67.38%, Sortino (ann) 1.9575, Sharpe (ann) 1.5562, Cycles 391, Stops 85, Liqs 0 (Asset +1607.61%).
-  - **AINUSDT (525600 bars):** Net Profit +203.88%, MaxDD 93.96%, Sortino (ann) 1.8850, Sharpe (ann) 1.5794, Cycles 327, Stops 55, Liqs 0 (Asset -70.75%).
-  - **IDOLUSDT (525600 bars):** Net Profit +37.05%, MaxDD 39.52%, Sortino (ann) 0.7250, Sharpe (ann) 0.7818, Cycles 188, Stops 34, Liqs 0 (Asset -71.19%).
-  - **JCTUSDT (523031 bars):** Net Profit +771.10%, MaxDD 146.88%, Sortino (ann) -0.5800, Sharpe (ann) 1.4881, Cycles 582, Stops 113, Liqs 0 (Asset +83.91%).
-- **Native Binance Margin Ratio (`core/connector.py`):**
-  - Exposes native Binance futures ratio `binance_margin_ratio` (`totalMaintMargin / totalMarginBalance`) with proper zero/infinity edge case protection.
-  - Preserves `margin_ratio` as coverage ratio (`totalMarginBalance / totalMaintMargin`) for backwards compatibility with configured warning/critical thresholds.
-- **Annualized Sharpe & Sortino Metrics (`backtest/backtest_rebalance.py`):**
-  - Added annualized Sharpe ratio and annualization of Sortino ratio using the annual minute scale $\sqrt{525600} \approx 724.98$.
-  - Output dictionary now includes `sharpe_ratio`, `sortino_annualized`, and raw `sortino_ratio`.
-- **Account MaxDD Accounting (`backtest/backtest_rebalance.py`):**
-  - Added `account_max_dd_pct` normalized to total margin collateral (`trading_capital` + `cash_reserve_usdt`). Clarifies and eliminates the artifact where isolated bot MaxDD exceeded 100% despite the overall margin account remaining well-capitalized (e.g. ZECUSDT Account MaxDD is 31.58%).
-- **Dynamic Delta Bias & Skew Arbitration (`core/calculator.py`, `core/main.py`, `backtest/backtest_rebalance.py`):**
-  - Added `delta_bias_side` to `select_tick_actions`: when position volume skew $|Q_{\text{long}} - Q_{\text{short}}| / \max(Q_{\text{long}}, Q_{\text{short}}) > \text{threshold}$, reductions prioritize the overweight leg and additions favor the underweight leg. Defaults to 0.0 (inactive) preserving 100% backwards compatibility and zero performance degradation.
-- **Comprehensive Unit Tests (`tests/test_quant_audit_metrics.py`, `tests/test_share_trail_comprehensive.py`):**
-  - Added full test suites for `core/connector.py` margin ratios, `backtest/backtest_rebalance.py` annualized metrics & Account MaxDD, delta bias arbitration, and complete state/signal mechanics of `core/share_trail.py`.
-  - All 129 tests passed in 2.26s without regressions.
+- **Monitoring Portability (`monitoring/health_check.py`, `monitoring/send_monitor_report.py`)**:
+  - Removed hardcoded Windows filesystem paths (`C:\Python\Prosperous_Bot\...`), replacing them with dynamic project root discovery (`Path(__file__).resolve().parent.parent`).
+  - Added platform-safe handling for `subprocess.CREATE_NO_WINDOW` on non-Windows environments.
+  - Wrapped `send_monitor_report.py` network transmission in an `if __name__ == '__main__':` entry point to prevent unwanted executions during module import and automated testing.
+- **Alert Triage & Deduplication (`core/notifier.py`)**:
+  - Implemented rate limiting and alert deduplication in `TelegramNotifier.send_alert` using `_last_alert_time` cache and configurable `alert_cooldown_sec` (default 60s). Suppresses redundant alert storms during repetitive market warnings.
+- **Dead-Leg Detection (`core/executor.py`)**:
+  - Implemented `_detect_dead_legs` inside `PortfolioExecutor.execute_actions`. Inspects execution results across paired `LONG` and `SHORT` actions; when one leg succeeds and the complementary leg fails or errors, flags `dead_leg_detected = True` and logs critical security alerts for unhedged directional exposure.
+- **Predictive Margin Circuit Breaker (`core/main.py`)**:
+  - Added pre-flight margin ratio verification before executing rebalance actions in `core/main.py`. If account margin ratio falls below `margin_ratio_critical`, new expansions are halted immediately, emergency alert is emitted, and `self_kill_pm2` isolates the bot before submitting orders to the exchange.
+- **Automated Tests (`tests/test_watchtower_monitoring.py`)**:
+  - Added test suite verifying dynamic path resolution, alert suppression cooldown, and dual-leg failure detection. All 41 targeted tests pass cleanly.
 
 ## 2026-11-08 — JCTUSDT three-mode parity after the swarm wipe-out
 
