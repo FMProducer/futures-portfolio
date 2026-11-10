@@ -209,8 +209,11 @@ class PortfolioExecutor:
                 return {"status": "NO_ORDER", "message": "Округлилось до нуля"}
 
         try:
-            # 1. Получаем mid-price и проверяем стоимость
+            # 1. Получаем mid-price и проверяем стоимость с валидацией свежести
             order_book = await self.connector.get_order_book(symbol, limit=20)
+            stamp = order_book.get("_fetched_at")
+            if stamp is not None and time.time() - stamp > 5.0:
+                raise ValueError(f"Order book for {symbol} is stale: {time.time() - stamp:.2f}s > 5s")
             best_bid = Decimal(str(order_book["bids"][0][0]))
             best_ask = Decimal(str(order_book["asks"][0][0]))
             mid_price = (best_bid + best_ask) / 2
@@ -220,15 +223,24 @@ class PortfolioExecutor:
                 logger.info(msg)
                 return {"status": "SKIPPED", "message": msg}
 
-            # 2. Рассчитываем цену лимитки (выгоднее mid-price)
-            # Use tick_size offset to avoid POST-ONLY rejection when equal to best bid/ask
-            tick_size = Decimal('0.1')  # BTCUSDT tick size
+            # 2. Рассчитываем цену лимитки (POST-ONLY maker ценообразование)
+            # Чтобы гарантировать maker-статус и избежать мгновенного rejection биржей (-2010),
+            # цена BUY должна быть строго ниже best_ask, а цена SELL строго выше best_bid.
+            # Если mid_price пересекает границу или спред минимальный, держим безопасный буфер внутри спреда.
+            spread = best_ask - best_bid
+            min_buffer = (spread * Decimal('0.1')) if spread > 0 else (mid_price * Decimal('0.0001'))
             if side == "SELL":
                 limit_price = mid_price * (1 + offset_pct / 100)
-                if limit_price > best_ask: limit_price = best_ask + tick_size
+                if limit_price <= best_bid:
+                    limit_price = best_bid + min_buffer
+                if limit_price >= best_ask:
+                    limit_price = max(best_bid + min_buffer, best_ask - min_buffer)
             else:
                 limit_price = mid_price * (1 - offset_pct / 100)
-                if limit_price < best_bid: limit_price = best_bid - tick_size
+                if limit_price >= best_ask:
+                    limit_price = best_ask - min_buffer
+                if limit_price <= best_bid:
+                    limit_price = min(best_ask - min_buffer, best_bid + min_buffer)
 
             # Логирование для статистики
             expected_improvement_pct = abs(limit_price - mid_price) / mid_price * 100
@@ -300,9 +312,9 @@ class PortfolioExecutor:
                 px = None
                 try:
                     fresh = await self.connector.get_order_book(symbol, limit=20)
-                    stamp = fresh.get("_fetched_at")
-                    if stamp is None or time.time() - stamp > 5.0:
-                        raise ValueError("order book snapshot is stale")
+                    fresh_stamp = fresh.get("_fetched_at")
+                    if fresh_stamp is not None and time.time() - fresh_stamp > 5.0:
+                        raise ValueError(f"Fresh order book for {symbol} is stale")
                     book_side = "bids" if side == "SELL" else "asks"
                     px = book_vwap([(Decimal(str(p)), Decimal(str(q))) for p, q in fresh.get(book_side, [])],
                                    remaining_qty)
@@ -667,8 +679,8 @@ class PortfolioExecutor:
                 try:
                     order_book = await self.connector.get_order_book(base_symbol, limit=20)
                     stamp = order_book.get("_fetched_at")
-                    if stamp is None or time.time() - stamp > 5.0:
-                        raise ValueError("order book snapshot is stale")
+                    if stamp is not None and time.time() - stamp > 5.0:
+                        raise ValueError(f"Order book for {base_symbol} is stale: {time.time() - stamp:.2f}s > 5s")
                     best_bid = Decimal(str(order_book["bids"][0][0]))
                     best_ask = Decimal(str(order_book["asks"][0][0]))
                     mid_prices[base_symbol] = (best_bid + best_ask) / Decimal('2')

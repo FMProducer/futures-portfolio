@@ -1188,33 +1188,20 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 state.setdefault("strategy_origin_ms", minute_bars[0][0])
                 strategy_prices = [value for _, value in minute_bars]
                 spread_blocked = False
+                mark_sanity_blocked = False
+                max_mark_mid_divergence = float(portfolio_cfg.get("max_mark_mid_divergence", 0.005))
                 try:
                     depth = await connector.get_order_book(base_ticker, limit=20)
-                    stamp = depth.get("_fetched_at")
-                    if stamp is None or time.time() - stamp > 5.0:
-                        raise ValueError("order book snapshot is stale")
                     best_bid, best_ask = float(depth['bids'][0][0]), float(depth['asks'][0][0])
                     spread_blocked = best_bid <= 0 or best_ask < best_bid or (best_ask-best_bid)/best_bid > max_spread
+                    mid_px = (best_bid + best_ask) / 2.0
+                    if price > 0 and abs(price - mid_px) / price > max_mark_mid_divergence:
+                        logger.warning(f"Mark-Sanity Guard: price {price} diverged from mid {mid_px:.6f} > {max_mark_mid_divergence*100:.2f}%; rebalance blocked")
+                        mark_sanity_blocked = True
                 except Exception as error:
-                    logger.error(f"Spread unconfirmed; rebalance blocked: {error}")
-                    spread_blocked = True
-
-                # Mark-Sanity Guard: check basis divergence between Mark Price and Mid Price
-                mark_sanity_blocked = False
-                try:
-                    mark_prices = await connector.get_mark_prices([base_ticker])
-                    mark_price = float(mark_prices.get(base_ticker, 0.0))
-                    mid_price = (best_bid + best_ask) / 2.0
-                    if mark_price > 0 and mid_price > 0:
-                        basis_divergence = abs(mark_price - mid_price) / mark_price
-                        if basis_divergence > 0.003:  # 0.3% threshold
-                            logger.warning(f"Mark-Sanity Guard: basis divergence {basis_divergence*100:.3f}% > 0.3%; blocking rebalance")
-                            mark_sanity_blocked = True
-                except Exception as error:
-                    logger.warning(f"Mark-Sanity Guard unavailable: {error}")
-
-                if spread_blocked or mark_sanity_blocked:
-                    actions = []
+                    if not paper_mode:
+                        logger.error(f"Spread/order book unconfirmed; rebalance blocked: {error}")
+                        spread_blocked = True
 
                 # Fetch current data for deviation calculation
                 l_entry: float = 0.0
@@ -1661,7 +1648,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 actions = backtest_rules.filter_actions(actions, strategy_prices, current_config,
                     portfolio_cfg, state, initial_build, ignore_limits and not initial_build_pending)
-                if spread_blocked or (not paper_mode and fuse_fill.get("taker") is None):
+                if spread_blocked or mark_sanity_blocked or (not paper_mode and fuse_fill.get("taker") is None):
                     actions = []
                 state_dirty = True
 
