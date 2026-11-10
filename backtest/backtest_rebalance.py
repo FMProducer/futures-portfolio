@@ -1512,7 +1512,13 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             m_short = state.margin_short()
 
             if state.pos_long > 0 or state.pos_short > 0:
-                cross_liq_dist_pct = state.cross_margin_distance_pct(mid_price, mmr)
+                # Predictive Guard: use adverse price (high for net short, low for net long)
+                # to catch intrabar liquidation risk that mid_price misses
+                if state.pos_short >= state.pos_long:
+                    adverse_price = Decimal(str(max(high_prices[i], close_prices[i])))
+                else:
+                    adverse_price = Decimal(str(min(low_prices[i], close_prices[i])))
+                cross_liq_dist_pct = state.cross_margin_distance_pct(adverse_price, mmr)
 
                 liq_distance_warn_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_warn_pct", 15.0)))
                 liq_distance_crit_pct = Decimal(str(portfolio_cfg.get("liquidation_distance_crit_pct", 8.0)))

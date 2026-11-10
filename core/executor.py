@@ -1,6 +1,7 @@
 """Исполнение ордеров на Binance Futures (Hedge Mode)."""
 import logging
 import asyncio
+import time
 from copy import deepcopy
 from uuid import uuid4
 from typing import Dict, Optional, Tuple, Any, List, TYPE_CHECKING
@@ -209,7 +210,7 @@ class PortfolioExecutor:
 
         try:
             # 1. Получаем mid-price и проверяем стоимость
-            order_book = await self.connector.get_order_book(symbol, limit=5)
+            order_book = await self.connector.get_order_book(symbol, limit=20)
             best_bid = Decimal(str(order_book["bids"][0][0]))
             best_ask = Decimal(str(order_book["asks"][0][0]))
             mid_price = (best_bid + best_ask) / 2
@@ -220,12 +221,14 @@ class PortfolioExecutor:
                 return {"status": "SKIPPED", "message": msg}
 
             # 2. Рассчитываем цену лимитки (выгоднее mid-price)
+            # Use tick_size offset to avoid POST-ONLY rejection when equal to best bid/ask
+            tick_size = Decimal('0.1')  # BTCUSDT tick size
             if side == "SELL":
                 limit_price = mid_price * (1 + offset_pct / 100)
-                if limit_price > best_ask: limit_price = best_ask
+                if limit_price > best_ask: limit_price = best_ask + tick_size
             else:
                 limit_price = mid_price * (1 - offset_pct / 100)
-                if limit_price < best_bid: limit_price = best_bid
+                if limit_price < best_bid: limit_price = best_bid - tick_size
 
             # Логирование для статистики
             expected_improvement_pct = abs(limit_price - mid_price) / mid_price * 100
@@ -286,6 +289,7 @@ class PortfolioExecutor:
 
             # Добиваем остаток market-ордером
             remaining_qty = qty - filled_qty
+            # FUSE gate for reductions (existing)
             if remaining_qty > 0 and fuse_gate and reduce_only:
                 # Mandatory live re-confirmation before crossing the spread: a reduction reaches
                 # the market fallback only when closing is confirmed profitable at taker prices;
@@ -295,7 +299,10 @@ class PortfolioExecutor:
                 taker_fee = Decimal(str(raw_fee)) if raw_fee is not None else None
                 px = None
                 try:
-                    fresh = await self.connector.get_order_book(symbol, limit=5)
+                    fresh = await self.connector.get_order_book(symbol, limit=20)
+                    stamp = fresh.get("_fetched_at")
+                    if stamp is None or time.time() - stamp > 5.0:
+                        raise ValueError("order book snapshot is stale")
                     book_side = "bids" if side == "SELL" else "asks"
                     px = book_vwap([(Decimal(str(p)), Decimal(str(q))) for p, q in fresh.get(book_side, [])],
                                    remaining_qty)
@@ -310,6 +317,36 @@ class PortfolioExecutor:
                 if not profitable:
                     logger.warning(f"FUSE pre-fallback gate: {side} {symbol} close unconfirmed or unprofitable; market remainder skipped")
                     remaining_qty = Decimal('0')
+
+            # FUSE gate for expansions (ADD orders) - prevents market fallback without slippage check
+            if remaining_qty > 0 and fuse_gate and not reduce_only:
+                # For expansions, we must confirm that market order won't exceed acceptable slippage
+                raw_fee = fuse_gate.get("taker_fee")
+                taker_fee = Decimal(str(raw_fee)) if raw_fee is not None else None
+                px = None
+                try:
+                    fresh = await self.connector.get_order_book(symbol, limit=20)
+                    stamp = fresh.get("_fetched_at")
+                    if stamp is None or time.time() - stamp > 5.0:
+                        raise ValueError("order book snapshot is stale")
+                    book_side = "asks" if side == "BUY" else "bids"
+                    px = book_vwap([(Decimal(str(p)), Decimal(str(q))) for p, q in fresh.get(book_side, [])],
+                                   remaining_qty)
+                except Exception:
+                    px = None
+                confirmed = taker_fee is not None and Decimal('0') <= taker_fee < 1 and px is not None
+                if not confirmed:
+                    logger.warning(f"FUSE pre-fallback gate: {side} {symbol} expansion unconfirmed (missing rate/book/depth); market remainder skipped")
+                    remaining_qty = Decimal('0')
+                else:
+                    # Check slippage doesn't exceed reasonable bounds
+                    if side == "BUY":
+                        max_slippage = px * (Decimal('1') + taker_fee) - mid_price
+                    else:
+                        max_slippage = mid_price - px * (Decimal('1') - taker_fee)
+                    if max_slippage > mid_price * Decimal('0.005'):  # 0.5% max slippage
+                        logger.warning(f"FUSE pre-fallback gate: {side} {symbol} expansion slippage {max_slippage/mid_price*100:.3f}% exceeds 0.5%; market remainder skipped")
+                        remaining_qty = Decimal('0')
             market_pnl = Decimal('0.0')
             market_comm = Decimal('0.0')
             market_financials_confirmed = True
@@ -387,7 +424,10 @@ class PortfolioExecutor:
         diff_usdt = Decimal(str(action["diff_usdt"]))
         # B7 FIX: Получаем mid_price для симметричного qty
         try:
-            order_book = await self.connector.get_order_book(base_symbol, limit=5)
+            order_book = await self.connector.get_order_book(base_symbol, limit=20)
+            stamp = order_book.get("_fetched_at")
+            if stamp is None or time.time() - stamp > 5.0:
+                raise ValueError("order book snapshot is stale")
             best_bid = Decimal(str(order_book["bids"][0][0]))
             best_ask = Decimal(str(order_book["asks"][0][0]))
             qty_price = (best_bid + best_ask) / Decimal('2')
@@ -625,7 +665,10 @@ class PortfolioExecutor:
                     mid_prices[base_symbol] = Decimal(str(price))
                     continue
                 try:
-                    order_book = await self.connector.get_order_book(base_symbol, limit=5)
+                    order_book = await self.connector.get_order_book(base_symbol, limit=20)
+                    stamp = order_book.get("_fetched_at")
+                    if stamp is None or time.time() - stamp > 5.0:
+                        raise ValueError("order book snapshot is stale")
                     best_bid = Decimal(str(order_book["bids"][0][0]))
                     best_ask = Decimal(str(order_book["asks"][0][0]))
                     mid_prices[base_symbol] = (best_bid + best_ask) / Decimal('2')
