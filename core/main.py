@@ -1589,9 +1589,11 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     await self_kill_pm2(base_ticker, paper_mode)
                     return
 
+                delta_limit_threshold = float(portfolio_cfg.get("delta_limit_threshold", current_config.get("delta_limit_threshold", 0.0)))
                 calc_res = calc.calculate_rebalance(targets, threshold_surplus, threshold_deficit, calc.tpv, ignore_limits, allow_surplus_sell,
                                                     fuse_enabled=portfolio_cfg.get("fuse_enabled", True),
-                                                    share_trail=trail_state, trail_distance=trail_distance)
+                                                    share_trail=trail_state, trail_distance=trail_distance,
+                                                    delta_limit_threshold=delta_limit_threshold)
 
                 if trail_snapshot_before is not None:
                     trail_snapshot_after = tuple(
@@ -1670,7 +1672,8 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 f"Cash invariant violation active: blocked {len(blocked_increases)} increase action(s)."
                             )
 
-                    fused_actions = select_tick_actions(fused_actions, initial_build, ("BASE_" + state["rebalance_preferred_side"]) if state.get("rebalance_preferred_side") else None)
+                    fused_actions = select_tick_actions(fused_actions, initial_build, ("BASE_" + state["rebalance_preferred_side"]) if state.get("rebalance_preferred_side") else None,
+                                                        preferred_reduction=calc_res.get("excess_leg") if calc_res.get("delta_limit_triggered") else None)
                     if fused_actions:
                         # Log specific trigger reasons
                         for action in fused_actions:

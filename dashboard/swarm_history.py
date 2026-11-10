@@ -106,6 +106,7 @@ def reconstruct(root, running_names=()):
                      "wallet_receipt_residual": terminal - (opening + realized - fees) if terminal is not None and receipts else None,
                      "verified_net": None, "sources": sorted({r[2] for r in records}),
                      "last_update": state.get("last_update"), "observed_maxdd_pct": None,
+                     "account_maxdd_pct": None,
                      "samples": snapshots})
 
     for ticker in {r["ticker"] for r in rows}:
@@ -132,11 +133,20 @@ def reconstruct(root, running_names=()):
         for row in sessions:
             # This is a sampled drawdown lower bound, not a continuous account curve.
             peak, dd = row["initial"], 0.0
+            # Account margin capital assumption: row['initial'] + 5000 reserve
+            account_reserve = 5000.0
+            tot_init = row["initial"] + account_reserve
+            tot_peak, tot_dd = tot_init, 0.0
             for _, value in sorted(row.pop("samples")):
                 peak = max(peak, value)
                 if peak > 0:
                     dd = max(dd, (peak - value) / peak * 100)
+                tot_val = value + account_reserve
+                tot_peak = max(tot_peak, tot_val)
+                if tot_peak > 0:
+                    tot_dd = max(tot_dd, (tot_peak - tot_val) / tot_peak * 100)
             row["observed_maxdd_pct"] = dd
+            row["account_maxdd_pct"] = tot_dd
 
     closed = [r for r in rows if r["status"] == "closed_reported"]
     active = [r for r in rows if r["status"] == "open"]

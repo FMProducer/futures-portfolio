@@ -667,6 +667,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         reinvestment_ratio: float = float(portfolio_cfg.get("reinvestment_ratio") or 0.0)
         siphoning.validate_config(siphoning_threshold_pct, targets.get("VIRTUAL", {}).get("share", 0),
                                  reinvestment_ratio, portfolio_cfg.get("siphoning_pct"))
+        delta_limit_threshold: float = float(portfolio_cfg.get("delta_limit_threshold", config.get("delta_limit_threshold", 0.0)))
         trail_distance: float = float(config.get("rebalance_share_trail_distance", 0.0))
         if not math.isfinite(trail_distance) or trail_distance < 0:
             raise ValueError("rebalance_share_trail_distance must be a finite non-negative share fraction")
@@ -1094,8 +1095,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 share_trail=state.share_trail,
                 trail_distance=trail_distance,
                 share_basis_scale=share_basis_scale,
+                delta_limit_threshold=delta_limit_threshold,
             )
             actions = calc_res["actions"]
+
+            if calc_res.get("delta_limit_triggered"):
+                state.log_event(i, "delta_limit_guard", float(state.get_tpv_fast(float(mid_price))),
+                                f"imbalance {calc_res.get('delta_imbalance', 0.0)*100:.2f}% > {delta_limit_threshold*100:.1f}%; excess {calc_res.get('excess_leg')}",
+                                excess_leg=calc_res.get("excess_leg"))
 
             # Trailing diagnostics: arm/reset events and generated signals
             if state.share_trail is not None:
@@ -1199,7 +1206,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     if a.get("key") in missing and not a.get("is_reduction", False)
                 ]
 
-            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key)
+            actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key,
+                                         preferred_reduction=calc_res.get("excess_leg") if calc_res.get("delta_limit_triggered") else None)
 
             if actions:
                 is_initial_formation = (
@@ -1704,6 +1712,14 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
         max_eq: npt.NDArray[np.float64] = np.maximum(np.maximum.accumulate(equity_curve), initial_capital)
         dd: npt.NDArray[np.float64] = (max_eq - equity_curve) / (max_eq + 1e-9)
         max_dd_pct: float = np.max(dd) * 100 if len(dd) > 0 else 0.0
+
+        # Account-level drawdown normalized to total margin capital (initial_capital + cash_reserve_usdt)
+        total_account_initial = initial_capital + float(state.account_free_margin)
+        total_account_curve = equity_curve + float(state.account_free_margin)
+        max_account_eq: npt.NDArray[np.float64] = np.maximum(np.maximum.accumulate(total_account_curve), total_account_initial)
+        account_dd: npt.NDArray[np.float64] = (max_account_eq - total_account_curve) / (max_account_eq + 1e-9)
+        account_max_dd_pct: float = np.max(account_dd) * 100 if len(account_dd) > 0 else 0.0
+
         asset_chg_pct: float = (close_prices[-1] / (close_prices[0] + 1e-9) - 1) * 100
 
         # --- Sortino & Sharpe Ratios ---
@@ -1730,7 +1746,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
 
         if not quiet:
             logger.info(f"Refactored Cross-Margin Backtest for {base_ticker}:")
-            logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% | Cycles: {state.cycles}")
+            logger.info(f"Profit: {profit_pct:+.2f}% | MaxDD: {max_dd_pct:.2f}% (Account MaxDD: {account_max_dd_pct:.2f}%) | Cycles: {state.cycles}")
             logger.info(f"Sortino (ann/raw): {sortino_annualized:.4f} / {sortino_ratio:.6f} | Sharpe (ann): {sharpe_ratio:.4f}")
             logger.info(f"Asset Change: {asset_chg_pct:+.2f}% | SAFE Reserve: {state.siphoning_reserve:.2f} USDT")
             logger.info(f"Skipped Expansions: {state.skipped_expansions_counter} | Stops: {state.stops_counter} | Liqs: {state.liquidations_counter}")
@@ -1757,6 +1773,8 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
             "stopped_bar": stopped_bar,
             "profit_pct": float(profit_pct),
             "max_dd_pct": float(max_dd_pct),
+            "account_max_dd_pct": float(account_max_dd_pct),
+            "total_account_initial": float(total_account_initial),
             "cycles": int(state.cycles),
             "asset_chg_pct": float(asset_chg_pct),
             "siphoning_reserve": float(state.siphoning_reserve),
