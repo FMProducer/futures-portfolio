@@ -459,14 +459,18 @@ class PortfolioCalculator:
         }
 
 
-def select_tick_actions(actions, initial_build, preferred_side=None, preferred_reduction=None):
+def select_tick_actions(actions, initial_build, preferred_side=None, delta_bias_side=None):
     futures = [a for a in actions if a.get("key") in ("BASE_LONG", "BASE_SHORT")]
     if initial_build or len({a.get("key") for a in futures}) < 2:
         return actions
     reductions = [a for a in futures if a.get("is_reduction")]
-    if preferred_reduction:
-        pref_red = next((a for a in reductions if a.get("key") == preferred_reduction), None)
-        if pref_red is not None:
-            return [a for a in actions if a.get("key") not in ("BASE_LONG", "BASE_SHORT") or a is pref_red]
-    chosen = next((a for a in futures if not reductions and a.get("key") == preferred_side), (reductions or futures)[0])
+    candidate_pool = reductions or futures
+    if delta_bias_side:
+        # If reducing, favor reducing the overweight leg (delta_bias_side).
+        # If expanding/adding, favor adding to the underweight leg (opposite of delta_bias_side).
+        target_leg = delta_bias_side if reductions else ("BASE_SHORT" if delta_bias_side == "BASE_LONG" else "BASE_LONG")
+        favored = next((a for a in candidate_pool if a.get("key") == target_leg), None)
+        if favored:
+            return [a for a in actions if a.get("key") not in ("BASE_LONG", "BASE_SHORT") or a is favored]
+    chosen = next((a for a in futures if not reductions and a.get("key") == preferred_side), candidate_pool[0])
     return [a for a in actions if a.get("key") not in ("BASE_LONG", "BASE_SHORT") or a is chosen]

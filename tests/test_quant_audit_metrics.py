@@ -81,3 +81,27 @@ async def test_backtest_sharpe_and_sortino_annualization():
     assert math.isclose(res["sortino_annualized"], res["sortino_ratio"] * ann_factor, rel_tol=1e-5)
     assert math.isfinite(res["sharpe_ratio"])
     assert math.isfinite(res["sortino_annualized"])
+
+    # Check account_max_dd_pct is present and non-negative
+    assert "account_max_dd_pct" in res
+    assert 0.0 <= res["account_max_dd_pct"] <= 100.0
+    # Account MaxDD with 5000 reserve should be strictly less than or equal to isolated bot MaxDD
+    assert res["account_max_dd_pct"] <= res["max_dd_pct"] + 1e-9
+
+
+def test_select_tick_actions_delta_bias():
+    """Verify select_tick_actions prioritizes delta_bias_side when multiple actions compete."""
+    from core.calculator import select_tick_actions
+    actions = [
+        {"key": "BASE_LONG", "diff_usdt": -50.0, "is_reduction": True},
+        {"key": "BASE_SHORT", "diff_usdt": -50.0, "is_reduction": True},
+    ]
+    # Without delta bias: defaults to first reduction
+    res_default = select_tick_actions(actions, initial_build=False)
+    assert len(res_default) == 1
+    assert res_default[0]["key"] == "BASE_LONG"
+
+    # With delta bias targeting BASE_SHORT to rebalance inventory
+    res_bias = select_tick_actions(actions, initial_build=False, delta_bias_side="BASE_SHORT")
+    assert len(res_bias) == 1
+    assert res_bias[0]["key"] == "BASE_SHORT"
