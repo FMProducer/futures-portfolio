@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = Path(r"C:\Python\Prosperous_Bot\futures_portfolio")
 load_dotenv(PROJECT_DIR / ".env")
 
 token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -41,21 +41,14 @@ if real_state_path.exists():
 
 # Alerts
 alerts = []
-# Check heartbeat gap: prefer the push-heartbeat file, fall back to log mtime
+# Check heartbeat gap
 import os as _os
-def _hb_age_min(state_path):
-    hb = Path(str(state_path) + ".heartbeat")
-    target = hb if hb.exists() else state_path
-    if not target.exists():
-        return None
-    st = _os.stat(target)
-    return (time.time() - st.st_mtime) / 60
-
-for label, sp in (("Paper", paper_state_path), ("Real", real_state_path)):
-    age_min = _hb_age_min(sp)
-    if age_min is not None and age_min > 5:
-        mtime_str = time.strftime("%H:%M", time.localtime(time.time() - age_min * 60))
-        alerts.append(f"{label} heartbeat STOPPED at {mtime_str} ({age_min:.0f} min gap)")
+if paper_log_path.exists():
+    st = _os.stat(paper_log_path)
+    age_min = (time.time() - st.st_mtime) / 60
+    if age_min > 5:
+        mtime_str = time.strftime("%H:%M", time.localtime(st.st_mtime))
+        alerts.append(f"Paper heartbeat STOPPED at {mtime_str} ({age_min:.0f} min gap)")
 
 if not real_state_path.exists():
     alerts.append("No real state — real swarm is empty")

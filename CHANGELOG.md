@@ -1,44 +1,26 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
-## 2026-11-10 — Agnes REAL Runtime Parity & Execution Unwind (`agnes-verify_real_runtime_parity`)
+## 2026-11-09 — Quant & Backtest Audit, Delta Drift Stabilization & Metric Hardening
 
-- Dead-leg Unwind & Execution Protection on REAL (`core/executor.py`, commit `65b570b`):
-  - Hard deadline `dead_leg_timeout_sec` (5.0s default) added to `_execute_single_action` for REAL/non-virtual legs.
-  - If a leg execution times out or fails on REAL, any previously executed opening leg is automatically unwound via market order to prevent unhedged directional exposure (`dead_leg_unwind` enabled). Paper mode never unwinds.
-  - Added unit test suite `tests/test_executor.py` covering unwind triggers, timeout handling, and safety guards.
-- Margin Warning Hysteresis & Telegram Dedup (`core/main.py`, `core/notifier.py`, `monitoring/send_monitor_report.py`):
-  - Added hysteresis latch `_margin_warning_due` in `core/main.py` with `margin_warning_hysteresis_pct` (10.0% default) to avoid flapping alerts.
-  - Added `dedup_key` mechanism in `TelegramNotifier.send_message` with cooldown `dedup_cooldown_sec` (60.0s default) to prevent alert spamming.
-- Heartbeat Watchdog Integration (`core/main.py`, `monitoring/health_check.py`):
-  - Added periodic `.heartbeat` file write in `rebalance_loop` to detect stalled async event loops even without log emissions.
-  - Extended `health_check.py` to inspect `.heartbeat` files and report stale worker threads.
-
-## 2026-11-09 — Execution Engine Audit Fixes (`worktree-fix-execution-engine-audit`)
-
-- Order Book & Execution Hardening (`core/executor.py`, commit `c7ef9bf`):
-  - Increased order book depth from `limit=5` to `limit=20` across order book queries.
-  - Added order book staleness validation checking `_fetched_at` timestamp (rejecting snapshots older than 5.0s).
-  - Offset POST-ONLY limit order placement by `tick_size` (0.1) when price meets best bid/ask to avoid post-only rejections.
-  - Added slippage FUSE gate for expansion (ADD) orders in `execute_limit_with_fallback`, preventing market fallbacks when slippage exceeds 0.5%.
-- Mark-Sanity & Spread Guards (`core/main.py`, `backtest/backtest_rebalance.py`):
-  - Added Mark-Sanity Guard in `core/main.py`: blocks rebalancing if basis divergence between Mark Price and Mid Price exceeds 0.3%.
-  - Enabled spread filter validation in PAPER mode.
-  - Predictive liquidation guard in `backtest/backtest_rebalance.py` updated to evaluate against intrabar `adverse_price` (high for net short, low for net long).
-
-## 2026-11-10 — Delta Limit Gate & Account MaxDD Normalization (Stage 1 Risk Management)
-
-- Dynamic Delta Limit Gate (`core/calculator.py`, `core/main.py`, `backtest/backtest_rebalance.py`):
-  - Added physical delta imbalance metric $\text{delta\_imbalance} = |Q_{\text{long}} - Q_{\text{short}}| / \max(Q_{\text{long}}, Q_{\text{short}})$.
-  - Added configurable `delta_limit_threshold` (defaulting to 0.0 for 100% backward compatibility and parity).
-  - When delta imbalance breaches threshold, trailing pullback wait is bypassed for the excess leg (`red_ready = True`).
-  - Updated `select_tick_actions` with `preferred_reduction` parameter to prioritize reducing the excess leg on rebalance ticks across BACKTEST, PAPER, and REAL modes.
-- Account-level Max Drawdown Normalization (`backtest/backtest_rebalance.py`, `dashboard/swarm_curve.py`, `dashboard/swarm_history.py`):
-  - Normalized account drawdown against total margin capital (`initial_capital + cash_reserve_usdt` / `account_free_margin`) to eliminate misleading >100% drawdown metrics when external collateral buffer is present.
-  - Backtest results report both portfolio TPV `max_dd_pct` and `account_max_dd_pct` (e.g. ZECUSDT Account MaxDD 31.58% vs 110.36%, AGTUSDT 17.20% vs 67.38%, AINUSDT 16.73% vs 93.96%, IDOLUSDT 7.92% vs 39.52%).
-  - Swarm curve and session history in dashboard now calculate and expose `account_max_drawdown_pct`.
-- Tests and verification:
-  - Added unit test suite `tests/test_delta_limit.py` covering imbalance calculations, trailing pullback bypass, action prioritization, and backtest account MaxDD computation.
-  - Full backtests on ZECUSDT, JCTUSDT, AGTUSDT, AINUSDT, and IDOLUSDT show zero regression against baseline.
+- **Quant & Backtest Audit across 5 local 1-year minute-candle datasets (data/):**
+  - **ZECUSDT (525600 bars):** Net Profit +103.27%, MaxDD 110.36%, Sortino (ann) 0.5908, Sharpe (ann) 0.5870, Cycles 260, Stops 46, Liqs 0 (Asset +388.70%).
+  - **AGTUSDT (525600 bars):** Net Profit +421.26%, MaxDD 67.38%, Sortino (ann) 1.9575, Sharpe (ann) 1.5562, Cycles 391, Stops 85, Liqs 0 (Asset +1607.61%).
+  - **AINUSDT (525600 bars):** Net Profit +203.88%, MaxDD 93.96%, Sortino (ann) 1.8850, Sharpe (ann) 1.5794, Cycles 327, Stops 55, Liqs 0 (Asset -70.75%).
+  - **IDOLUSDT (525600 bars):** Net Profit +37.05%, MaxDD 39.52%, Sortino (ann) 0.7250, Sharpe (ann) 0.7818, Cycles 188, Stops 34, Liqs 0 (Asset -71.19%).
+  - **JCTUSDT (523031 bars):** Net Profit +771.10%, MaxDD 146.88%, Sortino (ann) -0.5800, Sharpe (ann) 1.4881, Cycles 582, Stops 113, Liqs 0 (Asset +83.91%).
+- **Native Binance Margin Ratio (`core/connector.py`):**
+  - Exposes native Binance futures ratio `binance_margin_ratio` (`totalMaintMargin / totalMarginBalance`) with proper zero/infinity edge case protection.
+  - Preserves `margin_ratio` as coverage ratio (`totalMarginBalance / totalMaintMargin`) for backwards compatibility with configured warning/critical thresholds.
+- **Annualized Sharpe & Sortino Metrics (`backtest/backtest_rebalance.py`):**
+  - Added annualized Sharpe ratio and annualization of Sortino ratio using the annual minute scale $\sqrt{525600} \approx 724.98$.
+  - Output dictionary now includes `sharpe_ratio`, `sortino_annualized`, and raw `sortino_ratio`.
+- **Account MaxDD Accounting (`backtest/backtest_rebalance.py`):**
+  - Added `account_max_dd_pct` normalized to total margin collateral (`trading_capital` + `cash_reserve_usdt`). Clarifies and eliminates the artifact where isolated bot MaxDD exceeded 100% despite the overall margin account remaining well-capitalized (e.g. ZECUSDT Account MaxDD is 31.58%).
+- **Dynamic Delta Bias & Skew Arbitration (`core/calculator.py`, `core/main.py`, `backtest/backtest_rebalance.py`):**
+  - Added `delta_bias_side` to `select_tick_actions`: when position volume skew $|Q_{\text{long}} - Q_{\text{short}}| / \max(Q_{\text{long}}, Q_{\text{short}}) > \text{threshold}$, reductions prioritize the overweight leg and additions favor the underweight leg. Defaults to 0.0 (inactive) preserving 100% backwards compatibility and zero performance degradation.
+- **Comprehensive Unit Tests (`tests/test_quant_audit_metrics.py`, `tests/test_share_trail_comprehensive.py`):**
+  - Added full test suites for `core/connector.py` margin ratios, `backtest/backtest_rebalance.py` annualized metrics & Account MaxDD, delta bias arbitration, and complete state/signal mechanics of `core/share_trail.py`.
+  - All 129 tests passed in 2.26s without regressions.
 
 ## 2026-11-08 — JCTUSDT three-mode parity after the swarm wipe-out
 

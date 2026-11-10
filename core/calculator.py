@@ -156,13 +156,7 @@ class PortfolioCalculator:
             diff = Decimal('100.00') - total_pct
             self.share_cash_pct += diff # Adjust cash by the sub-penny difference
 
-        # 7. Physical position volumes and delta imbalance ratio
-        self.q_long = l_qty
-        self.q_short = s_qty
-        max_q = max(self.q_long, self.q_short)
-        self.delta_imbalance = (abs(self.q_long - self.q_short) / max_q) if max_q > Decimal('0') else Decimal('0')
-
-    def calculate_rebalance(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True, share_trail: Dict = None, trail_distance: float = 0.0, share_basis_scale: float = 1.0, delta_limit_threshold: float = 0.0) -> Dict:
+    def calculate_rebalance(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True, share_trail: Dict = None, trail_distance: float = 0.0, share_basis_scale: float = 1.0) -> Dict:
         """
         Calculate rebalance actions and return a summary of the current state.
         allow_surplus_sell: if False, surplus (profit-taking) actions are blocked.
@@ -175,7 +169,7 @@ class PortfolioCalculator:
         trail_distance: share-fraction pullback/rebound from the activated extremum; 0 disables trailing
             (baseline threshold behaviour, trailing state untouched).
         """
-        dev_res = self.calculate_deviations(targets, threshold_surplus, threshold_deficit, current_equity, ignore_limits, allow_surplus_sell, force_block, fuse_enabled, share_trail, trail_distance, share_basis_scale, delta_limit_threshold)
+        dev_res = self.calculate_deviations(targets, threshold_surplus, threshold_deficit, current_equity, ignore_limits, allow_surplus_sell, force_block, fuse_enabled, share_trail, trail_distance, share_basis_scale)
         # calculate_deviations возвращает dict с actions, available_funds, tpv, share_*
         actions = dev_res["actions"]
 
@@ -198,12 +192,10 @@ class PortfolioCalculator:
             "pnl_s": float(self.pnl_s),
             "pnl_v": float(self.pnl_v),
             "total_pnl": float(self.total_pnl),
-            "total_pnl_pct": float(self.total_pnl_pct),
-            "delta_imbalance": float(self.delta_imbalance),
-            "delta_limit_triggered": bool(dev_res.get("delta_limit_triggered", False)),
+            "total_pnl_pct": float(self.total_pnl_pct)
         }
 
-    def calculate_deviations(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True, share_trail: Dict = None, trail_distance: float = 0.0, share_basis_scale: float = 1.0, delta_limit_threshold: float = 0.0) -> List[Dict]:
+    def calculate_deviations(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True, share_trail: Dict = None, trail_distance: float = 0.0, share_basis_scale: float = 1.0) -> List[Dict]:
         """
         Rebalance based on CAPITAL (Equity) deviations. 
         This allows the portfolio to harvest volatility profit.
@@ -223,13 +215,6 @@ class PortfolioCalculator:
         share_deficit = Decimal(str(threshold_deficit)) * scale
         share_distance = Decimal(str(trail_distance)) * scale
 
-        # Delta Limit Gate check: physical delta imbalance |Q_long - Q_short| / max(Q_long, Q_short)
-        dec_delta_limit = Decimal(str(delta_limit_threshold)) if delta_limit_threshold else Decimal('0')
-        delta_limit_active = (dec_delta_limit > Decimal('0')
-                              and self.delta_imbalance > dec_delta_limit
-                              and not self.initial_build)
-        excess_leg = ("BASE_LONG" if self.q_long > self.q_short else "BASE_SHORT") if delta_limit_active else None
-
         # Trailing observation persists during WAIT/blocks: step before any
         # early return, readiness flags are only used by the action loop.
         # A flat leg falls back to baseline thresholds (None flag): trailing
@@ -247,9 +232,6 @@ class PortfolioCalculator:
                     target_share + share_surplus, target_share - share_deficit,
                     share_distance, flat=flat,
                 )
-                # Delta Limit Gate: bypass trailing pullback wait for reducing excess leg
-                if delta_limit_active and key == excess_leg:
-                    red_ready = True
                 trail_flags[key] = None if flat else (red_ready, add_ready)
 
         if force_block:
@@ -453,9 +435,7 @@ class PortfolioCalculator:
             "share_long_pct": float(self.share_long_pct),
             "share_short_pct": float(self.share_short_pct),
             "share_virt_pct": float(self.share_virt_pct),
-            "share_cash_pct": float(self.share_cash_pct),
-            "delta_limit_triggered": bool(delta_limit_active),
-            "excess_leg": excess_leg,
+            "share_cash_pct": float(self.share_cash_pct)
         }
 
 
