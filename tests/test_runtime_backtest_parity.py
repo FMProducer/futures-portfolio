@@ -22,10 +22,11 @@ class EndReplay(BaseException):
     (False, 1000, False, False, 'critical')])
 async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, capital, terminal, stress, real):
     cfg = json.loads((__import__('pathlib').Path(__file__).resolve().parents[1] / 'config.json').read_text())
-    cfg.update(base_ticker='BTCUSDT', tickers=['BTCUSDT'], paper_mode=not real, telegram_enabled=False)
+    cfg.update(base_ticker='BTCUSDT', tickers=['BTCUSDT'], paper_mode=not real,
+               telegram_enabled=False, funding_model='legacy_constant')
     if real:
         cfg['portfolios'][0]['cash_reserve_usdt'] = 5000
-        cfg.update(max_bots=9, paper_mode_bots=8)
+        cfg.update(max_bots=9, paper_mode_bots=8, funding_model='signed_actual')
     if terminal == 'maxdd':
         cfg['max_drawdown_limit'] = 10
     cfg_path, state_path, wallet_path = [tmp_path / name for name in ['config.json', 'state.json', 'wallet.json']]
