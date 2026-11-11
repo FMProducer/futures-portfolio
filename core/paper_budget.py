@@ -3,7 +3,48 @@
 import json
 import sqlite3
 import time
+import math
 from decimal import Decimal
+
+
+def confirm_close(root, ticker):
+    from core.storage import safe_save_json_sync
+    state_path = root/'core'/f'paper_state_{ticker}.json'
+    wallet_path = root/'core'/f'paper_shadow_{ticker}.json'
+    state = json.loads(state_path.read_text(encoding='utf-8'))
+    wallet = json.loads(wallet_path.read_text(encoding='utf-8'))
+    positions = wallet.get('positions', {})
+    if (not state.get('paper_close_complete')
+            or state.get('base_ticker') != ticker or wallet.get('base_ticker') != ticker
+            or any(state.get(k) for k in ('rebalance_inflight', 'initial_build_pending', 'startup_blocked', 'cash_invariant_violation'))
+            or state.get('funding_halt', {}).get('active')
+            or not all(f'{ticker}_{leg}' in positions for leg in ('LONG', 'SHORT'))
+            or any(not Decimal(str(q)).is_finite() or Decimal(str(q)) != 0 for q in positions.values())):
+        raise ValueError('PAPER close is not confirmed; allocation retained')
+    config = json.loads((root/'config.json').read_text(encoding='utf-8'))
+    equity = amount(wallet['balance']) + amount(state.get('siphoning_reserve', 0))
+    key = 'probation_period_days' if equity > amount(state['initial_tpv']) else 'toxic_cooldown_days'
+    days = float(config.get(key, .01 if key == 'probation_period_days' else .1))
+    if not math.isfinite(days) or days < 0:
+        raise ValueError('Invalid PAPER cooldown')
+    if not state.get('paper_closed_at'):
+        state['paper_closed_at'] = time.time()
+        state['restart_not_before'] = state['paper_closed_at'] + days * 86400
+        safe_save_json_sync(str(state_path), state)
+    suffix = f"{state['started_at']}:{state.get('rebalance_cycles', 0)}"
+    receipts = wallet.get('share_fill_receipts', {})
+    event = next((r.get('event_id') for r in receipts.values()
+                  if r.get('event_id') in (f'stop:{suffix}', f'trailing:{suffix}')), None)
+    if not event:
+        raise ValueError('PAPER closing receipts missing; allocation retained')
+    archive = root/'history'/f"paper_close_{ticker}_{state['started_at']}.json"
+    archive.parent.mkdir(exist_ok=True)
+    safe_save_json_sync(str(archive), {'state':state, 'paper_state':wallet,
+                                     'timestamp':state['paper_closed_at'], 'close_event':event})
+    returned, blocked = reconcile_terminal_allocations(root)
+    if ticker in blocked:
+        raise ValueError(blocked[ticker])
+    return returned
 
 
 def amount(value):
@@ -15,6 +56,14 @@ def amount(value):
 
 def database(root):
     return root / "core/paper_budget.sqlite"
+
+
+def selection_ready(root, config):
+    if not database(root).exists():
+        return True
+    with sqlite3.connect(database(root).resolve().as_uri()+'?mode=ro', uri=True) as db:
+        latest = db.execute("SELECT coalesce(max(ts),0) FROM events WHERE kind='return'").fetchone()[0]
+    return time.time() >= latest + max(300, float(config.get('supervisor_interval_days', .125))*86400)
 
 
 def initialize(root, slots, capital, states, closed_result=0):
@@ -119,7 +168,7 @@ def read_budget(root):
             "unverified_historical_gain":excluded}
 
 
-def reconcile_terminal_allocations(root):
+def reconcile_terminal_allocations(root, recover=False):
     """Return proven terminal wallets independently of process presence."""
     if not database(root).exists():
         return [], {}
@@ -141,6 +190,10 @@ def reconcile_terminal_allocations(root):
             if str(state.get("started_at")) != identity:
                 raise ValueError("PAPER allocation/state identity mismatch")
             if not state.get("paper_close_complete") and not archive_path.exists():
+                continue
+            if recover and state.get('paper_close_complete') and (not archive_path.exists() or not state.get('paper_closed_at')):
+                confirm_close(root, ticker)
+                returned.append(ticker)
                 continue
             archive = json.loads(archive_path.read_bytes())
             if archive.get("state") != state or archive.get("paper_state") != wallet or not archive.get("close_event"):

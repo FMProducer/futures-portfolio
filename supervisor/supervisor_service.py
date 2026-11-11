@@ -4,8 +4,38 @@ import os
 import json
 import logging
 import io
+import time
+import sqlite3
+from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+
+def latest_return():
+    path = ROOT / 'core/paper_budget.sqlite'
+    if not path.exists():
+        return 0
+    with sqlite3.connect(path.as_uri() + '?mode=ro', uri=True) as db:
+        return db.execute("SELECT coalesce(max(ts),0) FROM events WHERE kind='return'").fetchone()[0]
+
+
+async def wait_for_selection(interval, seen=None):
+    from core.paper_budget import reconcile_terminal_allocations
+    deadline = time.time() + interval
+    seen = latest_return() if seen is None else seen
+    while time.time() < deadline:
+        returned, blocked = reconcile_terminal_allocations(ROOT, recover=True)
+        for ticker, reason in blocked.items():
+            logger.error('PAPER allocation retained: %s: %s', ticker, reason)
+        current = latest_return()
+        if current > seen:
+            seen = current
+            deadline = current + interval
+            logger.info('Selection timer reset after confirmed PAPER return: %s', returned)
+        await asyncio.sleep(min(1, max(0, deadline - time.time())))
 
 # Загрузка окружения
 load_dotenv()
@@ -22,7 +52,7 @@ def get_sleep_interval():
                 config = json.load(f)
             days = config.get("supervisor_interval_days", 0.125)
             # Возвращаем интервал в секундах
-            return max(300, int(days * 86400)) # Минимум 5 минут, чтобы не спамить
+            return max(300, days * 86400)
     except Exception as e:
         logger.error(f"Error reading config for interval: {e}")
     return 3600
@@ -34,6 +64,7 @@ async def main():
     logger.info("Supervisor Service started (Async Mode).")
     
     while True:
+        seen = latest_return()
         # Считываем актуальный интервал перед каждым циклом
         interval_sec = get_sleep_interval()
         
@@ -66,7 +97,7 @@ async def main():
             logger.error(f"Unexpected error during cycle: {e}")
             
         logger.info(f"Sleeping for {interval_sec / 3600:.1f} hours...")
-        await asyncio.sleep(interval_sec)
+        await wait_for_selection(interval_sec, seen)
 
 if __name__ == "__main__":
     # Force UTF-8 for Windows streams (only when running directly)

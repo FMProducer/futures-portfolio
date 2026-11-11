@@ -15,7 +15,7 @@
   "probation_period_days": 0.01,
   "backtest_period_days": 0.125,
   "backtest_days": 28,
-  "supervisor_interval_days": 0.005,
+  "supervisor_interval_days": 0.011,
   "scanner_period_days": 0.125,
   "replacement_efficiency_threshold_pct": 50.0,
   "max_drawdown_limit": 100.0,

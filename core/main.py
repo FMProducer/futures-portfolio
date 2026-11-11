@@ -34,6 +34,12 @@ def sync_read_json(path: str) -> Dict:
 
 def emit_signal(signal_type: str, ticker: str, is_paper: bool) -> None:
     """Создает пустой файл-флаг для супервайзера."""
+    if is_paper:
+        from core.paper_budget import confirm_close
+        try:
+            confirm_close(Path(__file__).resolve().parent.parent, ticker)
+        except (OSError, ValueError, KeyError, TypeError, ArithmeticError) as error:
+            logging.error('PAPER close reconciliation required; allocation retained: %s: %s', ticker, error)
     sig_dir = Path("signals")
     sig_dir.mkdir(exist_ok=True)
     mode_tag = "paper" if is_paper else "real"
@@ -2431,6 +2437,9 @@ async def emergency_stop(connector: BinanceConnector, config_path: str, state_fi
         archive.mkdir(exist_ok=True)
         await save_json(str(archive / f"paper_close_{base_ticker}_{state['started_at']}.json"),
                         {"state": state, "paper_state": wallet, "timestamp": time.time(), "close_event": event})
+        from core.paper_budget import confirm_close
+        if (archive.parent / 'core/paper_budget.sqlite').exists():
+            confirm_close(archive.parent, base_ticker)
         logger.info(f"PAPER CLOSE committed: {base_ticker} equity={equity:.8f} net={state['last_profit']:.8f}; opening and ATH retained")
         return
 

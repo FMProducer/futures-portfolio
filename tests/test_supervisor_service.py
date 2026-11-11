@@ -5,6 +5,28 @@ import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch, mock_open
 from futures_portfolio.supervisor.supervisor_service import get_sleep_interval, main
 
+
+@pytest.mark.asyncio
+async def test_wait_resets_once_for_each_confirmed_return():
+    from futures_portfolio.supervisor import supervisor_service as service
+    clock = [100.0]
+    checks = []
+
+    async def advance(seconds):
+        clock[0] += seconds
+
+    def returned():
+        checks.append(clock[0])
+        return 104.0 if clock[0] >= 104 else 102.0 if clock[0] >= 102 else 0.0
+
+    with patch.object(service.time, 'time', side_effect=lambda: clock[0]), \
+         patch.object(service, 'latest_return', side_effect=returned), \
+         patch('core.paper_budget.reconcile_terminal_allocations', return_value=([], {})), \
+         patch.object(service.asyncio, 'sleep', side_effect=advance):
+        await service.wait_for_selection(5, 0)
+    assert clock[0] == 109
+    assert max(checks) == 108
+
 def test_get_sleep_interval_valid():
     config = {"supervisor_interval_days": 1.0}
     with patch("builtins.open", mock_open(read_data=json.dumps(config))), \

@@ -1093,6 +1093,10 @@ async def manage_swarm():
         logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; closed48h AND last24h, each Net>0, DD<=50%, cycles>=2")
 
     # Selective Rotation: мержим старых + новых
+    from core.paper_budget import selection_ready
+    if paper_only and not selection_ready(BASE_PATH, config):
+        logger.info('PAPER selection deferred after confirmed close')
+        return
     limit_bots = config.get('paper_mode_bots', config.get('max_bots', 20))
     final_incubator = await selective_merge_incubator(
         old_incubator=old_incubator,
@@ -1304,6 +1308,9 @@ async def manage_swarm():
     # -------------------------------------------------------------------------
     # [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.
     logger.info("⚔️ [REAPER GUARD] Phase: Reconciling PM2 state with target configuration.")
+    if paper_only and not selection_ready(BASE_PATH, config):
+        logger.info('PAPER execution deferred: close occurred during selection')
+        return
     await reconcile_swarm_state(final_incubator, "paper")
     real_cleanup_pool = list(set(target_real_bots).union(set(config.get("real_whitelist", []))))
     if not paper_only:
@@ -1342,6 +1349,9 @@ async def manage_swarm():
     for ticker in final_incubator:
         p_key = f"p_{ticker}"
         if p_key not in active_running_keys:
+            if paper_only and not selection_ready(BASE_PATH, config):
+                logger.info('PAPER launch deferred after confirmed close')
+                break
             logger.info(f"🚀 [A] Launching Continuous Incubator (PAPER): {ticker}")
             await start_bot(ticker, is_paper=True, config=config)
             active_running_keys.add(p_key) # Жестко фиксируем запуск локально
