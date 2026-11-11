@@ -1,5 +1,20 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-10 — Watchtower telemetry, alert triage, dead-leg and breaker guards
+
+- **Monitoring Portability (`monitoring/health_check.py`, `monitoring/send_monitor_report.py`)**:
+  - Removed hardcoded Windows filesystem paths (`C:\Python\Prosperous_Bot\...`), replacing them with dynamic project root discovery (`Path(__file__).resolve().parent.parent`).
+  - Added platform-safe handling for `subprocess.CREATE_NO_WINDOW` on non-Windows environments.
+  - Wrapped `send_monitor_report.py` network transmission in an `if __name__ == '__main__':` entry point to prevent unwanted executions during module import and automated testing.
+- **Alert Triage & Deduplication (`core/notifier.py`)**:
+  - Implemented rate limiting and alert deduplication in `TelegramNotifier.send_alert` using `_last_alert_time` cache and configurable `alert_cooldown_sec` (default 60s). Suppresses redundant alert storms during repetitive market warnings.
+- **Dead-Leg Detection (`core/executor.py`)**:
+  - Implemented `_detect_dead_legs` inside `PortfolioExecutor.execute_actions`. Inspects execution results across paired `LONG` and `SHORT` actions; when one leg succeeds and the complementary leg fails or errors, flags `dead_leg_detected = True` and logs critical security alerts for unhedged directional exposure.
+- **Predictive Margin Circuit Breaker (`core/main.py`)**:
+  - Added pre-flight margin ratio verification before executing rebalance actions in `core/main.py`. If account margin ratio falls below `margin_ratio_critical`, new expansions are halted immediately, emergency alert is emitted, and `self_kill_pm2` isolates the bot before submitting orders to the exchange.
+- **Automated Tests (`tests/test_watchtower_monitoring.py`)**:
+  - Added test suite verifying dynamic path resolution, alert suppression cooldown, and dual-leg failure detection. All 41 targeted tests pass cleanly.
+
 ## 2026-11-09 — Quant & Backtest Audit, Delta Drift Stabilization & Metric Hardening
 
 - **Quant & Backtest Audit across 5 local 1-year minute-candle datasets (data/):**
@@ -21,6 +36,24 @@ CHANGELOG — Prosperous BOT Futures Portfolio
 - **Comprehensive Unit Tests (`tests/test_quant_audit_metrics.py`, `tests/test_share_trail_comprehensive.py`):**
   - Added full test suites for `core/connector.py` margin ratios, `backtest/backtest_rebalance.py` annualized metrics & Account MaxDD, delta bias arbitration, and complete state/signal mechanics of `core/share_trail.py`.
   - All 129 tests passed in 2.26s without regressions.
+
+## 2026-11-09 — Execution Engine & Microstructure Optimization
+
+- **Predictive Cross-Margin Liquidation Guard (`backtest/backtest_rebalance.py`):**
+  - Updated `cross_margin_distance_pct` in the predictive cross-margin liquidation guard block to evaluate against adverse bar extremes (`high_prices` for net-short, `low_prices` for net-long).
+  - Aligned the predictive liquidation evaluation with continuous intra-bar exchange liquidation checks, preventing delayed predictive stops when an adverse spike triggers hard liquidation.
+- **Order Book Depth & Freshness Guard (`core/executor.py`):**
+  - Increased order book depth limit from `limit=5` to `limit=20` across `execute_limit_with_fallback`, `execute_actions`, and fallback VWAP recalculations.
+  - Added timestamp staleness validation (`_fetched_at > 5.0s`), preventing execution or fill-ratio calculations based on outdated order book snapshots.
+- **POST-ONLY Maker Limit Pricing Bounds (`core/executor.py`):**
+  - Implemented safe buffer clamping inside the spread for `LIMIT_MAKER` orders.
+  - Guaranteed maker status by bounding SELL orders above `best_bid` and BUY orders below `best_ask`, eliminating immediate execution rejection errors (`API -2010`).
+- **Mark-Sanity & Unified Spread Guard (`core/main.py`):**
+  - Added `mark_sanity_guard` with `max_mark_mid_divergence` (default 0.5%): blocks rebalance decisions if `spot_price` (mark) diverges excessively from order book `mid_price` during basis disconnections or liquidity vacuums.
+  - Unified the spread filter (`(best_ask - best_bid) / best_bid > max_spread`) across both PAPER and REAL modes when depth is available, eliminating paper simulation divergence on illiquid pairs.
+- **Testing (`tests/test_executor.py`):**
+  - Added unit tests `test_execute_limit_maker_price_bounds` and `test_order_book_depth_and_freshness`.
+  - Confirmed 100% pass across execution, calculator, and backtest suites (`tests/test_executor.py`, `tests/test_calculator.py`, `tests/test_backtest_rebalance.py` — 97 passed).
 
 ## 2026-11-08 — JCTUSDT three-mode parity after the swarm wipe-out
 

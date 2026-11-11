@@ -36,6 +36,8 @@ class TelegramNotifier:
         self._session = None
         # Максимальное время ожидания при 429, чтобы не блокировать логику бота
         self.max_retry_wait = 30 
+        self.alert_cooldown_sec = float(self.config.get("alert_cooldown_sec", 60.0))
+        self._last_alert_time: dict[str, float] = {}
         
         if not self.enabled:
             if not self.token or not self.chat_id:
@@ -187,9 +189,18 @@ class TelegramNotifier:
             logger.error(f"Failed to queue telegram message: {e}")
             return False
 
-    async def send_alert(self, title: str, message: str, force_direct: bool = True):
+    async def send_alert(self, title: str, message: str, force_direct: bool = True, cooldown_sec: float = None):
+        key = f"{title}:{message}"
+        now = time.time()
+        cd = self.alert_cooldown_sec if cooldown_sec is None else cooldown_sec
+        if cd > 0:
+            last = self._last_alert_time.get(key, 0.0)
+            if now - last < cd:
+                logger.info(f"Alert suppressed by deduplication (cooldown {cd}s): {title}")
+                return False
+            self._last_alert_time[key] = now
         formatted_text = f"<b>⚠️ {title}</b>\n\n{message}"
-        await self.send_message(formatted_text, force_direct=force_direct)
+        return await self.send_message(formatted_text, force_direct=force_direct)
 
     async def send_status(self, bot_name: str, tpv: float, profit: float, cycles: int, safe_reserve: float, total_balance: float = None, bnb_balance: float = None):
         active_balance = tpv - safe_reserve

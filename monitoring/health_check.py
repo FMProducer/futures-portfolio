@@ -18,17 +18,20 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-PROJECT_DIR = Path(r"C:\Python\Prosperous_Bot\futures_portfolio")
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = PROJECT_DIR / "logs"
 STATE_DIR = PROJECT_DIR
 
 def check_pm2():
     """Проверяет PM2 процессы через pm2 jlist"""
     try:
+        kwargs = {}
+        if hasattr(subprocess, "CREATE_NO_WINDOW"):
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
         r = subprocess.run(
             ["pm2", "jlist"],
             capture_output=True, text=True, timeout=10,
-            creationflags=subprocess.CREATE_NO_WINDOW
+            **kwargs
         )
         if r.returncode != 0:
             return {"status": "error", "detail": r.stderr[:200]}

@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-PROJECT_DIR = Path(r"C:\Python\Prosperous_Bot\futures_portfolio")
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_DIR / ".env")
 
 token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -64,19 +64,23 @@ msg = (
     f"{alert_str}"
 )
 
-url = f"{api_base}/bot{token}/sendMessage"
-data = urllib.parse.urlencode({
-    "chat_id": chat_id,
-    "text": msg,
-    "parse_mode": "HTML"
-}).encode("utf-8")
+def send_report():
+    url = f"{api_base}/bot{token}/sendMessage"
+    data = urllib.parse.urlencode({
+        "chat_id": chat_id,
+        "text": msg,
+        "parse_mode": "HTML"
+    }).encode("utf-8")
 
-req = urllib.request.Request(url, data=data, method="POST")
-handler = urllib.request.ProxyHandler({
-    "https": "socks5://127.0.0.1:10808",
-    "http": "socks5://127.0.0.1:10808"
-})
-opener = urllib.request.build_opener(handler)
-resp = opener.open(req, timeout=20)
-result = json.loads(resp.read().decode())
-print(json.dumps(result, indent=2))
+    req = urllib.request.Request(url, data=data, method="POST")
+    handler = urllib.request.ProxyHandler({
+        "https": "socks5://127.0.0.1:10808",
+        "http": "socks5://127.0.0.1:10808"
+    })
+    opener = urllib.request.build_opener(handler)
+    resp = opener.open(req, timeout=20)
+    result = json.loads(resp.read().decode())
+    print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    send_report()
