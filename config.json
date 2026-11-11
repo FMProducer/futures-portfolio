@@ -87,17 +87,8 @@
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
-  "tickers": [
-    "ACTUSDT",
-    "AINUSDT",
-    "AKEUSDT",
-    "BTWUSDT",
-    "INITUSDT",
-    "JCTUSDT",
-    "MERLUSDT",
-    "ONUSDT"
-  ],
-  "base_ticker": "AINUSDT",
+  "tickers": [],
+  "base_ticker": "",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true

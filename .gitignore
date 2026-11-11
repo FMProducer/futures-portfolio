@@ -113,3 +113,4 @@ core/paper_budget.sqlite
 data/*USDT_data_manifest.json
 
 *.funding.sqlite*
+data/*USDT_live.feather
