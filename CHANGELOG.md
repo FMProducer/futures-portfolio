@@ -15,6 +15,46 @@ CHANGELOG — Prosperous BOT Futures Portfolio
 - **Automated Tests (`tests/test_watchtower_monitoring.py`)**:
   - Added test suite verifying dynamic path resolution, alert suppression cooldown, and dual-leg failure detection. All 41 targeted tests pass cleanly.
 
+## 2026-11-09 — Quant & Backtest Audit, Delta Drift Stabilization & Metric Hardening
+
+- **Quant & Backtest Audit across 5 local 1-year minute-candle datasets (data/):**
+  - **ZECUSDT (525600 bars):** Net Profit +103.27%, MaxDD 110.36%, Sortino (ann) 0.5908, Sharpe (ann) 0.5870, Cycles 260, Stops 46, Liqs 0 (Asset +388.70%).
+  - **AGTUSDT (525600 bars):** Net Profit +421.26%, MaxDD 67.38%, Sortino (ann) 1.9575, Sharpe (ann) 1.5562, Cycles 391, Stops 85, Liqs 0 (Asset +1607.61%).
+  - **AINUSDT (525600 bars):** Net Profit +203.88%, MaxDD 93.96%, Sortino (ann) 1.8850, Sharpe (ann) 1.5794, Cycles 327, Stops 55, Liqs 0 (Asset -70.75%).
+  - **IDOLUSDT (525600 bars):** Net Profit +37.05%, MaxDD 39.52%, Sortino (ann) 0.7250, Sharpe (ann) 0.7818, Cycles 188, Stops 34, Liqs 0 (Asset -71.19%).
+  - **JCTUSDT (523031 bars):** Net Profit +771.10%, MaxDD 146.88%, Sortino (ann) -0.5800, Sharpe (ann) 1.4881, Cycles 582, Stops 113, Liqs 0 (Asset +83.91%).
+- **Native Binance Margin Ratio (`core/connector.py`):**
+  - Exposes native Binance futures ratio `binance_margin_ratio` (`totalMaintMargin / totalMarginBalance`) with proper zero/infinity edge case protection.
+  - Preserves `margin_ratio` as coverage ratio (`totalMarginBalance / totalMaintMargin`) for backwards compatibility with configured warning/critical thresholds.
+- **Annualized Sharpe & Sortino Metrics (`backtest/backtest_rebalance.py`):**
+  - Added annualized Sharpe ratio and annualization of Sortino ratio using the annual minute scale $\sqrt{525600} \approx 724.98$.
+  - Output dictionary now includes `sharpe_ratio`, `sortino_annualized`, and raw `sortino_ratio`.
+- **Account MaxDD Accounting (`backtest/backtest_rebalance.py`):**
+  - Added `account_max_dd_pct` normalized to total margin collateral (`trading_capital` + `cash_reserve_usdt`). Clarifies and eliminates the artifact where isolated bot MaxDD exceeded 100% despite the overall margin account remaining well-capitalized (e.g. ZECUSDT Account MaxDD is 31.58%).
+- **Dynamic Delta Bias & Skew Arbitration (`core/calculator.py`, `core/main.py`, `backtest/backtest_rebalance.py`):**
+  - Added `delta_bias_side` to `select_tick_actions`: when position volume skew $|Q_{\text{long}} - Q_{\text{short}}| / \max(Q_{\text{long}}, Q_{\text{short}}) > \text{threshold}$, reductions prioritize the overweight leg and additions favor the underweight leg. Defaults to 0.0 (inactive) preserving 100% backwards compatibility and zero performance degradation.
+- **Comprehensive Unit Tests (`tests/test_quant_audit_metrics.py`, `tests/test_share_trail_comprehensive.py`):**
+  - Added full test suites for `core/connector.py` margin ratios, `backtest/backtest_rebalance.py` annualized metrics & Account MaxDD, delta bias arbitration, and complete state/signal mechanics of `core/share_trail.py`.
+  - All 129 tests passed in 2.26s without regressions.
+
+## 2026-11-09 — Execution Engine & Microstructure Optimization
+
+- **Predictive Cross-Margin Liquidation Guard (`backtest/backtest_rebalance.py`):**
+  - Updated `cross_margin_distance_pct` in the predictive cross-margin liquidation guard block to evaluate against adverse bar extremes (`high_prices` for net-short, `low_prices` for net-long).
+  - Aligned the predictive liquidation evaluation with continuous intra-bar exchange liquidation checks, preventing delayed predictive stops when an adverse spike triggers hard liquidation.
+- **Order Book Depth & Freshness Guard (`core/executor.py`):**
+  - Increased order book depth limit from `limit=5` to `limit=20` across `execute_limit_with_fallback`, `execute_actions`, and fallback VWAP recalculations.
+  - Added timestamp staleness validation (`_fetched_at > 5.0s`), preventing execution or fill-ratio calculations based on outdated order book snapshots.
+- **POST-ONLY Maker Limit Pricing Bounds (`core/executor.py`):**
+  - Implemented safe buffer clamping inside the spread for `LIMIT_MAKER` orders.
+  - Guaranteed maker status by bounding SELL orders above `best_bid` and BUY orders below `best_ask`, eliminating immediate execution rejection errors (`API -2010`).
+- **Mark-Sanity & Unified Spread Guard (`core/main.py`):**
+  - Added `mark_sanity_guard` with `max_mark_mid_divergence` (default 0.5%): blocks rebalance decisions if `spot_price` (mark) diverges excessively from order book `mid_price` during basis disconnections or liquidity vacuums.
+  - Unified the spread filter (`(best_ask - best_bid) / best_bid > max_spread`) across both PAPER and REAL modes when depth is available, eliminating paper simulation divergence on illiquid pairs.
+- **Testing (`tests/test_executor.py`):**
+  - Added unit tests `test_execute_limit_maker_price_bounds` and `test_order_book_depth_and_freshness`.
+  - Confirmed 100% pass across execution, calculator, and backtest suites (`tests/test_executor.py`, `tests/test_calculator.py`, `tests/test_backtest_rebalance.py` — 97 passed).
+
 ## 2026-11-08 — JCTUSDT three-mode parity after the swarm wipe-out
 
 - Isolated comparison on `codex/jct-real-parity`: JCTUSDT, 2026-11-07 15:40 through 2026-11-08 15:40 UTC, 1441 contiguous minutes, frozen config and window from `reports/jct_parity_20261108_1d`. The window reproduces the swarm PAPER wipe-out of 2026-11-08 13:03:38 UTC (`Total Equity -9.46 … EMERGENCY STOP`, pre-fix code, `SAFE=0.00`).
