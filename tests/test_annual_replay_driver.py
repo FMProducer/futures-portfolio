@@ -21,6 +21,7 @@ def test_real_driver_does_not_turn_a_protective_cash_block_into_a_crash():
 @pytest.mark.asyncio
 async def test_paper_driver_replays_agt_instead_of_hardcoded_zec(tmp_path):
     config = json.loads((Path(__file__).resolve().parents[1]/'config.json').read_text())
+    config['funding_model'] = 'legacy_constant'
     path = tmp_path/'config.json'; path.write_text(json.dumps(config))
     feather = tmp_path/'AGTUSDT_live.feather'
     count = 90
@@ -38,6 +39,7 @@ async def test_paper_driver_replays_agt_instead_of_hardcoded_zec(tmp_path):
 @pytest.mark.asyncio
 async def test_real_archived_adapter_matches_native_journal_and_confirmed_exchange_facts(tmp_path):
     config = json.loads((Path(__file__).resolve().parents[1]/'config.json').read_text())
+    config['funding_model'] = 'legacy_constant'
     path = tmp_path/'config.json'; path.write_text(json.dumps(config))
     feather = tmp_path/'AGTUSDT_live.feather'
     count = 90
@@ -50,7 +52,7 @@ async def test_real_archived_adapter_matches_native_journal_and_confirmed_exchan
     assert len(archived['_funding_receipts']) == native['funding_events'] == count-1
     assert archived['funding_events'] == count-1
     assert all(row['status'] == 'applied' for row in archived['_funding_receipts'])
-    assert len(archived['final_state']['funding_journal']) == 1
+    assert len(archived['final_state']['funding_journal']) == 2
     paper = await replay(path, feather, count)
     assert paper['_curve'] == pytest.approx(archived['_curve'], abs=1e-8)
     assert paper['positions'] == archived['positions']
@@ -76,6 +78,7 @@ async def test_real_archived_adapter_matches_native_journal_and_confirmed_exchan
 @pytest.mark.asyncio
 async def test_real_close_confirmation_delays_do_not_advance_historical_bar(tmp_path):
     config = json.loads((Path(__file__).resolve().parents[1]/'config.json').read_text())
+    config['funding_model'] = 'legacy_constant'
     config.update(equity_trailing_stop_activation_pct=.1, toxic_cooldown_days=0)
     targets = config['portfolios'][0]['targets']
     for key, share in (('BASE_LONG', .5), ('BASE_SHORT', .1), ('VIRTUAL', .4)):
