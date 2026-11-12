@@ -100,10 +100,12 @@ def isolated_reserve_store(config, memory=False, directory=None):
             yield settle
 
 
-async def replay(config_path, feather, count, memory_reserve_store=False, native_persistence=False):
+async def replay(config_path, feather, count, memory_reserve_store=False, native_persistence=False,
+                 funding_rates=None):
     if native_persistence and memory_reserve_store:
         raise ValueError('Native persistence cannot use a memory reserve store')
     config = json.loads(config_path.read_text())
+    assert (config.get('funding_model') == 'signed_actual') == (funding_rates is not None)
     ticker = feather.stem.split('_')[0]
     if not ticker.isascii() or not ticker.isalnum() or ticker != ticker.upper() or not ticker.endswith('USDT'):
         raise ValueError('Replay history filename must identify a USDT ticker')
@@ -114,15 +116,15 @@ async def replay(config_path, feather, count, memory_reserve_store=False, native
     assert len(frame) == count and np.all(np.diff(stamps) == 60000)
     index = [0]
     capital = config['portfolios'][0]['paper_initial_capital']
-    state_root = ROOT / 'reports' / f'runtime_parity_{ticker.lower()}'
-    if native_persistence:
-        state_root = Path(tempfile.mkdtemp(prefix='native-paper-', dir=config_path.parent))
+    state_root = Path(tempfile.mkdtemp(prefix='native-paper-' if native_persistence else 'isolated-paper-',
+                                    dir=config_path.parent))
     state_root.mkdir(parents=True, exist_ok=True)
     paths = [str(state_root / n) for n in [f'paper_state_{ticker}.json', f'paper_shadow_{ticker}.json']]
     strategy, wallet_path = paths
     docs = {strategy: {'base_ticker': ticker, 'initial_tpv': capital, 'reference_tpv': capital,
                       'tpv_ath': capital, 'started_at': float(stamps[0]/1000-1), 'rebalance_cycles': 0,
-                      'virt_qty': 0, 'virt_debt': 0, 'siphoning_reserve': 0, 'funding_model': 'legacy_constant'},
+                      'virt_qty': 0, 'virt_debt': 0, 'siphoning_reserve': 0,
+                      'funding_model': config.get('funding_model', 'legacy_constant')},
             wallet_path: {'base_ticker': ticker, 'balance': capital,
                           'positions': {f'{ticker}_LONG': 0, f'{ticker}_SHORT': 0},
                           'long_entry_price': 0, 'short_entry_price': 0}}
@@ -138,6 +140,8 @@ async def replay(config_path, feather, count, memory_reserve_store=False, native
     archived_funding = {}
     minimum_cash, minimum_virtual = [D(str(capital))], [D(0)]
     trace = []
+    sessions = []
+    session_start = [0]
 
     def record_wallet(wallet):
         for identity, receipt in wallet.get('share_fill_receipts', {}).items():
@@ -150,8 +154,12 @@ async def replay(config_path, feather, count, memory_reserve_store=False, native
 
     async def load(path, default=None):
         if native_persistence and str(path) in docs:
-            return storage.safe_load_json_sync(str(path), default)
-        return deepcopy(docs.get(str(path), default))
+            value = storage.safe_load_json_sync(str(path), default)
+        else:
+            value = deepcopy(docs.get(str(path), default))
+        if str(path) == strategy and value is not None:
+            value['funding_model'] = config.get('funding_model', 'legacy_constant')
+        return value
 
     async def save(path, value):
         if native_persistence and str(path) in docs:
@@ -162,17 +170,15 @@ async def replay(config_path, feather, count, memory_reserve_store=False, native
                 record_wallet(value)
 
     def boundary(sp, wp, state, wallet, journal, halt):
-        if native_persistence:
-            native_boundary(sp, wp, state, wallet, journal, halt)
-        else:
-            funding.save_funding_state(journal, halt, state)
+        native_boundary(sp, wp, state, wallet, journal, halt)
         applied = [row for row in state['funding_journal'] if row['status'] == 'applied']
         for row in applied:
             assert archived_funding.setdefault(row['event_id'], row) == row
-        if not native_persistence:
-            state['funding_journal'] = applied[-1:] + [row for row in state['funding_journal'] if row['status'] != 'applied']
         docs[sp], docs[wp] = deepcopy(state), deepcopy(wallet)
         record_wallet(wallet)
+
+    def memory_atomic(path, value):
+        docs[str(path)] = deepcopy(value)
 
     real_sleep = asyncio.sleep
 
@@ -217,13 +223,18 @@ async def replay(config_path, feather, count, memory_reserve_store=False, native
 
     def finish_session():
         state, wallet = docs[strategy], docs[wallet_path]
+        sessions.append(dict(bar=index[0], tpv=state['last_tpv'], funding=state.get('funding_paid', 0),
+                             reason=state.get('stop_reason'), cycles=state['rebalance_cycles'],start_bar=session_start[0]))
         totals['cycles'] += state['rebalance_cycles']
         totals['funding'] += float(state.get('funding_paid', 0))
         totals['fills'] += sum(float(r.get('qty', 0)) > 0 for r in wallet.get('share_fill_receipts', {}).values())
 
     async def noop(*args, **kwargs): pass
 
-    with isolated_reserve_store(config, memory_reserve_store, state_root if native_persistence else None) as settle, patch('core.funding_store.settle', new=settle), \
+    from scripts.parity_funding import paper_funding_bridge
+    with paper_funding_bridge(funding_rates), \
+         (nullcontext() if native_persistence else patch('core.funding.atomic_save_json', new=memory_atomic)), \
+         isolated_reserve_store(config, memory_reserve_store, state_root if native_persistence else None) as settle, patch('core.funding_store.settle', new=settle), \
          patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
          patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), patch('core.main.load_json', new=load), \
          patch('core.main.save_json', new=save), patch('core.main.safe_load_json_sync', new=storage.safe_load_json_sync if native_persistence else lambda *a, **kw: config), \
@@ -249,6 +260,7 @@ async def replay(config_path, feather, count, memory_reserve_store=False, native
                 curve[start:] = state['last_tpv']
                 break
             await namespace['reset_bot_state_files'](ticker, True, config, capital_override=wallet['balance'])
+            session_start[0] = index[0]
     assert np.all(np.isfinite(curve))
     peak = np.maximum(np.maximum.accumulate(curve), capital)
     return dict(totals, ticker=ticker, mode='PAPER', final_tpv=float(curve[-1]), profit_pct=float((curve[-1]/capital-1)*100),
@@ -259,13 +271,15 @@ async def replay(config_path, feather, count, memory_reserve_store=False, native
                 min_cash=str(minimum_cash[0]), min_virtual=str(minimum_virtual[0]),
                 funding_reserve=config['portfolios'][0].get('paper_account_free_margin', 0),
                 funding_events=len(archived_funding), _funding=list(archived_funding.values()), _trace=trace,
+                _sessions=sessions, final_state=docs[strategy], final_wallet=docs[wallet_path],
+                funding_rate_observations=funding_rates.observations if funding_rates else [],
                 config_sha256=hashlib.sha256(config_path.read_bytes()).hexdigest(),
                 data_sha256=hashlib.sha256(feather.read_bytes()).hexdigest(), _curve=curve.tolist(), _fills=fills)
 
 
 if __name__ == '__main__':
     result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--memory-reserve-store' in sys.argv[5:], '--native-persistence' in sys.argv[5:]))
-    for key in ('_curve', '_fills', '_funding', '_trace'):
+    for key in ('_curve', '_fills', '_funding', '_trace', '_sessions'):
         output = Path(sys.argv[4])
         output.with_name(output.stem + key + '.json').write_text(json.dumps(result.pop(key)), encoding='utf-8')
     Path(sys.argv[4]).write_text(json.dumps(result, indent=2), encoding='utf-8')

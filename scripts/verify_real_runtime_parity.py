@@ -31,11 +31,14 @@ class Exchange:
     """Immediate market fills; private trade facts are independent of the shadow wallet."""
     api_key, testnet, client = 'offline-replay-no-exchange-credentials', False, True
 
-    def __init__(self, ticker, prices, stamps, index, capital, reserve, targets, archive_applied=False):
+    def __init__(self, ticker, prices, stamps, index, capital, reserve, targets, archive_applied=False,
+                 funding_model='legacy_constant', funding_rates=None):
         self.ticker, self.prices, self.stamps, self.index = ticker, prices, stamps, index
         self.wallet = D(str(capital)) + D(str(reserve))
         self.targets = targets
         self.archive_applied = archive_applied
+        self.funding_model = funding_model
+        self.funding_rates = funding_rates
         self.positions = {leg: [D(0), D(0)] for leg in ('LONG', 'SHORT')}
         self.orders, self.trades, self.fills, self.income = {}, {}, [], []
         self.funding_bar = -1
@@ -114,6 +117,17 @@ class Exchange:
                 for j in range(max(0, self.index[0]-limit+2), min(len(self.prices), self.index[0]+2))]
 
     async def get_funding_income(self, symbol, since, until):
+        if self.funding_model == 'disabled':
+            return []
+        if self.funding_rates is not None:
+            previous_count = len(self.income)
+            for row in self.funding_rates.due(int(self.stamps[self.index[0]])):
+                amount = self.funding_rates.amount(row, self.positions['LONG'][0], self.positions['SHORT'][0])
+                self.wallet += amount
+                self.income.append(dict(symbol=symbol, incomeType='FUNDING_FEE', asset='USDT',
+                    tranId=row['fundingTime'], time=row['fundingTime']+60000, income=str(amount)))
+            return [r for r in self.income[-max(2, len(self.income)-previous_count):]
+                    if since < r['time'] <= until and D(r['income']) != 0]
         if self.funding_bar != self.index[0]:
             amount = -sum(qty*self.price() for qty, _ in self.positions.values())*D('.0002')/1440
             self.wallet += amount
@@ -135,13 +149,15 @@ class ReplayLogger(Quiet):
         raise ReplayFailure(str((message, *args)))
 
 
-async def replay(config_path, feather, count, archive_applied=False, memory_reserve_store=False, native_persistence=False):
+async def replay(config_path, feather, count, archive_applied=False, memory_reserve_store=False, native_persistence=False,
+                 funding_rates=None):
     if native_persistence and memory_reserve_store:
         raise ValueError('Native persistence cannot use a memory reserve store')
     config = json.loads(config_path.read_text())
     ticker = feather.stem.split('_')[0]
     assert ticker.isascii() and ticker.isalnum() and ticker == ticker.upper() and ticker.endswith('USDT')
-    assert config.get('funding_model') == 'legacy_constant'
+    assert config.get('funding_model') in ('legacy_constant', 'disabled', 'signed_actual')
+    assert (config.get('funding_model') == 'signed_actual') == (funding_rates is not None)
     config.update(base_ticker=ticker, paper_mode=False, max_bots=9, paper_mode_bots=8, telegram_enabled=False)
     frame = pd.read_feather(feather).iloc[:count]
     prices = frame.close.to_numpy()
@@ -151,8 +167,9 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
     portfolio = config['portfolios'][0]
     capital = portfolio['initial_capital']
     exchange = Exchange(ticker, prices, stamps, index, capital, portfolio['cash_reserve_usdt'],
-                        portfolio['targets'], archive_applied)
+                        portfolio['targets'], archive_applied, config.get('funding_model'), funding_rates)
     totals = dict(cycles=0, stops=0)
+    session_start = [0]
     runtime_logger = ReplayLogger()
     minimum_cash, minimum_virtual = [D(str(capital))], [D(0)]
     docs, sessions, archived = {}, [], {}
@@ -174,18 +191,14 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
         if str(path) in docs: docs[str(path)] = deepcopy(value)
 
     def boundary(sp, wp, state, wallet, journal, halt):
-        if native_persistence:
-            native_boundary(sp,wp,state,wallet,journal,halt)
-        else:
-            funding.save_funding_state(journal, halt, state)
-        if archive_applied:
-            applied = [row for row in state['funding_journal'] if row['status'] == 'applied']
-            for row in applied:
+        native_boundary(sp,wp,state,wallet,journal,halt)
+        for row in state['funding_journal']:
+            if row['status'] == 'applied':
                 assert archived.setdefault(row['event_id'], row) == row
-            keep = applied[-1:]
-            if not native_persistence:
-                state['funding_journal'] = keep + [row for row in state['funding_journal'] if row['status'] != 'applied']
         docs[str(sp)], docs[str(wp)] = deepcopy(state), deepcopy(wallet)
+
+    def memory_atomic(path, value):
+        docs[str(path)] = deepcopy(value)
 
     def update_config(path, updater): return updater(config)
 
@@ -234,10 +247,12 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
         def finish():
             state = docs[strategy]
             totals['cycles'] += state['rebalance_cycles']
-            sessions.append(dict(bar=index[0], tpv=state['last_tpv'], funding=state.get('funding_paid', 0)))
+            sessions.append(dict(bar=index[0], tpv=state['last_tpv'], funding=state.get('funding_paid', 0),
+                                 reason=state.get('stop_reason'), cycles=state['rebalance_cycles'],start_bar=session_start[0]))
 
         runtime_config_path=root/'config.json' if native_persistence else config_path
-        with isolated_reserve_store(config, memory_reserve_store, root if native_persistence else None) as settle, patch('core.funding_store.settle', new=settle), \
+        with (nullcontext() if native_persistence else patch('core.funding.atomic_save_json', new=memory_atomic)), \
+             isolated_reserve_store(config, memory_reserve_store, root if native_persistence else None) as settle, patch('core.funding_store.settle', new=settle), \
              patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
              patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), \
              patch('core.main.load_json', new=load), patch('core.main.save_json', new=save), \
@@ -277,12 +292,13 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
                     curve[start:] = state['last_tpv']
                     break
                 await namespace['reset_bot_state_files'](ticker, False, config, capital_override=wallet['balance'])
+                session_start[0] = index[0]
         assert np.all(np.isfinite(curve))
         peak = np.maximum(np.maximum.accumulate(curve), capital)
         return dict(totals, ticker=ticker, mode='SIMULATED_REAL', bars=count, fills=len(exchange.fills),
             funding=float(-sum(D(row['income']) for row in exchange.income)),
-            funding_events=len(archived) if archive_applied else len(docs[strategy].get('funding_journal', [])),
-            journal_adapter='native_sqlite_archive' if native_persistence else 'archived_applied_with_two_event_overlap' if archive_applied else 'native',
+            funding_events=len(archived),
+            journal_adapter='native_sqlite_archive' if native_persistence else 'core_sqlite_archive_with_memory_json',
             persistence_adapter='native_json_wal' if native_persistence else 'isolated',
             persistence_root=str(root) if native_persistence else None,
             reserve_store_adapter='sqlite_memory' if memory_reserve_store else 'sqlite_disk',
@@ -295,7 +311,9 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
             data_sha256=hashlib.sha256(feather.read_bytes()).hexdigest(),
             _curve=curve.tolist(), _fills=exchange.fills, _sessions=sessions,
             _funding=exchange.income, _funding_receipts=list(archived.values()), _trace=trace,
-            final_state=docs[strategy], final_wallet=docs[wallet_path])
+            final_state=docs[strategy], final_wallet=docs[wallet_path],
+            exchange_account_wallet=str(exchange.wallet),
+            funding_rate_observations=funding_rates.observations if funding_rates else [])
 
 
 if __name__ == '__main__':
