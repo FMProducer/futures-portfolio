@@ -114,3 +114,4 @@ data/*USDT_data_manifest.json
 
 *.funding.sqlite*
 data/*USDT_live.feather
+data/*USDT_live_32d.feather
