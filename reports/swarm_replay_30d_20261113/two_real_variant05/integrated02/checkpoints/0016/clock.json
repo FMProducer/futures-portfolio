@@ -1,0 +1,55 @@
+{
+  "time": 1793396700,
+  "processes": {
+    "p_ONUSDT": {
+      "name": "paper-on",
+      "paper": true
+    },
+    "r_ONUSDT": {
+      "name": "real-on",
+      "paper": false
+    }
+  },
+  "sessions": [
+    {
+      "session": "p_ONUSDT:1793118752.7001195",
+      "ticker": "ONUSDT",
+      "paper": true,
+      "start": 1793118752.7001195,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_ONUSDT.json"
+    },
+    {
+      "session": "r_ONUSDT:1793395755.6",
+      "ticker": "ONUSDT",
+      "paper": false,
+      "start": 1793395755.6001472,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json"
+    }
+  ],
+  "exchange_wallet": "6999.201758003825500",
+  "exchange_positions": {
+    "LONG": [
+      "5058.227",
+      "0.19759875"
+    ],
+    "SHORT": [
+      "5046.096",
+      "0.19740125"
+    ]
+  },
+  "waiters": [
+    [
+      1793396701.6001472,
+      317788
+    ],
+    [
+      1793396702.7001195,
+      317790
+    ]
+  ],
+  "financial_sha256": "ff3c77fdc3ab71a890d879ff3bdbfd84781bb2b5ee18c16514b4f507df1591ca",
+  "driver_sha256": "6e8ffc1ff93e036ca190353a9e8accad98cfe055c6e3c9df4a960827be30ac36",
+  "recovery": "Deterministic replay from start; verify native financial snapshot at checkpoint, then continue"
+}

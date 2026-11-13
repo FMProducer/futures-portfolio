@@ -1,0 +1,113 @@
+{
+  "time": 1794174300,
+  "processes": {
+    "p_ONUSDT": {
+      "name": "paper-on",
+      "paper": true
+    },
+    "p_HOTUSDT": {
+      "name": "paper-hot",
+      "paper": true
+    },
+    "r_HOTUSDT": {
+      "name": "real-hot",
+      "paper": false
+    },
+    "r_ONUSDT": {
+      "name": "real-on",
+      "paper": false
+    }
+  },
+  "sessions": [
+    {
+      "session": "p_ONUSDT:1793118752.7001195",
+      "ticker": "ONUSDT",
+      "paper": true,
+      "start": 1793118752.7001195,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\core\\paper_state_ONUSDT.json"
+    },
+    {
+      "session": "r_ONUSDT:1793395755.6",
+      "ticker": "ONUSDT",
+      "paper": false,
+      "start": 1793395755.6001472,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\core\\real_state_ONUSDT.json",
+      "end": 1794151572.1001472,
+      "equity": 1341.150578830107,
+      "reason": "siphon",
+      "cycles": 21,
+      "close_confirmed": true
+    },
+    {
+      "session": "p_HOTUSDT:1793401467.0001478",
+      "ticker": "HOTUSDT",
+      "paper": true,
+      "start": 1793401467.0001478,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\core\\paper_state_HOTUSDT.json",
+      "end": 1793839632.0001478,
+      "equity": 1339.8976590848974,
+      "reason": "siphon",
+      "cycles": 14,
+      "close_confirmed": true
+    },
+    {
+      "session": "p_HOTUSDT:1793858670.0001497",
+      "ticker": "HOTUSDT",
+      "paper": true,
+      "start": 1793858670.0001497,
+      "capital": 1128.85688446,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\core\\paper_state_HOTUSDT.json"
+    },
+    {
+      "session": "r_HOTUSDT:1793859621.9",
+      "ticker": "HOTUSDT",
+      "paper": false,
+      "start": 1793859621.9001498,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\core\\real_state_HOTUSDT.json"
+    },
+    {
+      "session": "r_ONUSDT:1794151739.7",
+      "ticker": "ONUSDT",
+      "paper": false,
+      "start": 1794151739.700179,
+      "capital": 997.5159468523477,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\core\\real_state_ONUSDT.json"
+    }
+  ],
+  "exchange_wallet": "7427.630377378843756683560899",
+  "exchange_positions": {
+    "LONG": [
+      "5838.730",
+      "0.2208126804554329451781466175"
+    ],
+    "SHORT": [
+      "3337.179",
+      "0.22068960"
+    ]
+  },
+  "waiters": [
+    [
+      1794174300.0001497,
+      1270837
+    ],
+    [
+      1794174301.700179,
+      1270840
+    ],
+    [
+      1794174302.7001195,
+      1270842
+    ],
+    [
+      1794174311.4001498,
+      1270851
+    ]
+  ],
+  "financial_sha256": "901f01fb1031762a09c14a57228a47de53b05a1f9254761a1ece608807f696b9",
+  "driver_sha256": "6e8ffc1ff93e036ca190353a9e8accad98cfe055c6e3c9df4a960827be30ac36",
+  "recovery": "Deterministic replay from start; verify native financial snapshot at checkpoint, then continue"
+}

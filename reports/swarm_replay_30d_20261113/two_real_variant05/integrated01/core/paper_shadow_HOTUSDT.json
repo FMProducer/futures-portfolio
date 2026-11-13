@@ -1,0 +1,410 @@
+{
+  "balance": 1214.763009655366,
+  "positions": {
+    "HOTUSDT_LONG": 2610069.15,
+    "HOTUSDT_SHORT": 2932007.909
+  },
+  "last_price": 0.0003907,
+  "base_ticker": "HOTUSDT",
+  "long_entry_price": 0.00042399823956765844,
+  "short_entry_price": 0.00043816449265427366,
+  "long_liquidation_price": 0.00028436,
+  "short_liquidation_price": 0.00058247,
+  "profit_budget": {
+    "balance": "-388.1498484640426330433333333",
+    "receipts": {
+      "paper:00000000000000000000000000000033": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "2539356.062",
+        "price": "0.00044432205",
+        "commission": "0.45131675645910685",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "paper:00000000000000000000000000000034": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "2533265.867",
+        "price": "0.00044387795",
+        "commission": "0.44978434393957306",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "paper:0000000000000000000000000000004f": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "BUY",
+        "qty": "568860.36",
+        "price": "0.00040110045",
+        "commission": "0.0912680585532648",
+        "trade_pnl": "24.3344240499",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000051": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "815783.629",
+        "price": "0.000398199",
+        "commission": "0.1299376901136684",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000054": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "BUY",
+        "qty": "330458.748",
+        "price": "0.00037068525",
+        "commission": "0.0489984734468268",
+        "trade_pnl": "24.1871680047396",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000056": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "574769.804",
+        "price": "0.000376188",
+        "commission": "0.0864886012108608",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000058": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "SELL",
+        "qty": "1329308.421",
+        "price": "0.00044287845",
+        "commission": "0.23548882122577097",
+        "trade_pnl": "24.054814790666164",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000005a": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "1010120.787",
+        "price": "0.0004281858",
+        "commission": "0.17300775091128984",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000005e": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "43997.078",
+        "price": "0.0004305846",
+        "commission": "0.00757778569271952",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000006e": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "448016.064",
+        "price": "0.00041630805",
+        "commission": "0.07460507758900609",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000070": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "BUY",
+        "qty": "233741.081",
+        "price": "0.00041630805",
+        "commission": "0.03892331745440082",
+        "trade_pnl": "5.015037578298345",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000072": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "SELL",
+        "qty": "470286.051",
+        "price": "0.000443778",
+        "commission": "0.0834810412562712",
+        "trade_pnl": "9.518918286959032",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000074": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "441326.356",
+        "price": "0.00044007985",
+        "commission": "0.07768753461981064",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000089": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "74643.932",
+        "price": "0.00043991985",
+        "commission": "0.01313493894754008",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000008b": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "36358.01",
+        "price": "0.0004419789",
+        "commission": "0.0064277893063956",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000008d": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "SELL",
+        "qty": "42905.869",
+        "price": "0.0004419789",
+        "commission": "0.00758539551366564",
+        "trade_pnl": "0.7714758610435304",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      }
+    },
+    "blocked": false
+  },
+  "share_fill_receipts": {
+    "paper:00000000000000000000000000000033": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "2539356.062",
+      "price": "0.00044432205",
+      "commission": "0.45131675645910685",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:00000000000000000000000000000034": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "2533265.867",
+      "price": "0.00044387795",
+      "commission": "0.44978434393957306",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:0000000000000000000000000000004f": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "568860.36",
+      "price": "0.00040110045",
+      "commission": "0.0912680585532648",
+      "trade_pnl": "24.3344240499",
+      "reduce_only": "True"
+    },
+    "paper:00000000000000000000000000000051": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "815783.629",
+      "price": "0.000398199",
+      "commission": "0.1299376901136684",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:00000000000000000000000000000054": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "330458.748",
+      "price": "0.00037068525",
+      "commission": "0.0489984734468268",
+      "trade_pnl": "24.1871680047396",
+      "reduce_only": "True"
+    },
+    "paper:00000000000000000000000000000056": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "574769.804",
+      "price": "0.000376188",
+      "commission": "0.0864886012108608",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:00000000000000000000000000000058": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "SELL",
+      "qty": "1329308.421",
+      "price": "0.00044287845",
+      "commission": "0.23548882122577097",
+      "trade_pnl": "24.054814790666164",
+      "reduce_only": "True"
+    },
+    "paper:0000000000000000000000000000005a": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "1010120.787",
+      "price": "0.0004281858",
+      "commission": "0.17300775091128984",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:0000000000000000000000000000005e": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "43997.078",
+      "price": "0.0004305846",
+      "commission": "0.00757778569271952",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:0000000000000000000000000000006e": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "448016.064",
+      "price": "0.00041630805",
+      "commission": "0.07460507758900609",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:00000000000000000000000000000070": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "233741.081",
+      "price": "0.00041630805",
+      "commission": "0.03892331745440082",
+      "trade_pnl": "5.015037578298345",
+      "reduce_only": "True"
+    },
+    "paper:00000000000000000000000000000072": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "SELL",
+      "qty": "470286.051",
+      "price": "0.000443778",
+      "commission": "0.0834810412562712",
+      "trade_pnl": "9.518918286959032",
+      "reduce_only": "True"
+    },
+    "paper:00000000000000000000000000000074": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "441326.356",
+      "price": "0.00044007985",
+      "commission": "0.07768753461981064",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:00000000000000000000000000000089": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "74643.932",
+      "price": "0.00043991985",
+      "commission": "0.01313493894754008",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:0000000000000000000000000000008b": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "36358.01",
+      "price": "0.0004419789",
+      "commission": "0.0064277893063956",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:0000000000000000000000000000008d": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "SELL",
+      "qty": "42905.869",
+      "price": "0.0004419789",
+      "commission": "0.00758539551366564",
+      "trade_pnl": "0.7714758610435304",
+      "reduce_only": "True"
+    }
+  },
+  "share_trail_checkpoint": {
+    "spec": {
+      "model": "share-pullback-rebound-v2",
+      "distance": 0.05800887342949769,
+      "target_long": 0.333,
+      "target_short": 0.333,
+      "surplus": 0.04,
+      "deficit": 0.04
+    },
+    "trail": {
+      "BASE_LONG": {
+        "peak": null,
+        "trough": null
+      },
+      "BASE_SHORT": {
+        "peak": "0.3974276413822225167726358404",
+        "trough": null
+      }
+    },
+    "execution_id": "paper:0000000000000000000000000000008d"
+  }
+}

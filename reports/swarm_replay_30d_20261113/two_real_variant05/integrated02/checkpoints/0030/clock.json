@@ -1,0 +1,139 @@
+{
+  "time": 1794519900.0,
+  "processes": {
+    "p_HOTUSDT": {
+      "name": "paper-hot",
+      "paper": true
+    },
+    "r_HOTUSDT": {
+      "name": "real-hot",
+      "paper": false
+    },
+    "p_ONUSDT": {
+      "name": "paper-on",
+      "paper": true
+    },
+    "r_ONUSDT": {
+      "name": "real-on",
+      "paper": false
+    }
+  },
+  "sessions": [
+    {
+      "session": "p_ONUSDT:1793118752.7001195",
+      "ticker": "ONUSDT",
+      "paper": true,
+      "start": 1793118752.7001195,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_ONUSDT.json",
+      "end": 1794233042.7001195,
+      "equity": 1351.3479233818273,
+      "reason": "siphon",
+      "cycles": 55,
+      "close_confirmed": true
+    },
+    {
+      "session": "r_ONUSDT:1793395755.6",
+      "ticker": "ONUSDT",
+      "paper": false,
+      "start": 1793395755.6001472,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json",
+      "end": 1794151572.1001472,
+      "equity": 1341.150578830107,
+      "reason": "siphon",
+      "cycles": 21,
+      "close_confirmed": true
+    },
+    {
+      "session": "p_HOTUSDT:1793401467.0001478",
+      "ticker": "HOTUSDT",
+      "paper": true,
+      "start": 1793401467.0001478,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_HOTUSDT.json",
+      "end": 1793839632.0001478,
+      "equity": 1339.8976590848974,
+      "reason": "siphon",
+      "cycles": 14,
+      "close_confirmed": true
+    },
+    {
+      "session": "p_HOTUSDT:1793858670.0001497",
+      "ticker": "HOTUSDT",
+      "paper": true,
+      "start": 1793858670.0001497,
+      "capital": 1128.85688446,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_HOTUSDT.json"
+    },
+    {
+      "session": "r_HOTUSDT:1793859621.9",
+      "ticker": "HOTUSDT",
+      "paper": false,
+      "start": 1793859621.9001498,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_HOTUSDT.json"
+    },
+    {
+      "session": "r_ONUSDT:1794151739.7",
+      "ticker": "ONUSDT",
+      "paper": false,
+      "start": 1794151739.700179,
+      "capital": 997.5159468523477,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json",
+      "end": 1794233764.700179,
+      "equity": 1364.2217517871309,
+      "reason": "siphon",
+      "cycles": 9,
+      "close_confirmed": true
+    },
+    {
+      "session": "p_ONUSDT:1794344415.0001307",
+      "ticker": "ONUSDT",
+      "paper": true,
+      "start": 1794344415.0001307,
+      "capital": 1229.69211737,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_ONUSDT.json"
+    },
+    {
+      "session": "r_ONUSDT:1794344415.0",
+      "ticker": "ONUSDT",
+      "paper": false,
+      "start": 1794344415.0001307,
+      "capital": 995.6628281661392,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json"
+    }
+  ],
+  "exchange_wallet": "7879.149115822432296219095620",
+  "exchange_positions": {
+    "LONG": [
+      "19041.506",
+      "0.09607182828594807574568944284"
+    ],
+    "SHORT": [
+      "4819.826",
+      "0.10764615"
+    ]
+  },
+  "waiters": [
+    [
+      1794519900.0001307,
+      1694011
+    ],
+    [
+      1794519900.0001497,
+      1694012
+    ],
+    [
+      1794519914.9001498,
+      1694029
+    ],
+    [
+      1794519903.5001307,
+      1694017
+    ]
+  ],
+  "financial_sha256": "869326156de727e6f2072af81afbf9da2bd8a9126a46fc6aa6af78334fd31d8b",
+  "driver_sha256": "6e8ffc1ff93e036ca190353a9e8accad98cfe055c6e3c9df4a960827be30ac36",
+  "recovery": "Deterministic replay from start; verify native financial snapshot at checkpoint, then continue"
+}

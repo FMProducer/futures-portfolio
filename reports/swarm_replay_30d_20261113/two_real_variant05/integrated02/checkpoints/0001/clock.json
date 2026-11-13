@@ -1,0 +1,11 @@
+{
+  "time": 1792100700,
+  "processes": {},
+  "sessions": [],
+  "exchange_wallet": "7000",
+  "exchange_positions": {},
+  "waiters": [],
+  "financial_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "driver_sha256": "6e8ffc1ff93e036ca190353a9e8accad98cfe055c6e3c9df4a960827be30ac36",
+  "recovery": "Deterministic replay from start; verify native financial snapshot at checkpoint, then continue"
+}

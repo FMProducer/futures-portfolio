@@ -1,0 +1,71 @@
+{
+  "time": 1793742300,
+  "processes": {
+    "p_ONUSDT": {
+      "name": "paper-on",
+      "paper": true
+    },
+    "r_ONUSDT": {
+      "name": "real-on",
+      "paper": false
+    },
+    "p_HOTUSDT": {
+      "name": "paper-hot",
+      "paper": true
+    }
+  },
+  "sessions": [
+    {
+      "session": "p_ONUSDT:1793118752.7001195",
+      "ticker": "ONUSDT",
+      "paper": true,
+      "start": 1793118752.7001195,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_ONUSDT.json"
+    },
+    {
+      "session": "r_ONUSDT:1793395755.6",
+      "ticker": "ONUSDT",
+      "paper": false,
+      "start": 1793395755.6001472,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json"
+    },
+    {
+      "session": "p_HOTUSDT:1793401467.0001478",
+      "ticker": "HOTUSDT",
+      "paper": true,
+      "start": 1793401467.0001478,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_HOTUSDT.json"
+    }
+  ],
+  "exchange_wallet": "7019.755587102414903769321672",
+  "exchange_positions": {
+    "LONG": [
+      "6164.071",
+      "0.1935691030353894171693800685"
+    ],
+    "SHORT": [
+      "4383.921",
+      "0.1971049969268229460137069295"
+    ]
+  },
+  "waiters": [
+    [
+      1793742302.7001195,
+      732433
+    ],
+    [
+      1793742312.0001478,
+      732445
+    ],
+    [
+      1793742305.1001472,
+      732437
+    ]
+  ],
+  "financial_sha256": "630e67aa018a6e5a513cdc4b835b006084c623ebd1cae1230e49dc7bb1554b08",
+  "driver_sha256": "6e8ffc1ff93e036ca190353a9e8accad98cfe055c6e3c9df4a960827be30ac36",
+  "recovery": "Deterministic replay from start; verify native financial snapshot at checkpoint, then continue"
+}

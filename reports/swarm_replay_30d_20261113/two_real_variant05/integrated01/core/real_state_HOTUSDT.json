@@ -1,0 +1,77 @@
+{
+  "base_ticker": "HOTUSDT",
+  "started_at": 1793859621.9,
+  "initial_tpv": 1000.0,
+  "reference_tpv": 1000.0,
+  "tpv_ath": 1169.5505611831443,
+  "last_tpv": 1122.5643327163912,
+  "last_profit": 122.56433271639116,
+  "total_pnl_pct": 12.256433271639105,
+  "rebalance_cycles": 15,
+  "virt_qty": 0.0,
+  "virt_debt": 334.0000001428025,
+  "siphoning_reserve": 0.0,
+  "funding_model": "signed_actual",
+  "live_funding": {
+    "symbol": "HOTUSDT",
+    "snapshot_ms": 1793859621900,
+    "boundary_ms": 1793859621900,
+    "opening_wallet": "7074.962602682822123430351194",
+    "blocked": "",
+    "allocation": {
+      "id": "00000000000000000000000000000035",
+      "account_key": "fe0313ee29df7e1aa86503d3b2225ac4770c11ca29af5747c23cd3493baaa673",
+      "ticker": "HOTUSDT",
+      "capital": "1000.0",
+      "reserve": "5000.0",
+      "account_wallet": "7074.962602682822123430351194",
+      "available": "6334.000104509239124520016413",
+      "snapshot_ms": 1793859621900,
+      "fill_offset": 0
+    }
+  },
+  "funding_journal": [],
+  "funding_halt": {
+    "active": false,
+    "reason": "",
+    "event_id": "",
+    "halted_at": 0.0,
+    "shortfall_amount": 0.0,
+    "increases_blocked": false,
+    "close_state": {}
+  },
+  "share_trail": {
+    "BASE_LONG": {
+      "peak": null,
+      "trough": "0.2141950306335742859594174754"
+    },
+    "BASE_SHORT": {
+      "peak": "0.4553613378300493942382753659",
+      "trough": null
+    }
+  },
+  "share_trail_receipts": [],
+  "share_trail_spec": {
+    "model": "share-pullback-rebound-v2",
+    "distance": 0.05800887342949769,
+    "target_long": 0.333,
+    "target_short": 0.333,
+    "surplus": 0.04,
+    "deficit": 0.04
+  },
+  "strategy_origin_ms": 1793859540000,
+  "max_drawdown_reference": 1169.5505611831443,
+  "max_drawdown_basis": "portfolio_equity_peak",
+  "share_trail_last_fill": "binance:HOTUSDT:16",
+  "initial_build_pending": null,
+  "initial_build_completed_at": 1793859622.9001498,
+  "last_rebalance_price": 0.0004422,
+  "last_update": 1794519854.9001498,
+  "valuation_at": 1794519854.9001498,
+  "valuation_price": 0.0003907,
+  "strategy_bar_ms": 1794519780000,
+  "velocity_cooldown_bars": 0,
+  "rebalance_preferred_side": "SHORT",
+  "last_rebalance_completed_at": 1794290954.9001498,
+  "trailing_stop_violation_start": 0.0
+}
