@@ -115,3 +115,6 @@ data/*USDT_data_manifest.json
 *.funding.sqlite*
 data/*USDT_live.feather
 data/*USDT_live_32d.feather
+data/funding_*USDT.json
+data/funding_*USDT_rates.json
+data/*USDT_funding_rates.json

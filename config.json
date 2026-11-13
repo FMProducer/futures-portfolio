@@ -21,7 +21,7 @@
   "max_drawdown_limit": 100.0,
   "max_drawdown_cooldown_days": 365.0,
   "equity_trailing_stop_pct": 0.3,
-  "equity_trailing_stop_activation_pct": 1000000.55,
+  "equity_trailing_stop_activation_pct": 1.55,
   "equity_trailing_stop_timeout_sec": 34.454466312271094,
   "toxic_cooldown_days": 0.09014340672051,
   "use_v2_scoring": true,
@@ -44,18 +44,18 @@
       "liquidation_distance_warn_pct": 40.0,
       "liquidation_distance_crit_pct": 25.0,
       "post_factum_liquidation_check": true,
-      "siphoning_threshold_pct": 33.3,
+      "siphoning_threshold_pct": 0.0,
       "targets": {
         "BASE_LONG": {
-          "share": 0.333,
+          "share": 0.25,
           "leverage": 3
         },
         "BASE_SHORT": {
-          "share": 0.333,
+          "share": 0.25,
           "leverage": 3
         },
         "VIRTUAL": {
-          "share": 0.334,
+          "share": 0.5,
           "leverage": 1
         }
       },
