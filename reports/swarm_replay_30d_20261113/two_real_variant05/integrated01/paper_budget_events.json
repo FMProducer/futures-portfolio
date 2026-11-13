@@ -1,0 +1,44 @@
+[
+  {
+    "time": 1791927900.0,
+    "ticker": "SYSTEM",
+    "kind": "migration_result",
+    "amount": "0"
+  },
+  {
+    "time": 1793118752.7001195,
+    "ticker": "ONUSDT",
+    "kind": "reserve",
+    "amount": "1000.00000000"
+  },
+  {
+    "time": 1793401467.0001478,
+    "ticker": "HOTUSDT",
+    "kind": "reserve",
+    "amount": "1000.00000000"
+  },
+  {
+    "time": 1793839632.0001478,
+    "ticker": "HOTUSDT",
+    "kind": "return",
+    "amount": "1339.89765908"
+  },
+  {
+    "time": 1793858670.0001497,
+    "ticker": "HOTUSDT",
+    "kind": "reserve",
+    "amount": "1128.85688446"
+  },
+  {
+    "time": 1794233042.7001195,
+    "ticker": "ONUSDT",
+    "kind": "return",
+    "amount": "1351.34792338"
+  },
+  {
+    "time": 1794344415.0001307,
+    "ticker": "ONUSDT",
+    "kind": "reserve",
+    "amount": "1229.69211737"
+  }
+]

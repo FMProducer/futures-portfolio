@@ -1,0 +1,76 @@
+{
+  "base_ticker": "ONUSDT",
+  "started_at": 1794344415.0,
+  "initial_tpv": 995.6628281661392,
+  "reference_tpv": 995.6628281661392,
+  "tpv_ath": 1105.6134436214227,
+  "last_tpv": 973.3518196214226,
+  "last_profit": -22.31100854471663,
+  "total_pnl_pct": -2.2408196744484368,
+  "rebalance_cycles": 8,
+  "virt_qty": 0.0,
+  "virt_debt": 306.5179460201227,
+  "siphoning_reserve": 0.0,
+  "funding_model": "signed_actual",
+  "live_funding": {
+    "symbol": "ONUSDT",
+    "snapshot_ms": 1794344415000,
+    "boundary_ms": 1794344415000,
+    "opening_wallet": "7785.564662199198516219095620",
+    "blocked": "",
+    "allocation": {
+      "id": "0000000000000000000000000000008f",
+      "account_key": "fe0313ee29df7e1aa86503d3b2225ac4770c11ca29af5747c23cd3493baaa673",
+      "ticker": "ONUSDT",
+      "capital": "995.6628281661392",
+      "reserve": "5712.19355559875065",
+      "account_wallet": "7785.564662199198516219095620",
+      "available": "7079.078523651012489422877801",
+      "snapshot_ms": 1794344415000,
+      "fill_offset": 33
+    }
+  },
+  "funding_journal": [],
+  "funding_halt": {
+    "active": false,
+    "reason": "",
+    "event_id": "",
+    "halted_at": 0.0,
+    "shortfall_amount": 0.0,
+    "increases_blocked": false,
+    "close_state": {}
+  },
+  "share_trail": {
+    "BASE_LONG": {
+      "peak": "0.5037966176348575135990130325",
+      "trough": null
+    },
+    "BASE_SHORT": {
+      "peak": null,
+      "trough": "0.2189654853510404491567014503"
+    }
+  },
+  "share_trail_receipts": [],
+  "share_trail_spec": {
+    "model": "share-pullback-rebound-v2",
+    "distance": 0.05800887342949769,
+    "target_long": 0.333,
+    "target_short": 0.333,
+    "surplus": 0.04,
+    "deficit": 0.04
+  },
+  "strategy_origin_ms": 1794344340000,
+  "max_drawdown_reference": 1105.6134436214227,
+  "max_drawdown_basis": "portfolio_equity_peak",
+  "share_trail_last_fill": "binance:ONUSDT:40",
+  "initial_build_pending": null,
+  "initial_build_completed_at": 1794344416.0001307,
+  "last_rebalance_price": 0.0867,
+  "last_update": 1794519843.5001307,
+  "valuation_at": 1794519843.5001307,
+  "valuation_price": 0.084,
+  "strategy_bar_ms": 1794519780000,
+  "rebalance_preferred_side": "SHORT",
+  "last_rebalance_completed_at": 1794503703.5001307,
+  "trailing_stop_violation_start": 0.0
+}

@@ -1,0 +1,414 @@
+{
+  "base_ticker": "HOTUSDT",
+  "balance": 1077.7082784343086,
+  "positions": {
+    "HOTUSDT_LONG": 2337327.053,
+    "HOTUSDT_SHORT": 2552969.674
+  },
+  "long_entry_price": 0.0004257749865991423,
+  "short_entry_price": 0.0004403824426218665,
+  "last_price": 0.0,
+  "live_funding_snapshot": {
+    "symbol": "HOTUSDT",
+    "snapshot_ms": 1793859621900
+  },
+  "profit_budget": {
+    "balance": "-351.2849735823731391066666667",
+    "receipts": {
+      "binance:HOTUSDT:1": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "2226928.221",
+        "price": "0.0004488243",
+        "commission": "0.3997997999762281",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "binance:HOTUSDT:2": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "2221587.328",
+        "price": "0.0004483757",
+        "commission": "0.39844230932125185",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "binance:HOTUSDT:3": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "BUY",
+        "qty": "534461.679",
+        "price": "0.00040110045",
+        "commission": "0.08574912798186222",
+        "trade_pnl": "25.26680949014475",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:4": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "790572.162",
+        "price": "0.000398199",
+        "commission": "0.1259220177344952",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:5": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "BUY",
+        "qty": "282044.852",
+        "price": "0.00037068525",
+        "commission": "0.0418199465899332",
+        "trade_pnl": "21.9121914720634",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:6": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "509965.658",
+        "price": "0.000376188",
+        "commission": "0.0767371843806816",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:7": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "SELL",
+        "qty": "1194953.372",
+        "price": "0.00044287845",
+        "commission": "0.21168763888545336",
+        "trade_pnl": "19.001275359852894",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:8": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "890157.568",
+        "price": "0.0004281858",
+        "commission": "0.15246113215205376",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:9": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "28998.257",
+        "price": "0.0004299849",
+        "commission": "0.00498752505452772",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:10": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "413842.233",
+        "price": "0.00041630805",
+        "commission": "0.06891434121115025",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:11": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "BUY",
+        "qty": "192183.909",
+        "price": "0.00041630805",
+        "commission": "0.03200308335886698",
+        "trade_pnl": "4.632724541650441",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:12": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "SELL",
+        "qty": "436907.07",
+        "price": "0.000443778",
+        "commission": "0.077555898284184",
+        "trade_pnl": "8.042815742869978",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:13": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "388978.925",
+        "price": "0.00044007985",
+        "commission": "0.0684727147868645",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:14": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "BUY",
+        "qty": "66208.719",
+        "price": "0.00043991985",
+        "commission": "0.01165061189246886",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:15": {
+        "type": "SHORT",
+        "symbol": "HOTUSDT_SHORT",
+        "side": "SELL",
+        "qty": "31938.036",
+        "price": "0.0004419789",
+        "commission": "0.00564637520777616",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:HOTUSDT:16": {
+        "type": "LONG",
+        "symbol": "HOTUSDT_LONG",
+        "side": "SELL",
+        "qty": "38329.498",
+        "price": "0.0004419789",
+        "commission": "0.00677633174543688",
+        "trade_pnl": "0.6210878662903492",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      }
+    },
+    "blocked": false
+  },
+  "share_fill_receipts": {
+    "binance:HOTUSDT:1": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "2226928.221",
+      "price": "0.0004488243",
+      "commission": "0.3997997999762281",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:2": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "2221587.328",
+      "price": "0.0004483757",
+      "commission": "0.39844230932125185",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:3": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "534461.679",
+      "price": "0.00040110045",
+      "commission": "0.08574912798186222",
+      "trade_pnl": "25.26680949014475",
+      "reduce_only": "True"
+    },
+    "binance:HOTUSDT:4": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "790572.162",
+      "price": "0.000398199",
+      "commission": "0.1259220177344952",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:5": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "282044.852",
+      "price": "0.00037068525",
+      "commission": "0.0418199465899332",
+      "trade_pnl": "21.9121914720634",
+      "reduce_only": "True"
+    },
+    "binance:HOTUSDT:6": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "509965.658",
+      "price": "0.000376188",
+      "commission": "0.0767371843806816",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:7": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "SELL",
+      "qty": "1194953.372",
+      "price": "0.00044287845",
+      "commission": "0.21168763888545336",
+      "trade_pnl": "19.001275359852894",
+      "reduce_only": "True"
+    },
+    "binance:HOTUSDT:8": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "890157.568",
+      "price": "0.0004281858",
+      "commission": "0.15246113215205376",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:9": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "28998.257",
+      "price": "0.0004299849",
+      "commission": "0.00498752505452772",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:10": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "413842.233",
+      "price": "0.00041630805",
+      "commission": "0.06891434121115025",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:11": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "192183.909",
+      "price": "0.00041630805",
+      "commission": "0.03200308335886698",
+      "trade_pnl": "4.632724541650441",
+      "reduce_only": "True"
+    },
+    "binance:HOTUSDT:12": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "SELL",
+      "qty": "436907.07",
+      "price": "0.000443778",
+      "commission": "0.077555898284184",
+      "trade_pnl": "8.042815742869978",
+      "reduce_only": "True"
+    },
+    "binance:HOTUSDT:13": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "388978.925",
+      "price": "0.00044007985",
+      "commission": "0.0684727147868645",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:14": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "66208.719",
+      "price": "0.00043991985",
+      "commission": "0.01165061189246886",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:15": {
+      "symbol": "HOTUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "31938.036",
+      "price": "0.0004419789",
+      "commission": "0.00564637520777616",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:HOTUSDT:16": {
+      "symbol": "HOTUSDT_LONG",
+      "type": "LONG",
+      "side": "SELL",
+      "qty": "38329.498",
+      "price": "0.0004419789",
+      "commission": "0.00677633174543688",
+      "trade_pnl": "0.6210878662903492",
+      "reduce_only": "True"
+    }
+  },
+  "long_liquidation_price": 0.00028555,
+  "share_trail_checkpoint": {
+    "spec": {
+      "model": "share-pullback-rebound-v2",
+      "distance": 0.05800887342949769,
+      "target_long": 0.333,
+      "target_short": 0.333,
+      "surplus": 0.04,
+      "deficit": 0.04
+    },
+    "trail": {
+      "BASE_LONG": {
+        "peak": null,
+        "trough": null
+      },
+      "BASE_SHORT": {
+        "peak": "0.3967904077047979348726766227",
+        "trough": null
+      }
+    },
+    "execution_id": "binance:HOTUSDT:16"
+  },
+  "short_liquidation_price": 0.00058542
+}

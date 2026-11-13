@@ -1,0 +1,10 @@
+{
+  "paper_ledger_cash": 6332.69658063,
+  "reconstructed_cash": 6332.69658063,
+  "unique_returns": true,
+  "active_allocations": [
+    "HOTUSDT",
+    "ONUSDT"
+  ],
+  "note": "System equity is synchronized cash plus active marked wallets, including active SAFE; fees already deducted in wallets"
+}

@@ -1,0 +1,61 @@
+{
+  "status": "COMPLETED",
+  "start": 1791927900.0,
+  "end": 1794519900.0,
+  "minutes": 43200,
+  "selections": 2725,
+  "metrics": {
+    "PAPER": {
+      "initial": 8000,
+      "equity": 8803.60853744002,
+      "net": 803.6085374400209,
+      "max_dd_pct": 11.620413520415179
+    },
+    "SIMULATED_REAL_STRATEGY": {
+      "initial": 2000,
+      "equity": 2809.5318759365646,
+      "net": 809.5318759365646,
+      "max_dd_pct": 6.476631575221871
+    },
+    "SIMULATED_REAL_ACCOUNT": {
+      "initial": 7000,
+      "equity": 7809.531875936565,
+      "net": 809.5318759365646,
+      "max_dd_pct": 2.054007273484963
+    }
+  },
+  "failures": [],
+  "checkpoints": [
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0000",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0001",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0002",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0003",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0004",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0005",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0006",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0007",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0008",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0009",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0010",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0011",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0012",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0013",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0014",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0015",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0016",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0017",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0018",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0019",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0020",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0021",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0022",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0023",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0024",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0025",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0026",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0027",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0028",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0029",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\checkpoints\\0030"
+  ]
+}

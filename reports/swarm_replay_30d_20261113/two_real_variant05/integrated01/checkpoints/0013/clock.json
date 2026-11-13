@@ -1,0 +1,30 @@
+{
+  "time": 1793137500,
+  "processes": {
+    "p_ONUSDT": {
+      "name": "paper-on",
+      "paper": true
+    }
+  },
+  "sessions": [
+    {
+      "session": "p_ONUSDT:1793118752.7001195",
+      "ticker": "ONUSDT",
+      "paper": true,
+      "start": 1793118752.7001195,
+      "capital": 1000.0,
+      "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01\\core\\paper_state_ONUSDT.json"
+    }
+  ],
+  "exchange_wallet": "7000",
+  "exchange_positions": {},
+  "waiters": [
+    [
+      1793137502.7001195,
+      41099
+    ]
+  ],
+  "financial_sha256": "40d94f1a25e896043f1dc0b2aa0557b1b2148988753fd148a64c99272e8faa7e",
+  "driver_sha256": "6e8ffc1ff93e036ca190353a9e8accad98cfe055c6e3c9df4a960827be30ac36",
+  "recovery": "Deterministic replay from start; verify native financial snapshot at checkpoint, then continue"
+}

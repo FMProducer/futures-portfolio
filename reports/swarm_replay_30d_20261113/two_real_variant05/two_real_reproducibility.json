@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "checks": {
+    "exchange_and_paper_fills": true,
+    "frozen_sources": true,
+    "frozen_data": true,
+    "synchronized_equity": true,
+    "selection_decisions": true,
+    "paper_ledger": true,
+    "real_allocations": true,
+    "independent_real_results": true,
+    "financial_checkpoints": true
+  },
+  "runs": [
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated01",
+    "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02"
+  ],
+  "source_hashes": {
+    "gate_worker.py": "7552fccdaec19acc8da295688074b0478c0aca91643a6766b4069feebd5095b2",
+    "policy.py": "447e7a09360d37dd7700dcb624597695b9fb2c85781ae5d55f30d7204ce85322",
+    "replay.py": "6e8ffc1ff93e036ca190353a9e8accad98cfe055c6e3c9df4a960827be30ac36",
+    "shared_real_account.py": "a64cde52fce6a78f4b58a43cba68c5e8d9b09c0e15ab3f01a3b2dbfa69c589bd",
+    "two_real_support.py": "d799b40d1075fdac75210f0078cc390114cb96b10915236ed8a6f801da99be60"
+  },
+  "scope": "Two independent completed integrated historical simulations; no trading-state or pure-gate cache reused"
+}

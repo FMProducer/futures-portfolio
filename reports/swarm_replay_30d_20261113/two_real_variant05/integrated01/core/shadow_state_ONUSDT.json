@@ -1,0 +1,233 @@
+{
+  "base_ticker": "ONUSDT",
+  "balance": 1089.2472817893727,
+  "positions": {
+    "ONUSDT_LONG": 19041.506,
+    "ONUSDT_SHORT": 4819.826
+  },
+  "long_entry_price": 0.09607182828594808,
+  "short_entry_price": 0.10764615,
+  "last_price": 0.0,
+  "live_funding_snapshot": {
+    "symbol": "ONUSDT",
+    "snapshot_ms": 1794344415000
+  },
+  "profit_budget": {
+    "balance": "-194.335140212057692",
+    "receipts": {
+      "binance:ONUSDT:34": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "9235.535",
+        "price": "0.10775385",
+        "commission": "0.3980657812239",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "binance:ONUSDT:35": {
+        "type": "SHORT",
+        "symbol": "ONUSDT_SHORT",
+        "side": "SELL",
+        "qty": "9213.385",
+        "price": "0.10764615",
+        "commission": "0.3967141694871",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "binance:ONUSDT:36": {
+        "type": "SHORT",
+        "symbol": "ONUSDT_SHORT",
+        "side": "BUY",
+        "qty": "3246.568",
+        "price": "0.08814405",
+        "commission": "0.11446626084816",
+        "trade_pnl": "63.3148937928",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:ONUSDT:37": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "6115.529",
+        "price": "0.088044",
+        "commission": "0.2153742541104",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "virtual:00000000000000000000000000000099": {
+        "type": "VIRTUAL_ORDER",
+        "symbol": "None",
+        "side": "SELL",
+        "qty": "None",
+        "price": "None",
+        "commission": "None",
+        "trade_pnl": "None",
+        "reduce_only": "None",
+        "diff_usdt": "-35.89045654539697",
+        "leverage": "1",
+        "initial_build": "False"
+      },
+      "binance:ONUSDT:38": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "1341.93",
+        "price": "0.08014005",
+        "commission": "0.0430169349186",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:ONUSDT:39": {
+        "type": "SHORT",
+        "symbol": "ONUSDT_SHORT",
+        "side": "BUY",
+        "qty": "1146.991",
+        "price": "0.08014005",
+        "commission": "0.03676796643582",
+        "trade_pnl": "31.5492491451",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "binance:ONUSDT:40": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "2348.512",
+        "price": "0.08014005",
+        "commission": "0.07528394764224",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "virtual:000000000000000000000000000000a1": {
+        "type": "VIRTUAL_ORDER",
+        "symbol": "None",
+        "side": "BUY",
+        "qty": "None",
+        "price": "None",
+        "commission": "None",
+        "trade_pnl": "None",
+        "reduce_only": "None",
+        "diff_usdt": "9.856979942591472",
+        "leverage": "1",
+        "initial_build": "False"
+      }
+    },
+    "blocked": false
+  },
+  "share_fill_receipts": {
+    "binance:ONUSDT:34": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "9235.535",
+      "price": "0.10775385",
+      "commission": "0.3980657812239",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:ONUSDT:35": {
+      "symbol": "ONUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "9213.385",
+      "price": "0.10764615",
+      "commission": "0.3967141694871",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:ONUSDT:36": {
+      "symbol": "ONUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "3246.568",
+      "price": "0.08814405",
+      "commission": "0.11446626084816",
+      "trade_pnl": "63.3148937928",
+      "reduce_only": "True"
+    },
+    "binance:ONUSDT:37": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "6115.529",
+      "price": "0.088044",
+      "commission": "0.2153742541104",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:ONUSDT:38": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "1341.93",
+      "price": "0.08014005",
+      "commission": "0.0430169349186",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "binance:ONUSDT:39": {
+      "symbol": "ONUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "1146.991",
+      "price": "0.08014005",
+      "commission": "0.03676796643582",
+      "trade_pnl": "31.5492491451",
+      "reduce_only": "True"
+    },
+    "binance:ONUSDT:40": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "2348.512",
+      "price": "0.08014005",
+      "commission": "0.07528394764224",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    }
+  },
+  "long_liquidation_price": 0.06443217,
+  "share_trail_checkpoint": {
+    "spec": {
+      "model": "share-pullback-rebound-v2",
+      "distance": 0.05800887342949769,
+      "target_long": 0.333,
+      "target_short": 0.333,
+      "surplus": 0.04,
+      "deficit": 0.04
+    },
+    "trail": {
+      "BASE_LONG": {
+        "peak": null,
+        "trough": null
+      },
+      "BASE_SHORT": {
+        "peak": null,
+        "trough": null
+      }
+    },
+    "execution_id": "binance:ONUSDT:40"
+  },
+  "short_liquidation_price": 0.14309762
+}

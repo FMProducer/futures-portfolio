@@ -1,0 +1,61 @@
+{
+  "virt_qty": 848993.9189588832,
+  "base_ticker": "HOTUSDT",
+  "siphoning_reserve": 0.0,
+  "balance": 1128.85688446,
+  "initial_tpv": 1128.85688446,
+  "reference_tpv": 1128.85688446,
+  "tpv_ath": 1313.4344495818898,
+  "trailing_stop_violation_start": 0.0,
+  "trailing_stop_paper_timeout_end": 0.0,
+  "trailing_stop_triggered": false,
+  "rebalance_cycles": 15,
+  "last_rebalance_price": 0.0004422,
+  "started_at": 1793858670.0001497,
+  "virt_debt": 377.0381996940345,
+  "last_tpv": 1267.0185696695141,
+  "last_profit": 138.1616852095142,
+  "total_pnl_pct": 12.239078940073538,
+  "last_update": 1794519840.0001497,
+  "strategy_origin_ms": 1793401380000,
+  "strategy_bar_ms": 1794519780000,
+  "velocity_cooldown_bars": 0,
+  "funding_journal": [],
+  "funding_halt": {
+    "active": false,
+    "reason": "",
+    "event_id": "",
+    "halted_at": 0.0,
+    "shortfall_amount": 0.0,
+    "increases_blocked": false,
+    "close_state": {}
+  },
+  "share_trail": {
+    "BASE_LONG": {
+      "peak": null,
+      "trough": "0.2143056122067547642830096408"
+    },
+    "BASE_SHORT": {
+      "peak": "0.4563958247947846531599967653",
+      "trough": null
+    }
+  },
+  "share_trail_receipts": [],
+  "share_trail_spec": {
+    "model": "share-pullback-rebound-v2",
+    "distance": 0.05800887342949769,
+    "target_long": 0.333,
+    "target_short": 0.333,
+    "surplus": 0.04,
+    "deficit": 0.04
+  },
+  "max_drawdown_reference": 1313.4344495818898,
+  "max_drawdown_basis": "portfolio_equity_peak",
+  "share_trail_last_fill": "paper:0000000000000000000000000000008d",
+  "initial_build_pending": null,
+  "initial_build_completed_at": 1793858670.0001497,
+  "valuation_at": 1794519840.0001497,
+  "valuation_price": 0.0003907,
+  "rebalance_preferred_side": "SHORT",
+  "last_rebalance_completed_at": 1794290940.0001497
+}

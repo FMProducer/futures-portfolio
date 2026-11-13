@@ -1,0 +1,102 @@
+[
+  {
+    "session": "p_ONUSDT:1793118752.7001195",
+    "ticker": "ONUSDT",
+    "paper": true,
+    "start": 1793118752.7001195,
+    "capital": 1000.0,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_ONUSDT.json",
+    "end": 1794233042.7001195,
+    "equity": 1351.3479233818273,
+    "reason": "siphon",
+    "cycles": 55,
+    "close_confirmed": true
+  },
+  {
+    "session": "r_ONUSDT:1793395755.6",
+    "ticker": "ONUSDT",
+    "paper": false,
+    "start": 1793395755.6001472,
+    "capital": 1000.0,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json",
+    "end": 1794151572.1001472,
+    "equity": 1341.150578830107,
+    "reason": "siphon",
+    "cycles": 21,
+    "close_confirmed": true
+  },
+  {
+    "session": "p_HOTUSDT:1793401467.0001478",
+    "ticker": "HOTUSDT",
+    "paper": true,
+    "start": 1793401467.0001478,
+    "capital": 1000.0,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_HOTUSDT.json",
+    "end": 1793839632.0001478,
+    "equity": 1339.8976590848974,
+    "reason": "siphon",
+    "cycles": 14,
+    "close_confirmed": true
+  },
+  {
+    "session": "p_HOTUSDT:1793858670.0001497",
+    "ticker": "HOTUSDT",
+    "paper": true,
+    "start": 1793858670.0001497,
+    "capital": 1128.85688446,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_HOTUSDT.json",
+    "marked_at": 1794519900.0,
+    "equity": 1267.0185696695141,
+    "cycles": 15,
+    "status": "OPEN_AT_END"
+  },
+  {
+    "session": "r_HOTUSDT:1793859621.9",
+    "ticker": "HOTUSDT",
+    "paper": false,
+    "start": 1793859621.9001498,
+    "capital": 1000.0,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_HOTUSDT.json",
+    "marked_at": 1794519900.0,
+    "equity": 1122.5643327163912,
+    "cycles": 15,
+    "status": "OPEN_AT_END"
+  },
+  {
+    "session": "r_ONUSDT:1794151739.7",
+    "ticker": "ONUSDT",
+    "paper": false,
+    "start": 1794151739.700179,
+    "capital": 997.5159468523477,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json",
+    "end": 1794233764.700179,
+    "equity": 1364.2217517871309,
+    "reason": "siphon",
+    "cycles": 9,
+    "close_confirmed": true
+  },
+  {
+    "session": "p_ONUSDT:1794344415.0001307",
+    "ticker": "ONUSDT",
+    "paper": true,
+    "start": 1794344415.0001307,
+    "capital": 1229.69211737,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\paper_state_ONUSDT.json",
+    "marked_at": 1794519900.0,
+    "equity": 1202.136940240506,
+    "cycles": 8,
+    "status": "OPEN_AT_END"
+  },
+  {
+    "session": "r_ONUSDT:1794344415.0",
+    "ticker": "ONUSDT",
+    "paper": false,
+    "start": 1794344415.0001307,
+    "capital": 995.6628281661392,
+    "state_path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\reports\\swarm_replay_30d_20261113\\two_real_variant05\\integrated02\\core\\real_state_ONUSDT.json",
+    "marked_at": 1794519900.0,
+    "equity": 973.3518196214226,
+    "cycles": 8,
+    "status": "OPEN_AT_END"
+  }
+]

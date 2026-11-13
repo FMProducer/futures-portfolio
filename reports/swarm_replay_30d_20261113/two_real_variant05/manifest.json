@@ -1,0 +1,448 @@
+{
+  "status": "prepared_not_run",
+  "branch": "codex/swarm-30d-simulated-real",
+  "head": "b5fb643e2f8b1fd0592446734acec3d13c1de59d",
+  "config_sha256": "fa365202ac2a2a52679e2372c6c34b78f2b9bc1595d6fecace2a3db72b07553e",
+  "warmup_bars": 2880,
+  "evaluation_bars": 43200,
+  "paper_slots": 8,
+  "simulated_real_slots": 1,
+  "data": [
+    {
+      "ticker": "1000PEPEUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\1000PEPEUSDT_live_32d.feather",
+      "sha256": "2e474ef9856d59224752f1a6c74f08645cb143910449e9af8ba8f0fc250f60fe",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "AAVEUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\AAVEUSDT_live_32d.feather",
+      "sha256": "87dabbc472a26ec351daf33175538b717e2a6291be0f14d31d1343511e70b1b4",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ACTUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ACTUSDT_live_32d.feather",
+      "sha256": "a18039aabc86b6eea79f70613031b331dc96a0554fb352d7f0b069317e5108cd",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "AIOUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\AIOUSDT_live_32d.feather",
+      "sha256": "76559a9f81376c61f2d385eac2a235de20151361520e52aa4e2e3e4e08570196",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "AKEUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\AKEUSDT_live_32d.feather",
+      "sha256": "202eba108a4ef099465229711fd772952b101ded84f446f2f0681710f047f77b",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "APTUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\APTUSDT_live_32d.feather",
+      "sha256": "f2c67896aec780c70b8ee2f3d10d4efa64a554482e4b9a67b2c12275cda28d82",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ARBUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ARBUSDT_live_32d.feather",
+      "sha256": "c6e2e3c15bc130adb95820b5d6cd12a115634ad1605f5f1f11305e051cf84a58",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ARIAUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ARIAUSDT_live_32d.feather",
+      "sha256": "ba9f9c9af513a93baaae08712883036a7db7cae232905a0a5ed1e7dafa161e9b",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ARXUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ARXUSDT_live_32d.feather",
+      "sha256": "9904b24dd5fa13fb1727fcbe460272b0463d76b215ee7dd82e0b8842a69de8c2",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "B2USDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\B2USDT_live_32d.feather",
+      "sha256": "2c7e2c10ec09b1f1ab2d167bf7b9504bc6be96579c59c63d744793cc9844213f",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "BIRBUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\BIRBUSDT_live_32d.feather",
+      "sha256": "f25d5911d7037ea71fbe51c3f81c0933bb74e3ccf7da4969e6dbb7ea0387f823",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "BLUAIUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\BLUAIUSDT_live_32d.feather",
+      "sha256": "cea4db03824535ff7daffc2da4a1ea6601d71e51a691e59d5634444446a8516e",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "BTWUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\BTWUSDT_live_32d.feather",
+      "sha256": "69651f94ed9da6c3c7ad8319f927f5ae8dbfe33216816c5ea7e85421728e46dd",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "CAPUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\CAPUSDT_live_32d.feather",
+      "sha256": "cd77e53fe7fb6d1eb7464f344a8859a22d3a3435e58a9c8db7ce664bc8a6a963",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "CYBERUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\CYBERUSDT_live_32d.feather",
+      "sha256": "a399588565b24325ff26de3f7c0ab239c09a62d5a61a2e9f167e6067c2f32f4e",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "DOTUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\DOTUSDT_live_32d.feather",
+      "sha256": "76ca1f0b11e4c59995d7a3f66989a92586f2ba37afe394423f026f71bfbefd96",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ENAUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ENAUSDT_live_32d.feather",
+      "sha256": "ea54563fc44a42d82bec4264a181037dd419bdbcfab4bcb10dc0e89a211127ae",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ERAUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ERAUSDT_live_32d.feather",
+      "sha256": "351dd7ae7b49996a5f734c076cc7182fed9dd6dc8f6936f8c4dec955570bc561",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ETHFIUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ETHFIUSDT_live_32d.feather",
+      "sha256": "f03df03a923756635de014fe1daa932c186a71154425f525537b2fa065501bf0",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "FARTCOINUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\FARTCOINUSDT_live_32d.feather",
+      "sha256": "441319c282d2515254f88fd1a0ecc3193c763745283e4bf4f62bc897d670b38b",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "FETUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\FETUSDT_live_32d.feather",
+      "sha256": "620a3692c46d4276f2c76c4672bcfd8b084ba08d1a5e4a345eee2400410af01f",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "GRASSUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\GRASSUSDT_live_32d.feather",
+      "sha256": "c83758cfa714bd971b962b6953fe360c35d1d9dad0123e0867890d51afac1098",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "HAEDALUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\HAEDALUSDT_live_32d.feather",
+      "sha256": "9d3dc25b3d5602e3b1b9a4e227049c80dc98c13c353f7bbb273da89a5417b24d",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "HANAUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\HANAUSDT_live_32d.feather",
+      "sha256": "5aca193cb3851e2d3f8bc895cdad64b22c0943bf9e68d295bd1123ac10f536e6",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "HOTUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\HOTUSDT_live_32d.feather",
+      "sha256": "5d44e167cff0708f775791819b229c1a43c9412ddbf14d3f1aede0b93122ec86",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ICNTUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ICNTUSDT_live_32d.feather",
+      "sha256": "43c2dedb52361a36e8db9c13a6a5c3e8ee6c5066a41810a9008b191c0305e5a7",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ICPUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ICPUSDT_live_32d.feather",
+      "sha256": "1175118464656a62d925c1789d428586d7fdcc2a66879c95b8b58e7d7c3c62c3",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "IDOLUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\IDOLUSDT_live_32d.feather",
+      "sha256": "7a86fcb90563ed304b000b8a567956172be17b20b4c73a1fa8cd30bc295dcb2b",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "INITUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\INITUSDT_live_32d.feather",
+      "sha256": "9b5d7a8fea297c2b8330b2584a987c89cfb3ca34606dddfdcb698efced37657a",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "KGENUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\KGENUSDT_live_32d.feather",
+      "sha256": "997327837001da9e1dd1634688a1d799029620d8a5874e1db3484000b6fb5893",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "LITUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\LITUSDT_live_32d.feather",
+      "sha256": "086e1f74a5652aafeb73be352a863016de2470520b71f6f3d0f127dd903d5270",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "MAGMAUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\MAGMAUSDT_live_32d.feather",
+      "sha256": "214f0d8acb156dd1cbe0fa19eef3440f7954bd5bc4cdaca836ca0b59d8e504a1",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "MERLUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\MERLUSDT_live_32d.feather",
+      "sha256": "7e1261ba3881b2cc514132a579b5af1ed0efddf00551cd69483886a0a264b79f",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "NEARUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\NEARUSDT_live_32d.feather",
+      "sha256": "6d3b9e04083613f966d6fa038c6bacf44061bf96655f2317e54e676b3f14d55d",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ONEUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ONEUSDT_live_32d.feather",
+      "sha256": "b51851da6533d8366a182270ecd3932351b3351b12cbf000d74b193e892ae885",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ONUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ONUSDT_live_32d.feather",
+      "sha256": "aae32068b0b376e1721bbdf96cf0700b0c0fde8922041f50d00688273b92cdac",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "OPUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\OPUSDT_live_32d.feather",
+      "sha256": "a1c79d20f76884044c448fbfc15d9dbb658a1076576db929ebd66218bb07510f",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "PENGUUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\PENGUUSDT_live_32d.feather",
+      "sha256": "5ab51faa299d7ce7d57d9ce2967a02d78cd990798c4854979d982711b0301514",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "PRLUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\PRLUSDT_live_32d.feather",
+      "sha256": "1dd2e95cdf741b6d68bb8c52989e20c974d1c60363be2e9fe8891f4023a4479c",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "PUMPUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\PUMPUSDT_live_32d.feather",
+      "sha256": "92a895db8d4d6835f1bca7b5a5572f0094d8de4cdac9f9258a8f42f429370a79",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "PYTHUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\PYTHUSDT_live_32d.feather",
+      "sha256": "35fb3694908e1c3eaa75c82185420babf83eff56cc79998e4922cff71bb66a17",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "QUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\QUSDT_live_32d.feather",
+      "sha256": "fad2949816467c14ca2d7c3e03bdcf664e9f4c3cffb50f87a71ececabbfe8c70",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "SOPHUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\SOPHUSDT_live_32d.feather",
+      "sha256": "7ed35aaadd1a50d054c5ad27d8029b16b37dd0fd3bbdab2931e625daad11ae0d",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "STRKUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\STRKUSDT_live_32d.feather",
+      "sha256": "d2616dad35d6b4acb5325a26522c8f652cec91bf3d9b1ee5a35f2245ec66e93c",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "TIAUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\TIAUSDT_live_32d.feather",
+      "sha256": "8306557e203000649eaf6d2e4f6556df8610f2633df34362a2dd3319e2f583e0",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "USELESSUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\USELESSUSDT_live_32d.feather",
+      "sha256": "7834bb8501f6f5119be433a533766e182fd6a5c4afa4c0fdc686500479424860",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "VVVUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\VVVUSDT_live_32d.feather",
+      "sha256": "6218d8df41dbfaaf442487ebeaa8cd6ce80c8a7ae76f885e6f46795328177f9f",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "WLDUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\WLDUSDT_live_32d.feather",
+      "sha256": "917aba1f8f30ef4cac4ce9ed91b4c2c6bab0e1bf457b740b95c8e39269a780b4",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "XPLUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\XPLUSDT_live_32d.feather",
+      "sha256": "c1fe39d71c2838239ea2e2c6380b815966be9ba3ff219d2cb68272817466379b",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    },
+    {
+      "ticker": "ZILUSDT",
+      "path": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\data\\ZILUSDT_live_32d.feather",
+      "sha256": "90cba8be5335a3af395aaa8e359b006ffeed8cd1005e18f55dbe0f598661f776",
+      "bars": 46080,
+      "start": "2026-10-11 21:45:00+00:00",
+      "end": "2026-11-12 21:44:00+00:00"
+    }
+  ],
+  "source_hashes": {
+    "core\\__init__.py": "f956ed836dbdc8bc3f4c02fa513d58a0f37e0b00567f20a7ffd43132f5753ee3",
+    "core\\backtest_rules.py": "98f0cab08ac062e349abcf99d797aa7ab8545be1d51d5e4871ff2cc5df06614a",
+    "core\\calculator.py": "2f96ecdbcca85e32780a594f837036cf93664bf1125a9c3d6f246ca739562bda",
+    "core\\capital.py": "a8dc83372fb08f9d15471e676478abf88b29c8705dc49d35ebdf1ba7f51ea7a5",
+    "core\\connector.py": "774e209c42b873d9e4eb8f649fd0a0ba2ead225abde0a1158586b1a35a16245f",
+    "core\\executor.py": "c4c6648677d039fd092afe9b4d305faf3659813087a1ddf90b6867c6cba334d3",
+    "core\\funding.py": "d8a14f04aefd18c913ad318f3e029d284e29d3cacccd7236bfcc6ccd024c8f44",
+    "core\\funding_store.py": "a604a704df665825000f467b407595b98d8fa3891fa5a1d0510990dcf3a4567c",
+    "core\\live_close.py": "c54eba43af5680fc8fa14e2d8a3c913b3acf0c67a09b0176cdef1c6a9600a6d4",
+    "core\\main.py": "687d0a24eb41ce57eaf5fb549135014c521101c3503da5fd0ec1041fd32b41f0",
+    "core\\notifier.py": "9cbe796b3929293b88e88ce10196bce260c8ce470baffec1a627eeeef1e4e90d",
+    "core\\paper_budget.py": "7c61de145e3bd04d2d42c4d65376c138c34b49e6cdb9d4e8de0765c0fb60c2bb",
+    "core\\paper_close.py": "e52f62aa857c7e76b9532f6b770e9c6fd01ea3000275390fc0f41dd2a2fc162f",
+    "core\\profit_budget.py": "d6121985067df1f13ad16742620bbda9528544b6deee45db019b606620610eb1",
+    "core\\real_allocation.py": "c049d9872e02d7e289b8f4c63c3da2472a80c21b8fbfc56276b9207feaf837e3",
+    "core\\share_trail.py": "0532d5b166cd170931aa9c22c26bbe1357e5d6b2b159c2273bc0f674b94b0f4a",
+    "core\\siphoning.py": "7adf85aabc6c7db74b646126df407024b81500e468f584c11566333fb4176b6a",
+    "core\\storage.py": "dad24896f0a0caa8b9289550fb7681a6ee20ee54227b9c7944355a54f9c0f9c7",
+    "supervisor\\__init__.py": "e1aa7a171e7bedfcc9c8cce36b1fcaa9085e77fbfd656822a274c833756f393a",
+    "supervisor\\aggregator.py": "5477353b76900fb71b28d2886920cad290663c2ec728ebb13c8e9879d9192f1d",
+    "supervisor\\supervisor_service.py": "1ae286b37a928f1a197185b2db8ea4273bdcca7193fc90bd8689fbca40ad0656",
+    "supervisor\\swarm_analyzer.py": "8d2ed8a4978b13a5931d184b97501ceb8a0c3edce6d37329417e1a43bb9d1483",
+    "supervisor\\swarm_manager.py": "589ecc75256229db43fcd07edac8c6fdcea96efa4c335a9e3fa2cca1d964ad9e",
+    "scanner\\__init__.py": "f956ed836dbdc8bc3f4c02fa513d58a0f37e0b00567f20a7ffd43132f5753ee3",
+    "scanner\\backtest_gate.py": "f400de758dae8877ca3a6e597a62c330cc3ded41791397f8aa9262d13e7f3ad0",
+    "scanner\\daily_universe.py": "cd50c0e238e5bfffbe0e3f55ad505d6349db6ce27c36c8bf14f1756031ad516f",
+    "scanner\\rank_tickers.py": "888912fa19b5f32fd7ebed51eaf62f81d46912eda87ac8c1d6aa05496cd62d6c",
+    "backtest\\48h_test.py": "1db703b469e80ca3704bfb8387ababa79f0e949c308106744092d310c7fd72ca",
+    "backtest\\__init__.py": "f956ed836dbdc8bc3f4c02fa513d58a0f37e0b00567f20a7ffd43132f5753ee3",
+    "backtest\\backtest_rebalance.py": "2161a3550954fbed6f505cc426a5f801d009b8ab6e59909fb6971bca50aa0e50",
+    "backtest\\dashboard_attribution.py": "94a04e46a7588f7bdc28bee55b47dabd3fd7e4b3e745fc866717fbbcb98bb805",
+    "backtest\\htf_5m_indicator.py": "1946024943b38947df9f12034ac9d3c6b50f6d3ae4bc4f38f3570927148a6f7b",
+    "backtest\\run_all_backtests.py": "d10792a1ec6bfa9adcb787b8aca7244713f69174bf447414696815c143e4a335",
+    "backtest\\run_backtest_30d.py": "dec7927372d42c737d0d282d73435a432a4c64ab5d91eb33f8dfa40eadfaeb9c"
+  }
+}

@@ -1,0 +1,229 @@
+{
+  "balance": 1345.273490127906,
+  "positions": {
+    "ONUSDT_LONG": 23517.189,
+    "ONUSDT_SHORT": 5952.72
+  },
+  "last_price": 0.084,
+  "base_ticker": "ONUSDT",
+  "long_entry_price": 0.09607182796869983,
+  "short_entry_price": 0.10764615,
+  "long_liquidation_price": 0.06443217,
+  "short_liquidation_price": 0.14309762,
+  "profit_budget": {
+    "balance": "-240.013363529999465",
+    "receipts": {
+      "paper:00000000000000000000000000000090": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "11406.336",
+        "price": "0.10775385",
+        "commission": "0.49163064735744",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "paper:00000000000000000000000000000091": {
+        "type": "SHORT",
+        "symbol": "ONUSDT_SHORT",
+        "side": "SELL",
+        "qty": "11378.98",
+        "price": "0.10764615",
+        "commission": "0.4899613551708",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "True"
+      },
+      "paper:00000000000000000000000000000094": {
+        "type": "SHORT",
+        "symbol": "ONUSDT_SHORT",
+        "side": "BUY",
+        "qty": "4009.67",
+        "price": "0.08814405",
+        "commission": "0.1413714211854",
+        "trade_pnl": "78.196985307",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:00000000000000000000000000000096": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "7552.977",
+        "price": "0.088044",
+        "commission": "0.2659977227952",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "virtual:00000000000000000000000000000098": {
+        "type": "VIRTUAL_ORDER",
+        "symbol": "None",
+        "side": "SELL",
+        "qty": "None",
+        "price": "None",
+        "commission": "None",
+        "trade_pnl": "None",
+        "reduce_only": "None",
+        "diff_usdt": "-44.326438894470996",
+        "leverage": "1",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000009a": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "1657.348",
+        "price": "0.08014005",
+        "commission": "0.05312798063496",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000009c": {
+        "type": "SHORT",
+        "symbol": "ONUSDT_SHORT",
+        "side": "BUY",
+        "qty": "1416.59",
+        "price": "0.08014005",
+        "commission": "0.0454102373718",
+        "trade_pnl": "38.964866199",
+        "reduce_only": "True",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "paper:0000000000000000000000000000009e": {
+        "type": "LONG",
+        "symbol": "ONUSDT_LONG",
+        "side": "BUY",
+        "qty": "2900.528",
+        "price": "0.08014005",
+        "commission": "0.09297938357856",
+        "trade_pnl": "0.0",
+        "reduce_only": "False",
+        "diff_usdt": "None",
+        "leverage": "3",
+        "initial_build": "False"
+      },
+      "virtual:000000000000000000000000000000a0": {
+        "type": "VIRTUAL_ORDER",
+        "symbol": "None",
+        "side": "BUY",
+        "qty": "None",
+        "price": "None",
+        "commission": "None",
+        "trade_pnl": "None",
+        "reduce_only": "None",
+        "diff_usdt": "12.173830447305305",
+        "leverage": "1",
+        "initial_build": "False"
+      }
+    },
+    "blocked": false
+  },
+  "share_fill_receipts": {
+    "paper:00000000000000000000000000000090": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "11406.336",
+      "price": "0.10775385",
+      "commission": "0.49163064735744",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:00000000000000000000000000000091": {
+      "symbol": "ONUSDT_SHORT",
+      "type": "SHORT",
+      "side": "SELL",
+      "qty": "11378.98",
+      "price": "0.10764615",
+      "commission": "0.4899613551708",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:00000000000000000000000000000094": {
+      "symbol": "ONUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "4009.67",
+      "price": "0.08814405",
+      "commission": "0.1413714211854",
+      "trade_pnl": "78.196985307",
+      "reduce_only": "True"
+    },
+    "paper:00000000000000000000000000000096": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "7552.977",
+      "price": "0.088044",
+      "commission": "0.2659977227952",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:0000000000000000000000000000009a": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "1657.348",
+      "price": "0.08014005",
+      "commission": "0.05312798063496",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    },
+    "paper:0000000000000000000000000000009c": {
+      "symbol": "ONUSDT_SHORT",
+      "type": "SHORT",
+      "side": "BUY",
+      "qty": "1416.59",
+      "price": "0.08014005",
+      "commission": "0.0454102373718",
+      "trade_pnl": "38.964866199",
+      "reduce_only": "True"
+    },
+    "paper:0000000000000000000000000000009e": {
+      "symbol": "ONUSDT_LONG",
+      "type": "LONG",
+      "side": "BUY",
+      "qty": "2900.528",
+      "price": "0.08014005",
+      "commission": "0.09297938357856",
+      "trade_pnl": "0.0",
+      "reduce_only": "False"
+    }
+  },
+  "share_trail_checkpoint": {
+    "spec": {
+      "model": "share-pullback-rebound-v2",
+      "distance": 0.05800887342949769,
+      "target_long": 0.333,
+      "target_short": 0.333,
+      "surplus": 0.04,
+      "deficit": 0.04
+    },
+    "trail": {
+      "BASE_LONG": {
+        "peak": null,
+        "trough": null
+      },
+      "BASE_SHORT": {
+        "peak": null,
+        "trough": null
+      }
+    },
+    "execution_id": "paper:0000000000000000000000000000009e"
+  }
+}
