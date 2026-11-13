@@ -87,17 +87,8 @@
   "toxic_blacklist": {},
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
-  "tickers": [
-    "AKEUSDT",
-    "ERAUSDT",
-    "IDOLUSDT",
-    "KGENUSDT",
-    "MAGMAUSDT",
-    "ONEUSDT",
-    "ONUSDT",
-    "PRLUSDT"
-  ],
-  "base_ticker": "AKEUSDT",
+  "tickers": [],
+  "base_ticker": "",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
