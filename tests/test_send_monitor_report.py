@@ -238,9 +238,12 @@ def test_monitor_sends_request():
          patch("urllib.request.build_opener") as mock_builder:
         mock_builder.return_value.open = mock_open
         mod = importlib.import_module("futures_portfolio.monitoring.send_monitor_report")
+        mod.send_report()
 
     assert captured["req"].method == "POST"
     assert captured["timeout"] == 20
+    assert "bottest_token/sendMessage" in captured["req"].full_url
+    assert "chat_id=test_chat" in captured["req"].data.decode()
 
 
 def test_monitor_no_alerts():
