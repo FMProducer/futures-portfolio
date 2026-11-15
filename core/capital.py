@@ -4,6 +4,10 @@ import math
 from decimal import Decimal, InvalidOperation
 
 
+def trailing_stop_active(peak, initial_capital, activation_pct):
+    return activation_pct == 0 or peak > initial_capital * (1 + activation_pct / 100)
+
+
 def capital_with_reserve(portfolio, trading_capital):
     reserve = portfolio.get("cash_reserve_usdt", 0)
     try:

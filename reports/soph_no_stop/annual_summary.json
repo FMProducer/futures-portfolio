@@ -1,0 +1,83 @@
+{
+  "no_tpv_stop_reserve5000": {
+    "status": "completed",
+    "profit_pct": 122.7677946967451,
+    "max_dd_pct": 193.68834456185886,
+    "account_max_dd_pct": 36.460771063277626,
+    "final_tpv": 2227.6779469696785,
+    "cycles": 89,
+    "trailing_stops": 0,
+    "liquidations": 0,
+    "commission_paid": 4.88745359804848,
+    "accounting_ok": true,
+    "accounting_residual": 1e-24,
+    "data_window": {
+      "feather": "SOPHUSDT_year.feather",
+      "offset": 0,
+      "bars": 525600,
+      "input_bars": 525600,
+      "since_utc": null,
+      "until_utc": null,
+      "bars_per_day": 1440,
+      "time_source": "feather_time",
+      "start_utc": "2025-11-15 11:42",
+      "end_utc": "2026-11-15 11:41"
+    },
+    "min_tpv": -1086.307320770735,
+    "min_account_equity": 3913.692679229265,
+    "events": {
+      "share_trail_consume": 40,
+      "initial_residual_to_virtual": 1,
+      "share_trail_observe": 42,
+      "share_trail_signal": 63113,
+      "trend_guard_block": 518,
+      "trend_add_block": 123,
+      "skipped_action": 136159,
+      "velocity_guard_block": 4
+    },
+    "cooldown_reasons": {}
+  },
+  "no_tpv_stop_reserve0": {
+    "status": "completed",
+    "profit_pct": -96.38974340827161,
+    "max_dd_pct": 99.7408662255498,
+    "account_max_dd_pct": 99.7408662255498,
+    "final_tpv": 36.10256591731994,
+    "cycles": 78,
+    "trailing_stops": 0,
+    "liquidations": 1,
+    "commission_paid": 3.601747325366554,
+    "accounting_ok": true,
+    "accounting_residual": -8e-26,
+    "data_window": {
+      "feather": "SOPHUSDT_year.feather",
+      "offset": 0,
+      "bars": 525600,
+      "input_bars": 525600,
+      "since_utc": null,
+      "until_utc": null,
+      "bars_per_day": 1440,
+      "time_source": "feather_time",
+      "start_utc": "2025-11-15 11:42",
+      "end_utc": "2026-11-15 11:41"
+    },
+    "min_tpv": 3.004631125319946,
+    "min_account_equity": 3.004631125319946,
+    "events": {
+      "share_trail_consume": 43,
+      "initial_residual_to_virtual": 2,
+      "share_trail_observe": 47,
+      "share_trail_signal": 148,
+      "trend_guard_block": 27,
+      "trend_add_block": 98,
+      "share_trail_reset_all": 2,
+      "liquidation": 1,
+      "cooldown_start": 1,
+      "cooldown_end": 1,
+      "velocity_guard_block": 4
+    },
+    "cooldown_reasons": {
+      "liquidation": 1
+    }
+  }
+}
