@@ -1,0 +1,11 @@
+{
+  "command": [
+    "C:\\Users\\svsma\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+    "backtest/backtest_rebalance.py",
+    "--config",
+    "config.json",
+    "--ticker",
+    "SOPHUSDT"
+  ],
+  "exit_code": 0
+}

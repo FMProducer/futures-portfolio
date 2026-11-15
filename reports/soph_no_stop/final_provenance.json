@@ -1,0 +1,12 @@
+{
+  "head": "e5b0010819c6d708349b1ca9e3c7320c4707fdbf",
+  "branch": "research/soph-failure-20261115",
+  "source_sha256": {
+    "supervisor/swarm_manager.py": "af2285b9f3d81c6a4d9629c183764320a02dfd829560e92f13d06cb0e5d52c62",
+    "tests/test_paper_rotation_limit.py": "922a632023a52015825cea0e3389bbb9f6a502765505f6a39167282334c972f3",
+    "config.json": "3294cbd0c743ed13f6d708a8ef79143fdde4e6ce3d8368652309ceb0121cc957",
+    "core/main.py": "510c485f86a8049da287b53bde8b4a89e8692e0b08d43af7258c1ddafd1d3796",
+    "backtest/backtest_rebalance.py": "985622d94a2ea6d5af665ac43c7aa99ae1487969cede62de8786911a08c47acc"
+  },
+  "data_sha256": "ab8f9415b7ba823259d399aedca524a28d2ac99345e64d0c558fd289a02c4cb1"
+}

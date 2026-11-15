@@ -1,0 +1,9 @@
+{
+  "requested_start": "2025-11-15 11:42:00+00:00",
+  "requested_end_exclusive": "2026-11-15 11:42:00+00:00",
+  "actual_start": "2025-11-15 11:42:00+00:00",
+  "actual_end": "2026-11-15 11:41:00+00:00",
+  "bars": 525600,
+  "gaps": 0,
+  "sha256": "ab8f9415b7ba823259d399aedca524a28d2ac99345e64d0c558fd289a02c4cb1"
+}

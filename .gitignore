@@ -118,3 +118,4 @@ data/*USDT_live_32d.feather
 data/funding_*USDT.json
 data/funding_*USDT_rates.json
 data/*USDT_funding_rates.json
+data/*USDT_*.feather
