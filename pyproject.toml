@@ -41,8 +41,8 @@ dev = [
 #  Pytest
 # ══════════════════════════════════════════════════════════════
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = [".."]
+testpaths = ["tests", "rebalance/scenarios", "accounting/scenarios"]
+pythonpath = ["..", "."]
 asyncio_mode = "auto"
 addopts = "-ra -v --tb=short"
 markers = [
@@ -57,19 +57,30 @@ filterwarnings = [
 # ══════════════════════════════════════════════════════════════
 [tool.coverage.run]
 source = ["."]
+# Full current application scope: every package AND every standalone script is measured.
+# Only tests, archived snapshots, generated evidence and virtualenvs are excluded.
 omit = [
     "tests/*",
+    "*/test_*.py",
     "__pycache__/*",
-    "backtest/*",
-    "optimization/*",
-    "tools/*",
-    "scripts/*",
-    "monitoring/*",
+    "*/__pycache__/*",
+    "backups/*",
+    "reports/*",
+    "docs/*",
+    "history/*",
+    "logs/*",
+    "node_modules/*",
+    ".venv/*",
+    "venv/*",
+    "*.egg-info/*",
 ]
 
 [tool.coverage.report]
 fail_under = 80
 show_missing = true
+# Standalone script directories (scripts/, tools/, dashboard/, experiments/) are not
+# importable packages, so coverage only discovers them as namespace packages.
+include_namespace_packages = true
 exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.",

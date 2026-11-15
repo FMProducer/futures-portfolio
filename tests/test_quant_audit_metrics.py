@@ -1,11 +1,14 @@
 """Unit tests for quant audit metrics and binance margin ratio additions."""
 import math
+from pathlib import Path
 import pytest
 from unittest.mock import MagicMock
 import numpy as np
 
 from core.connector import BinanceConnector
 from backtest.backtest_rebalance import run_backtest
+
+_ZEC_HISTORY = sorted(Path("data").glob("ZECUSDT*.feather")) if Path("data").is_dir() else []
 
 
 @pytest.mark.asyncio
@@ -60,6 +63,8 @@ async def test_binance_margin_ratio_and_coverage_ratio_calculation():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
+@pytest.mark.skipif(not _ZEC_HISTORY, reason="requires local ZECUSDT feather history in data/")
 async def test_backtest_sharpe_and_sortino_annualization():
     """Verify that run_backtest exposes annualized Sharpe and Sortino ratios."""
     # Run backtest on sample short window

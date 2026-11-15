@@ -9,6 +9,13 @@ from unittest.mock import MagicMock, AsyncMock, patch
 # чтобы тесты могли импортировать main, supervisor и т.д.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
+# Pin the `dashboard` namespace package before any test inserts the dashboard/
+# directory into sys.path: otherwise `import dashboard` may resolve to
+# dashboard/dashboard.py (a module), which shadows the package and breaks
+# `dashboard.<submodule>` imports order-dependently.
+import importlib
+importlib.import_module('dashboard')
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # SAFETY NET: обнаружение живой торговой системы
