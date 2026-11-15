@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "profit_pct": -10.346480533942692,
+    "max_dd_pct": 13.345886329142804,
+    "final_tpv": 936.1506000676094,
+    "cycles": 6,
+    "trailing_stops": 0,
+    "accounting_ok": true
+  },
+  "activation_zero": {
+    "profit_pct": -0.616367313025723,
+    "max_dd_pct": 1.0588189902548115,
+    "final_tpv": 1037.7511996284086,
+    "cycles": 3,
+    "trailing_stops": 1,
+    "accounting_ok": true
+  }
+}

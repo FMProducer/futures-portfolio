@@ -615,6 +615,7 @@ async def test_download_live_data(tmp_path):
         df = pd.read_feather(res)
         assert len(df) == 10
         assert df.iloc[0]["close"] == 10.0
+        assert df.iloc[0]["time"] == pd.Timestamp(1700000000000, unit="ms", tz="UTC")
 
 @pytest.mark.asyncio
 async def test_download_live_data_api_error():

@@ -1,5 +1,14 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-15 — Preserve losing open PAPER sessions during rotation
+
+- **Cause:** SOPHUSDT was administratively replaced after its sixth cycle, not closed for insufficient margin. Receipt-based reconstruction matched 279 heartbeats; at minimum strategy TPV 908.814078 USDT, modeled collateral including the 5,000 reserve was 5,908.814078 against maintenance 5.136372.
+- **Change:** protect losing open PAPER sessions in normal and idle rotation, retain unknown-wallet sessions until exposure is known, and validate hedge quantities. Honor the existing replacement limit while allowing vacancies and initial startup. Quarantine and explicit stop handling remain intact. Preserve profit trailing activation at 1.55%; set the research backtest window to 365 days.
+- **Supporting fixes:** retain Binance candle timestamps and share zero-activation trailing semantics between runtime and backtest, including the below-initial-capital path. Zero activation was investigated but is not the selected policy.
+- **Validation:** final rotation/reserve checks: 28 passed, 114 deselected; earlier timestamp/activation checks: 9 passed. Selected annual CLI native exit 0, 525,600 closed Binance minutes, strategy return +52.3822%, MaxDD 115.9934%, accounting residual zero. Single-ticker backtesting does not execute supervisor rotation.
+- **Rejected controls:** zero activation returned -13.0710%; no TPV stop with reserve returned +122.7678% at MaxDD 193.6883%; no TPV stop without reserve returned -96.3897% with one modeled predictive margin close. These controls do not replace the accepted profit-trailing policy. Intermediate and shell-exit limitations are documented in the reports.
+- **Evidence and boundary:** `docs/SOPH_FAILURE_20261115.md`, `docs/SOPH_NO_ROTATION_20261115.md`, bounded research drivers/manifests under `reports/soph_audit/` and `reports/soph_no_stop/`; source baseline e5b0010819c6d708349b1ca9e3c7320c4707fdbf. Raw candles, wallets, bulk results and logs remain local. Shared-account margin, historical funding/order-book parity and runtime deployment are not certified. No push or running-swarm changes.
+
 ## 2026-11-13 — Reproducible ON/HOT swarm with two simulated REAL slots
 
 - **Delivery and scope:** implementation and accepted evidence are committed as `950d884` (`feat: add reproducible two-slot shared-account swarm replay`) on `codex/swarm-30d-simulated-real`, based on frozen production source `b5fb643e2f8b1fd0592446734acec3d13c1de59d`. All execution changes are isolated research adapters under `reports/swarm_replay_30d_20261113/`; production source, config, PM2, credentials and exchange orders were not changed. No push was performed.

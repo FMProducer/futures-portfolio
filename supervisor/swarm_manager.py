@@ -20,6 +20,7 @@ from scanner.rank_tickers import main as run_scanner
 from core.storage import safe_load_json, safe_save_json, safe_load_json_sync, safe_save_json_sync
 from core.connector import BinanceConnector
 from core import siphoning
+from core.executor import validate_paper_positions
 
 # Настройка логирования
 BASE_PATH = Path(__file__).resolve().parent.parent
@@ -663,7 +664,10 @@ async def selective_merge_incubator(
         and perf_map.get(t, {}).get("cycles", 0) < min_cycles_rotation
     }
     # Группа C: Зрелые убыточные — кандидаты на замену (конкурируют с новыми)
-    unprofitable_mature = old_set - profitable - immature
+    protected = {t for t in healthy_old_incubator if perf_map.get(t, {}).get('rotation_protected')}
+    if protected:
+        logger.info("Rotation Guard: retaining losing open PAPER sessions: %s", sorted(protected))
+    unprofitable_mature = old_set - profitable - immature - protected
 
     if immature:
         logger.info(f"🛡️ Rotation Guard: Protecting immature bots (cycles < {min_cycles_rotation}): {sorted(immature)}")
@@ -674,7 +678,7 @@ async def selective_merge_incubator(
     # 4. Формируем финал: прибыльные + незримые (оба защищены), потом конкуренция
     idle = {t for t in old_set if perf_map.get(t, {}).get('idle')}
     unprofitable_mature -= idle
-    final = list(profitable) + list(immature - profitable) + list(idle - profitable - immature)
+    final = list(profitable | immature | idle | protected)
     if len(final) > max_bots:
         raise ValueError(f"Protected PAPER sessions exceed capacity: {len(final)} > {max_bots}; reconcile before rotation")
 
@@ -684,7 +688,8 @@ async def selective_merge_incubator(
     unprofiled_scored.sort(key=lambda x: x[1], reverse=True)
 
     # Новые с score 0
-    new_scored = [(t, 0.0) for t in scanner_new]
+    admission_limit = max_replace + max(0, max_bots - len(healthy_old_incubator))
+    new_scored = [(t, 0.0) for t in scanner_new[:admission_limit]]
 
     # Объединяем и сортируем
     competitors = unprofiled_scored + new_scored
@@ -753,6 +758,8 @@ def rotate_idle(final, old, candidates, performance):
     final = list(final)
     metrics = {r['symbol']:r.get('backtest', {}) for r in candidates}
     for ticker in old:
+        if performance.get(ticker, {}).get('rotation_protected'):
+            continue
         if not performance.get(ticker, {}).get('idle'):
             continue
         current = metrics.get(ticker, {})
@@ -797,6 +804,15 @@ async def get_bot_efficiency(ticker: str, config: dict, is_real: bool = False) -
 
     profit_usdt = float(state.get("last_profit", 0.0))
     session_profit = profit_usdt
+    rotation_protected = False
+    if (not is_real and session_profit < 0 and not state.get('paper_close_complete')
+            and not state.get('trailing_stop_triggered')):
+        wallet = await safe_load_json(str(CORE_PATH / f"paper_shadow_{ticker}.json"), {})
+        rotation_protected = True
+        if (wallet and isinstance(wallet.get('positions'), dict)
+                and {f'{ticker}_LONG', f'{ticker}_SHORT'}.issubset(wallet['positions'])):
+            validate_paper_positions(wallet)
+            rotation_protected = any(Decimal(str(qty)) != 0 for qty in wallet['positions'].values())
     if not is_real and (CORE_PATH / "paper_budget.sqlite").exists():
         from core.paper_budget import ticker_history
         history = ticker_history(BASE_PATH, ticker)
@@ -810,6 +826,7 @@ async def get_bot_efficiency(ticker: str, config: dict, is_real: bool = False) -
     return {
         "profit": profit_usdt,
         "session_profit": session_profit,
+        "rotation_protected": rotation_protected,
         "activity_at": activity,
         "idle": idle_hours > 0 and activity is not None and time.time() - activity >= idle_hours * 3600,
         "cycles": cycles,

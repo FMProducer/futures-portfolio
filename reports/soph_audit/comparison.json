@@ -1,0 +1,67 @@
+{
+  "baseline": {
+    "status": "completed",
+    "profit_pct": 52.38217190060954,
+    "max_dd_pct": 115.99342092703826,
+    "account_max_dd_pct": 21.89576205923618,
+    "cycles": 190,
+    "trailing_stops": 27,
+    "final_tpv": 1523.8217190076193,
+    "siphoning_reserve": 0.0,
+    "commission_paid": 54.2761606780312,
+    "accounting_ok": true,
+    "accounting_residual": 0.0,
+    "data_window": {
+      "feather": "SOPHUSDT_year.feather",
+      "offset": 0,
+      "bars": 525600,
+      "input_bars": 525600,
+      "since_utc": null,
+      "until_utc": null,
+      "bars_per_day": 1440,
+      "time_source": "feather_time",
+      "start_utc": "2025-11-15 11:42",
+      "end_utc": "2026-11-15 11:41"
+    },
+    "liquidations": 0,
+    "command": [
+      "C:\\Users\\svsma\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+      "backtest/backtest_rebalance.py",
+      "--config",
+      "reports/soph_audit/baseline_config.json",
+      "--ticker",
+      "SOPHUSDT"
+    ],
+    "exit_code": 0
+  },
+  "activation_zero": {
+    "status": "completed",
+    "profit_pct": -13.070953484909253,
+    "max_dd_pct": 19.104077163784513,
+    "account_max_dd_pct": 3.1840128606334015,
+    "cycles": 175,
+    "trailing_stops": 64,
+    "final_tpv": 869.2904651517767,
+    "siphoning_reserve": 0.0,
+    "commission_paid": 77.65756671849421,
+    "accounting_ok": true,
+    "accounting_residual": 0.0,
+    "data_window": {
+      "feather": "SOPHUSDT_year.feather",
+      "offset": 0,
+      "bars": 525600,
+      "input_bars": 525600,
+      "since_utc": null,
+      "until_utc": null,
+      "bars_per_day": 1440,
+      "time_source": "feather_time",
+      "start_utc": "2025-11-15 11:42",
+      "end_utc": "2026-11-15 11:41"
+    },
+    "liquidations": 0,
+    "command": "python.exe backtest/backtest_rebalance.py --config config.json --ticker SOPHUSDT",
+    "exit_code": null,
+    "shell_session_exit_code": 1,
+    "exit_note": "Engine completed and HTML saved; direct CLI exit was not separately captured; shell session reported 1"
+  }
+}
