@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from core.direct_network import direct_connector
 DATASET = ROOT / "data/intraday_90d_20260726_20261024"
 START = pd.Timestamp("2026-07-26T00:00:00Z")
 END = pd.Timestamp("2026-10-24T00:00:00Z")
@@ -172,8 +174,8 @@ async def main():
     config_before = sha((ROOT / "config.json").read_bytes())
     save(plan_path, manifest)
     semaphore = asyncio.Semaphore(8)
-    async with aiohttp.ClientSession(trust_env=True, timeout=aiohttp.ClientTimeout(total=90),
-                                     connector=aiohttp.TCPConnector(limit=8)) as session:
+    async with aiohttp.ClientSession(trust_env=False, timeout=aiohttp.ClientTimeout(total=90),
+                                     connector=direct_connector(limit=8)) as session:
         async def worker(symbol):
             async with semaphore:
                 try:

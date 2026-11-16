@@ -14,12 +14,13 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from core.direct_network import public_urlopen
 
 
 def read_public_url(url):
     for attempt in range(4):
         try:
-            with urllib.request.urlopen(url, timeout=30) as response:
+            with public_urlopen(url, timeout=30) as response:
                 return response.read()
         except urllib.error.HTTPError:
             raise

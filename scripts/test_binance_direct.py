@@ -15,6 +15,8 @@ import time
 
 # Force explicit no-proxy: requests would otherwise honor HTTP_PROXY/HTTPS_PROXY env
 import requests
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.direct_network import configure_session
 
 HOSTS = {
     "fapi.binance.com": [
@@ -37,7 +39,7 @@ def show_dns(host: str) -> None:
 
 
 def probe(method: str, url: str, label: str) -> bool:
-    s = requests.Session()
+    s = configure_session(requests.Session())
     s.trust_env = False  # ignore HTTP_PROXY/HTTPS_PROXY like the bot's connector
     t0 = time.monotonic()
     try:

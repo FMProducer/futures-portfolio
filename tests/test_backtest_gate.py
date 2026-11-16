@@ -111,7 +111,7 @@ async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypat
         result = replay()
         result['final_equity'] = 1010 if (long_ok if days==2 else short_ok) else 999
         return result
-    monkeypatch.setattr('urllib.request.urlopen', download)
+    monkeypatch.setattr('scanner.backtest_gate.public_urlopen', download)
     monkeypatch.setattr(backtest_rebalance, 'run_backtest', run)
     result = (await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},end))['TESTUSDT']
     assert requests == [0,86400000]

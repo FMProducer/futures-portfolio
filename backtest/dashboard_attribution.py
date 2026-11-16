@@ -77,6 +77,8 @@ def reconstruct_attribution(
     realized = commissions = funding = slippage = reserve = 0.0
     unmatched_close_qty = 0.0
     open_slippage = 0.0
+    # Initialize final_unrealized for zero-window case (n == 0)
+    final_unrealized = 0.0
 
     series = {
         "idx": [],
@@ -200,6 +202,7 @@ def reconstruct_attribution(
             series["net"].append(net)
             series["residual"].append(equity_pnl - net)
 
+        # Update final_unrealized at each iteration so it's defined even for empty window (n==0)
         final_unrealized = pos_long * (closes[n - 1] - entry_mid_long) + pos_short * (entry_mid_short - closes[n - 1]) if n else 0.0
     net_equity_pnl = final_equity - initial_capital
     residual = net_equity_pnl - (realized + final_unrealized - commissions - funding - slippage)
