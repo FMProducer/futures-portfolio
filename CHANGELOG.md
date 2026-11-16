@@ -1,5 +1,11 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-16 — Reconcile PAPER minute gaps without retroactive trades
+
+- Preserve existing positions and financial history after an outage: with funding disabled, validate wallet/equity and execution checkpoints, record the missed interval, and resume the latest closed minute through the existing trading and risk logic. REAL gaps, enabled funding and ambiguous snapshots remain blocked.
+- Add a read-only per-session audit of confirmed fills, positions, balances, budget allocations and immutable snapshots. Native validation: 72 runtime/rule tests plus 3 audit tests passed; rejected intermediate attempts and exact provenance are recorded in `docs/STRATEGY_GAP_RECOVERY_20261116.md`.
+- Runtime acceptance: only `core/backtest_rules.py` was installed in the primary checkout; the eight existing PAPER workers and supervisor were restarted after frozen-state reconciliation. All eight advanced at least two minute decisions without errors; session identity, initial capital, receipts and PAPER budget were preserved. Historical outage decisions/extrema were not reconstructed; enabled funding, REAL recovery and long-duration monitoring are outside this acceptance.
+
 ## 2026-11-15 — Interim swarm report accepted; production integration remains pending
 
 - **Source and acceptance:** reviewed and corrected Claude's `reports/SWARM_INTERIM_REPORT_20261115.md` against the historical run JSONs, current config and native owner guards. Report observation timestamp: `2026-11-15T00:23:54Z`; workspace `C:\Users\svsma\orca\workspaces\futures_portfolio\futures_portfolio`, branch `FMProducer/futures_portfolio`, HEAD `e5b0010819c6d708349b1ca9e3c7320c4707fdbf`. This is a documentation/inventory checkpoint, not a new replay, deployment or regression-test PASS.
