@@ -1,4 +1,6 @@
 """Gap coverage for rebalance/reconcile.py read-only history and offline apply errors."""
+import json
+
 import pytest
 
 from rebalance.durable import Store
@@ -114,7 +116,7 @@ def test_apply_offline_rejects_duplicate_exchange_identity(tmp_path):
     _prepare_open(store, "one")
     _cancel(store, "one")
     _prepare_open(store, "two")
-    evidence = {"one": _response("77", "CANCELED", "0"), "two": _response("77", "NEW", "0")}
+    evidence = {"one": _response("77", "CANCELED", "0"), "two": _response("77", "NEW", "0", client="two")}
     with pytest.raises(ValueError, match="duplicate exchange order identity"):
         apply_offline(store, "ev-dup", _bundle(), evidence, symbol="BTCUSDT",
                       expected_revision=store.load()[1])
@@ -123,8 +125,16 @@ def test_apply_offline_rejects_duplicate_exchange_identity(tmp_path):
 def test_apply_offline_rejects_an_uncovered_outstanding_intent(tmp_path):
     store = _open_store(tmp_path)
     _prepare_open(store, "one")
-    _prepare_open(store, "three")
-    evidence = {"one": _response("77", "NEW", "0")}
+    _cancel(store, "one")
+    # prepare now serializes outstanding intents, so the second order is injected at table level
+    with store.connection() as db:
+        db.execute("INSERT INTO orders VALUES (?, ?)",
+                   ("three", json.dumps({"client_id": "three",
+                                         "action": {"kind": "ADD", "side": "LONG", "units": 1000, "reason": ""},
+                                         "status": "OPEN", "filled": 0, "reserved": "0",
+                                         "initial_reserved": "0", "entry": True},
+                                        sort_keys=True)))
+    evidence = {"one": _response("77", "CANCELED", "0")}
     with pytest.raises(ValueError, match="uncovered outstanding intent"):
         apply_offline(store, "ev-uncovered", _bundle(), evidence, symbol="BTCUSDT",
                       expected_revision=store.load()[1])
@@ -193,7 +203,9 @@ def test_apply_offline_rejects_a_posted_quantity_mismatch(tmp_path):
     store = _open_store(tmp_path)
     _prepare_open(store, "one")
     evidence = {"one": _response("77", "PARTIALLY_FILLED", "1")}
-    bundle = _bundle([_trade("t1", "0.5", "77", time=123), _trade("t1", "0.5", "77", time=124)])
+    # identical receipt (fee in canonical decimal form) dedupes the second post,
+    # so local filled stays below the exchange executed quantity
+    bundle = _bundle([_trade("t1", "0.5", "77", time=123, fee="0.01"), _trade("t1", "0.5", "77", time=124, fee="0.01")])
     with pytest.raises(ValueError, match="posted quantity mismatch"):
         apply_offline(store, "ev-posted", bundle, evidence, symbol="BTCUSDT",
                       expected_revision=store.load()[1])

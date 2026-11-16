@@ -47,14 +47,15 @@ def _applied_journal_item(tmp_path):
     item = archive_setup(tmp_path)
     archive_apply(item, 1)
     config, state, wallet, journal, halt, sp, wp = item
+    # Archive the applied event so get_received validates against the SQLite ledger
+    funding.save_funding_boundary(sp, wp, state, wallet, journal, halt)
     return config, state, wallet, journal, halt, sp, wp
 
 
 def test_get_received_flags_conflict_with_archived_application(tmp_path):
     config, state, wallet, journal, halt, sp, wp = _applied_journal_item(tmp_path)
-    entry = json.loads(state["funding_journal"][-1])
-    entry = dict(entry, signed_amount="-2")
-    state["funding_journal"].append(entry)
+    entry = dict(state["funding_journal"][-1], signed_amount="-2", status="received", applied_at=None)
+    state["funding_journal"][-1] = entry
     journal = funding.FundingJournal.from_list(state["funding_journal"], config_path=str(config), state=state)
     with pytest.raises(ValueError, match="conflicts with archived application"):
         journal.get_received()
@@ -62,9 +63,8 @@ def test_get_received_flags_conflict_with_archived_application(tmp_path):
 
 def test_get_received_restores_the_archived_canonical_event(tmp_path):
     config, state, wallet, journal, halt, sp, wp = _applied_journal_item(tmp_path)
-    entry = json.loads(state["funding_journal"][-1])
-    entry = dict(entry, status="received", applied_at=None)
-    state["funding_journal"].append(entry)
+    entry = dict(state["funding_journal"][-1], status="received", applied_at=None)
+    state["funding_journal"][-1] = entry
     journal = funding.FundingJournal.from_list(state["funding_journal"], config_path=str(config), state=state)
     received = journal.get_received()
     assert len(received) == 1
