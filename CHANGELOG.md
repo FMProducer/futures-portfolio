@@ -1,5 +1,18 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-17 — Preserve and integrate pending local fixes
+
+- Save the original Orca workspace fixes as 227444c: close SQLite budget connections on every path with explicit transaction completion, import dashboard time, correct the optimizer's source path, and retain regression coverage. The empty-window attribution fix was already present upstream and merged without an extra behavior change.
+- Preserve the live ticker-list snapshot as 62715c0 and OpenCode's duplicate four-line mock correction as dc2531e. Merge both histories and the existing 43f6b9b correction without losing recent networking code or upstream ticker updates.
+- Update the market-data test double for the already-introduced direct-session setup; no transport validation is weakened in production.
+- Final integration validation: Python 3.13.15 with existing research dependencies, 135 passed with one existing Optuna fixture warning; runtime Python 3.11.9, 218 passed. The first 3.11 research attempt had 4 failures, 5 errors and 2 skips (missing matplotlib plus the obsolete test double) and is not a PASS. No packages were installed into the trading venv.
+- Boundary: no bot restart, account mutation or real optimization run. The known optimizer lookback-dimension no-op remains characterized by a regression test; it was not changed as part of saving existing work. Full-repository coverage and private exchange acceptance were not rerun.
+
+## 2026-11-17 — Repair admission-gate transport mocks
+
+- Apply OpenCode's four-line test-only fix: mock public_urlopen in futures_portfolio.scanner.backtest_gate for incomplete-window and retry cases instead of the obsolete urllib.request.urlopen boundary. Preserve assertions and production behavior.
+- Independently verified on fix/binance-physical-direct: 18 passed, exit 0, with both module import paths pinned to this worktree. OpenCode separately reported 218 passed on baseline 641d479; that broader run was not repeated here. No production checkout changes, restart, push or merge.
+
 ## 2026-11-17 — Avoid locale decoding of PM2 output
 
 - Capture PM2 inventory and restart output as bytes instead of decoding UTF-8 console output with Windows CP1251. Inventory JSON is parsed directly from bytes; no restart or accounting behavior changes.
