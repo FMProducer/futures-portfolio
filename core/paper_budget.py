@@ -5,6 +5,7 @@ import sqlite3
 import time
 import math
 from decimal import Decimal
+from contextlib import closing as ctx_closing
 
 
 def confirm_close(root, ticker):
@@ -61,7 +62,7 @@ def database(root):
 def selection_ready(root, config):
     if not database(root).exists():
         return True
-    with sqlite3.connect(database(root).resolve().as_uri()+'?mode=ro', uri=True) as db:
+    with ctx_closing(sqlite3.connect(database(root).resolve().as_uri()+'?mode=ro', uri=True)) as db:
         latest = db.execute("SELECT coalesce(max(ts),0) FROM events WHERE kind='return'").fetchone()[0]
     return time.time() >= latest + max(300, float(config.get('supervisor_interval_days', .125))*86400)
 
@@ -70,12 +71,13 @@ def initialize(root, slots, capital, states, closed_result=0):
     initial = amount(capital) * int(slots)
     if initial <= 0:
         raise ValueError("PAPER initial budget must be positive")
-    with sqlite3.connect(database(root)) as db:
+    with ctx_closing(sqlite3.connect(database(root))) as db:
         db.execute("PRAGMA synchronous=FULL")
         db.execute("CREATE TABLE IF NOT EXISTS account(initial TEXT, cash TEXT, created REAL)")
         db.execute("CREATE TABLE IF NOT EXISTS allocations(ticker TEXT PRIMARY KEY, capital TEXT, released INTEGER, session TEXT)")
         db.execute("CREATE TABLE IF NOT EXISTS events(ts REAL, ticker TEXT, kind TEXT, amount TEXT)")
         if db.execute("SELECT count(*) FROM account").fetchone()[0]:
+            db.commit()
             return
         reserved = sum((amount(s["initial_tpv"]) for s in states.values()), Decimal(0))
         funded = (initial + Decimal(str(closed_result))).quantize(Decimal("0.00000001"))
@@ -88,33 +90,40 @@ def initialize(root, slots, capital, states, closed_result=0):
                 raise ValueError("Cannot adopt unidentified PAPER session")
             db.execute("INSERT INTO allocations VALUES(?,?,0,?)", (ticker, str(amount(state['initial_tpv'])), str(state['started_at'])))
             db.execute("INSERT INTO events VALUES(?,?,?,?)", (time.time(), ticker, "adopt", str(amount(state['initial_tpv']))))
+        db.commit()
 
 
 def reserve(root, ticker, requested):
-    with sqlite3.connect(database(root)) as db:
+    with ctx_closing(sqlite3.connect(database(root))) as db:
         db.execute("BEGIN IMMEDIATE")
         old = db.execute("SELECT capital,released,session FROM allocations WHERE ticker=?", (ticker,)).fetchone()
         if old and not old[1]:
+            db.rollback()
             return float(old[0]), False, old[2]
         cash = amount(db.execute("SELECT cash FROM account").fetchone()[0])
         capital = amount(requested)
         if capital <= 0 or cash < capital:
+            db.rollback()
             return 0, True, None
         db.execute("UPDATE account SET cash=?", (str(cash-capital),))
         db.execute("INSERT OR REPLACE INTO allocations VALUES(?,?,0,NULL)", (ticker, str(capital)))
         db.execute("INSERT INTO events VALUES(?,?,?,?)", (time.time(), ticker, "reserve", str(capital)))
+        db.commit()
         return float(capital), True, None
 
 
 def bind(root, ticker, state):
-    with sqlite3.connect(database(root)) as db:
+    with ctx_closing(sqlite3.connect(database(root))) as db:
         row = db.execute("SELECT capital,session,released FROM allocations WHERE ticker=?", (ticker,)).fetchone()
         if not row or row[2] or amount(row[0]) != amount(state["initial_tpv"]):
+            db.rollback()
             raise ValueError("PAPER allocation/state mismatch")
         identity = str(state["started_at"])
         if row[1] is not None and row[1] != identity:
+            db.rollback()
             raise ValueError("PAPER session identity mismatch")
         db.execute("UPDATE allocations SET session=? WHERE ticker=?", (identity, ticker))
+        db.commit()
 
 
 def release(root, ticker, state, wallet, rotation=False):
@@ -123,12 +132,14 @@ def release(root, ticker, state, wallet, rotation=False):
     equity = amount(wallet["balance"]) + amount(state.get("siphoning_reserve", 0))
     if abs(equity - Decimal(str(state['last_tpv']))) > Decimal('0.0001'):
         raise ValueError("PAPER closing equity mismatch")
-    with sqlite3.connect(database(root)) as db:
+    with ctx_closing(sqlite3.connect(database(root))) as db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT released,session,capital FROM allocations WHERE ticker=?", (ticker,)).fetchone()
         if not row or row[1] != str(state['started_at']):
+            db.rollback()
             raise ValueError("PAPER release identity mismatch")
         if row[0]:
+            db.rollback()
             return
         cash = amount(db.execute("SELECT cash FROM account").fetchone()[0])
         db.execute("UPDATE account SET cash=?", (str(cash+equity),))
@@ -136,11 +147,12 @@ def release(root, ticker, state, wallet, rotation=False):
         db.execute("INSERT INTO events VALUES(?,?,?,?)", (time.time(), ticker, "return", str(equity)))
         if rotation and equity < amount(row[2]):
             db.execute("INSERT INTO events VALUES(?,?,?,?)", (time.time(), ticker, "rotation_loss", str(equity-amount(row[2]))))
+        db.commit()
 
 
 def ticker_history(root, ticker):
     closed, opening, loss_at = Decimal(0), None, 0.0
-    with sqlite3.connect(database(root).resolve().as_uri()+"?mode=ro", uri=True) as db:
+    with ctx_closing(sqlite3.connect(database(root).resolve().as_uri()+"?mode=ro", uri=True)) as db:
         for ts, kind, value in db.execute("SELECT ts,kind,amount FROM events WHERE ticker=? ORDER BY rowid", (ticker,)):
             if kind in ("reserve", "adopt"):
                 opening = amount(value)
@@ -160,7 +172,7 @@ def read_budget(root):
     path = database(root)
     if not path.exists():
         return None
-    with sqlite3.connect(path.resolve().as_uri()+"?mode=ro", uri=True) as db:
+    with ctx_closing(sqlite3.connect(path.resolve().as_uri()+"?mode=ro", uri=True)) as db:
         initial, cash, created = db.execute("SELECT initial,cash,created FROM account").fetchone()
         allocations = {t:float(c) for t,c in db.execute("SELECT ticker,capital FROM allocations WHERE released=0")}
         excluded = sum(float(row[0]) for row in db.execute("SELECT amount FROM events WHERE kind='excluded_historical_gain'"))
@@ -172,7 +184,7 @@ def reconcile_terminal_allocations(root, recover=False):
     """Return proven terminal wallets independently of process presence."""
     if not database(root).exists():
         return [], {}
-    with sqlite3.connect(database(root).resolve().as_uri()+"?mode=ro", uri=True) as db:
+    with ctx_closing(sqlite3.connect(database(root).resolve().as_uri()+"?mode=ro", uri=True)) as db:
         rows = db.execute("SELECT ticker,capital,session FROM allocations WHERE released=0").fetchall()
     returned, blocked = [], {}
     for ticker, capital, identity in rows:

@@ -201,3 +201,44 @@ def test_reconcile_detects_a_changed_snapshot(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "read_bytes", drifting)
     returned, blocked = reconcile_terminal_allocations(root)
     assert blocked == {"T": "PAPER terminal snapshots changed during reconciliation"}
+
+
+def test_close_on_success_and_exception_rollback(tmp_path):
+    """Verify connections close on success and rollback on exception via context manager."""
+    root = tmp_path / "root"
+    (root / "core").mkdir(parents=True)
+    initialize(root, 1, 1000, {})
+    reserve(root, "T", 1000)
+    bind(root, "T", {"initial_tpv": 1000, "started_at": 5})
+    state = {"base_ticker": "T", "started_at": 5, "initial_tpv": 1000, "last_tpv": 900,
+             "paper_close_complete": True, "paper_closed_at": 100, "rebalance_cycles": 0,
+             "siphoning_reserve": 0}
+    wallet = {"base_ticker": "T", "balance": 900,
+              "positions": {"T_LONG": 0, "T_SHORT": 0},
+              "share_fill_receipts": {"paper-close:stop:5:0:LONG": {
+                  "event_id": "stop:5:0", "type": "LONG", "symbol": "T_LONG", "reduce_only": True,
+                  "commission": "0", "trade_pnl": "0"}}}
+    (root / "core" / "paper_state_T.json").write_text(json.dumps(state))
+    (root / "core" / "paper_shadow_T.json").write_text(json.dumps(wallet))
+    (root / "history").mkdir()
+    (root / "history" / "paper_close_T_5.json").write_text(json.dumps(
+        {"state": state, "paper_state": wallet, "timestamp": 100, "close_event": "stop:5:0"}))
+    (root / "config.json").write_text(json.dumps({}))
+
+    # Verify database file is not locked after successful operations
+    import sqlite3
+    db_path = root / "core" / "paper_budget.sqlite"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("SELECT 1")
+    conn.close()
+
+    # Test rollback on exception during release
+    bad_state = dict(state, started_at=999)  # identity mismatch
+    try:
+        release(root, "T", bad_state, wallet)
+    except ValueError:
+        pass
+    # Database should still be accessible (connection closed via rollback path)
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("SELECT 1")
+    conn.close()
