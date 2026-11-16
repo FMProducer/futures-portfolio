@@ -3,11 +3,11 @@
 import ast
 from decimal import Decimal
 import asyncio
-import gc
 import json
 import logging
 import math
 import os
+import sqlite3
 from pathlib import Path
 import shutil
 import sys
@@ -25,7 +25,6 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.addCleanup(gc.collect)
         self.root = Path(self.temp.name)
         self.core = self.root / "core"
         self.core.mkdir()
@@ -44,6 +43,42 @@ class SessionCapitalTests(unittest.IsolatedAsyncioTestCase):
         functions = [n for n in tree.body if isinstance(n, ast.AsyncFunctionDef)
                      and n.name in ("reset_bot_state_files", "start_bot")]
         exec(compile(ast.Module(body=functions, type_ignores=[]), str(source), "exec"), self.ns)
+        self._patch_sqlite_tracking()
+        self.addCleanup(self._close_sqlite_connections)
+
+    def _patch_sqlite_tracking(self):
+        # Deterministic temp-DB isolation: track and close only connections into this fixture's tree.
+        # core.paper_budget opens both plain paths and file:/// URI connections (read-only mode).
+        self._tracked_sqlite = []
+        real_connect = sqlite3.connect
+        root_prefix = str(self.root).lower().replace(os.sep, "/")
+
+        def tracking_connect(database, *args, **kwargs):
+            conn = real_connect(database, *args, **kwargs)
+            target = str(database).lower()
+            if target.startswith("file:///"):
+                from urllib.parse import unquote, urlparse
+                target = unquote(urlparse(target).path.lstrip("/"))
+            norm = target.replace("\\", "/").lower()
+            if norm == root_prefix or norm.startswith(root_prefix + "/"):
+                self._tracked_sqlite.append(conn)
+            return conn
+
+        self._sqlite_real_connect = real_connect
+        sqlite3.connect = tracking_connect
+        self.addCleanup(self._restore_sqlite_connect)
+
+    def _restore_sqlite_connect(self):
+        sqlite3.connect = self._sqlite_real_connect
+
+    def _close_sqlite_connections(self):
+        # Windows keeps a locked file while an unclosed sqlite3 connection is alive.
+        for conn in self._tracked_sqlite:
+            try:
+                conn.close()
+            except Exception:
+                pass
+        self._tracked_sqlite.clear()
 
     def seed(self, equity=1147.6612, paper=True, closed=True):
         prefix = "paper" if paper else "real"

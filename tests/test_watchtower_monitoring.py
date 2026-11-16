@@ -16,7 +16,9 @@ def test_monitoring_dynamic_project_dir():
     expected = Path(__file__).resolve().parent.parent
     assert health_check.PROJECT_DIR == expected
     assert send_monitor_report.PROJECT_DIR == expected
-    assert not str(health_check.PROJECT_DIR).startswith("C:\\")
+    # The retired hardcoded runtime path must not come back.
+    assert health_check.PROJECT_DIR != Path(r"C:\Python\Prosperous_Bot\futures_portfolio")
+    assert send_monitor_report.PROJECT_DIR != Path(r"C:\Python\Prosperous_Bot\futures_portfolio")
 
 
 @pytest.mark.asyncio

@@ -235,6 +235,7 @@ async def test_manage_swarm_toxic_flow():
          patch(f"{M}.stop_bot", AsyncMock()), \
          patch(f"{M}.safe_save_json", AsyncMock()) as mock_save, \
          patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())), \
+         patch("core.paper_budget.reconcile_terminal_allocations", return_value=([], {})), \
          patch(f"{M}.Path.exists", return_value=True), \
          patch(f"{M}.Path.glob", return_value=[MagicMock(stem="stop_paper_TRXUSDT", unlink=MagicMock())]):
 
@@ -281,7 +282,8 @@ async def test_isolated_blacklists_signal_processing():
          patch(f"{M}.safe_save_json", AsyncMock()) as mock_save, \
          patch(f"{M}.Path.exists", return_value=True), \
          patch(f"{M}.Path.glob", return_value=[mock_flag_paper, mock_flag_real]), \
-         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())):
+         patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=AsyncMock())), \
+         patch("core.paper_budget.reconcile_terminal_allocations", return_value=([], {})):
 
         await manage_swarm()
 
