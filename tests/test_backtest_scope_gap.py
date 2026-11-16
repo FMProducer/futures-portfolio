@@ -166,7 +166,9 @@ def test_dashboard_attribution_branches():
                                    events=events)
     assert out2['totals']['funding'] == pytest.approx(-0.75)
 
-    # production defect: final_unrealized is assigned inside the bar loop, so an empty
-    # window (n == 0) reaches line 205 unbound
-    with pytest.raises(UnboundLocalError):
-        reconstruct_attribution([], [], [], initial_capital=0.0, final_equity=0.0)
+    # zero-window contract: final_unrealized is initialized before the loop, so an empty
+    # window (n == 0) returns unrealized=0.0 and residual=0.0 without UnboundLocalError
+    out = reconstruct_attribution([], [], [], initial_capital=1000.0, final_equity=1000.0)
+    assert out['totals']['unrealized'] == 0.0
+    assert out['totals']['residual'] == 0.0
+    assert out['totals']['final_equity'] == 1000.0

@@ -233,20 +233,19 @@ async def test_optimize_threshold_main_requires_a_config(monkeypatch, tmp_path):
 
 @pytest.fixture(scope='module')
 def trend_guard(tmp_path_factory):
-    """optimize_trend_guard resolves its backtest source one level ABOVE the repo.
+    """optimize_trend_guard resolves its backtest source INSIDE the repo (PROJECT_DIR/backtest).
 
-    The production path (``PROJECT_DIR.parent / 'backtest'``) does not exist in this
-    checkout, so the module cannot be imported as-is.  The import is redirected into a
-    temporary tree; every generated file (patched backtester copy included) stays
-    inside the tmp_path factory root.
+    The import is redirected into a temporary tree that mirrors that layout, so the
+    module (and every generated file, patched backtester copy included) stays inside
+    the tmp_path factory root.
     """
     import importlib
     import pathlib
     base = tmp_path_factory.mktemp('trend_guard')
     project = base / 'project'
     (project / 'optimization').mkdir(parents=True)
-    (base / 'backtest').mkdir()
-    (base / 'backtest' / 'backtest_rebalance.py').write_text(
+    (project / 'backtest').mkdir()
+    (project / 'backtest' / 'backtest_rebalance.py').write_text(
         (Path(__file__).resolve().parent.parent / 'backtest' / 'backtest_rebalance.py')
         .read_text(encoding='utf-8'), encoding='utf-8')
     (project / 'tickers.txt').write_text('AAAUSDT\nBBBUSDT\n', encoding='utf-8')
@@ -313,9 +312,8 @@ def test_optimize_trend_guard_main(monkeypatch, tmp_path, trend_guard):
 
 def test_optimize_trend_guard_patched_backtester_lifecycle(monkeypatch, tmp_path, trend_guard):
     project = tmp_path / 'proj'
-    project.mkdir()
-    (tmp_path / 'backtest').mkdir()
-    (tmp_path / 'backtest' / 'backtest_rebalance.py').write_text('VALUE = 1\n', encoding='utf-8')
+    (project / 'backtest').mkdir(parents=True)
+    (project / 'backtest' / 'backtest_rebalance.py').write_text('VALUE = 1\n', encoding='utf-8')
     monkeypatch.setattr(trend_guard, 'PROJECT_DIR', project)
     name = trend_guard.generate_patched_backtester()
     assert (project / f'{name}.py').exists()
