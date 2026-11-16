@@ -1,5 +1,13 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-17 — Bind Binance traffic to the physical Windows adapter
+
+- Route Binance REST and WebSocket sockets through the connected physical IPv4 interface using both source binding and Winsock IP_UNICAST_IF. Disable proxy inheritance and reject unsupported or ambiguous adapter discovery without a TUN/default-route fallback.
+- Cover the trading connector, scanner/admission reads, live backtest downloads, read-only rebalance clients and standalone Binance tools. Preserve TLS verification, Telegram networking, localhost monitoring and trading/accounting policy. Update the depth collector to the public WebSocket subscription endpoint.
+- Validation: 21 focused transport/connector/gate/downloader tests and 86 scanner/read-only/user-stream tests passed. Public production-checkout probes returned HTTP 200 for Futures, Spot and data downloads and received a WebSocket subscription acknowledgement; all inspected sockets used physical interface 11 and source 192.168.1.3 with VPN enabled. Probe native exit 0. Earlier WebSocket timeout attempts were not counted as passes.
+- Applied verified networking sources to the production checkout after saving source backups; unrelated dashboard attribution edits were preserved. PM2 access returned EPERM, so running-worker transition remains unverified pending a user-console restart. No state reset, private API operation, push or automatic restart was performed.
+- Provenance: baseline 5d87c3133ecdaab3f64cff97f802bcfa5a094282, branch fix/binance-physical-direct; details in docs/BINANCE_PHYSICAL_DIRECT_20261117.md. DNS remains the Windows resolver; actual hardware-failure and private-stream acceptance are not certified.
+
 ## 2026-11-16 — Reconcile PAPER minute gaps without retroactive trades
 
 - Preserve existing positions and financial history after an outage: with funding disabled, validate wallet/equity and execution checkpoints, record the missed interval, and resume the latest closed minute through the existing trading and risk logic. REAL gaps, enabled funding and ambiguous snapshots remain blocked.

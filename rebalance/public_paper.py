@@ -27,7 +27,8 @@ class PublicReader:
               '/fapi/v1/premiumIndex', '/fapi/v1/ticker/bookTicker'}
 
     def __init__(self):
-        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        from core.direct_network import direct_opener
+        self.opener = direct_opener(NoRedirect())
 
     def get(self, path, symbol=None):
         if path not in self.ROUTES or (symbol is not None and not re.fullmatch('[A-Z0-9]{5,20}', symbol)):

@@ -1,6 +1,10 @@
 import asyncio, aiohttp, json, time
 import pandas as pd
 from dotenv import load_dotenv
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from core.direct_network import direct_connector
 load_dotenv()
 
 CONFIG_FILE = "config.json"
@@ -33,7 +37,7 @@ async def main():
             black_list = set(cfg.get("black_list", []))
         print(f"Blacklist: {len(black_list)} tickers")
     
-    async with aiohttp.ClientSession(trust_env=True) as session:
+    async with aiohttp.ClientSession(trust_env=False, connector=direct_connector()) as session:
         # Fetch 24hr tickers
         print("Fetching 24hr tickers...")
         async with session.get(f"{base_url}/fapi/v1/ticker/24hr", timeout=20, proxy=None) as resp:

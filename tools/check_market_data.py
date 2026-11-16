@@ -2,6 +2,9 @@ import os
 import json
 from binance.client import Client
 from dotenv import load_dotenv
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.direct_network import configure_session
 
 load_dotenv()
 
@@ -19,7 +22,8 @@ def check():
         print("No tickers found in config.json")
         return
 
-    c = Client(os.getenv('BINANCE_API_KEY'), os.getenv('BINANCE_SECRET_KEY'))
+    c = Client(os.getenv('BINANCE_API_KEY'), os.getenv('BINANCE_SECRET_KEY'), ping=False)
+    configure_session(c.session)
     print(f"--- Real-time Market Snapshot for {len(tickers)} tickers ---")
     for t in tickers:
         try:

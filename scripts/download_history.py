@@ -1,5 +1,8 @@
 import aiohttp, os, time, math, asyncio
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.direct_network import direct_connector
 
 ENDPOINT = "https://fapi.binance.com/fapi/v1/klines"
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
@@ -11,7 +14,7 @@ async def download(symbol: str, days: float):
     num_requests = math.ceil(total_minutes / limit_per_request)
     end_time_ms = int(time.time() * 1000)
     all_data = []
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=False, connector=direct_connector()) as session:
         for i in range(num_requests):
             batch = min(limit_per_request, total_minutes - len(all_data))
             if batch <= 0:
