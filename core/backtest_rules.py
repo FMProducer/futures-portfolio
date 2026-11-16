@@ -1,7 +1,8 @@
 """Runtime decision rules matching the 01e4df4 minute-bar backtest contract."""
 
 import math
-from decimal import Decimal
+import logging
+from decimal import Decimal, InvalidOperation
 
 
 def filter_actions(actions, prices, config, portfolio, memory, initial_build=False, flat=False):
@@ -68,6 +69,50 @@ def closed_minutes(rows, now_ms):
     return bars
 
 
+def reconcile_paper_gap(ticker, state, wallet):
+    """Verify the last observed wallet without inventing fills or changing its checkpoint."""
+    def amount(value):
+        try:
+            result = Decimal(str(value))
+        except InvalidOperation as error:
+            raise ValueError('PAPER gap amounts must be numeric') from error
+        if not result.is_finite():
+            raise ValueError('PAPER gap amounts must be finite')
+        return result
+
+    if (not isinstance(wallet, dict) or state.get('base_ticker') != ticker or wallet.get('base_ticker') != ticker
+            or any(state.get(k) for k in ('startup_blocked', 'rebalance_inflight', 'initial_build_pending',
+                                         'trailing_stop_triggered', 'paper_close_complete', 'cash_invariant_violation'))
+            or state.get('status') in ('portfolio_default', 'modeled_liquidation', 'reconciliation_required')
+            or (state.get('funding_halt') or {}).get('active') or (wallet.get('profit_budget') or {}).get('blocked')
+            or any(e.get('status') != 'applied' for e in state.get('funding_journal', []))):
+        raise ValueError('PAPER gap has unresolved execution or funding state')
+    positions = wallet.get('positions')
+    expected = {f'{ticker}_LONG', f'{ticker}_SHORT'}
+    if not isinstance(positions, dict) or set(positions) != expected:
+        raise ValueError('PAPER gap requires both hedge positions and matching ticker')
+    if any(amount(q) < 0 for q in positions.values()):
+        raise ValueError('PAPER gap hedge quantities must be nonnegative')
+    price = amount(state['valuation_price'])
+    if price <= 0 or amount(wallet['last_price']) != price:
+        raise ValueError('PAPER gap valuation snapshots disagree')
+    equity = amount(wallet['balance']) + amount(state.get('siphoning_reserve', 0))
+    for leg, sign in (('long', 1), ('short', -1)):
+        quantity, entry = amount(positions[f'{ticker}_{leg.upper()}']), amount(wallet[f'{leg}_entry_price'])
+        if entry < 0 or (quantity > 0 and entry <= 0):
+            raise ValueError('PAPER gap entry price is invalid')
+        equity += quantity * (price - entry) * sign
+    amount(state['virt_debt'])
+    last_fill = state.get('share_trail_last_fill')
+    if last_fill and (last_fill not in wallet.get('share_fill_receipts', {})
+                      or wallet.get('share_trail_checkpoint', {}).get('execution_id') != last_fill):
+        raise ValueError('PAPER gap execution checkpoint mismatch')
+    residual = equity - amount(state['last_tpv'])
+    if abs(residual) > Decimal('.0001'):
+        raise ValueError('PAPER gap wallet/strategy equity mismatch')
+    return {'snapshot_equity': str(equity), 'equity_residual': str(residual)}
+
+
 async def strategy_minutes(connector, ticker, state, config, portfolio, now_ms, wallet=None, paper_mode=True):
     safety, addition = portfolio.get('safety_guards', {}), portfolio.get('trend_add_block') or {}
     trend = config.get('trend_guard', {})
@@ -78,6 +123,8 @@ async def strategy_minutes(connector, ticker, state, config, portfolio, now_ms, 
         raise ValueError('Strategy lookback exceeds the closed-candle request bound')
     bars = closed_minutes(await connector.get_futures_klines(ticker, '1m', lookback + 1), now_ms)
     previous = state.get('strategy_bar_ms')
+    if previous is not None and (type(previous) is not int or previous < 0 or previous % 60000):
+        raise ValueError('Invalid persisted strategy minute')
     if previous is not None and bars[-1][0] <= previous:
         return []
     if previous is not None and bars[-1][0] != previous + 60000:
@@ -94,7 +141,17 @@ async def strategy_minutes(connector, ticker, state, config, portfolio, now_ms, 
             actual = await connector.get_positions()
             clean = all(Decimal(str(p.get('qty', 'NaN'))) == 0
                         for key, p in actual.items() if key.split('_')[0] == ticker)
-        if not clean:
+        if not clean and paper_mode and config.get('funding_model') == 'disabled':
+            try:
+                metrics = reconcile_paper_gap(ticker, state, wallet)
+            except (ValueError, KeyError, TypeError) as error:
+                raise ValueError(f'Missed strategy bars require reconciliation before trading: {error}') from error
+            state['strategy_gap_reconciliation'] = dict(
+                metrics, policy='hold_positions_no_retroactive_trades', previous_bar_ms=previous,
+                resume_bar_ms=bars[-1][0], missed_minutes=(bars[-1][0] - previous) // 60000 - 1,
+                observed_at_ms=int(now_ms))
+            logging.getLogger(__name__).warning('PAPER gap reconciled for %s: %s', ticker, state['strategy_gap_reconciliation'])
+        elif not clean:
             raise ValueError('Missed strategy bars require reconciliation before trading')
     origin = state.get('strategy_origin_ms', bars[-1][0])
     return [(t, p) for t, p in bars if t >= origin]

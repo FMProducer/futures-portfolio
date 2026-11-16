@@ -90,12 +90,12 @@
   "tickers": [
     "AKEUSDT",
     "ARIAUSDT",
-    "BMTUSDT",
-    "BTWUSDT",
     "BULLAUSDT",
     "IDOLUSDT",
-    "SOPHUSDT",
-    "UAIUSDT"
+    "INITUSDT",
+    "JCTUSDT",
+    "LITUSDT",
+    "SOPHUSDT"
   ],
   "base_ticker": "AKEUSDT",
   "probation_paper": {},
