@@ -94,3 +94,18 @@ Runtime acceptance remains pending: inspect the restarted worker PIDs' connectio
 for physical source addresses, fresh heartbeats and absence of new 451 errors.
 Private account/user-stream delivery and interface-failure behavior on actual
 hardware are not certified by public probes and mocked tests.
+
+## Follow-up: PM2 console encoding and observed worker adoption
+
+The user's restart completed at approximately 00:35 on November 17, but PM2's
+UTF-8 console output triggered CP1251 decoding errors in subprocess reader threads.
+Both PM2 subprocess calls now capture bytes; `json.loads` decodes the inventory
+JSON without locale dependence, and unused restart output is not text-decoded.
+A regression test with UTF-8 Cyrillic and emoji passed without PM2 access/restarts.
+
+The saved restart report lists supervisor-service and eight PAPER workers.
+Read-only TCP/PID-parent correlation found physical source 192.168.1.3 for all
+eight: IDOL, JCT, INIT, AKE, SOPH, BULLA, LIT and ARIA. JCT resumed minute
+heartbeats and supervisor completed a selection cycle. No extra restart was issued.
+This establishes observed worker TCP adoption at that time, not certification
+of private user-stream events or future interface failure handling.

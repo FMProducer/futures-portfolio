@@ -14,7 +14,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 
 def inventory():
-    result = subprocess.run('pm2.cmd jlist', shell=True, capture_output=True, text=True, check=True)
+    result = subprocess.run('pm2.cmd jlist', shell=True, capture_output=True, check=True)
     rows = json.loads(result.stdout)
     return [dict(name=r['name'], pid=r.get('pid'), status=r['pm2_env'].get('status'),
                  cwd=r['pm2_env'].get('pm_cwd'), script=r['pm2_env'].get('pm_exec_path'),
@@ -46,7 +46,7 @@ if sys.argv[1:] == ['restart-paper']:
     (snapshot / 'processes.json').write_text(json.dumps(rows, indent=2))
     for name in names:
         subprocess.run(['cmd.exe', '/d', '/c', 'pm2.cmd', 'restart', name],
-                       check=True, capture_output=True, text=True)
+                       check=True, capture_output=True)
     rows = inventory()
     (OUT / 'restart_completed.json').write_text(json.dumps({'names': names, 'processes': rows}, indent=2))
     print('Restarted PAPER networking:', ', '.join(names))

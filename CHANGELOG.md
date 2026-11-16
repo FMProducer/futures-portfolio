@@ -1,5 +1,11 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-17 — Avoid locale decoding of PM2 output
+
+- Capture PM2 inventory and restart output as bytes instead of decoding UTF-8 console output with Windows CP1251. Inventory JSON is parsed directly from bytes; no restart or accounting behavior changes.
+- Regression validation: one test passed using UTF-8 Cyrillic and emoji, without accessing PM2 or restarting workers. The two-line script fix was applied to the production checkout.
+- The user's preceding restart completed despite output-reader errors. Read-only PID/parent/TCP correlation subsequently found physical source 192.168.1.3 for all eight PAPER workers; JCT heartbeats and a completed supervisor cycle were observed. No additional restart or push was performed. Future hardware-failure and private-stream behavior remain unverified.
+
 ## 2026-11-17 — Bind Binance traffic to the physical Windows adapter
 
 - Route Binance REST and WebSocket sockets through the connected physical IPv4 interface using both source binding and Winsock IP_UNICAST_IF. Disable proxy inheritance and reject unsupported or ambiguous adapter discovery without a TUN/default-route fallback.
