@@ -61,7 +61,7 @@ def test_gate_deducts_terminal_cost_and_requires_real_rebalance():
 @pytest.mark.asyncio
 async def test_gate_rejects_incomplete_window(tmp_path, monkeypatch):
     from futures_portfolio.scanner.backtest_gate import evaluate
-    monkeypatch.setattr('urllib.request.urlopen', lambda *a, **k: io.BytesIO(b'[]'))
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', lambda *a, **k: io.BytesIO(b'[]'))
     result = await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},86400000)
     assert not result['TESTUSDT']['pass']
     assert 'Missing, duplicate or unclosed' in result['TESTUSDT']['error']
@@ -134,7 +134,7 @@ def test_network_retry_allows_three_retries_then_success(monkeypatch, wrapped):
     error = URLError(TimeoutError('read timeout')) if wrapped else TimeoutError('read timeout')
     request = Mock(side_effect=[error,error,error,io.BytesIO(b'ok')])
     sleeps = Mock()
-    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', request)
     monkeypatch.setattr('time.sleep', sleeps)
     assert read_public_url('https://example.test') == b'ok'
     assert request.call_count == 4
@@ -145,7 +145,7 @@ def test_network_retry_exhaustion_propagates(monkeypatch):
     from unittest.mock import Mock
     from futures_portfolio.scanner.backtest_gate import read_public_url
     request = Mock(side_effect=ConnectionResetError('reset'))
-    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', request)
     monkeypatch.setattr('time.sleep', lambda delay: None)
     with pytest.raises(ConnectionResetError):read_public_url('https://example.test')
     assert request.call_count == 4
@@ -162,7 +162,7 @@ def test_non_network_errors_are_not_retried(monkeypatch, kind):
              'certificate':URLError(SSLCertVerificationError('bad certificate')),
              'url':URLError('unsupported URL')}[kind]
     request = Mock(side_effect=error)
-    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', request)
     with pytest.raises(type(error)):read_public_url('https://example.test')
     assert request.call_count == 1
 

@@ -1,5 +1,10 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-17 — Repair admission-gate transport mocks
+
+- Apply OpenCode's four-line test-only fix: mock public_urlopen in futures_portfolio.scanner.backtest_gate for incomplete-window and retry cases instead of the obsolete urllib.request.urlopen boundary. Preserve assertions and production behavior.
+- Independently verified on fix/binance-physical-direct: 18 passed, exit 0, with both module import paths pinned to this worktree. OpenCode separately reported 218 passed on baseline 641d479; that broader run was not repeated here. No production checkout changes, restart, push or merge.
+
 ## 2026-11-17 — Avoid locale decoding of PM2 output
 
 - Capture PM2 inventory and restart output as bytes instead of decoding UTF-8 console output with Windows CP1251. Inventory JSON is parsed directly from bytes; no restart or accounting behavior changes.
