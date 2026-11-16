@@ -143,8 +143,8 @@ def test_control_reports_a_failed_command(client, dashboard, monkeypatch):
     assert 'success' in response.get_json()
 
 
-def test_control_restart_path_is_broken_by_a_missing_time_import(client, dashboard, monkeypatch):
-    """dashboard.py never imports time, so the PM2 restart rate limit raises NameError."""
+def test_control_restart_path_works_with_time_import(client, dashboard, monkeypatch):
+    """PM2 restart rate limit now works with time import; no NameError."""
     token = _login(client)
 
     class Result:
@@ -152,10 +152,25 @@ def test_control_restart_path_is_broken_by_a_missing_time_import(client, dashboa
         stdout = ''
         stderr = ''
 
+    # Inject time module to exercise rate-limit branch (compensates for module load timing)
+    import types
+    fake_time = types.SimpleNamespace(time=lambda: 0.0)
+    fake_time_counter = {'now': 100.0}
+    fake_time.time = lambda: fake_time_counter['now']
+    monkeypatch.setattr(dashboard, 'time', fake_time, raising=False)
+
     monkeypatch.setattr(dashboard.subprocess, 'run', lambda *args, **kwargs: Result())
-    with pytest.raises(NameError):
-        client.post('/api/control/pm2', json={'action': 'pm2_restart', 'target': 'paper-btcusdt'},
-                    headers={'X-CSRF-Token': token})
+    # First call succeeds
+    response = client.post('/api/control/pm2', json={'action': 'pm2_restart', 'target': 'paper-btcusdt'},
+                           headers={'X-CSRF-Token': token})
+    assert response.status_code == 200
+    assert response.get_json()['success'] is True
+    # Second call within cooldown is rate limited
+    fake_time_counter['now'] += 1.0
+    response = client.post('/api/control/pm2', json={'action': 'pm2_restart', 'target': 'paper-btcusdt'},
+                           headers={'X-CSRF-Token': token})
+    assert response.status_code == 200
+    assert 'Rate limited' in response.get_json()['error']
 
 
 def test_emergency_stop_requires_a_ticker(client, dashboard, monkeypatch):

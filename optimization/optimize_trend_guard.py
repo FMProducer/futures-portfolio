@@ -45,7 +45,7 @@ logging.basicConfig(level=logging.WARNING, format="%(message)s")
 logger = logging.getLogger("OptunaTrend")
 
 def generate_patched_backtester() -> str:
-    original_path = PROJECT_DIR.parent / "backtest" / "backtest_rebalance.py"
+    original_path = PROJECT_DIR / "backtest" / "backtest_rebalance.py"
     unique_id = uuid.uuid4().hex[:8]
     module_name = f"_patched_backtest_{unique_id}"
     patched_path = PROJECT_DIR / f"{module_name}.py"
