@@ -547,7 +547,7 @@ def test_check_market_data_reports_missing_feathers(monkeypatch, tmp_path):
 
     class FakeClient:
         def __init__(self, *args, **kwargs):
-            pass
+            self.session = object()
 
         def futures_order_book(self, symbol, limit=5):
             return dict(bids=[['99.0', '1']], asks=[['101.0', '1']])
@@ -556,6 +556,7 @@ def test_check_market_data_reports_missing_feathers(monkeypatch, tmp_path):
             return [['0', '100', '102', '99', '101']]
 
     monkeypatch.setattr(module, 'Client', FakeClient)
+    monkeypatch.setattr(module, 'configure_session', lambda session: None)
     module.check()
 
 
