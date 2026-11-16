@@ -1,0 +1,28 @@
+{
+  "heartbeats": 279,
+  "fills": 6,
+  "min_tpv": {
+    "time": "2026-11-15 13:10:06,150",
+    "tpv": 908.8140781757681,
+    "collateral": 5908.814078175768,
+    "maintenance": 5.13637212,
+    "distance": 99.91307270711104,
+    "no_reserve_distance": 99.43482696369426
+  },
+  "min_margin_distance": {
+    "time": "2026-11-15 09:19:00,445",
+    "tpv": 1042.8971077944905,
+    "collateral": 6042.897107794491,
+    "maintenance": 6.649927056,
+    "distance": 99.88995465358127,
+    "no_reserve_distance": 99.36236019773195
+  },
+  "min_no_reserve_distance": {
+    "time": "2026-11-15 09:19:00,445",
+    "tpv": 1042.8971077944905,
+    "collateral": 6042.897107794491,
+    "maintenance": 6.649927056,
+    "distance": 99.88995465358127,
+    "no_reserve_distance": 99.36236019773195
+  }
+}

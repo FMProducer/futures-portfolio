@@ -18,7 +18,7 @@ load_dotenv()
 from core.connector import BinanceConnector
 from core.calculator import PortfolioCalculator, select_tick_actions
 from core import backtest_rules
-from core.capital import capital_with_reserve
+from core.capital import capital_with_reserve, trailing_stop_active
 from core.executor import PortfolioExecutor, PAPER_COMMISSION_RATE, PAPER_SLIPPAGE_RATE, validate_paper_positions
 from core.notifier import TelegramNotifier
 from core.storage import safe_load_json as load_json, safe_save_json as save_json, safe_load_json_sync
@@ -2210,16 +2210,14 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                     state['trailing_stop_violation_start'] = 0.0
                     state_dirty = True
 
-                if tpv_active < float(portfolio_cfg.get(
+                if equity_trailing_stop_activation_pct != 0 and tpv_active < float(portfolio_cfg.get(
                         "paper_initial_capital" if paper_mode else "initial_capital",
                         100.0 if paper_mode else 86.0)):
                     if state.get("trailing_stop_violation_start", 0.0) > 0:
                         state["trailing_stop_violation_start"] = 0.0
                         state_dirty = True
                 elif equity_trailing_stop_pct > 0 and tpv_ath > 0:
-                    # Trailing stop activates only when ATH exceeds activation threshold
-                    activation_threshold = initial_tpv * (1 + equity_trailing_stop_activation_pct / 100)
-                    if tpv_ath <= activation_threshold:
+                    if not trailing_stop_active(tpv_ath, initial_tpv, equity_trailing_stop_activation_pct):
                         # Not yet activated — reset violation and skip
                         if state.get("trailing_stop_violation_start", 0.0) > 0:
                             state["trailing_stop_violation_start"] = 0.0

@@ -21,7 +21,7 @@ try:
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
     from core import profit_budget, siphoning
-    from core.capital import drawdown_threshold
+    from core.capital import drawdown_threshold, trailing_stop_active
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,7 +29,7 @@ except ImportError:
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
     from core import profit_budget, siphoning
-    from core.capital import drawdown_threshold
+    from core.capital import drawdown_threshold, trailing_stop_active
 
 # HTF 5m Indicator
 # Note: HTF5MIndicator and apply_variant_targets are defined in backtest/htf_5m_indicator.py
@@ -473,8 +473,9 @@ async def download_live_data(symbol: str, data_dir: str, days: float = 2.0) -> s
                 await asyncio.sleep(0.25)
 
     df = pd.DataFrame(all_data, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'q_vol', 'trades', 't_base', 't_quote', 'ignore'])
-    df = df[['open', 'high', 'low', 'close', 'volume']]
-    for col in df.columns:
+    df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
+    df['time'] = pd.to_datetime(df['time'], unit='ms', utc=True)
+    for col in ['open', 'high', 'low', 'close', 'volume']:
         df[col] = df[col].astype(float)
 
     if not os.path.exists(data_dir):
@@ -1655,10 +1656,10 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.tpv_ath = initial_capital_f
                 state.trailing_stop_violation_start = 0.0
 
-            if tpv_f < initial_capital:
+            if trailing_stop_activation_pct != 0 and tpv_f < initial_capital:
                 state.trailing_stop_violation_start = 0.0
             elif (trailing_stop_pct > 0
-                    and state.tpv_ath > initial_capital_f * (1 + trailing_stop_activation_pct / 100.0)):
+                    and trailing_stop_active(state.tpv_ath, initial_capital_f, trailing_stop_activation_pct)):
                 drawdown_from_ath = (1 - tpv_f / state.tpv_ath) * 100.0
                 if drawdown_from_ath >= trailing_stop_pct:
                     if state.trailing_stop_violation_start == 0:
