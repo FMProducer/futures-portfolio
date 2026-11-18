@@ -1,0 +1,152 @@
+[
+  {
+    "ticker": "ZECUSDT",
+    "exit_code": 0,
+    "comparison": {
+      "status": "PASS",
+      "ticker": "ZECUSDT",
+      "scenario": "disabled",
+      "bars": 525600,
+      "modes": {
+        "backtest": {
+          "profit_pct": 103.26873040412998,
+          "profit_after_funding_pct": 103.26873040413001,
+          "max_dd_pct": 110.36447655817302,
+          "final_tpv": 2032.6873040413,
+          "minimum_tpv": -207.728741778382,
+          "commission": 115.2130188687,
+          "funding_paid": 0.0,
+          "reserve_end": 5000.0,
+          "cycles": 260,
+          "stops": 46,
+          "market_fills": 345,
+          "positions": {
+            "long": 1.624,
+            "short": 0.862
+          }
+        },
+        "paper": {
+          "profit_pct": 103.26873040412976,
+          "profit_after_funding_pct": 103.26873040412976,
+          "max_dd_pct": 110.36447655817317,
+          "final_tpv": 2032.6873040412977,
+          "minimum_tpv": -207.72874177838418,
+          "commission": 115.2130188687,
+          "funding_paid": 0.0,
+          "reserve_end": 5000.0,
+          "cycles": 260,
+          "stops": 46,
+          "market_fills": 345,
+          "positions": {
+            "long": 1.624,
+            "short": 0.862
+          }
+        },
+        "real": {
+          "profit_pct": 103.26873040412998,
+          "profit_after_funding_pct": 103.26873040413001,
+          "max_dd_pct": 110.36447655817298,
+          "final_tpv": 2032.6873040413,
+          "minimum_tpv": -207.72874177838116,
+          "commission": 115.2130188687,
+          "funding_paid": 0.0,
+          "reserve_end": 5000.0,
+          "cycles": 260,
+          "stops": 46,
+          "market_fills": 345,
+          "positions": {
+            "long": 1.624,
+            "short": 0.862
+          }
+        }
+      },
+      "equity_errors": {
+        "paper": 3.865352482534945e-12,
+        "real": 9.094947017729282e-13
+      },
+      "failures": [],
+      "funding_events": 0,
+      "funding_calendar_observations": 0,
+      "scope": "Full actual runtime with isolated JSON I/O and in-memory SQLite; native prefix checked separately",
+      "native_prefix": {
+        "status": "PASS",
+        "bars": 180
+      }
+    }
+  },
+  {
+    "ticker": "JCTUSDT",
+    "exit_code": 0,
+    "comparison": {
+      "status": "PASS",
+      "ticker": "JCTUSDT",
+      "scenario": "disabled",
+      "bars": 523031,
+      "modes": {
+        "backtest": {
+          "profit_pct": 771.0981688723756,
+          "profit_after_funding_pct": 771.0981688723756,
+          "max_dd_pct": 146.88051095315845,
+          "final_tpv": 8710.981688723756,
+          "minimum_tpv": -2963.775222139952,
+          "commission": 525.2055648956162,
+          "funding_paid": 0.0,
+          "reserve_end": 5000.0,
+          "cycles": 582,
+          "stops": 113,
+          "market_fills": 814,
+          "positions": {
+            "long": 0.0,
+            "short": 0.0
+          }
+        },
+        "paper": {
+          "profit_pct": 771.0981688723756,
+          "profit_after_funding_pct": 771.0981688723756,
+          "max_dd_pct": 146.88051095315845,
+          "final_tpv": 8710.981688723756,
+          "minimum_tpv": -2963.775222139952,
+          "commission": 525.2055648956166,
+          "funding_paid": 0.0,
+          "reserve_end": 5000.0,
+          "cycles": 582,
+          "stops": 113,
+          "market_fills": 814,
+          "positions": {
+            "long": 0.0,
+            "short": 0.0
+          }
+        },
+        "real": {
+          "profit_pct": 771.0981688723753,
+          "profit_after_funding_pct": 771.0981688723753,
+          "max_dd_pct": 146.88051095315856,
+          "final_tpv": 8710.981688723752,
+          "minimum_tpv": -2963.7752221399555,
+          "commission": 525.2055648956166,
+          "funding_paid": 0.0,
+          "reserve_end": 5000.0,
+          "cycles": 582,
+          "stops": 113,
+          "market_fills": 814,
+          "positions": {
+            "long": 0.0,
+            "short": 0.0
+          }
+        }
+      },
+      "equity_errors": {
+        "paper": 6.366462912410498e-12,
+        "real": 7.275957614183426e-12
+      },
+      "failures": [],
+      "funding_events": 0,
+      "funding_calendar_observations": 0,
+      "scope": "Full actual runtime with isolated JSON I/O and in-memory SQLite; native prefix checked separately",
+      "native_prefix": {
+        "status": "PASS",
+        "bars": 180
+      }
+    }
+  }
+]

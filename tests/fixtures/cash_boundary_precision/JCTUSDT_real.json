@@ -1,0 +1,41 @@
+{
+  "ticker": "JCTUSDT",
+  "mode": "real",
+  "bar": 244534,
+  "reconstructed_cash": "-1.091313E-13",
+  "targets": {
+    "BASE_LONG": {
+      "share": 0.25,
+      "leverage": 3
+    },
+    "BASE_SHORT": {
+      "share": 0.25,
+      "leverage": 3
+    },
+    "VIRTUAL": {
+      "share": 0.5,
+      "leverage": 1
+    }
+  },
+  "wallet": {
+    "balance": 2646.6220024700383,
+    "positions": {
+      "JCTUSDT_LONG": 190501.887,
+      "JCTUSDT_SHORT": 1651131.9
+    },
+    "long_entry_price": 0.00244122,
+    "short_entry_price": 0.003012406676930981
+  },
+  "state": {
+    "virt_debt": 833.6427435914128,
+    "virt_qty": 452622.06590955146
+  },
+  "calculator": {
+    "val_cash": "-2.091313E-13",
+    "real_equity": "1812.9792588786254",
+    "val_long": "390.05642367024",
+    "val_short": "563.9312809049824365252",
+    "price": "0.003675"
+  },
+  "original_sample_sha256": "455406e8b6a0a9cd688dfc2ba348899cb8b69815e9b5b12997b3308a4813215b"
+}
