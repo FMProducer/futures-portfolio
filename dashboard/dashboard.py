@@ -19,6 +19,9 @@ from datetime import datetime
 from functools import wraps
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from core.pm2_status import read_pm2_status
+
 import yaml
 
 # ─── Paths ────────────────────────────────────────────────────
@@ -185,17 +188,11 @@ def create_app():
         now = datetime.now()
         # Direct PM2 check without data_collector (avoids shell issues)
         try:
-            result = subprocess.run(
-                "pm2 jlist", shell=True, capture_output=True, text=True, timeout=10
-            )
-            if result.returncode == 0:
-                procs = json.loads(result.stdout)
-                pm2_list = [
-                    {"name": p.get("name", ""), "status": p.get("pm2_env", {}).get("status", "unknown")}
-                    for p in procs
-                ]
-            else:
-                pm2_list = []
+            procs = read_pm2_status()
+            pm2_list = [
+                {"name": p.get("name", ""), "status": p.get("pm2_env", {}).get("status", "unknown")}
+                for p in procs
+            ]
         except Exception:
             pm2_list = []
 
