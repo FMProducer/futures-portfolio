@@ -1155,3 +1155,12 @@ Related: [[Docs/futures-portfolio-paper-swarm-dashboard-2026-10-25]], [[Docs/cha
 
 - Recorded the approved cumulative PAPER qualification and natural-close rotation design in `docs/REAL_SELECTION_PAPER_VALIDATION_20261120.md`.
 - User requested testing all proposals against accumulated PAPER data before selecting numerical REAL risk limits. No REAL activation or production policy change is authorized by the research results alone.
+
+
+## 2026-11-20 — Configurable research-derived admission
+
+- Added config-driven 48/36 admission windows, 15M-USDT scanner turnover and cumulative unique PAPER cycle qualification for new REAL candidates; retained the 15-cycle minimum.
+- Updated gate cache/report windows, daily historical admission compatibility, all scanner entry points and focused fixtures. PAPER rotation age remains per-session; direct Binance transport is preserved. No REAL activation, slot/capital/whitelist changes, process restart or optimization.
+- Specification and reload behavior: docs/CONFIGURABLE_ADMISSION_20261120.md.
+
+- Applied to the primary runtime with timestamped backup; final focused validation: 173 passed, post-deploy checks PASS for 17 PAPER histories. REAL slots remain zero; next normal cycle pickup is unverified.

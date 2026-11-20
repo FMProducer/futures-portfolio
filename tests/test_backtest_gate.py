@@ -90,8 +90,9 @@ async def test_gate_reassesses_idle_and_new_candidates_in_one_closed_window(tmp_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("windows", [(48,24),(48,36),(36,12)])
 @pytest.mark.parametrize("long_ok,short_ok", [(True,True),(False,True),(True,False),(False,False)])
-async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypatch, long_ok, short_ok):
+async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypatch, long_ok, short_ok, windows):
     import urllib.parse
     import pandas as pd
     from scanner.backtest_gate import evaluate
@@ -102,27 +103,28 @@ async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypat
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
         start = int(query['startTime'][0])
         requests.append(start)
-        bars = [[t, '100','101','99','100','1',t+59999] for t in range(start,start+86400000,60000)]
+        bars = [[t, '100','101','99','100','1',t+59999] for t in range(start,int(query['endTime'][0])+1,60000)]
         return io.BytesIO(json.dumps(bars).encode())
     async def run(config, data, **kwargs):
         frame = pd.read_feather(next(__import__('pathlib').Path(data).glob('*.feather')))
         days = kwargs['days']
         runs.append((days, len(frame), kwargs['capital_override']))
         result = replay()
-        result['final_equity'] = 1010 if (long_ok if days==2 else short_ok) else 999
+        result['final_equity'] = 1010 if (long_ok if days==windows[0]/24 else short_ok) else 999
         return result
     monkeypatch.setattr('scanner.backtest_gate.public_urlopen', download)
     monkeypatch.setattr(backtest_rebalance, 'run_backtest', run)
-    result = (await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},end))['TESTUSDT']
-    assert requests == [0,86400000]
-    assert runs == [(2,2880,1000),(1,2880,1000)]
+    config = {'portfolios':[{'paper_initial_capital':1000}], 'admission_window_hours':list(windows)}
+    result = (await evaluate(tmp_path,['TESTUSDT'],config,end))['TESTUSDT']
+    assert requests == list(range(end-windows[0]*3600000,end,86400000))
+    assert runs == [(h/24,windows[0]*60,1000) for h in windows]
     assert result['pass'] is (long_ok and short_ok)
-    assert result['windows']['48']['pass'] is long_ok
-    assert result['windows']['24']['pass'] is short_ok
-    assert result['net'] == result['windows']['24']['net']
-    assert len(json.loads(next(tmp_path.rglob('klines.json')).read_text())) == 2880
+    assert result['windows'][str(windows[0])]['pass'] is long_ok
+    assert result['windows'][str(windows[1])]['pass'] is short_ok
+    assert result['net'] == result['windows'][str(windows[1])]['net']
+    assert len(json.loads(next(tmp_path.rglob('klines.json')).read_text())) == windows[0]*60
     assert len(list(tmp_path.rglob('klines_*.json'))) == 2
-    assert (await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},end))['TESTUSDT'] == result
+    assert (await evaluate(tmp_path,['TESTUSDT'],config,end))['TESTUSDT'] == result
     assert len(requests) == 2 and len(runs) == 2
 
 

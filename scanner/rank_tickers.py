@@ -28,11 +28,17 @@ def retry_on_network_error(retries: int = 3, delay: float = 0.125):
             for attempt in range(retries):
                 try:
                     return await func(*args, **kwargs)
-                except Exception as e:
+                except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ConnectionError) as e:
+                    # Network-related errors - retry
                     if attempt < retries - 1:
                         await asyncio.sleep(delay * (attempt + 1))
                     else:
                         logger.error(f"Max retries reached for {func.__name__}: {e}")
+                        raise
+                except Exception as e:
+                    # Non-network errors - don't retry, propagate immediately
+                    logger.error(f"Non-retryable error in {func.__name__}: {e}")
+                    raise
             return None
         return wrapper
     return decorator
@@ -106,17 +112,19 @@ class TickerScanner:
     @retry_on_network_error(retries=3)
     async def fetch(self, session: aiohttp.ClientSession, endpoint: str, params: dict = None):
         async with self.semaphore:
-            try:
-                async with session.get(f"{self.base_url}{endpoint}", params=params, timeout=20, proxy=None) as response:
-                    if response.status == 429:
-                        retry_after = int(response.headers.get("Retry-After", 5))
-                        await asyncio.sleep(retry_after)
-                        return await self.fetch(session, endpoint, params)
-                    if response.status != 200:
-                        return None
-                    return await response.json()
-            except Exception as e:
-                return None
+            async with session.get(f"{self.base_url}{endpoint}", params=params, timeout=20, proxy=None) as response:
+                if response.status == 429:
+                    retry_after = int(response.headers.get("Retry-After", 5))
+                    await asyncio.sleep(retry_after)
+                    return await self.fetch(session, endpoint, params)
+                if response.status != 200:
+                    raise aiohttp.ClientResponseError(
+                        request_info=response.request_info,
+                        history=response.history,
+                        status=response.status,
+                        message=f"HTTP {response.status}"
+                    )
+                return await response.json()
 
     async def fetch_klines(self, session: aiohttp.ClientSession, symbol: str, limit: int) -> Optional[pd.DataFrame]:
         now_ms = int(time.time() * 1000)
@@ -212,17 +220,21 @@ class TickerScanner:
             
             return ranked_list
 
-async def main(quiet=False, min_volume=20_000_000):
+async def main(quiet=False, min_volume=None):
     threshold = 0.02
     scanner_period_days = 0.125
+    cfg = {}
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
                 threshold = 0.005
                 scanner_period_days = cfg.get("scanner_period_days", 0.125)
-    except: pass
+    except Exception as error:
+        raise ValueError('Cannot read scanner configuration') from error
 
+    from scanner.backtest_gate import scanner_min_volume
+    min_volume = scanner_min_volume(cfg if min_volume is None else {'scanner_min_volume_usdt':min_volume})
     scanner = TickerScanner(concurrent_requests=20, rebalance_threshold=threshold, scanner_period_days=scanner_period_days)
     top_tickers = await scanner.get_top_tickers(min_volume=min_volume)
     
