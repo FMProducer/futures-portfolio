@@ -128,7 +128,7 @@ def _pm2_fake(collector, monkeypatch, returncode=0, payload=None, raise_exc=None
         if raise_exc:
             raise raise_exc
         return type("R", (), {"returncode": returncode,
-                               "stdout": payload if payload is not None else "[]"})()
+                               "stdout": payload if payload is not None else "[]", "stderr": "PM2 unavailable"})()
     monkeypatch.setattr(collector.subprocess, "run", fake_run)
 
 

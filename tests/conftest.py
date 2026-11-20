@@ -21,37 +21,13 @@ importlib.import_module('dashboard')
 # SAFETY NET: обнаружение живой торговой системы
 # ═══════════════════════════════════════════════════════════════════════
 
+from core.pm2_status import read_pm2_status
+
+
 def _get_running_bot_names() -> list[str]:
-    """Возвращает имена всех PM2-процессов типа real-*/paper-*."""
-    try:
-        # На Windows pm2 — это .cmd файл; shell=True нужен для его нахождения
-        result = subprocess.run(
-            ["pm2", "jlist"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            shell=True,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-        if result.returncode != 0:
-            return []
-        procs = json.loads(result.stdout)
-        bots = [
-            p["name"]
-            for p in procs
-            if p.get("pm2_env", {}).get("status") == "online"
-            and p.get("name", "").startswith(("real-", "paper-", "supervisor"))
-        ]
-        return bots
-    except Exception:
-        # PM2 недоступен — считаем что система не запущена
-        return []
-
-
-def _detect_live_system() -> bool:
-    """Проверяет, запущена ли торговая система (PM2 боты)."""
-    bots = _get_running_bot_names()
-    return len(bots) > 0
+    return [p['name'] for p in read_pm2_status()
+            if p['pm2_env'].get('status') == 'online'
+            and p['name'].startswith(('real-', 'paper-', 'supervisor'))]
 
 
 def pytest_addoption(parser):
@@ -68,9 +44,12 @@ def pytest_configure(config):
     if config.getoption("--ignore-safety"):
         return
 
-    live = _detect_live_system()
-    if live:
+    try:
         bots = _get_running_bot_names()
+    except Exception as error:
+        pytest.exit(f'PM2 status unavailable; refusing tests: {error}. '
+                    'Use --ignore-safety only for explicitly isolated tests.', returncode=1)
+    if bots:
         msg = (
             "\n"
             "═══════════════════════════════════════════════════════════════\n"

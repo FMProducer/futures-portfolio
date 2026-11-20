@@ -19,6 +19,7 @@ load_dotenv()
 from scanner.rank_tickers import main as run_scanner
 from core.storage import safe_load_json, safe_save_json, safe_load_json_sync, safe_save_json_sync
 from core.connector import BinanceConnector
+from core.pm2_status import read_pm2_status
 from core import siphoning
 from core.executor import validate_paper_positions
 
@@ -60,47 +61,21 @@ _RESTART_COOLDOWN_SEC = 30
 _last_start_time: dict[str, float] = {}
 
 async def get_running_bots_info() -> Dict[str, dict]:
-    try:
-        proc = await asyncio.create_subprocess_shell(
-            "pm2 jlist",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, _ = await proc.communicate()
-        if not stdout: return {}
-        data = json.loads(stdout.decode('utf-8', errors='replace'))
-        bots = {}
-        for app in data:
-            name = app['name']
-            if name.startswith(('paper-', 'real-')):
-                args = app.get('pm2_env', {}).get('args', [])
-                ticker = next((args[i+1] for i, a in enumerate(args) if a == '--ticker'), None)
-                is_paper = name.startswith('paper-')
-                if ticker:
-                    bots[f"{'p' if is_paper else 'r'}_{ticker}"] = {"name": name, "paper": is_paper}
-        return bots
-    except Exception as e:
-        logger.error(f"Failed to get PM2 list: {e}")
-        return {}
+    bots = {}
+    for app in await get_pm2_processes():
+        name = app['name']
+        if name.startswith(('paper-', 'real-')):
+            args = app.get('pm2_env', {}).get('args', [])
+            ticker = next((args[i+1] for i, a in enumerate(args) if a == '--ticker'), None)
+            is_paper = name.startswith('paper-')
+            if ticker:
+                bots[f"{'p' if is_paper else 'r'}_{ticker}"] = {"name": name, "paper": is_paper}
+    return bots
+
 
 async def get_pm2_processes() -> List[Dict[str, Any]]:
-    """
-    Получает текущий слепок процессов из PM2.
-    """
-    try:
-        # create_subprocess_exec не находит pm2.cmd на Windows — нужен shell
-        proc = await asyncio.create_subprocess_shell(
-            "pm2 jlist --no-color",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, _ = await proc.communicate()
-        if not stdout:
-            return []
-        return json.loads(stdout.decode('utf-8', errors='replace'))
-    except (Exception, json.JSONDecodeError) as e:
-        logger.error(f"Критическая ошибка чтения стейта PM2: {e}")
-        return []
+    return await asyncio.to_thread(read_pm2_status)
+
 
 async def reconcile_swarm_state(target_tickers: List[str], mode: str) -> None:
     """

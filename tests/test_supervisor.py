@@ -311,7 +311,7 @@ async def test_get_running_bots_info():
     mock_proc = AsyncMock()
     mock_proc.communicate.return_value = (json.dumps(pm2_jlist).encode(), None)
     
-    with patch(f"{M}.asyncio.create_subprocess_shell", AsyncMock(return_value=mock_proc)):
+    with patch(f"{M}.read_pm2_status", return_value=pm2_jlist):
         res = await supervisor.get_running_bots_info()
         assert "p_BTCUSDT" in res
         assert "r_ETHUSDT" in res

@@ -6,15 +6,19 @@ Data Collector — сбор метрик из файлов состояния и
   - state-файлы (paper_state_*.json, real_state_*.json)
   - shadow-файлы (paper_shadow_*.json, shadow_state_*.json)
   - логи (logs/*.log, PM2 logs)
-  - PM2 процессы (pm2 jlist)
+  - PM2 processes (existing daemon RPC only)
   - config.json (только чтение)
 """
 
 import json
 import os
 import subprocess
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from core.pm2_status import read_pm2_status
 from typing import Any, Optional
 
 import yaml
@@ -354,25 +358,19 @@ def get_pm2_processes() -> list:
 def _get_pm2_list() -> list:
     """Получить список PM2 процессов."""
     try:
-        result = subprocess.run(
-            ["pm2", "jlist"],
-            capture_output=True, text=True, timeout=10,
-            shell=True,  # Required on Windows/MSYS
-        )
-        if result.returncode == 0:
-            procs = json.loads(result.stdout)
-            return [
-                {
-                    "name": p.get("name", ""),
-                    "status": p.get("pm2_env", {}).get("status", "unknown"),
-                    "restarts": p.get("pm2_env", {}).get("restart_time", 0),
-                    "uptime": p.get("pm2_env", {}).get("pm_uptime", 0),
-                    "memory": p.get("monit", {}).get("memory", 0),
-                    "cpu": p.get("monit", {}).get("cpu", 0),
-                }
-                for p in procs
-            ]
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
+        procs = read_pm2_status()
+        return [
+            {
+                "name": p.get("name", ""),
+                "status": p.get("pm2_env", {}).get("status", "unknown"),
+                "restarts": p.get("pm2_env", {}).get("restart_time", 0),
+                "uptime": p.get("pm2_env", {}).get("pm_uptime", 0),
+                "memory": p.get("monit", {}).get("memory", 0),
+                "cpu": p.get("monit", {}).get("cpu", 0),
+            }
+            for p in procs
+        ]
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError, RuntimeError, ValueError):
         pass
     return []
 
