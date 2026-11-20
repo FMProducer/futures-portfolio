@@ -1337,7 +1337,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # In both modes, we use the shadow balance (paper_state["balance"]) for TPV calculation.
                 # This ensures that adding/removing funds from the Binance wallet does not affect the bot's TPV.
                 virt_debt = Decimal(str(state.get("virt_debt", 0.0)))
-                real_equity = float(Decimal(str(paper_state["balance"])) - virt_debt)
+                real_equity = Decimal(str(paper_state["balance"])) - virt_debt
 
 
                 if not paper_mode:
@@ -1494,7 +1494,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 # Re-fetch funding-sensitive values AFTER funding block (V/wallet may have changed).
                 virt_debt = Decimal(str(state.get("virt_debt", 0.0)))
-                real_equity = float(Decimal(str(paper_state["balance"])) - virt_debt)
+                real_equity = Decimal(str(paper_state["balance"])) - virt_debt
 
                 if not paper_mode and state.get('live_funding', {}).get('allocation'):
                     from core.real_allocation import reconcile, account_key
@@ -1787,6 +1787,9 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                     if new_virt_debt < Decimal('0'):
                                         new_virt_debt = Decimal('0')
                                     state["virt_debt"] = float(new_virt_debt)
+                                    # Serialization must not allocate more than the exact designation.
+                                    if Decimal(str(state["virt_debt"])) > new_virt_debt:
+                                        state["virt_debt"] = math.nextafter(state["virt_debt"], 0.0)
                                     paper_state_dirty = True
                                     state_dirty = True
 
@@ -1939,12 +1942,12 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                                 logger.critical("Uncertain market execution: facts saved; reconciliation required")
                                 continue
 
-                        if any_success and (ignore_limits or paper_mode):
+                        if any_success:
                             post_virt = Decimal(str(state.get("virt_debt", 0.0)))
                             post_calc = PortfolioCalculator(
                                 positions=paper_state["positions"],
                                 spot_price=price,
-                                real_equity=float(Decimal(str(paper_state["balance"])) - post_virt),
+                                real_equity=Decimal(str(paper_state["balance"])) - post_virt,
                                 virt_qty=virt_qty,
                                 virt_debt=float(post_virt),
                                 base_ticker=base_ticker,
@@ -2057,7 +2060,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                 # Calculate surplus using CURRENT virtual parameters
                 # Use reconstructed real_equity for safe_calc
                 safe_virt_debt = Decimal(str(state.get("virt_debt", 0.0)))
-                safe_real_equity_adj = float(Decimal(str(safe_real_equity)) - safe_virt_debt)
+                safe_real_equity_adj = Decimal(str(safe_real_equity)) - safe_virt_debt
 
                 safe_calc_kwargs = dict(
                     positions=safe_positions,

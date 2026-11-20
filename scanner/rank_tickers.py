@@ -9,6 +9,9 @@ import os
 import json
 import logging
 from dotenv import load_dotenv
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.direct_network import direct_connector
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -154,7 +157,7 @@ class TickerScanner:
             except Exception as e:
                 logger.error(f"Failed to load black_list from config: {e}")
 
-        async with aiohttp.ClientSession(trust_env=True) as session:
+        async with aiohttp.ClientSession(trust_env=False, connector=direct_connector()) as session:
             tickers_24h = await self.fetch(session, "/fapi/v1/ticker/24hr")
             premium_info = await self.fetch(session, "/fapi/v1/premiumIndex")
             if not tickers_24h or not premium_info:

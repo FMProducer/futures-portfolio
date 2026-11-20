@@ -17,6 +17,7 @@ import traceback
 from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation, getcontext
 
 try:
+    from core.direct_network import direct_connector
     from core.calculator import PortfolioCalculator, select_tick_actions
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
@@ -25,6 +26,7 @@ try:
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from core.direct_network import direct_connector
     from core.calculator import PortfolioCalculator, select_tick_actions
     from core.funding import FundingJournal, apply_funding_backtest
     from core import share_trail
@@ -451,7 +453,7 @@ async def download_live_data(symbol: str, data_dir: str, days: float = 2.0) -> s
     all_data = []
     end_time_ms = int(time.time() * 1000)
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=False, connector=direct_connector()) as session:
         for i in range(num_requests):
             batch = min(limit_per_request, total_minutes - len(all_data))
             if batch <= 0:
