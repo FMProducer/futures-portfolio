@@ -1,31 +1,15 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
-## 2026-11-17 — Preserve and integrate pending local fixes
+## 2026-11-20 — Protocol PM2 recovery and verified PAPER swarm observations
 
-- Save the original Orca workspace fixes as 227444c: close SQLite budget connections on every path with explicit transaction completion, import dashboard time, correct the optimizer's source path, and retain regression coverage. The empty-window attribution fix was already present upstream and merged without an extra behavior change.
-- Preserve the live ticker-list snapshot as 62715c0 and OpenCode's duplicate four-line mock correction as dc2531e. Merge both histories and the existing 43f6b9b correction without losing recent networking code or upstream ticker updates.
-- Update the market-data test double for the already-introduced direct-session setup; no transport validation is weakened in production.
-- Final integration validation: Python 3.13.15 with existing research dependencies, 135 passed with one existing Optuna fixture warning; runtime Python 3.11.9, 218 passed. The first 3.11 research attempt had 4 failures, 5 errors and 2 skips (missing matplotlib plus the obsolete test double) and is not a PASS. No packages were installed into the trading venv.
-- Boundary: no bot restart, account mutation or real optimization run. The known optimizer lookback-dimension no-op remains characterized by a regression test; it was not changed as part of saving existing work. Full-repository coverage and private exchange acceptance were not rerun.
-
-## 2026-11-17 — Repair admission-gate transport mocks
-
-- Apply OpenCode's four-line test-only fix: mock public_urlopen in futures_portfolio.scanner.backtest_gate for incomplete-window and retry cases instead of the obsolete urllib.request.urlopen boundary. Preserve assertions and production behavior.
-- Independently verified on fix/binance-physical-direct: 18 passed, exit 0, with both module import paths pinned to this worktree. OpenCode separately reported 218 passed on baseline 641d479; that broader run was not repeated here. No production checkout changes, restart, push or merge.
-
-## 2026-11-17 — Avoid locale decoding of PM2 output
-
-- Capture PM2 inventory and restart output as bytes instead of decoding UTF-8 console output with Windows CP1251. Inventory JSON is parsed directly from bytes; no restart or accounting behavior changes.
-- Regression validation: one test passed using UTF-8 Cyrillic and emoji, without accessing PM2 or restarting workers. The two-line script fix was applied to the production checkout.
-- The user's preceding restart completed despite output-reader errors. Read-only PID/parent/TCP correlation subsequently found physical source 192.168.1.3 for all eight PAPER workers; JCT heartbeats and a completed supervisor cycle were observed. No additional restart or push was performed. Future hardware-failure and private-stream behavior remain unverified.
-
-## 2026-11-17 — Bind Binance traffic to the physical Windows adapter
-
-- Route Binance REST and WebSocket sockets through the connected physical IPv4 interface using both source binding and Winsock IP_UNICAST_IF. Disable proxy inheritance and reject unsupported or ambiguous adapter discovery without a TUN/default-route fallback.
-- Cover the trading connector, scanner/admission reads, live backtest downloads, read-only rebalance clients and standalone Binance tools. Preserve TLS verification, Telegram networking, localhost monitoring and trading/accounting policy. Update the depth collector to the public WebSocket subscription endpoint.
-- Validation: 21 focused transport/connector/gate/downloader tests and 86 scanner/read-only/user-stream tests passed. Public production-checkout probes returned HTTP 200 for Futures, Spot and data downloads and received a WebSocket subscription acknowledgement; all inspected sockets used physical interface 11 and source 192.168.1.3 with VPN enabled. Probe native exit 0. Earlier WebSocket timeout attempts were not counted as passes.
-- Applied verified networking sources to the production checkout after saving source backups; unrelated dashboard attribution edits were preserved. PM2 access returned EPERM, so running-worker transition remains unverified pending a user-console restart. No state reset, private API operation, push or automatic restart was performed.
-- Provenance: baseline 5d87c3133ecdaab3f64cff97f802bcfa5a094282, branch fix/binance-physical-direct; details in docs/BINANCE_PHYSICAL_DIRECT_20261117.md. DNS remains the Windows resolver; actual hardware-failure and private-stream acceptance are not certified.
+- **Cause and correction:** PM2 CLI status checks could auto-start detached daemons after Windows RPC `EPERM`; inaccessible PM2 was also treated as an absent trading system by the pytest guard. Added existing-daemon RPC-only status, migrated supervisor/dashboard/collector/health callers, and made unknown test/supervisor status fail closed. Installed PM2 6.0.14 received a separately backed-up EPERM auto-start guard; the repository stores its patch, not third-party source.
+- **Authorized recovery on November 19:** individually verified and terminated 149 childless orphan `Daemon.js` processes, preserving working daemon PID 14544 and all eight original worker PIDs. Revalidated executable, command line, creation time and descendants immediately before termination. Restored `pm2.pid` from 14468 to verified owner 14544 after backup. Terminated private memory totaled 9,343,774,720 bytes (8.70 GiB). No worker restart, trading action, account reset or ACL change was performed.
+- **Verification:** final isolated mock suite: 19 passed, 158 deselected, 10 subtests passed; installed-client VM check PASS. Real medium-integrity CLI and default pytest guard returned explicit EPERM failure without spawning. The working daemon has an elevated token; exact pipe ACL cause was not established. Natural supervisor cycle completed 2026-11-19 23:20:35 Kaliningrad, with no errors. All deployed source/test hashes matched the tested worktree; unrelated modified files were preserved. No full-suite PASS is claimed.
+- **Fresh read-only observation:** 2026-11-20 08:06:45 Kaliningrad: eight live PAPER workers, REAL disabled, all strategy-minute checkpoints advanced, state age 30–41 seconds, no observed ERROR/CRITICAL in the checked last-hour logs, no active funding/execution blocks. Active-session Net -262.869588 USDT; active equity 7,890.673560; free budget 140.10868085; total equity 8,030.782241; Net versus initial 8,000 is +30.782241 (+0.384778%). Budget residual zero and wallet/state residuals approximately 1e-13 USDT. These are saved-strategy-price marks, not executable BID/ASK liquidation values.
+- **Change since November 19 18:26:** total marked equity -118.647830 USDT. RARE confirmed flat closure at 22:12:04 returned 1,004.37288714, Net +4.37288714; 1,000 was allocated to 1000LUNC at 22:28:08. Telegram remains intentionally disabled. On November 20 the verified PM2 owner and pid file still matched 14544; no extra daemons were found.
+- **Evidence and limits:** `docs/PM2_RECOVERY_20261119.md`, `docs/patches/pm2-client-eperm.patch`, `docs/pm2_recovery_verification_20261119.json`; full local manifests/backups under `reports/pm2_recovery_20261119/`. Changes were applied to the primary runtime and original Orca checkout after exact preimage checks. A PM2 update can replace the local installed CLI patch; the repository RPC-only reader remains independent of that patch. Non-elevated control access remains denied; no privilege bypass was attempted.
+- **Earlier context:** minute-gap recovery remains documented in the November 16 entry and `docs/STRATEGY_GAP_RECOVERY_20261116.md`; the approved policy preserves positions without retroactive trades. Historical ON/HOT selection investigation located user-approved experimental 48/36 and candidate 48/30, separately from deployed 48/24; it did not deploy that research policy. The newly requested BTW BID/ASK and annual/session backtests have not yet been run at this documentation checkpoint.
+- **Obsidian:** `Projects/futures-portfolio-pm2-recovery-and-health-2026-11-20.md`, linked from `Docs/changelog.md`.
 
 ## 2026-11-16 — Reconcile PAPER minute gaps without retroactive trades
 
@@ -1157,3 +1141,8 @@ Related: [[Docs/futures-portfolio-paper-swarm-dashboard-2026-10-25]], [[Docs/cha
 - core/paper_budget.reserve now reserves the complete requested paper_initial_capital or defers with no cash/event/allocation mutation; min(requested,cash) partial launches removed.
 - Existing identified allocations remain resumable without top-ups, resets or wallet changes. Supervisor warning explicitly names insufficient cash for configured initial capital. Unused cash remains in the pool until a full allocation is available.
 - Existing small sessions, including NIL, are not force-closed or rewritten. No PM2 deployment or automatic repair performed by this change.
+
+## 2026-11-20 — REAL selection policy validation
+
+- Recorded the approved cumulative PAPER qualification and natural-close rotation design in `docs/REAL_SELECTION_PAPER_VALIDATION_20261120.md`.
+- User requested testing all proposals against accumulated PAPER data before selecting numerical REAL risk limits. No REAL activation or production policy change is authorized by the research results alone.
