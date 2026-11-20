@@ -241,3 +241,31 @@ def reconcile_terminal_allocations(root, recover=False):
         except (OSError, ValueError, KeyError, TypeError, AttributeError, ArithmeticError) as error:
             blocked[ticker] = str(error)
     return returned, blocked
+
+
+def cumulative_cycles(root, ticker, current):
+    """Count each confirmed PAPER session once, preserving current-session metrics."""
+    sessions = {}
+    for path in sorted((root/'history').glob(f'paper_close_{ticker}_*.json')):
+        archive = json.loads(path.read_text(encoding='utf-8'))
+        state, wallet = archive['state'], archive['paper_state']
+        identity, count = str(state['started_at']), state['rebalance_cycles']
+        if (state.get('base_ticker') != ticker or wallet.get('base_ticker') != ticker
+                or not state.get('paper_close_complete') or type(count) is not int or count < 0
+                or not all(f'{ticker}_{leg}' in wallet.get('positions', {}) for leg in ('LONG', 'SHORT'))
+                or any(not Decimal(str(q)).is_finite() or Decimal(str(q)) != 0 for q in wallet['positions'].values())
+                or any(state.get(k) for k in ('rebalance_inflight', 'initial_build_pending', 'startup_blocked', 'cash_invariant_violation'))
+                or state.get('funding_halt', {}).get('active')
+                or archive.get('close_event') not in (f'stop:{identity}:{count}', f'trailing:{identity}:{count}')
+                or not any(r.get('event_id') == archive['close_event'] for r in wallet.get('share_fill_receipts', {}).values())):
+            raise ValueError('Unconfirmed PAPER cycle history')
+        if identity in sessions and sessions[identity] != count:
+            raise ValueError('Conflicting PAPER session cycles')
+        sessions[identity] = count
+    identity, count = str(current['started_at']), current.get('rebalance_cycles', 0)
+    if current.get('base_ticker') != ticker or type(count) is not int or count < 0:
+        raise ValueError('Invalid current PAPER session cycles')
+    if identity in sessions and sessions[identity] != count:
+        raise ValueError('Conflicting current PAPER session cycles')
+    sessions[identity] = count
+    return sum(sessions.values())

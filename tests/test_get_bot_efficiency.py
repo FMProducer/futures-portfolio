@@ -44,7 +44,7 @@ async def test_get_bot_efficiency_with_state():
     assert result == {
         "profit": 100.0,
         "session_profit": 100.0, "activity_at": None, "idle": False,
-        "cycles": 20,
+        "cycles": 20, "real_cycles": 20,
         "eff": 100.0 / 20,
         "rotation_protected": False,
         "trailing_stop_paper_timeout_end": 123456789.0
@@ -66,7 +66,7 @@ async def test_get_bot_efficiency_min_cycles():
     assert result == {
         "profit": 100.0,
         "session_profit": 100.0, "activity_at": None, "idle": False,
-        "cycles": 5,
+        "cycles": 5, "real_cycles": 5,
         "eff": 100.0 / 10, # max(5, 10)
         "rotation_protected": False,
         "trailing_stop_paper_timeout_end": 0.0

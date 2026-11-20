@@ -1141,3 +1141,11 @@ Related: [[Docs/futures-portfolio-paper-swarm-dashboard-2026-10-25]], [[Docs/cha
 - core/paper_budget.reserve now reserves the complete requested paper_initial_capital or defers with no cash/event/allocation mutation; min(requested,cash) partial launches removed.
 - Existing identified allocations remain resumable without top-ups, resets or wallet changes. Supervisor warning explicitly names insufficient cash for configured initial capital. Unused cash remains in the pool until a full allocation is available.
 - Existing small sessions, including NIL, are not force-closed or rewritten. No PM2 deployment or automatic repair performed by this change.
+
+## 2026-11-20 — Configurable research-derived admission
+
+- Added config-driven 48/36 admission windows, 15M-USDT scanner turnover and cumulative unique PAPER cycle qualification for new REAL candidates; retained the 15-cycle minimum.
+- Updated gate cache/report windows, daily historical admission compatibility, all scanner entry points and focused fixtures. PAPER rotation age remains per-session; direct Binance transport is preserved. No REAL activation, slot/capital/whitelist changes, process restart or optimization.
+- Specification and reload behavior: docs/CONFIGURABLE_ADMISSION_20261120.md.
+
+- Applied to the primary runtime with timestamped backup; final focused validation: 173 passed, post-deploy checks PASS for 17 PAPER histories. REAL slots remain zero; next normal cycle pickup is unverified.

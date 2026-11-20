@@ -793,6 +793,13 @@ async def get_bot_efficiency(ticker: str, config: dict, is_real: bool = False) -
         history = ticker_history(BASE_PATH, ticker)
         profit_usdt = history['closed_net'] + (session_profit if history['active_session'] == str(state.get('started_at')) else 0)
     cycles = int(state.get("rebalance_cycles", 0))
+    cumulative = config.get('real_use_cumulative_paper_cycles', False)
+    if type(cumulative) is not bool:
+        raise ValueError('real_use_cumulative_paper_cycles must be boolean')
+    real_cycles = cycles
+    if cumulative and not is_real:
+        from core.paper_budget import cumulative_cycles
+        real_cycles = cumulative_cycles(BASE_PATH, ticker, state)
     activity = None if is_real else paper_activity_at(BASE_PATH, ticker, state)
     idle_hours = float(config.get("paper_idle_hours", 6.0))
     if not math.isfinite(idle_hours) or idle_hours < 0:
@@ -805,6 +812,7 @@ async def get_bot_efficiency(ticker: str, config: dict, is_real: bool = False) -
         "activity_at": activity,
         "idle": idle_hours > 0 and activity is not None and time.time() - activity >= idle_hours * 3600,
         "cycles": cycles,
+        "real_cycles": real_cycles,
         "eff": profit_usdt / max(cycles, min_cycles),
         "trailing_stop_paper_timeout_end": state.get("trailing_stop_paper_timeout_end", 0.0)
     }
@@ -813,6 +821,11 @@ async def manage_swarm():
     logger.info("--- Starting Pure Live Supervisor (Strict Scanner Sync) ---")
     config = await safe_load_json(CONFIG_PATH, {})
     if not config: return
+    from scanner.backtest_gate import admission_windows, scanner_min_volume
+    admission_windows(config)
+    scanner_min_volume(config)
+    if type(config.get('real_use_cumulative_paper_cycles', False)) is not bool:
+        raise ValueError('real_use_cumulative_paper_cycles must be boolean')
 
     paper_only = (config.get("paper_mode") is True
                   and config.get("max_bots", 10) <= config.get("paper_mode_bots", 9))
@@ -1016,10 +1029,10 @@ async def manage_swarm():
                     running_bots.pop(key, None)
             except Exception: pass
 
-    # 1. Запуск сканера (ЖЕСТКО 20M)
-    logger.info("🔍 Running ticker scanner (Min Vol: 20M)...")
+    logger.info("Running ticker scanner (Min Vol: %.2fM)...", scanner_min_volume(config)/1e6)
     try:
-        scanner_results = await asyncio.wait_for(run_scanner(quiet=True, min_volume=20_000_000), timeout=60)
+        from scanner.backtest_gate import scanner_min_volume
+        scanner_results = await asyncio.wait_for(run_scanner(quiet=True, min_volume=scanner_min_volume(config)), timeout=60)
         if not scanner_results:
             logger.error("❌ Scanner returned nothing. Aborting cycle to prevent config wipe.")
             return
@@ -1079,10 +1092,10 @@ async def manage_swarm():
     idle_tickers = {t for t in old_incubator if global_perf_map[t].get('idle')}
     # Собираем метрики для старых тикеров (для оценки PnL в ротации)
     if config.get("paper_backtest_gate", False):
-        from scanner.backtest_gate import filter_candidates
+        from scanner.backtest_gate import filter_candidates, admission_windows
         before_gate = len(clean_scanner)
         clean_scanner = await filter_candidates(BASE_PATH, clean_scanner, config, set(old_incubator), reassess=idle_tickers)
-        logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; closed48h AND last24h, each Net>0, DD<=50%, cycles>=2")
+        logger.info(f"PAPER backtest gate: {before_gate} -> {len(clean_scanner)} candidates; existing sessions retained; windows={admission_windows(config)}, each Net>0, DD<=50%, cycles>=2")
 
     # Selective Rotation: мержим старых + новых
     from core.paper_budget import selection_ready
@@ -1154,6 +1167,9 @@ async def manage_swarm():
         p = perf_map.get(ticker)
         if p is None:
             p = {"profit": 0.0, "cycles": 0, "eff": 0.0, "trailing_stop_paper_timeout_end": 0.0}
+
+        if not is_running_real:
+            p = dict(p, cycles=p.get('real_cycles', p['cycles']))
 
         # 2. Strict Drawdown Protection (Highest Priority)
         # Используем profit из perf_map (для REAL ботов — из real_state, для paper — из paper_state)
