@@ -1141,3 +1141,8 @@ Related: [[Docs/futures-portfolio-paper-swarm-dashboard-2026-10-25]], [[Docs/cha
 - core/paper_budget.reserve now reserves the complete requested paper_initial_capital or defers with no cash/event/allocation mutation; min(requested,cash) partial launches removed.
 - Existing identified allocations remain resumable without top-ups, resets or wallet changes. Supervisor warning explicitly names insufficient cash for configured initial capital. Unused cash remains in the pool until a full allocation is available.
 - Existing small sessions, including NIL, are not force-closed or rewritten. No PM2 deployment or automatic repair performed by this change.
+
+## 2026-11-20 — REAL selection policy validation
+
+- Recorded the approved cumulative PAPER qualification and natural-close rotation design in `docs/REAL_SELECTION_PAPER_VALIDATION_20261120.md`.
+- User requested testing all proposals against accumulated PAPER data before selecting numerical REAL risk limits. No REAL activation or production policy change is authorized by the research results alone.
