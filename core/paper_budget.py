@@ -187,6 +187,7 @@ def reconcile_terminal_allocations(root, recover=False):
     with ctx_closing(sqlite3.connect(database(root).resolve().as_uri()+"?mode=ro", uri=True)) as db:
         rows = db.execute("SELECT ticker,capital,session FROM allocations WHERE released=0").fetchall()
     returned, blocked = [], {}
+    from core.storage import safe_load_json_sync
     for ticker, capital, identity in rows:
         try:
             if not ticker.isascii() or not ticker.isalnum() or not identity:
@@ -197,8 +198,14 @@ def reconcile_terminal_allocations(root, recover=False):
             state_path = root/"core"/f"paper_state_{ticker}.json"
             wallet_path = root/"core"/f"paper_shadow_{ticker}.json"
             archive_path = root/"history"/f"paper_close_{ticker}_{identity}.json"
-            state_raw, wallet_raw = state_path.read_bytes(), wallet_path.read_bytes()
-            state, wallet = json.loads(state_raw), json.loads(wallet_raw)
+            # Use safe_load_json_sync with retries for transient PermissionError
+            state = safe_load_json_sync(str(state_path), None, retries=5)
+            wallet = safe_load_json_sync(str(wallet_path), None, retries=5)
+            if state is None or wallet is None:
+                raise ValueError("PAPER state/wallet file missing or unreadable after retries")
+            # Keep raw bytes for integrity check (read once more without retries - this is the post-parse snapshot)
+            state_raw = state_path.read_bytes()
+            wallet_raw = wallet_path.read_bytes()
             if str(state.get("started_at")) != identity:
                 raise ValueError("PAPER allocation/state identity mismatch")
             if not state.get("paper_close_complete") and not archive_path.exists():

@@ -7,6 +7,9 @@ import time
 import os
 import math
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.direct_network import direct_connector
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tickers.txt")
@@ -117,7 +120,7 @@ async def main():
 
     results = {"ok": [], "fail": []}
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=False, connector=direct_connector()) as session:
         for i, ticker in enumerate(pending):
             try:
                 path = await download_one(session, ticker, DATA_DIR, DAYS)

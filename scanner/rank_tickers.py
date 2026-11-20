@@ -28,11 +28,17 @@ def retry_on_network_error(retries: int = 3, delay: float = 0.125):
             for attempt in range(retries):
                 try:
                     return await func(*args, **kwargs)
-                except Exception as e:
+                except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ConnectionError) as e:
+                    # Network-related errors - retry
                     if attempt < retries - 1:
                         await asyncio.sleep(delay * (attempt + 1))
                     else:
                         logger.error(f"Max retries reached for {func.__name__}: {e}")
+                        raise
+                except Exception as e:
+                    # Non-network errors - don't retry, propagate immediately
+                    logger.error(f"Non-retryable error in {func.__name__}: {e}")
+                    raise
             return None
         return wrapper
     return decorator
@@ -106,17 +112,19 @@ class TickerScanner:
     @retry_on_network_error(retries=3)
     async def fetch(self, session: aiohttp.ClientSession, endpoint: str, params: dict = None):
         async with self.semaphore:
-            try:
-                async with session.get(f"{self.base_url}{endpoint}", params=params, timeout=20, proxy=None) as response:
-                    if response.status == 429:
-                        retry_after = int(response.headers.get("Retry-After", 5))
-                        await asyncio.sleep(retry_after)
-                        return await self.fetch(session, endpoint, params)
-                    if response.status != 200:
-                        return None
-                    return await response.json()
-            except Exception as e:
-                return None
+            async with session.get(f"{self.base_url}{endpoint}", params=params, timeout=20, proxy=None) as response:
+                if response.status == 429:
+                    retry_after = int(response.headers.get("Retry-After", 5))
+                    await asyncio.sleep(retry_after)
+                    return await self.fetch(session, endpoint, params)
+                if response.status != 200:
+                    raise aiohttp.ClientResponseError(
+                        request_info=response.request_info,
+                        history=response.history,
+                        status=response.status,
+                        message=f"HTTP {response.status}"
+                    )
+                return await response.json()
 
     async def fetch_klines(self, session: aiohttp.ClientSession, symbol: str, limit: int) -> Optional[pd.DataFrame]:
         now_ms = int(time.time() * 1000)

@@ -1,7 +1,6 @@
 """Collect 24h of ZECUSDT 1-min order book snapshots via Binance WebSocket.
 
-Connects directly (no VPN proxy), matching the bot's Binance route.
-Uses trust_env=False — TUN+sing-box rule handles the actual route.
+Uses a physical-interface socket with proxy discovery disabled.
 TLS certificate checking is preserved.
 """
 import asyncio
@@ -13,8 +12,11 @@ from datetime import datetime, timezone
 import websockets
 import pandas as pd
 
-WS_URL = "wss://fstream.binance.com/ws/zecusdt@depth20@100ms"
+WS_URL = "wss://fstream.binance.com/public/stream"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys
+sys.path.insert(0, ROOT)
+from core.direct_network import connected_socket
 DATA_DIR = os.path.join(ROOT, "data")
 SNAPSHOT_INTERVAL = 60  # seconds — one snapshot per minute
 DURATION_SEC = 86400    # 24 hours
@@ -28,10 +30,11 @@ async def collect():
     start_time = time.time()
     started_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    # trust_env=False — ignore HTTP_PROXY, let TUN+sing-box route directly
     async with websockets.connect(
-        WS_URL, ping_interval=20, ping_timeout=10, close_timeout=5
+        WS_URL, ping_interval=20, ping_timeout=10, close_timeout=5,
+        proxy=None, sock=await connected_socket('fstream.binance.com', 443)
     ) as ws:
+        await ws.send(json.dumps({'method': 'SUBSCRIBE', 'params': ['zecusdt@depth20@100ms'], 'id': 1}))
         print(f"[{started_at}] Connected to {WS_URL}", flush=True)
         print(f"Duration: {DURATION_SEC // 3600}h | Snapshot interval: {SNAPSHOT_INTERVAL}s", flush=True)
 
@@ -43,6 +46,11 @@ async def collect():
                 continue
 
             data = json.loads(msg)
+            if 'result' in data:
+                continue
+            data = data.get('data', data)
+            if 'b' not in data or 'a' not in data:
+                raise ValueError('Binance depth message lacks bid/ask data')
             now = time.time()
 
             # Take one snapshot per minute

@@ -1036,6 +1036,9 @@ async def manage_swarm():
         if not scanner_results:
             logger.error("❌ Scanner returned nothing. Aborting cycle to prevent config wipe.")
             return
+    except asyncio.TimeoutError:
+        logger.error("❌ Scanner timed out after 120s. Aborting cycle to prevent config wipe.")
+        return
     except Exception as e:
         logger.error(f"❌ Scanner failed: {e}")
         return

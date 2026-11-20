@@ -1,0 +1,34 @@
+{
+  "checked_utc": "2026-11-18T19:23:56.8373988Z",
+  "candidate_source_unchanged": true,
+  "cases": [
+    {
+      "ticker": "ZECUSDT",
+      "status": "PASS",
+      "baseline_economics_unchanged_within_1e_minus8": true,
+      "baseline_verdict": "FAIL",
+      "config_unchanged": true,
+      "data_unchanged": true
+    },
+    {
+      "ticker": "JCTUSDT",
+      "status": "PASS",
+      "baseline_economics_unchanged_within_1e_minus8": true,
+      "baseline_verdict": "FAIL",
+      "config_unchanged": true,
+      "data_unchanged": true
+    }
+  ],
+  "candidate_files": [
+    {
+      "Path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\cash_fix_candidate_20261118\\source\\core\\main.py",
+      "Hash": "6C80E28377EF56FA95DC0FAE21E864C4E63EC4A6F4EFF32AA7962FEF61CFB25A"
+    },
+    {
+      "Path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\cash_fix_candidate_20261118\\source\\core\\executor.py",
+      "Hash": "7008312D8B0B78296EF22FF196EAE9F3C8C483483D730ABB5ACC9FA70F5519F4"
+    }
+  ],
+  "test_sha256": "7A68E8C592BA5D3EED922A8DEEE9EB5AF0AC5DAF68383499361C20528504B771",
+  "launcher_sha256": "9C1E2BDF16471F2B2132CBC0A8D4D6D23435E97A43CE34078D8A447883FE80DB"
+}

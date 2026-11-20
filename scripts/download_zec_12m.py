@@ -14,6 +14,9 @@ import time
 
 import aiohttp
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.direct_network import direct_connector
 
 FAPI_KLINES = "https://fapi.binance.com/fapi/v1/klines"
 FAPI_DEPTH  = "https://fapi.binance.com/fapi/v1/depth"
@@ -71,6 +74,7 @@ async def main():
 
     async with aiohttp.ClientSession(
         trust_env=False,
+        connector=direct_connector(),
         headers={"User-Agent": "futures-portfolio-data/1.0"}
     ) as session:
 

@@ -91,17 +91,23 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
+    "1000LUNCUSDT",
     "AKEUSDT",
-    "ARIAUSDT",
-    "BMTUSDT",
+    "BREVUSDT",
     "BTWUSDT",
     "BULLAUSDT",
-    "IDOLUSDT",
-    "SOPHUSDT",
-    "UAIUSDT"
+    "HUMAUSDT",
+    "IRYSUSDT",
+    "PIPPINUSDT"
   ],
-  "base_ticker": "AKEUSDT",
+  "base_ticker": "1000LUNCUSDT",
   "probation_paper": {},
   "probation_real": {},
-  "paper_backtest_gate": true
+  "paper_backtest_gate": true,
+  "admission_window_hours": [
+    48,
+    36
+  ],
+  "scanner_min_volume_usdt": 15000000,
+  "real_use_cumulative_paper_cycles": true
 }

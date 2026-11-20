@@ -236,7 +236,8 @@ async def monitor(reader,observer,seconds):
     fences = 0
     # The listenKey might be shared with another client; never DELETE it on exit.
     try:
-        async with aiohttp.ClientSession(trust_env=False) as session:
+        from core.direct_network import direct_connector
+        async with aiohttp.ClientSession(trust_env=False, connector=direct_connector()) as session:
             async with session.ws_connect('wss://fstream.binance.com/private/ws/'+token,
                                           heartbeat=5,max_msg_size=1048576) as ws:
                 epoch = journal.begin()
