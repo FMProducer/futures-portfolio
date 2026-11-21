@@ -1,3 +1,4 @@
+from contextlib import closing
 import json
 import math
 import sqlite3
@@ -18,7 +19,7 @@ def read_curve(root, current=None, initial=None):
         result["error"] = "Observation database is unavailable"
         return result
     try:
-        with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=1) as db:
+        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=1)) as db:
             peak = None
             maximum = 0.0
             for ts, gap, body in db.execute("SELECT ts,gap_seconds,summary FROM observations ORDER BY ts"):

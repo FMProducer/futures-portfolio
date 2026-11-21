@@ -61,7 +61,7 @@ def test_gate_deducts_terminal_cost_and_requires_real_rebalance():
 @pytest.mark.asyncio
 async def test_gate_rejects_incomplete_window(tmp_path, monkeypatch):
     from futures_portfolio.scanner.backtest_gate import evaluate
-    monkeypatch.setattr('urllib.request.urlopen', lambda *a, **k: io.BytesIO(b'[]'))
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', lambda *a, **k: io.BytesIO(b'[]'))
     result = await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},86400000)
     assert not result['TESTUSDT']['pass']
     assert 'Missing, duplicate or unclosed' in result['TESTUSDT']['error']
@@ -90,8 +90,9 @@ async def test_gate_reassesses_idle_and_new_candidates_in_one_closed_window(tmp_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("windows", [(48,24),(48,36),(36,12)])
 @pytest.mark.parametrize("long_ok,short_ok", [(True,True),(False,True),(True,False),(False,False)])
-async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypatch, long_ok, short_ok):
+async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypatch, long_ok, short_ok, windows):
     import urllib.parse
     import pandas as pd
     from scanner.backtest_gate import evaluate
@@ -102,27 +103,28 @@ async def test_gate_downloads_once_and_requires_both_windows(tmp_path, monkeypat
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
         start = int(query['startTime'][0])
         requests.append(start)
-        bars = [[t, '100','101','99','100','1',t+59999] for t in range(start,start+86400000,60000)]
+        bars = [[t, '100','101','99','100','1',t+59999] for t in range(start,int(query['endTime'][0])+1,60000)]
         return io.BytesIO(json.dumps(bars).encode())
     async def run(config, data, **kwargs):
         frame = pd.read_feather(next(__import__('pathlib').Path(data).glob('*.feather')))
         days = kwargs['days']
         runs.append((days, len(frame), kwargs['capital_override']))
         result = replay()
-        result['final_equity'] = 1010 if (long_ok if days==2 else short_ok) else 999
+        result['final_equity'] = 1010 if (long_ok if days==windows[0]/24 else short_ok) else 999
         return result
-    monkeypatch.setattr('urllib.request.urlopen', download)
+    monkeypatch.setattr('scanner.backtest_gate.public_urlopen', download)
     monkeypatch.setattr(backtest_rebalance, 'run_backtest', run)
-    result = (await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},end))['TESTUSDT']
-    assert requests == [0,86400000]
-    assert runs == [(2,2880,1000),(1,2880,1000)]
+    config = {'portfolios':[{'paper_initial_capital':1000}], 'admission_window_hours':list(windows)}
+    result = (await evaluate(tmp_path,['TESTUSDT'],config,end))['TESTUSDT']
+    assert requests == list(range(end-windows[0]*3600000,end,86400000))
+    assert runs == [(h/24,windows[0]*60,1000) for h in windows]
     assert result['pass'] is (long_ok and short_ok)
-    assert result['windows']['48']['pass'] is long_ok
-    assert result['windows']['24']['pass'] is short_ok
-    assert result['net'] == result['windows']['24']['net']
-    assert len(json.loads(next(tmp_path.rglob('klines.json')).read_text())) == 2880
+    assert result['windows'][str(windows[0])]['pass'] is long_ok
+    assert result['windows'][str(windows[1])]['pass'] is short_ok
+    assert result['net'] == result['windows'][str(windows[1])]['net']
+    assert len(json.loads(next(tmp_path.rglob('klines.json')).read_text())) == windows[0]*60
     assert len(list(tmp_path.rglob('klines_*.json'))) == 2
-    assert (await evaluate(tmp_path,['TESTUSDT'],{'portfolios':[{'paper_initial_capital':1000}]},end))['TESTUSDT'] == result
+    assert (await evaluate(tmp_path,['TESTUSDT'],config,end))['TESTUSDT'] == result
     assert len(requests) == 2 and len(runs) == 2
 
 
@@ -134,7 +136,7 @@ def test_network_retry_allows_three_retries_then_success(monkeypatch, wrapped):
     error = URLError(TimeoutError('read timeout')) if wrapped else TimeoutError('read timeout')
     request = Mock(side_effect=[error,error,error,io.BytesIO(b'ok')])
     sleeps = Mock()
-    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', request)
     monkeypatch.setattr('time.sleep', sleeps)
     assert read_public_url('https://example.test') == b'ok'
     assert request.call_count == 4
@@ -145,7 +147,7 @@ def test_network_retry_exhaustion_propagates(monkeypatch):
     from unittest.mock import Mock
     from futures_portfolio.scanner.backtest_gate import read_public_url
     request = Mock(side_effect=ConnectionResetError('reset'))
-    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', request)
     monkeypatch.setattr('time.sleep', lambda delay: None)
     with pytest.raises(ConnectionResetError):read_public_url('https://example.test')
     assert request.call_count == 4
@@ -162,7 +164,7 @@ def test_non_network_errors_are_not_retried(monkeypatch, kind):
              'certificate':URLError(SSLCertVerificationError('bad certificate')),
              'url':URLError('unsupported URL')}[kind]
     request = Mock(side_effect=error)
-    monkeypatch.setattr('urllib.request.urlopen', request)
+    monkeypatch.setattr('futures_portfolio.scanner.backtest_gate.public_urlopen', request)
     with pytest.raises(type(error)):read_public_url('https://example.test')
     assert request.call_count == 1
 

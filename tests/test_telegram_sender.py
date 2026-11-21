@@ -99,8 +99,8 @@ async def test_worker_missing_credentials():
 @pytest.mark.asyncio
 async def test_worker_empty_queue():
     """Line 74-75: worker sleeps when queue is empty."""
-    with patch("futures_portfolio.monitoring.telegram_sender.TOKEN", "test_token"), \
-         patch("futures_portfolio.monitoring.telegram_sender.CHAT_ID", "test_chat"), \
+    with patch("futures_portfolio.monitoring.telegram_sender.TOKEN", "FAKE-BOT-9f8e7d6c5b4a"), \
+         patch("futures_portfolio.monitoring.telegram_sender.CHAT_ID", "42"), \
          patch("pathlib.Path.mkdir"), \
          patch("futures_portfolio.monitoring.telegram_sender.ProxyConnector.from_url"), \
          patch("aiohttp.ClientSession") as mock_session_cls, \
@@ -117,8 +117,8 @@ async def test_worker_empty_queue():
 @pytest.mark.asyncio
 async def test_worker_send_failure():
     """Line 91: worker retries on send failure."""
-    with patch("futures_portfolio.monitoring.telegram_sender.TOKEN", "test_token"), \
-        patch("futures_portfolio.monitoring.telegram_sender.CHAT_ID", "test_chat"), \
+    with patch("futures_portfolio.monitoring.telegram_sender.TOKEN", "FAKE-BOT-9f8e7d6c5b4a"), \
+        patch("futures_portfolio.monitoring.telegram_sender.CHAT_ID", "42"), \
         patch("pathlib.Path.mkdir"), \
         patch("futures_portfolio.monitoring.telegram_sender.ProxyConnector.from_url"), \
         patch("aiohttp.ClientSession") as mock_session_cls, \
@@ -155,8 +155,8 @@ async def test_send_to_telegram_api_error():
 @pytest.mark.asyncio
 async def test_worker_success():
     """Lines 85-88: worker removes file and sleeps after successful send."""
-    with patch("futures_portfolio.monitoring.telegram_sender.TOKEN", "test_token"), \
-         patch("futures_portfolio.monitoring.telegram_sender.CHAT_ID", "test_chat"), \
+    with patch("futures_portfolio.monitoring.telegram_sender.TOKEN", "FAKE-BOT-9f8e7d6c5b4a"), \
+         patch("futures_portfolio.monitoring.telegram_sender.CHAT_ID", "42"), \
          patch("pathlib.Path.mkdir"), \
          patch("futures_portfolio.monitoring.telegram_sender.ProxyConnector.from_url"), \
          patch("aiohttp.ClientSession") as mock_session_cls, \

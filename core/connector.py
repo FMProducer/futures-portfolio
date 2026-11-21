@@ -7,6 +7,7 @@ from typing import Dict, List, Callable, Any
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
 import requests.exceptions
+from core.direct_network import configure_session
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,7 @@ class BinanceConnector:
 
                 # Отключаем использование системных переменных в сессии requests
                 client.session.trust_env = False
+                configure_session(client.session)
                 return client
 
             # Делегируем блокирующий вызов в отдельный поток (ping=False — без spot timeout)

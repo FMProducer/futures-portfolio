@@ -1,0 +1,89 @@
+{
+  "physical": [
+    11,
+    "192.168.1.3"
+  ],
+  "checks": [
+    {
+      "transport": "requests",
+      "host": "fapi.binance.com",
+      "status": 200,
+      "local": [
+        "192.168.1.3",
+        60931
+      ],
+      "remote": [
+        "3.164.206.35",
+        443
+      ],
+      "interface_index": 11
+    },
+    {
+      "transport": "requests",
+      "host": "api1.binance.com",
+      "status": 200,
+      "local": [
+        "192.168.1.3",
+        60932
+      ],
+      "remote": [
+        "35.76.18.228",
+        443
+      ],
+      "interface_index": 11
+    },
+    {
+      "transport": "requests",
+      "host": "data.binance.vision",
+      "status": 200,
+      "local": [
+        "192.168.1.3",
+        60933
+      ],
+      "remote": [
+        "52.85.154.111",
+        443
+      ],
+      "interface_index": 11
+    },
+    {
+      "transport": "urllib",
+      "status": 200,
+      "local": [
+        "192.168.1.3",
+        60935
+      ],
+      "remote": [
+        "3.164.206.35",
+        443
+      ],
+      "interface_index": 11
+    },
+    {
+      "transport": "aiohttp",
+      "status": 200,
+      "local": [
+        "192.168.1.3",
+        60936
+      ],
+      "remote": [
+        "3.164.206.35",
+        443
+      ],
+      "interface_index": 11
+    },
+    {
+      "transport": "websocket",
+      "subscription_ack": true,
+      "local": [
+        "192.168.1.3",
+        60937
+      ],
+      "remote": [
+        "18.182.112.226",
+        443
+      ],
+      "interface_index": 11
+    }
+  ]
+}

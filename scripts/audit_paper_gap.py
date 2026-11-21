@@ -11,6 +11,8 @@ import urllib.request
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from core.direct_network import direct_opener
 
 
 def audit(root, output):
@@ -29,7 +31,7 @@ def audit(root, output):
             ledger.backup(backup)
         allocations = {ticker: (Decimal(capital), released, session) for ticker, capital, released, session
                        in ledger.execute('SELECT ticker,capital,released,session FROM allocations')}
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = direct_opener()
     rows = []
     snapshots = {}
     for path in sorted((root / 'core').glob('paper_state_*.json')):

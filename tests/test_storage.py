@@ -82,3 +82,35 @@ def test_safe_save_json_sync_remove_error():
         except Exception as e:
             if str(e) != "Atomic failed":
                 raise
+
+
+def test_safe_load_json_sync_permission_error_retries(tmp_path):
+    """Test that safe_load_json_sync retries on PermissionError and succeeds."""
+    path = tmp_path / "test.json"
+    data = {"key": "value"}
+    path.write_text(json.dumps(data))
+
+    call_count = [0]
+    original_open = open
+
+    def failing_open(*args, **kwargs):
+        call_count[0] += 1
+        if call_count[0] <= 2:
+            raise PermissionError("Access denied")
+        return original_open(*args, **kwargs)
+
+    with patch("builtins.open", side_effect=failing_open):
+        res = safe_load_json_sync(str(path), {"default": True}, retries=5)
+        assert res == data
+        assert call_count[0] == 3
+
+
+def test_safe_load_json_sync_permission_error_exhausted(tmp_path):
+    """Test that safe_load_json_sync returns default after exhausting retries on PermissionError."""
+    path = tmp_path / "test.json"
+    data = {"key": "value"}
+    path.write_text(json.dumps(data))
+
+    with patch("builtins.open", side_effect=PermissionError("Access denied")):
+        res = safe_load_json_sync(str(path), {"default": True}, retries=3)
+        assert res == {"default": True}

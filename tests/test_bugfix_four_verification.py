@@ -268,10 +268,6 @@ def test_optimizer_patched_backtester_reads_the_repo_source_and_patches(tmp_path
                        '"history": state.history',
                        '"rebalance_log": state.rebalance_log'):
             assert marker in patched, f"regex patch missing: {marker}"
-        # known defect (reported to coordinator): the engine now reads the lookback from
-        # safety_guards, so the optimizer's "tg_trend_bars = 30" regex is dead and the
-        # explored trend_lookback_bars dimension never reaches the engine
-        assert "trend_guard_cfg.get('lookback_bars', 30)" not in patched
         # the net_move regex still matches the current engine source, so the patch fires
         source = (ROOT / "backtest" / "backtest_rebalance.py").read_text(encoding="utf-8")
         assert re.search(r"tg_nmg_bars\s*=\s*max\(1,\s*tg_nmg_window\s*//\s*60\)", source)
@@ -289,7 +285,10 @@ def test_optimizer_patched_backtester_reads_the_repo_source_and_patches(tmp_path
         # direct call of the fixed path resolver
         name = module.generate_patched_backtester()
         generated = module.PROJECT_DIR / f"{name}.py"
-        assert generated.exists() and "lookback_bars" in generated.read_text(encoding="utf-8")
+        assert generated.exists()
+        # Verify the dead lookback regex is NOT in the generated patched file
+        generated_text = generated.read_text(encoding="utf-8")
+        assert "trend_guard_cfg.get('lookback_bars', 30)" not in generated_text, "Dead regex patch should not fire"
         generated.unlink()  # cleanup_patched_module only tracks the import-time name
         assert not generated.exists()
     finally:
@@ -315,16 +314,19 @@ def test_optimizer_missing_tickers_file_fails_closed(tmp_path, monkeypatch):
                 sys.path.remove(entry)
 
 
-# ── 5. D2 reproducer: the trend_lookback_bars dimension is a silent no-op ────
-# Documented in reports/BUGFIX_D2_OPTIMIZER_DIMENSION_NOOP_20261117.md.
-# Production routing is intentionally NOT changed here; this test characterizes
-# the current behavior so the defect cannot regress silently.
+# ── 5. D2 regression: trend_lookback_bars now reaches the engine ────────────
+# Verifies the fix for BUGFIX_D2_OPTIMIZER_DIMENSION_NOOP_20261117.md.
+# Two different valid values must reach safety_guards.trend_lookback_bars
+# and the patched backtester must use trend_guard.lookback_bars.
 
-def test_optimizer_d2_lookback_dimension_noop_reproducer(tmp_path, monkeypatch):
+def test_optimizer_d2_lookback_dimension_reaches_engine(tmp_path, monkeypatch):
     import importlib
     import copy
     sys.modules.pop("optimization.optimize_trend_guard", None)
     module = importlib.import_module("optimization.optimize_trend_guard")
+    # Capture the real PROJECT_DIR before monkeypatch for proper cleanup
+    real_project_dir = module.PROJECT_DIR
+    real_patched_module_name = module.patched_module_name
     try:
         monkeypatch.setattr(module, "PROJECT_DIR", tmp_path)
         monkeypatch.setattr(module, "DATA_DIR", tmp_path / "data")
@@ -343,16 +345,204 @@ def test_optimizer_d2_lookback_dimension_noop_reproducer(tmp_path, monkeypatch):
         module.evaluate_ticker(cfg_in, "AAAUSDT", 1.0, {**base_params, "trend_lookback_bars": 10})
         module.evaluate_ticker(cfg_in, "AAAUSDT", 1.0, {**base_params, "trend_lookback_bars": 60})
         lo_cfg, hi_cfg = captured
-        # the explored dimension lands in a config key the engine never reads...
-        assert lo_cfg["trend_guard"]["lookback_bars"] == 10
-        assert hi_cfg["trend_guard"]["lookback_bars"] == 60
-        # ...while the key the engine actually reads (safety_guards.trend_lookback_bars)
-        # is identical in both runs -> the optimizer dimension has no engine effect
-        assert lo_cfg["portfolios"][0]["safety_guards"] == hi_cfg["portfolios"][0]["safety_guards"]
-        assert "trend_lookback_bars" not in lo_cfg["portfolios"][0]["safety_guards"]
+        # Both values must reach safety_guards.trend_lookback_bars (engine's actual key)
+        assert lo_cfg["portfolios"][0]["safety_guards"]["trend_lookback_bars"] == 10
+        assert hi_cfg["portfolios"][0]["safety_guards"]["trend_lookback_bars"] == 60
+        # trend_guard dict no longer has lookback_bars (removed redundant regex patch)
+        assert "lookback_bars" not in lo_cfg["trend_guard"]
+        assert "lookback_bars" not in hi_cfg["trend_guard"]
     finally:
-        module.cleanup_patched_module()
+        # Clean up using the REAL project dir and module name to avoid leaks
+        import os
+        real_patched_path = real_project_dir / f"{real_patched_module_name}.py"
+        if real_patched_path.exists():
+            try:
+                real_patched_path.unlink()
+            except OSError:
+                pass
+        sys.modules.pop(real_patched_module_name, None)
         sys.modules.pop("optimization.optimize_trend_guard", None)
-        for entry in (str(tmp_path),):
+        for entry in (str(tmp_path), str(real_project_dir)):
+            if entry in sys.path:
+                sys.path.remove(entry)
+
+
+# ── 6. D2 behavioral: real backtest shows lookback value affects engine decisions ──
+# This test calls the REAL backtest engine (not mocked) with synthetic data
+# and proves two distinct valid lookback values produce different blocking behavior.
+
+def test_optimizer_d2_lookback_behavioral_real_engine(tmp_path, monkeypatch):
+    """
+    Behavioral test: creates deterministic synthetic price data where trend guard
+    blocks at lookback=10 but not at lookback=30 (or vice versa).
+    """
+    import importlib
+    import sys
+    import asyncio
+    import copy
+    import json
+    import numpy as np
+    import pandas as pd
+
+    sys.modules.pop("optimization.optimize_trend_guard", None)
+    module = importlib.import_module("optimization.optimize_trend_guard")
+    # Capture the real PROJECT_DIR before monkeypatch for proper cleanup
+    real_project_dir = module.PROJECT_DIR
+    real_patched_module_name = module.patched_module_name
+
+    try:
+        # Create synthetic feather data with a CLEAR pattern:
+        # Bars 0-100: LARGE oscillations (±3%) to trigger rebalances frequently
+        # Bars 100-150: STRONG LINEAR TREND UP (50 bars, 0.1% per bar = 5% total)
+        #   - At bar 110 (10 bars into trend): lookback=10 sees pure trend (eff=1.0), lookback=30 sees 20 noise + 10 trend
+        # Bars 150-250: oscillations around trend (continue triggering rebalances)
+        # Bars 250-300: flat with tiny noise
+        #
+        # During trend (bars 100-150):
+        # - lookback=10: window fully in trend → net move = 1.0%, path = 1.0% → eff = 1.0 → BLOCKS
+        # - lookback=30: window = 20 noise + 10 trend → net move = 1.0%, path > 1.0% → eff < 0.8 → DOESN'T BLOCK
+        #
+        # Velocity guard disabled (very high threshold)
+        # Rebalance thresholds very low to trigger many cycles during trend
+        # trend_eff_threshold = 0.8 (80%) so lookback=30 with noise falls below
+
+        n_bars = 300
+        prices = np.ones(n_bars) * 100.0
+        np.random.seed(42)
+
+        # Bars 0-100: LARGE oscillations to trigger rebalances
+        for i in range(1, 100):
+            prices[i] = prices[i-1] + np.random.normal(0, 3.0)  # ±3%
+
+        # Bars 100-150: STRONG linear trend up 5% over 50 bars
+        for i in range(100, 150):
+            prices[i] = prices[i-1] + 0.1
+
+        # Bars 150-250: oscillations around trend (continue triggering rebalances)
+        for i in range(150, 250):
+            prices[i] = prices[i-1] + np.random.normal(0, 0.5)
+
+        # Bars 250-300: flat with tiny noise
+        for i in range(250, 300):
+            prices[i] = prices[i-1] + np.random.normal(0, 0.05)
+
+        df = pd.DataFrame({
+            'open': prices,
+            'high': prices + 0.5,
+            'low': prices - 0.5,
+            'close': prices,
+            'volume': np.ones(n_bars) * 1000
+        })
+
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        feather_path = data_dir / "TESTUSDT_live.feather"
+        df.to_feather(feather_path)
+
+        monkeypatch.setattr(module, "PROJECT_DIR", tmp_path)
+        monkeypatch.setattr(module, "DATA_DIR", data_dir)
+        monkeypatch.setattr(module, "CONFIG_PATH", tmp_path / "config.json")
+
+        # Config: disable velocity guard, very sensitive rebalance, 80% efficiency threshold
+        cfg = {
+            "portfolios": [{
+                "name": "SyntheticMarketNeutral",
+                "initial_capital": 1000.0,
+                "paper_initial_capital": 1000.0,
+                "paper_account_free_margin": 5000.0,
+                "cash_reserve_usdt": 5000.0,
+                "paper_min_free_margin_pct": 15.0,
+                "margin_ratio_warning": 3.0,
+                "margin_ratio_critical": 1.5,
+                "liquidation_distance_warn_pct": 40.0,
+                "liquidation_distance_crit_pct": 25.0,
+                "post_factum_liquidation_check": True,
+                "siphoning_threshold_pct": 0.0,
+                "targets": {
+                    "BASE_LONG": {"share": 0.25, "leverage": 3},
+                    "BASE_SHORT": {"share": 0.25, "leverage": 3},
+                    "VIRTUAL": {"share": 0.5, "leverage": 1}
+                },
+                "trend_add_block": {"pct": 0.0, "window_bars": 120},
+                "safety_guards": {
+                    "max_spread_pct": 0.15,
+                    "max_price_velocity_pct": 50.0,  # DISABLE velocity guard
+                    "velocity_window_sec": 60,
+                    "trend_min_move_pct": 0.5,
+                    "trend_eff_threshold": 0.8,  # 80% efficiency threshold
+                    "net_move_block_pct": 2.2,
+                    "net_move_window_sec": 60,
+                    "trend_lookback_bars": 30
+                },
+                "fuse_enabled": True,
+                "rebalance_threshold_surplus": 0.005,  # 0.5%
+                "rebalance_threshold_deficit": 0.005,
+                "ticker_thresholds": {}
+            }],
+            "rebalance_share_trail_distance": 0.05,
+            "base_ticker": "TESTUSDT",
+            "funding_model": "disabled",
+            "paper_mode": True,
+        }
+        (tmp_path / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+
+        # Run with lookback=10 (should see the trend and block during trend periods)
+        res_10 = module.evaluate_ticker(
+            copy.deepcopy(cfg), "TESTUSDT", 300/1440.0,
+            {
+                "net_move_block_pct": 2.2,
+                "net_move_window_sec": 60,
+                "trend_min_move_pct": 0.5,
+                "trend_eff_threshold": 0.8,
+                "trend_lookback_bars": 10
+            }
+        )
+
+        # Run with lookback=30 (includes noise, lower efficiency)
+        res_30 = module.evaluate_ticker(
+            copy.deepcopy(cfg), "TESTUSDT", 300/1440.0,
+            {
+                "net_move_block_pct": 2.2,
+                "net_move_window_sec": 60,
+                "trend_min_move_pct": 0.5,
+                "trend_eff_threshold": 0.8,
+                "trend_lookback_bars": 30
+            }
+        )
+
+        # The trend guard blocks count should differ
+        blocks_10 = res_10.get("trend_guard_blocks", 0)
+        blocks_30 = res_30.get("trend_guard_blocks", 0)
+
+        # Also check events for trend_guard_block
+        events_10 = res_10.get("events", [])
+        events_30 = res_30.get("events", [])
+        trend_blocks_10 = sum(1 for e in events_10 if e.get("kind") == "trend_guard_block")
+        trend_blocks_30 = sum(1 for e in events_30 if e.get("kind") == "trend_guard_block")
+
+        print(f"Lookback=10: trend_guard_blocks={blocks_10}, trend_block_events={trend_blocks_10}, cycles={res_10.get('cycles', 0)}")
+        print(f"Lookback=30: trend_guard_blocks={blocks_30}, trend_block_events={trend_blocks_30}, cycles={res_30.get('cycles', 0)}")
+
+        # At minimum, verify both ran and produced results (not errors)
+        assert "trend_guard_blocks" in res_10
+        assert "trend_guard_blocks" in res_30
+
+        # The key assertion: different lookback values MUST produce different behavior
+        # If they're the same, the parameter still doesn't reach the engine
+        # Use event count as primary metric since it's more granular
+        assert trend_blocks_10 != trend_blocks_30, f"Lookback parameter has no effect: both produced {trend_blocks_10} trend guard block events"
+
+    finally:
+        # Clean up using the REAL project dir and module name to avoid leaks
+        import os
+        real_patched_path = real_project_dir / f"{real_patched_module_name}.py"
+        if real_patched_path.exists():
+            try:
+                real_patched_path.unlink()
+            except OSError:
+                pass
+        sys.modules.pop(real_patched_module_name, None)
+        sys.modules.pop("optimization.optimize_trend_guard", None)
+        for entry in (str(tmp_path), str(real_project_dir)):
             if entry in sys.path:
                 sys.path.remove(entry)
