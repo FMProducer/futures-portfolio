@@ -18,46 +18,28 @@ M = "futures_portfolio.supervisor.swarm_manager"
 # =====================================================================
 
 @pytest.mark.asyncio
-async def test_get_pm2_processes_empty_stdout():
-    """Lines 89-90: empty stdout -> returns []"""
+async def test_get_pm2_processes_empty_list():
     from futures_portfolio.supervisor.swarm_manager import get_pm2_processes
-    mock_proc = AsyncMock()
-    mock_proc.communicate.return_value = (b"", b"")
-    with patch(f"{M}.asyncio.create_subprocess_shell", return_value=mock_proc):
-        result = await get_pm2_processes()
-    assert result == []
+    with patch(f"{M}.read_pm2_status", return_value=[]):
+        assert await get_pm2_processes() == []
 
 
 @pytest.mark.asyncio
 async def test_get_pm2_processes_valid_json():
-    """Line 91: valid JSON stdout -> parsed list"""
     from futures_portfolio.supervisor.swarm_manager import get_pm2_processes
     data = [{"name": "paper-aliceusdt", "pm2_env": {"status": "online"}}]
-    mock_proc = AsyncMock()
-    mock_proc.communicate.return_value = (json.dumps(data).encode(), b"")
-    with patch(f"{M}.asyncio.create_subprocess_shell", return_value=mock_proc):
-        result = await get_pm2_processes()
-    assert result == data
+    with patch(f"{M}.read_pm2_status", return_value=data):
+        assert await get_pm2_processes() == data
 
 
 @pytest.mark.asyncio
-async def test_get_pm2_processes_exception():
-    """Lines 92-94: exception -> returns []"""
+@pytest.mark.parametrize('error', [FileNotFoundError('PM2 missing'), RuntimeError('EPERM'),
+                                 ValueError('Invalid PM2 process list')])
+async def test_get_pm2_processes_unknown_status_aborts(error):
     from futures_portfolio.supervisor.swarm_manager import get_pm2_processes
-    with patch(f"{M}.asyncio.create_subprocess_shell", side_effect=FileNotFoundError("pm2 not found")):
-        result = await get_pm2_processes()
-    assert result == []
-
-
-@pytest.mark.asyncio
-async def test_get_pm2_processes_json_decode_error():
-    """Line 92: JSON decode error -> returns []"""
-    from futures_portfolio.supervisor.swarm_manager import get_pm2_processes
-    mock_proc = AsyncMock()
-    mock_proc.communicate.return_value = (b"NOT JSON {{{", b"")
-    with patch(f"{M}.asyncio.create_subprocess_shell", return_value=mock_proc):
-        result = await get_pm2_processes()
-    assert result == []
+    with patch(f"{M}.read_pm2_status", side_effect=error):
+        with pytest.raises(type(error)):
+            await get_pm2_processes()
 
 
 # =====================================================================

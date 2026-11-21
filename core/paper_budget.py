@@ -6,6 +6,24 @@ import time
 import math
 from decimal import Decimal
 from contextlib import closing as ctx_closing
+import os
+import errno
+
+def _read_bytes_with_retry(path, retries=3, delay=0.05):
+    """Read file bytes with retry on PermissionError (Windows transient locks)."""
+    for attempt in range(retries):
+        try:
+            return path.read_bytes()
+        except PermissionError as e:
+            if attempt == retries - 1:
+                raise
+            time.sleep(delay)
+        except OSError as e:
+            if e.errno != errno.EACCES or attempt == retries - 1:
+                raise
+            time.sleep(delay)
+    # Should not reach here
+    return path.read_bytes()
 
 
 def confirm_close(root, ticker):
@@ -56,7 +74,8 @@ def amount(value):
 
 
 def database(root):
-    return root / "core/paper_budget.sqlite"
+    from pathlib import Path
+    return Path(root) / "core/paper_budget.sqlite"
 
 
 def selection_ready(root, config):
@@ -197,7 +216,7 @@ def reconcile_terminal_allocations(root, recover=False):
             state_path = root/"core"/f"paper_state_{ticker}.json"
             wallet_path = root/"core"/f"paper_shadow_{ticker}.json"
             archive_path = root/"history"/f"paper_close_{ticker}_{identity}.json"
-            state_raw, wallet_raw = state_path.read_bytes(), wallet_path.read_bytes()
+            state_raw, wallet_raw = _read_bytes_with_retry(state_path), _read_bytes_with_retry(wallet_path)
             state, wallet = json.loads(state_raw), json.loads(wallet_raw)
             if str(state.get("started_at")) != identity:
                 raise ValueError("PAPER allocation/state identity mismatch")
@@ -207,8 +226,9 @@ def reconcile_terminal_allocations(root, recover=False):
                 confirm_close(root, ticker)
                 returned.append(ticker)
                 continue
-            archive = json.loads(archive_path.read_bytes())
-            if archive.get("state") != state or archive.get("paper_state") != wallet or not archive.get("close_event"):
+            archive_raw = _read_bytes_with_retry(archive_path)
+            archive = json.loads(archive_raw)
+            if archive.get("state") != json.loads(state_raw) or archive.get("paper_state") != json.loads(wallet_raw) or not archive.get("close_event"):
                 raise ValueError("PAPER terminal archive/state/wallet mismatch")
             if state.get("base_ticker") != ticker or wallet.get("base_ticker") != ticker or amount(state["initial_tpv"]) != amount(capital):
                 raise ValueError("PAPER terminal ticker/capital mismatch")

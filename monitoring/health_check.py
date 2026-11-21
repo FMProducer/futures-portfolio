@@ -16,6 +16,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from core.pm2_status import read_pm2_status
 from datetime import datetime
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -23,19 +26,9 @@ LOG_DIR = PROJECT_DIR / "logs"
 STATE_DIR = PROJECT_DIR
 
 def check_pm2():
-    """Проверяет PM2 процессы через pm2 jlist"""
+    """Read the existing PM2 daemon without starting one."""
     try:
-        kwargs = {}
-        if hasattr(subprocess, "CREATE_NO_WINDOW"):
-            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-        r = subprocess.run(
-            ["pm2", "jlist"],
-            capture_output=True, text=True, timeout=10,
-            **kwargs
-        )
-        if r.returncode != 0:
-            return {"status": "error", "detail": r.stderr[:200]}
-        processes = json.loads(r.stdout)
+        processes = read_pm2_status()
         online = [p for p in processes if p.get("pm2_env", {}).get("status") == "online"]
         stopped = [p for p in processes if p.get("pm2_env", {}).get("status") != "online"]
         real = [p for p in online if p["name"].startswith("real-")]
