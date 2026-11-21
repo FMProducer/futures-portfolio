@@ -4,6 +4,7 @@ One completed observation, simulated fills, funding, extrema and cursor commit
 together. This is atomic PAPER execution, not atomic exchange execution.
 """
 import argparse
+from contextlib import closing
 from copy import deepcopy
 from decimal import Decimal as D
 import hashlib
@@ -54,11 +55,13 @@ class Runner:
         self.binding_id = digest(self.binding)
         # Reject observer/live/accounting databases BEFORE Store can add any schema.
         if self.path.exists():
-            with sqlite3.connect(self.path) as db:
+            with closing(sqlite3.connect(self.path)) as db:
                 tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
                 if tables and 'paper_binding' not in tables:
                     raise ValueError('not a paper database')
-        self._keeper = sqlite3.connect(self.path,isolation_level=None)
+        # Keeper connection for the session writer (line 57 probe).
+        # Raw connection; close() handles cleanup. Preserve transaction context.
+        self._keeper = sqlite3.connect(self.path, isolation_level=None)
         try:
             # A dedicated paper DB; hold the last connection open to avoid a
             # checkpoint on every short-lived Store connection. FULL remains set.

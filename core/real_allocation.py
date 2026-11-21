@@ -1,4 +1,5 @@
 """Exclusive REAL allocation backed by an observed shared-account wallet."""
+from contextlib import closing
 from decimal import Decimal, InvalidOperation
 import hashlib
 import json
@@ -34,7 +35,7 @@ def claim(root, key, ticker, capital, reserve, wallet, available, snapshot_ms):
         raise ValueError('Insufficient confirmed account funds for REAL capital and shared reserve')
     proof = dict(id=uuid4().hex, account_key=key, ticker=ticker, capital=str(capital), reserve=str(reserve),
                  account_wallet=str(wallet), available=str(available), snapshot_ms=snapshot_ms)
-    with sqlite3.connect(Path(root)/'core/real_budget.sqlite') as db:
+    with closing(sqlite3.connect(Path(root)/'core/real_budget.sqlite')) as db, db:
         db.execute('PRAGMA synchronous=FULL')
         db.execute('CREATE TABLE IF NOT EXISTS allocations(id TEXT PRIMARY KEY, active INTEGER, proof TEXT, closed TEXT)')
         db.execute('CREATE UNIQUE INDEX IF NOT EXISTS one_real_owner ON allocations(active) WHERE active=1')
@@ -49,7 +50,7 @@ def validate(root, proof, ticker, key):
     if (not isinstance(proof, dict) or proof.get('ticker') != ticker or proof.get('account_key') != key
             or not (Path(root)/'core/real_budget.sqlite').is_file()):
         raise ValueError('REAL allocation identity or ledger missing')
-    with sqlite3.connect(f"file:{(Path(root)/'core/real_budget.sqlite').as_posix()}?mode=ro", uri=True) as db:
+    with closing(sqlite3.connect(f"file:{(Path(root)/'core/real_budget.sqlite').as_posix()}?mode=ro", uri=True)) as db, db:
         row = db.execute('SELECT proof FROM allocations WHERE id=? AND active=1', (proof.get('id'),)).fetchone()
     if not row or json.loads(row[0]) != proof:
         raise ValueError('REAL allocation is not the active confirmed owner')
@@ -69,7 +70,7 @@ async def retire(connector, root, actual_wallet):
     ledger = Path(root)/'core/real_budget.sqlite'
     if not ledger.exists():
         return
-    with sqlite3.connect(f'file:{ledger.as_posix()}?mode=ro', uri=True) as db:
+    with closing(sqlite3.connect(f'file:{ledger.as_posix()}?mode=ro', uri=True)) as db, db:
         row = db.execute('SELECT proof FROM allocations WHERE active=1').fetchone()
     if not row:
         return
@@ -118,12 +119,13 @@ async def retire(connector, root, actual_wallet):
         state['startup_blocked'] = True
         funding.save_funding_boundary(str(sp), str(wp), state, wallet, journal, halt)
         raise
-    with sqlite3.connect(ledger) as db:
+    with closing(sqlite3.connect(ledger)) as db, db:
         db.execute('BEGIN IMMEDIATE')
         closed = json.dumps(dict(state=state, wallet=wallet, account_wallet=actual['wallet'], closed_at=time.time()))
         result = db.execute('UPDATE allocations SET active=0,closed=? WHERE id=? AND active=1', (closed, proof['id']))
         if result.rowcount != 1:
             raise ValueError('REAL owner changed during handover')
+        db.commit()
     return reserve_after
 
 
