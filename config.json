@@ -91,16 +91,16 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
+    "1000LUNCUSDT",
     "AKEUSDT",
-    "ARIAUSDT",
-    "BMTUSDT",
+    "BREVUSDT",
     "BTWUSDT",
     "BULLAUSDT",
-    "IDOLUSDT",
-    "SOPHUSDT",
-    "UAIUSDT"
+    "HUMAUSDT",
+    "IRYSUSDT",
+    "PIPPINUSDT"
   ],
-  "base_ticker": "AKEUSDT",
+  "base_ticker": "1000LUNCUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
