@@ -1032,8 +1032,7 @@ async def manage_swarm():
     logger.info("Running ticker scanner (Min Vol: %.2fM)...", scanner_min_volume(config)/1e6)
     try:
         from scanner.backtest_gate import scanner_min_volume
-        # Increase timeout to allow for network retries (3 retries * 20s + overhead)
-        scanner_results = await asyncio.wait_for(run_scanner(quiet=True, min_volume=scanner_min_volume(config)), timeout=120)
+        scanner_results = await asyncio.wait_for(run_scanner(quiet=True, min_volume=scanner_min_volume(config)), timeout=60)
         if not scanner_results:
             logger.error("❌ Scanner returned nothing. Aborting cycle to prevent config wipe.")
             return
