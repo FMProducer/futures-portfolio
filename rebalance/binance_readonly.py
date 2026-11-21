@@ -52,7 +52,8 @@ class Reader:
             raise ReadError('missing_credentials')
         self._key, self._secret, self.offset = key, secret, 0
         # Bypass environment/system HTTP proxies; an OS-level TUN may still route traffic.
-        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        from core.direct_network import direct_opener
+        self._opener = direct_opener(NoRedirect())
 
     @classmethod
     def from_env(cls, path):

@@ -1,5 +1,6 @@
 """Исполнение ордеров на Binance Futures (Hedge Mode)."""
 import logging
+import math
 import asyncio
 from copy import deepcopy
 from uuid import uuid4
@@ -672,6 +673,9 @@ class PortfolioExecutor:
                     fill_ratio = fill_ratios[symbol][leg]
                 limit = spendable if virtual else spendable / (fill_ratio * (Decimal('1') / lev + Decimal(str(fee))))
                 approved["diff_usdt"] = float(min(abs(Decimal(str(action["diff_usdt"]))), limit))
+                # A rounded-up designation would spend unconfirmed CASH.
+                if virtual and Decimal(str(approved["diff_usdt"])) > min(abs(Decimal(str(action["diff_usdt"]))), limit):
+                    approved["diff_usdt"] = math.nextafter(approved["diff_usdt"], 0.0)
                 approved["approved_usdt"] = approved["diff_usdt"]
                 if approved["diff_usdt"] <= 0:
                     results_map[id(action)] = {"status": "SKIPPED", "message": "Insufficient confirmed CASH"}

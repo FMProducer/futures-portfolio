@@ -378,6 +378,7 @@ def test_download_history_saves_feather(monkeypatch, tmp_path):
 
 
 def test_collect_depth_zec_offline(monkeypatch, tmp_path):
+    from unittest.mock import AsyncMock, Mock
     import websockets
     module = _load('collect_depth_zec', SCRIPTS / 'collect_depth_zec.py')
     monkeypatch.setattr(module, 'DATA_DIR', str(tmp_path))
@@ -395,6 +396,10 @@ def test_collect_depth_zec_offline(monkeypatch, tmp_path):
     class FakeWS:
         def __init__(self):
             self.msgs = [json.dumps({'b': [['100.5', '2']] * 25, 'a': [['101.2', '2']] * 25, 'u': 42})]
+            self.sent = []
+
+        async def send(self, message):
+            self.sent.append(json.loads(message))
 
         async def recv(self):
             if self.msgs:
@@ -407,8 +412,17 @@ def test_collect_depth_zec_offline(monkeypatch, tmp_path):
         async def __aexit__(self, *args):
             return False
 
-    monkeypatch.setattr(websockets, 'connect', lambda *args, **kwargs: FakeWS())
+    fake_socket = object()
+    connected_socket = AsyncMock(return_value=fake_socket)
+    monkeypatch.setattr(module, 'connected_socket', connected_socket)
+    ws = FakeWS()
+    connect = Mock(return_value=ws)
+    monkeypatch.setattr(websockets, 'connect', connect)
     snapshots = asyncio.run(module.collect())
+    connected_socket.assert_awaited_once_with('fstream.binance.com', 443)
+    connect.assert_called_once_with(module.WS_URL, ping_interval=20, ping_timeout=10,
+                                    close_timeout=5, proxy=None, sock=fake_socket)
+    assert ws.sent == [{'method': 'SUBSCRIBE', 'params': ['zecusdt@depth20@100ms'], 'id': 1}]
     assert len(snapshots) == 1
     assert (tmp_path / 'ZECUSDT_depth_24h.feather').exists()
     assert (tmp_path / 'ZECUSDT_depth_24h.json').exists()

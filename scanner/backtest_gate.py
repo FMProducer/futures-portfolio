@@ -14,12 +14,13 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from core.direct_network import public_urlopen
 
 
 def read_public_url(url):
     for attempt in range(4):
         try:
-            with urllib.request.urlopen(url, timeout=30) as response:
+            with public_urlopen(url, timeout=30) as response:
                 return response.read()
         except urllib.error.HTTPError:
             raise
@@ -59,6 +60,22 @@ def closed_metrics(result, price):
             "pass":net>0 and dd<=50 and result["cycles"]>=2}
 
 
+def admission_windows(config):
+    windows = config.get('admission_window_hours', [48, 24])
+    if (not isinstance(windows, (list, tuple)) or len(windows) != 2
+            or any(type(h) is not int or h <= 0 for h in windows)
+            or windows[0] <= windows[1]):
+        raise ValueError('admission_window_hours must contain two descending positive integer hours')
+    return tuple(windows)
+
+
+def scanner_min_volume(config):
+    value = config.get('scanner_min_volume_usdt', 20_000_000)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+        raise ValueError('scanner_min_volume_usdt must be finite and positive')
+    return value
+
+
 def effective_config(config):
     keys = ("portfolios", "rebalance_share_trail_distance", "equity_trailing_stop_pct",
             "equity_trailing_stop_activation_pct", "equity_trailing_stop_timeout_sec",
@@ -67,12 +84,18 @@ def effective_config(config):
     effective = {k:config[k] for k in keys if k in config}
     effective['funding_model'] = 'disabled' if config.get('funding_model') == 'disabled' else 'legacy_constant'
     effective.pop('funding_scenario', None)
+    if 'scanner_min_volume_usdt' in config:
+        effective['scanner_min_volume_usdt'] = scanner_min_volume(config)
+    if 'admission_window_hours' in config:
+        effective['admission_window_hours'] = list(admission_windows(config))
     return effective
 
 
 async def evaluate(root, symbols, config, end, report_dir=None):
     import pandas as pd
     from backtest.backtest_rebalance import run_backtest
+    windows = admission_windows(config)
+    duration = windows[0]*3600000
     effective = effective_config(config)
     capital = effective["portfolios"][0]["paper_initial_capital"]
     encoded = json.dumps(effective, sort_keys=True).encode()
@@ -93,8 +116,8 @@ async def evaluate(root, symbols, config, end, report_dir=None):
         if target.exists():
             results[symbol] = json.loads(target.read_text())
             continue
-        result = {"symbol":symbol, "pass":False, "start_ms":end-172800000, "end_exclusive_ms":end,
-                  "rules":{"window_hours":[48,24],"min_net_exclusive":0,"max_dd_pct":50,"min_cycles":2},
+        result = {"symbol":symbol, "pass":False, "start_ms":end-duration, "end_exclusive_ms":end,
+                  "rules":{"window_hours":list(windows),"min_net_exclusive":0,"max_dd_pct":50,"min_cycles":2},
                   "capital":capital, "config_sha256":hashlib.sha256(encoded).hexdigest(),
                   "source_sha256":source.hexdigest(), "created":time.time()}
         try:
@@ -104,14 +127,16 @@ async def evaluate(root, symbols, config, end, report_dir=None):
             data = folder/symbol
             data.mkdir(exist_ok=True)
             bars, urls = [], []
-            for start in (end-172800000, end-86400000):
-                params = urllib.parse.urlencode({"symbol":symbol,"interval":"1m","limit":1440,
-                                                 "startTime":start,"endTime":start+86400000-1})
+            for start in range(end-duration, end, 86400000):
+                stop = min(start+86400000, end)
+                count = (stop-start)//60000
+                params = urllib.parse.urlencode({"symbol":symbol,"interval":"1m","limit":count,
+                                                 "startTime":start,"endTime":stop-1})
                 url = "https://fapi.binance.com/fapi/v1/klines?"+params
                 page = read_public_url(url)
                 (data/f"klines_{start}.json").write_bytes(page)
                 chunk = json.loads(page)
-                if len(chunk)!=1440 or [b[0] for b in chunk]!=list(range(start,start+86400000,60000)) or any(b[6]>=start+86400000 for b in chunk):
+                if len(chunk)!=count or [b[0] for b in chunk]!=list(range(start,stop,60000)) or any(b[6]>=stop for b in chunk):
                     raise ValueError("Missing, duplicate or unclosed minute bars")
                 bars.extend(chunk)
                 urls.append(url)
@@ -129,15 +154,15 @@ async def evaluate(root, symbols, config, end, report_dir=None):
             result["data_sha256"] = hashlib.sha256(raw).hexdigest()
             result["source_urls"] = urls
             result["windows"] = {}
-            for hours in (48,24):
+            for hours in windows:
                 replay = await run_backtest(str(cfg),str(data),live_mode=False,ticker_override=symbol,
                                             days=hours/24,capital_override=capital,quiet=True)
                 result["windows"][str(hours)] = {
                     **closed_metrics(replay,float(frame['close'].iloc[-1])),
                     "start_ms":end-hours*3600000, "end_exclusive_ms":end}
-            # Keep the existing 24-hour ranking contract; 48 hours adds an admission check.
-            result.update(result["windows"]["24"])
-            result["start_ms"] = end-172800000
+            # Rank by the recent window; both windows remain mandatory for admission.
+            result.update(result["windows"][str(windows[1])])
+            result["start_ms"] = end-duration
             result["pass"] = all(w["pass"] for w in result["windows"].values())
         except Exception as exc:
             result["error"] = f"{type(exc).__name__}: {exc}"

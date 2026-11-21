@@ -1,0 +1,27 @@
+{
+  "branch": "codex/cash-boundary-20261118",
+  "base": "74e81815e22d6a64957185d0f0670bf7b936b91a",
+  "verified_production_hashes_match": true,
+  "portable_tests": "69 passed; native exit 0",
+  "test_sha256": "7CAC1ADEFE1ED85898C09FD56F0D58C9F4CA466353AB2ECDFD03DEAD420285ED",
+  "fixtures": [
+    {
+      "Path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\cash-fix-worktree-20261118\\tests\\fixtures\\cash_boundary_precision\\JCTUSDT_paper.json",
+      "Hash": "86ED22F5931D44DA2E08E4D8D07C12DA5027A46471CE0E4BF8090D1EB1578B3E"
+    },
+    {
+      "Path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\cash-fix-worktree-20261118\\tests\\fixtures\\cash_boundary_precision\\JCTUSDT_real.json",
+      "Hash": "85EA7F369053E0A736EFE440BD4F51EBDD0D3E73E197E05E3FF078B184F516EA"
+    },
+    {
+      "Path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\cash-fix-worktree-20261118\\tests\\fixtures\\cash_boundary_precision\\ZECUSDT_paper.json",
+      "Hash": "F73D23A46F77599F2BDE8E2FA870B0F5ADD7C5CBA5B50B81F8DB721765C03CB2"
+    },
+    {
+      "Path": "C:\\Python\\Prosperous_Bot\\autonomous-asset-management\\cash-fix-worktree-20261118\\tests\\fixtures\\cash_boundary_precision\\ZECUSDT_real.json",
+      "Hash": "9343AD5165FADE4472023951295BB6154E1244428A0B1B9B71DF3F404FE1438D"
+    }
+  ],
+  "raw_evidence_location": "C:/Python/Prosperous_Bot/autonomous-asset-management/reports/cash_fix_parity_20261118",
+  "production_deployment": false
+}

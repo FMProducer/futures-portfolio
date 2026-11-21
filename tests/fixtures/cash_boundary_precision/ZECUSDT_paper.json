@@ -1,0 +1,41 @@
+{
+  "ticker": "ZECUSDT",
+  "mode": "paper",
+  "bar": 70845,
+  "reconstructed_cash": "-5.46333333334E-14",
+  "targets": {
+    "BASE_LONG": {
+      "share": 0.25,
+      "leverage": 3
+    },
+    "BASE_SHORT": {
+      "share": 0.25,
+      "leverage": 3
+    },
+    "VIRTUAL": {
+      "share": 0.5,
+      "leverage": 1
+    }
+  },
+  "wallet": {
+    "balance": 1486.6588926311103,
+    "positions": {
+      "ZECUSDT_LONG": 5.477,
+      "ZECUSDT_SHORT": 0.664
+    },
+    "long_entry_price": 432.1873806216907,
+    "short_entry_price": 578.720495
+  },
+  "state": {
+    "virt_debt": 569.5386618494437,
+    "virt_qty": 1.1305604807885257
+  },
+  "calculator": {
+    "val_cash": "-5.46333333334E-14",
+    "real_equity": "917.1202307816666",
+    "val_long": "384.5132208900000240666666667",
+    "val_short": "274.4294249066666666666666667",
+    "price": "358.33"
+  },
+  "original_sample_sha256": "89772558903bb037603211a27e7e379a6d0f8cf7c62d127ba97c6d42a77dbe88"
+}

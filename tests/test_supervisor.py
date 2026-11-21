@@ -206,7 +206,7 @@ async def test_ensure_real_bots_alive():
         mock_start.assert_called_once_with("ETHUSDT", is_paper=False, config=config)
 
 @pytest.mark.asyncio
-async def test_manage_swarm_toxic_flow():
+async def test_manage_swarm_toxic_flow(offline_pm2):
     # Mock config
     config = {
         "tickers": ["BTCUSDT"],
@@ -246,7 +246,7 @@ async def test_manage_swarm_toxic_flow():
         assert "TRXUSDT" in saved_config["toxic_blacklist_paper"]
 
 @pytest.mark.asyncio
-async def test_isolated_blacklists_signal_processing():
+async def test_isolated_blacklists_signal_processing(offline_pm2):
     """
     B3 (2026-07-11): Маршрутизация сигналов:
     - stop → toxic_blacklist + black_list (токсичный исход)
@@ -827,7 +827,7 @@ async def _run_manage(tmp_path, **kwargs):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('count', [0, 10])
-async def test_stale_config_does_not_bypass_gate_or_create_protected_sessions(tmp_path, count):
+async def test_stale_config_does_not_bypass_gate_or_create_protected_sessions(tmp_path, count, offline_pm2):
     existing = {f'LIVE{i}USDT' for i in range(count)}
     running = {f'p_{t}': {'name':f'paper-{t.lower()}', 'paper':True} for t in existing}
     scanner = [{'symbol':'REJECTUSDT'},{'symbol':'PASSUSDT'}]
@@ -852,7 +852,7 @@ async def test_protected_sessions_over_capacity_abort_instead_of_truncating():
 
 
 @pytest.mark.asyncio
-async def test_pending_reservation_is_retained_without_process(tmp_path):
+async def test_pending_reservation_is_retained_without_process(tmp_path, offline_pm2):
     cm, saved, _, _, start = _cm_manage_swarm(
         tmp_path, config_overrides={'paper_mode':True,'max_bots':10,'paper_mode_bots':10,
                                    'paper_backtest_gate':True,'tickers':['GHOSTUSDT']})
@@ -1292,3 +1292,8 @@ async def test_drawdown_new_session_drops_old_reference_after_deadline(tmp_path,
     state = json.loads(path.read_text())
     assert state['initial_tpv'] == 100 and 'max_drawdown_reference' not in state
     assert not state['trailing_stop_triggered']
+
+
+@pytest.fixture
+def offline_pm2(monkeypatch):
+    monkeypatch.setattr(M + '.get_pm2_processes', AsyncMock(return_value=[]))

@@ -1,0 +1,22 @@
+{
+  "command": "C:\\Python\\Prosperous_Bot\\futures_portfolio\\.venv\\Scripts\\python.exe -B -m pytest --ignore-safety -q -p no:cacheprovider -o addopts= tests/test_pm2_status.py tests/test_supervisor.py tests/test_supervisor_new.py tests/test_supervisor_coverage.py tests/test_health_check.py tests/test_data_collector_gap.py tests/test_runtime_surface_gap.py -k \"PM2StatusTests or get_pm2_processes or get_running_bots_info or check_pm2 or test_health_reports\"",
+  "exit_code": 0,
+  "captured_summary": "19 passed, 158 deselected, 10 subtests passed in 2.20s",
+  "isolation": "Explicit existing --ignore-safety for mocked tests only; real guard separately proved to refuse EPERM",
+  "initial_attempt": "Base Python 3.11 lacked binance, causing collection errors; final run used existing runtime venv",
+  "installed_client_vm": "PASS: EPERM exits before daemonAlive callback or auto-start",
+  "full_suite_run": false,
+  "hashes": {
+    "core/pm2_status.py": "67d3290158215e63088f61ed749540b0b9ee15eb417d74fca94a3c5a33fc6027",
+    "supervisor/swarm_manager.py": "f96b6ac448004bc544167cc693c3507c667ea021798529ab21e99c5fe4dab935",
+    "monitoring/health_check.py": "76bb07c3f6a16e16760f46ff1c7c6b772eb1c01725e432fd77737c4377417e38",
+    "dashboard/data_collector.py": "0512ee82874016b77a46c6507e8a8a94031ae9d640ed3c39422b5ec9269e72bf",
+    "dashboard/dashboard.py": "61c7c12b93a0193326eb7a52a7e3ad6a88554872ec292a40a2a3b3df1d09cb91",
+    "tests/conftest.py": "69d7dfcd82ad705999749b8989ecda53935d2d5354003c87699c45d3171e378e",
+    "tests/test_pm2_status.py": "f91288ca81c082141354d6de08322e20a3a27916b0dd56da04577867ecede7e4",
+    "tests/test_supervisor.py": "82544be56b2aaf259dfd27333ec0763b4a6d2912d73781f4df529237ebf6d1a7",
+    "tests/test_supervisor_new.py": "6412e487822fd42d980e5ed95ddcbe5469c7dd14cef832ebbf8edfd6ed5f1803",
+    "tests/test_supervisor_coverage.py": "77e907e3b31bf7bf90180146f1078f758766f50d79d4c695a5151e33043bc222",
+    "tests/test_data_collector_gap.py": "e5b7ca5a0b34a55dbe9b89a1653051f172394ca5c698f095f54e23ab8b145ac1"
+  }
+}

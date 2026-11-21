@@ -48,43 +48,70 @@ async def test_fetch_klines(scanner):
 
 @pytest.mark.asyncio
 async def test_fetch_rate_limit(scanner):
+    """429 raises ClientResponseError, retry decorator re-acquires semaphore and succeeds on retry."""
     mock_session = MagicMock()
-    mock_response_429 = MagicMock()
-    mock_response_429.status = 429
-    mock_response_429.headers = {"Retry-After": "0"}
-    mock_response_429.__aenter__ = AsyncMock(return_value=mock_response_429)
-    mock_response_429.__aexit__ = AsyncMock()
-    mock_response_200 = MagicMock()
-    mock_response_200.status = 200
-    mock_response_200.json = AsyncMock(return_value={"ok": True})
-    mock_response_200.__aenter__ = AsyncMock(return_value=mock_response_200)
-    mock_response_200.__aexit__ = AsyncMock()
-    mock_session.get.side_effect = [mock_response_429, mock_response_200]
+
+    # Create proper async context manager classes for responses
+    class MockCM429:
+        def __init__(self):
+            self.status = 429
+            self.headers = {"Retry-After": "0"}
+            self.request_info = aiohttp.RequestInfo("/api", "GET", aiohttp.HttpVersion11, ())
+            self.history = ()
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+
+    class MockCM200:
+        def __init__(self):
+            self.status = 200
+            self.request_info = aiohttp.RequestInfo("/api", "GET", aiohttp.HttpVersion11, ())
+            self.history = ()
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        async def json(self):
+            return {"ok": True}
+
+    # Each call to session.get() returns a new context manager
+    mock_session.get.side_effect = [MockCM429(), MockCM200()]
+
     with patch("asyncio.sleep", AsyncMock()):
         res = await scanner.fetch(mock_session, "/api")
         assert res == {"ok": True}
 
 
 @pytest.mark.asyncio
-async def test_fetch_non_200(scanner):
-    """Non-429 error status returns None."""
+async def test_fetch_non_200_raises(scanner):
+    """Non-429 error status raises ClientResponseError."""
     mock_session = MagicMock()
     mock_response = MagicMock()
     mock_response.status = 500
-    mock_response.__aenter__ = AsyncMock(return_value=mock_response)
-    mock_response.__aexit__ = AsyncMock()
-    mock_session.get.return_value = mock_response
-    result = await scanner.fetch(mock_session, "/test")
-    assert result is None
+    mock_response.request_info = aiohttp.RequestInfo("/test", "GET", aiohttp.HttpVersion11, ())
+    mock_response.history = ()
+
+    # Create a proper async context manager class
+    class MockCM:
+        async def __aenter__(self):
+            return mock_response
+        async def __aexit__(self, *args):
+            pass
+
+    mock_session.get.return_value = MockCM()
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await scanner.fetch(mock_session, "/test")
 
 
 @pytest.mark.asyncio
-async def test_fetch_exception(scanner):
-    """Connection exception returns None."""
+async def test_fetch_exception_raises(scanner):
+    """Connection exception raises."""
     mock_session = MagicMock()
     mock_session.get.side_effect = aiohttp.ClientError("refused")
-    result = await scanner.fetch(mock_session, "/test")
-    assert result is None
+    with pytest.raises(aiohttp.ClientError):
+        await scanner.fetch(mock_session, "/test")
 
 
 @pytest.mark.asyncio
@@ -297,14 +324,78 @@ def test_run_ranker_task():
 
 
 @pytest.mark.asyncio
-async def test_retry_on_network_error_exhausted():
-    """Line 33: returns None after all retries exhausted."""
+async def test_retry_on_network_error_network_error_retries():
+    """Network errors (aiohttp.ClientError) are retried."""
+    call_count = [0]
+
+    @retry_on_network_error(retries=3, delay=0.001)
+    async def fail_twice_then_succeed():
+        call_count[0] += 1
+        if call_count[0] <= 2:
+            raise aiohttp.ClientError("connection refused")
+        return "success"
+
+    result = await fail_twice_then_succeed()
+    assert result == "success"
+    assert call_count[0] == 3
+
+
+@pytest.mark.asyncio
+async def test_retry_on_network_error_network_error_exhausted():
+    """Network errors exhausted after retries raises the exception."""
+    call_count = [0]
+
+    @retry_on_network_error(retries=2, delay=0.001)
+    async def always_fail():
+        call_count[0] += 1
+        raise aiohttp.ClientError("connection refused")
+
+    with pytest.raises(aiohttp.ClientError):
+        await always_fail()
+    assert call_count[0] == 2
+
+
+@pytest.mark.asyncio
+async def test_retry_on_network_error_timeout_retries():
+    """asyncio.TimeoutError is retried."""
+    call_count = [0]
+
+    @retry_on_network_error(retries=3, delay=0.001)
+    async def timeout_twice():
+        call_count[0] += 1
+        if call_count[0] <= 2:
+            raise asyncio.TimeoutError("timeout")
+        return "ok"
+
+    result = await timeout_twice()
+    assert result == "ok"
+    assert call_count[0] == 3
+
+
+@pytest.mark.asyncio
+async def test_retry_on_network_error_non_network_not_retried():
+    """Non-network exceptions (ValueError) are not retried."""
+    call_count = [0]
+
+    @retry_on_network_error(retries=3, delay=0.001)
+    async def non_network_fail():
+        call_count[0] += 1
+        raise ValueError("not a network error")
+
+    with pytest.raises(ValueError):
+        await non_network_fail()
+    assert call_count[0] == 1
+
+
+@pytest.mark.asyncio
+async def test_retry_on_network_error_non_network_raises():
+    """Non-network exceptions are raised immediately (not retried)."""
     @retry_on_network_error(retries=2, delay=0.001)
     async def always_fail():
         raise ValueError("boom")
 
-    result = await always_fail()
-    assert result is None
+    with pytest.raises(ValueError):
+        await always_fail()
 
 
 @pytest.mark.asyncio

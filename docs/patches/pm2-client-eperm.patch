@@ -1,0 +1,13 @@
+--- a/lib/Client.js
++++ b/lib/Client.js
+@@ -320,6 +320,10 @@
+   });
+
+   client.sock.once('error', function(e) {
++    if (e.code === 'EPERM') {
++      console.error('[PM2] Permission denied connecting to the existing daemon; refusing auto-start.');
++      return process.exit(1);
++    }
+     if (e.code === 'EACCES') {
+       fs.stat(that.conf.DAEMON_RPC_PORT, function(e, stats) {
+         if (stats.uid === 0) {
