@@ -48,18 +48,36 @@ async def test_fetch_klines(scanner):
 
 @pytest.mark.asyncio
 async def test_fetch_rate_limit(scanner):
+    """429 raises ClientResponseError, retry decorator re-acquires semaphore and succeeds on retry."""
     mock_session = MagicMock()
-    mock_response_429 = MagicMock()
-    mock_response_429.status = 429
-    mock_response_429.headers = {"Retry-After": "0"}
-    mock_response_429.__aenter__ = AsyncMock(return_value=mock_response_429)
-    mock_response_429.__aexit__ = AsyncMock()
-    mock_response_200 = MagicMock()
-    mock_response_200.status = 200
-    mock_response_200.json = AsyncMock(return_value={"ok": True})
-    mock_response_200.__aenter__ = AsyncMock(return_value=mock_response_200)
-    mock_response_200.__aexit__ = AsyncMock()
-    mock_session.get.side_effect = [mock_response_429, mock_response_200]
+
+    # Create proper async context manager classes for responses
+    class MockCM429:
+        def __init__(self):
+            self.status = 429
+            self.headers = {"Retry-After": "0"}
+            self.request_info = aiohttp.RequestInfo("/api", "GET", aiohttp.HttpVersion11, ())
+            self.history = ()
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+
+    class MockCM200:
+        def __init__(self):
+            self.status = 200
+            self.request_info = aiohttp.RequestInfo("/api", "GET", aiohttp.HttpVersion11, ())
+            self.history = ()
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        async def json(self):
+            return {"ok": True}
+
+    # Each call to session.get() returns a new context manager
+    mock_session.get.side_effect = [MockCM429(), MockCM200()]
+
     with patch("asyncio.sleep", AsyncMock()):
         res = await scanner.fetch(mock_session, "/api")
         assert res == {"ok": True}

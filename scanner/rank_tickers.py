@@ -115,8 +115,14 @@ class TickerScanner:
             async with session.get(f"{self.base_url}{endpoint}", params=params, timeout=20, proxy=None) as response:
                 if response.status == 429:
                     retry_after = int(response.headers.get("Retry-After", 5))
-                    await asyncio.sleep(retry_after)
-                    return await self.fetch(session, endpoint, params)
+                    # Release semaphore before sleeping to avoid deadlock
+                    # Retry will re-acquire semaphore via the decorator's retry
+                    raise aiohttp.ClientResponseError(
+                        request_info=response.request_info,
+                        history=response.history,
+                        status=429,
+                        message=f"Rate limited, retry after {retry_after}s"
+                    )
                 if response.status != 200:
                     raise aiohttp.ClientResponseError(
                         request_info=response.request_info,

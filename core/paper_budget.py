@@ -4,8 +4,10 @@ import json
 import sqlite3
 import time
 import math
+import random
 from decimal import Decimal
 from contextlib import closing as ctx_closing
+from pathlib import Path
 
 
 def confirm_close(root, ticker):
@@ -188,6 +190,20 @@ def reconcile_terminal_allocations(root, recover=False):
         rows = db.execute("SELECT ticker,capital,session FROM allocations WHERE released=0").fetchall()
     returned, blocked = [], {}
     from core.storage import safe_load_json_sync
+
+    def _read_bytes_with_retries(path: str, retries: int = 5) -> bytes:
+        """Read file bytes with retries on transient PermissionError/OSError."""
+        last_err = None
+        for attempt in range(retries):
+            try:
+                return Path(path).read_bytes()
+            except (PermissionError, OSError) as e:
+                last_err = e
+                if attempt == retries - 1:
+                    raise
+                time.sleep(0.05 + random.random() * 0.1)
+        raise last_err
+
     for ticker, capital, identity in rows:
         try:
             if not ticker.isascii() or not ticker.isalnum() or not identity:
@@ -198,14 +214,16 @@ def reconcile_terminal_allocations(root, recover=False):
             state_path = root/"core"/f"paper_state_{ticker}.json"
             wallet_path = root/"core"/f"paper_shadow_{ticker}.json"
             archive_path = root/"history"/f"paper_close_{ticker}_{identity}.json"
-            # Use safe_load_json_sync with retries for transient PermissionError
-            state = safe_load_json_sync(str(state_path), None, retries=5)
-            wallet = safe_load_json_sync(str(wallet_path), None, retries=5)
-            if state is None or wallet is None:
-                raise ValueError("PAPER state/wallet file missing or unreadable after retries")
-            # Keep raw bytes for integrity check (read once more without retries - this is the post-parse snapshot)
-            state_raw = state_path.read_bytes()
-            wallet_raw = wallet_path.read_bytes()
+
+            # Read raw bytes once with retries, then parse JSON from those bytes.
+            # This ensures the parsed objects and integrity check use the exact same snapshot.
+            state_raw = _read_bytes_with_retries(str(state_path))
+            wallet_raw = _read_bytes_with_retries(str(wallet_path))
+            if not state_raw or not wallet_raw:
+                raise ValueError("PAPER state/wallet file empty after retries")
+            state = json.loads(state_raw)
+            wallet = json.loads(wallet_raw)
+
             if str(state.get("started_at")) != identity:
                 raise ValueError("PAPER allocation/state identity mismatch")
             if not state.get("paper_close_complete") and not archive_path.exists():
@@ -241,6 +259,7 @@ def reconcile_terminal_allocations(root, recover=False):
                 or str(receipt.get("reduce_only")).lower() != "true"
                 for key, receipt in closing):
                 raise ValueError("PAPER terminal closing receipts missing or inconsistent")
+            # Integrity check: compare current bytes with the snapshot we parsed from.
             if state_path.read_bytes() != state_raw or wallet_path.read_bytes() != wallet_raw:
                 raise ValueError("PAPER terminal snapshots changed during reconciliation")
             release(root, ticker, state, wallet)
