@@ -164,3 +164,27 @@ def guard_worker_cli_children(monkeypatch):
         return await original(*args, **kwargs)
 
     monkeypatch.setattr(asyncio, 'create_subprocess_exec', guarded)
+
+
+# Offline deterministic PM2 status boundary: the dirty-PM2 work added a direct
+# get_pm2_processes() call site in manage_swarm/reconcile_swarm_state that the
+# per-test mocks (get_running_bots_info etc.) do not cover; without this the real
+# `pm2 status` subprocess runs and the tests fail with EPERM in offline sandboxes.
+# Scoped to exactly the supervisor test modules; available+empty only - the
+# fail-closed (unavailable) behaviour is asserted by
+# tests/test_pm2_telegram_boundary_20261121.py, and production read_pm2_status
+# / its error handling are unchanged.
+_PM2_OFFLINE_TEST_MODULES = {
+    "test_supervisor", "test_supervisor_new", "test_supervisor_rotation_whitelist",
+}
+
+
+@pytest.fixture(autouse=True)
+def pm2_status_boundary_offline(monkeypatch, request):
+    if getattr(request.module, "__name__", "").rsplit(".", 1)[-1] not in _PM2_OFFLINE_TEST_MODULES:
+        yield
+        return
+    import importlib
+    swarm = importlib.import_module("futures_portfolio.supervisor.swarm_manager")
+    monkeypatch.setattr(swarm, "read_pm2_status", lambda: [])
+    yield

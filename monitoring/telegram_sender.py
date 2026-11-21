@@ -56,14 +56,27 @@ async def send_to_telegram(session, message_data):
         logger.error(f"Connection error: {type(e).__name__} - {e}")
         return False
 
+def _is_placeholder(value: str) -> bool:
+    """Check if value is a placeholder that should be treated as missing."""
+    if not value:
+        return True
+    placeholder_indicators = [
+        "your_", "YOUR_", "placeholder", "PLACEHOLDER",
+        "replace", "REPLACE", "todo", "TODO",
+        "your_bot_token", "your_chat_id", "your_api_key",
+        "bot_token_here", "chat_id_here", "api_key_here",
+        "xxx", "xxx:", "test", "dummy", "example"
+    ]
+    return any(indicator in value.lower() for indicator in placeholder_indicators)
+
 async def worker():
     logger.info("Telegram Sender Worker started.")
-    if not TOKEN or not CHAT_ID:
-        logger.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in .env")
+    if not TOKEN or not CHAT_ID or _is_placeholder(TOKEN) or _is_placeholder(CHAT_ID):
+        logger.error("Missing or placeholder TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in .env")
         return
 
     QUEUE_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Используем SOCKS5 прокси для обхода блокировки
     connector = ProxyConnector.from_url("socks5://127.0.0.1:10808", ssl=False)
     async with aiohttp.ClientSession(connector=connector, trust_env=False) as session:

@@ -1,3 +1,4 @@
+from contextlib import closing
 import asyncio
 import sys
 import os
@@ -18,7 +19,7 @@ def latest_return():
     path = ROOT / 'core/paper_budget.sqlite'
     if not path.exists():
         return 0
-    with sqlite3.connect(path.as_uri() + '?mode=ro', uri=True) as db:
+    with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)) as db:
         return db.execute("SELECT coalesce(max(ts),0) FROM events WHERE kind='return'").fetchone()[0]
 
 

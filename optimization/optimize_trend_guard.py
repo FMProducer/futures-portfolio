@@ -60,11 +60,6 @@ def generate_patched_backtester() -> str:
         code
     )
     code = re.sub(
-        r"tg_trend_bars\s*=\s*30",
-        r"tg_trend_bars = trend_guard_cfg.get('lookback_bars', 30)",
-        code
-    )
-    code = re.sub(
         r"\"sortino_ratio\":\s*float\(sortino_ratio\)",
         r'"sortino_ratio": float(sortino_ratio),\n            "history": state.history,\n            "rebalance_log": state.rebalance_log',
         code
@@ -99,6 +94,9 @@ def evaluate_ticker(cfg: Dict[str, Any], ticker: str, days: float, trend_params:
     import copy
     patched_cfg = copy.deepcopy(cfg)
 
+    # Write to safety_guards.trend_lookback_bars which the engine actually reads (line 761 in backtest_rebalance.py)
+    patched_cfg.setdefault("portfolios", [{}])[0].setdefault("safety_guards", {})["trend_lookback_bars"] = int(trend_params["trend_lookback_bars"])
+
     guards = patched_cfg.get("portfolios", [{}])[0].get("safety_guards", {})
     guards.update({
         "net_move_block_pct": trend_params["net_move_block_pct"],
@@ -112,7 +110,6 @@ def evaluate_ticker(cfg: Dict[str, Any], ticker: str, days: float, trend_params:
         "eff_threshold": trend_params["trend_eff_threshold"],
         "net_move_block_pct": trend_params["net_move_block_pct"],
         "net_move_window_sec": trend_params["net_move_window_sec"],
-        "lookback_bars": trend_params["trend_lookback_bars"]
     }
 
     # Thread-safe temporary file creation

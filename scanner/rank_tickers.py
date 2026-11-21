@@ -111,26 +111,26 @@ class TickerScanner:
         
     @retry_on_network_error(retries=3)
     async def fetch(self, session: aiohttp.ClientSession, endpoint: str, params: dict = None):
-        async with self.semaphore:
-            async with session.get(f"{self.base_url}{endpoint}", params=params, timeout=20, proxy=None) as response:
-                if response.status == 429:
-                    retry_after = int(response.headers.get("Retry-After", 5))
-                    # Release semaphore before sleeping to avoid deadlock
-                    # Retry will re-acquire semaphore via the decorator's retry
-                    raise aiohttp.ClientResponseError(
-                        request_info=response.request_info,
-                        history=response.history,
-                        status=429,
-                        message=f"Rate limited, retry after {retry_after}s"
-                    )
-                if response.status != 200:
-                    raise aiohttp.ClientResponseError(
-                        request_info=response.request_info,
-                        history=response.history,
-                        status=response.status,
-                        message=f"HTTP {response.status}"
-                    )
-                return await response.json()
+        await self.semaphore.acquire()
+        try:
+            try:
+                async with session.get(f"{self.base_url}{endpoint}", params=params, timeout=20, proxy=None) as response:
+                    if response.status == 429:
+                        retry_after = int(response.headers.get("Retry-After", 5))
+                        # Release semaphore while waiting to avoid deadlock
+                        self.semaphore.release()
+                        try:
+                            await asyncio.sleep(retry_after)
+                        finally:
+                            await self.semaphore.acquire()
+                        return await self.fetch(session, endpoint, params)
+                    if response.status != 200:
+                        return None
+                    return await response.json()
+            except Exception as e:
+                return None
+        finally:
+            self.semaphore.release()
 
     async def fetch_klines(self, session: aiohttp.ClientSession, symbol: str, limit: int) -> Optional[pd.DataFrame]:
         now_ms = int(time.time() * 1000)

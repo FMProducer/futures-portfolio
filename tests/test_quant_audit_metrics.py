@@ -1,5 +1,6 @@
 """Unit tests for quant audit metrics and binance margin ratio additions."""
 import math
+import shutil
 from pathlib import Path
 import pytest
 from unittest.mock import MagicMock
@@ -9,6 +10,11 @@ from core.connector import BinanceConnector
 from backtest.backtest_rebalance import run_backtest
 
 _ZEC_HISTORY = sorted(Path("data").glob("ZECUSDT*.feather")) if Path("data").is_dir() else []
+# known local ZEC history outside the runtime checkout; used read-only, copied to an isolated tmp dir
+_ZEC_FALLBACK_DIR = Path(r"C:\Python\Prosperous_Bot\futures_portfolio\data")
+_ZEC_FALLBACK = sorted(_ZEC_FALLBACK_DIR.glob("ZECUSDT*.feather")) if _ZEC_FALLBACK_DIR.is_dir() else []
+_ZEC_DATA = _ZEC_HISTORY or _ZEC_FALLBACK
+_ZEC_SOURCE = _ZEC_DATA[0] if _ZEC_DATA else None
 
 
 @pytest.mark.asyncio
@@ -64,13 +70,20 @@ async def test_binance_margin_ratio_and_coverage_ratio_calculation():
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-@pytest.mark.skipif(not _ZEC_HISTORY, reason="requires local ZECUSDT feather history in data/")
-async def test_backtest_sharpe_and_sortino_annualization():
+@pytest.mark.skipif(_ZEC_SOURCE is None, reason="requires local ZECUSDT feather history in data/ or the known Prosperous_Bot data dir")
+async def test_backtest_sharpe_and_sortino_annualization(tmp_path):
     """Verify that run_backtest exposes annualized Sharpe and Sortino ratios."""
+    # isolated data dir: never run the backtest against another checkout's live data
+    data_dir = "data"
+    if not _ZEC_HISTORY:
+        iso = tmp_path / "zec_data"
+        iso.mkdir()
+        shutil.copy2(_ZEC_SOURCE, iso / _ZEC_SOURCE.name)
+        data_dir = str(iso)
     # Run backtest on sample short window
     res = await run_backtest(
         config_path="config.json",
-        data_dir="data",
+        data_dir=data_dir,
         ticker_override="ZECUSDT",
         since_utc="2025-10-20 00:00",
         until_utc="2025-10-20 06:00",
