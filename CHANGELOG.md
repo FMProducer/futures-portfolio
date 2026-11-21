@@ -1146,3 +1146,5 @@ Related: [[Docs/futures-portfolio-paper-swarm-dashboard-2026-10-25]], [[Docs/cha
 
 - Recorded the approved cumulative PAPER qualification and natural-close rotation design in `docs/REAL_SELECTION_PAPER_VALIDATION_20261120.md`.
 - User requested testing all proposals against accumulated PAPER data before selecting numerical REAL risk limits. No REAL activation or production policy change is authorized by the research results alone.
+
+- PAPER study completed on 18 closed returns: +399.05448377 USDT; open reported Net -317.23874350344124 USDT. Across 51,542 recorded events, neither per-session nor cumulative qualification produced an admission at the retained 15-cycle / positive-Net threshold. Six focused tests and independent ledger/hash checks pass. Numerical REAL risk limits and counterfactual rotation returns remain unidentifiable; no production selection change or REAL activation was made.
