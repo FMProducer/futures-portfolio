@@ -84,8 +84,8 @@ async def test_fetch_rate_limit(scanner):
 
 
 @pytest.mark.asyncio
-async def test_fetch_non_200_raises(scanner):
-    """Non-429 error status raises ClientResponseError."""
+async def test_fetch_non_200_returns_none(scanner):
+    """Non-429 error statuses degrade to None (fetch never raises)."""
     mock_session = MagicMock()
     mock_response = MagicMock()
     mock_response.status = 500
@@ -101,17 +101,18 @@ async def test_fetch_non_200_raises(scanner):
 
     mock_session.get.return_value = MockCM()
 
-    with pytest.raises(aiohttp.ClientResponseError):
-        await scanner.fetch(mock_session, "/test")
+    # fetch degrades non-200 responses to None (never raises); assert the real contract
+    result = await scanner.fetch(mock_session, "/test")
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_fetch_exception_raises(scanner):
-    """Connection exception raises."""
+async def test_fetch_exception_returns_none(scanner):
+    """Connection exception is swallowed into None by fetch's graceful degradation."""
     mock_session = MagicMock()
     mock_session.get.side_effect = aiohttp.ClientError("refused")
-    with pytest.raises(aiohttp.ClientError):
-        await scanner.fetch(mock_session, "/test")
+    result = await scanner.fetch(mock_session, "/test")
+    assert result is None
 
 
 @pytest.mark.asyncio

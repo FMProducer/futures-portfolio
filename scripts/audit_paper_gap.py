@@ -78,8 +78,14 @@ def audit(root, output):
                 return candles
 
         before_wallet = json.dumps(wallet, sort_keys=True)
+        now_ms = int(time.time() * 1000)
         bars = asyncio.run(rules.strategy_minutes(History(), ticker, state, config, config['portfolios'][0],
-                                                  int(time.time() * 1000), wallet, True))
+                                                  now_ms, wallet, True))
+        if not bars and now_ms % 60000 < rules.MINUTE_FINALIZE_MARGIN_MS:
+            # Inside the ingestion-finalization margin: wait it out, then retry once.
+            time.sleep((rules.MINUTE_FINALIZE_MARGIN_MS - now_ms % 60000) / 1000.0 + 0.25)
+            bars = asyncio.run(rules.strategy_minutes(History(), ticker, state, config, config['portfolios'][0],
+                                                      int(time.time() * 1000), wallet, True))
         if json.dumps(wallet, sort_keys=True) != before_wallet:
             raise ValueError(f'{ticker}: audit mutated wallet')
         rows.append(dict(ticker=ticker, status='reconciled', **metrics,

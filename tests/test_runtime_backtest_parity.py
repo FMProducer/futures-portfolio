@@ -136,6 +136,7 @@ async def test_paper_minute_clock_and_legacy_funding_replay(tmp_path, opening, c
         assert not any(closed_wallet['positions'].values())
     with patch('core.main.TelegramNotifier', return_value=notifier), patch('core.main.time.time', side_effect=lambda: now[0]), \
          patch('core.main.asyncio.sleep', side_effect=advance), patch('core.main.emit_signal', side_effect=confirmed_signal), \
+         patch('core.backtest_rules.MINUTE_FINALIZE_MARGIN_MS', 0), \
          patch('core.main.self_kill_pm2', AsyncMock()), close_patch:
         if terminal or real == 'critical':
             await rebalance_loop(connector, str(cfg_path), str(state_path), str(wallet_path), logger)

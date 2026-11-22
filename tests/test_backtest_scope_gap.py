@@ -13,7 +13,8 @@ def _load_at(name, path, fake_file):
     import importlib.util
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
-    module.__file__ = str(fake_file)
+    # differing __file__ basename vs co_filename keeps coverage attribution on the real source file
+    module.__file__ = str(fake_file) + ".faked"
     spec.loader.exec_module(module)
     return module
 

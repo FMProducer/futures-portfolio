@@ -130,6 +130,7 @@ async def _run_with_prices(prices, directory, loop_limit=4):
     class EndRun(BaseException):
         pass
     with patch(f'{M}.time.time', side_effect=now), patch('asyncio.sleep', side_effect=sleep), \
+         patch(f'{M}.backtest_rules.MINUTE_FINALIZE_MARGIN_MS', 0), \
          patch(f'{M}.PortfolioCalculator', return_value=calculator), \
          patch(f'{M}.PortfolioExecutor', return_value=executor), \
          patch(f'{M}.backtest_rules.filter_actions', side_effect=observe), \

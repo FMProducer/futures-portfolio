@@ -297,7 +297,8 @@ def test_admission_history_collects_published_passes(tmp_path):
 async def test_daily_universe_publishes_a_research_pool(tmp_path, monkeypatch, capsys):
     root = tmp_path / 'project'
     (root / 'reports').mkdir(parents=True)
-    config = {'portfolios': [{'paper_initial_capital': 1000}], 'funding_model': 'legacy_constant'}
+    config = {'portfolios': [{'paper_initial_capital': 1000}], 'funding_model': 'legacy_constant',
+              'scanner_min_volume_usdt': 1}
     (root / 'config.json').write_text(json.dumps(config), encoding='utf-8')
     (root / 'tickers.txt').write_text('SYM000USDT\n', encoding='utf-8')
 
