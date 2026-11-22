@@ -19,6 +19,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core.pm2_status import read_pm2_status
+try:
+    from .log_reader import read_tail, line_count
+except ImportError:
+    from log_reader import read_tail, line_count
 from typing import Any, Optional
 
 import yaml
@@ -193,8 +197,7 @@ def _check_heartbeat(ticker: str, mode: str) -> tuple:
         return False, None
 
     try:
-        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()[-100:]
+        lines = read_tail(log_file, 100)
 
         for line in reversed(lines):
             if "Heartbeat" in line or "heartbeat" in line:
@@ -271,7 +274,7 @@ def get_ticker_details(mode: str, ticker: str) -> dict:
     hb_ok, hb_age = _check_heartbeat(ticker, mode)
 
     # Последние записи лога
-    log_tail = get_log_tail(mode, ticker, 50).get("lines", [])
+    log_tail = get_log_tail(mode, ticker, 150).get("lines", [])
 
     return {
         "ticker": ticker,
@@ -320,6 +323,7 @@ def get_log_tail(
     mode: str, ticker: str, lines: int = 100, offset: int = 0
 ) -> dict:
     """Последние строки лога."""
+    lines, offset = max(0, min(lines, 2000)), max(0, offset)
     log_file = LOGS_PATH / f"{mode}_{ticker}.log"
 
     if not log_file.exists():
@@ -331,16 +335,11 @@ def get_log_tail(
             return {"lines": [], "error": "Log file not found"}
 
     try:
-        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
-            all_lines = f.readlines()
-
-        start = max(0, len(all_lines) - lines - offset)
-        end = len(all_lines) - offset if offset > 0 else len(all_lines)
-        selected = all_lines[start:end]
+        selected = read_tail(log_file, lines, offset) if lines else []
 
         return {
-            "lines": [line.rstrip("\n") for line in selected],
-            "total": len(all_lines),
+            "lines": selected,
+            "total": line_count(log_file),
             "file": str(log_file),
         }
     except OSError as e:

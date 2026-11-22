@@ -1,3 +1,4 @@
+let logsLoading = false;
 /**
  * Logs page JS — real-time log viewer with auto-scroll
  */
@@ -11,8 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadLogs() {
+    if (document.hidden || logsLoading) return;
+    logsLoading = true;
     try {
-        const resp = await fetch(`/api/logs/${MODE}/${TICKER}?lines=200`);
+        const resp = await fetch(`/api/logs/${MODE}/${TICKER}?lines=200`, {signal: AbortSignal.timeout(15000)});
         const data = await resp.json();
         const el = document.getElementById('log-content');
         const info = document.getElementById('log-info');
@@ -32,6 +35,8 @@ async function loadLogs() {
         }
     } catch (e) {
         console.error('Logs load error:', e);
+    } finally {
+        logsLoading = false;
     }
 }
 
@@ -48,3 +53,7 @@ function toggleAutoScroll() {
 function toggleNav() {
     document.querySelector('.nav-links').classList.toggle('show');
 }
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { loadLogs(); }
+});

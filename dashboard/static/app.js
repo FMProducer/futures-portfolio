@@ -1,3 +1,4 @@
+let overviewLoading = false;
 /**
  * Prosperous Bot Dashboard — Main JS
  * Dashboard page logic: auto-refresh, PM2 control, alerts
@@ -25,7 +26,7 @@ function startAutoRefresh() {
 
 async function apiGet(url) {
     try {
-        const resp = await fetch(url);
+        const resp = await fetch(url, {signal: AbortSignal.timeout(15000)});
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         return await resp.json();
     } catch (e) {
@@ -54,16 +55,22 @@ async function apiPost(url, data) {
 // ─── Load overview ────────────────────────────────────────────
 
 async function loadOverview() {
-    const data = await apiGet('/api/overview');
-    if (!data) return;
+    if (document.hidden || overviewLoading) return;
+    overviewLoading = true;
+    try {
+        const data = await apiGet('/api/overview');
+        if (!data) return;
 
-    updateSummary(data.summary, data.supervisor);
-    updatePaperHistory(data.paper_history);
-    updateSwarmCurve(data.paper_curve);
-    updateAlerts(data.alerts);
-    updateBotsTable('real-bots-table', data.real_bots);
-    updateBotsTable('paper-bots-table', data.paper_bots);
-    updatePm2Table(data.pm2_processes);
+        updateSummary(data.summary, data.supervisor);
+        updatePaperHistory(data.paper_history);
+        updateSwarmCurve(data.paper_curve);
+        updateAlerts(data.alerts);
+        updateBotsTable('real-bots-table', data.real_bots);
+        updateBotsTable('paper-bots-table', data.paper_bots);
+        updatePm2Table(data.pm2_processes);
+    } finally {
+        overviewLoading = false;
+    }
 }
 
 function updateSwarmCurve(data) {
@@ -357,3 +364,7 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { loadOverview(); }
+});

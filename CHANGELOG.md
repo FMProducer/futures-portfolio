@@ -1,5 +1,14 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-22 ? Reduce dashboard and observer CPU usage
+
+- Replace full-log reads for short tails/heartbeats with EOF block reads and incremental line counts; parse only appended history log lines and cache observation decoding/drawdown state.
+- Compact graph output while preserving extrema, gaps and full-history Net/MaxDD; frozen example: 78,094 observations to 1,510 plotted points. Prevent overlapping/hidden-tab polling, add GET timeouts and remove duplicate ticker log requests.
+- Remove history/graph reconstruction from the observer's five-second `/health` calls; preserve supervisor checks and the existing REAL-heartbeat health threshold. Trading logic, risk policy, positions, trading polling and dependencies unchanged.
+- Frozen-input warm wall medians: history 777.4 -> 102.1 ms; graph 1302.2 -> 6.15 ms; log tail 3.75 -> 0.302 ms. History/tail equality and graph metadata parity passed. General focused run: 39 passed (exit 0); after the final health-only correction, 10 affected checks passed (exit 0). Three JavaScript polling checks passed. No full-suite or one-hour runtime acceptance claimed.
+- Deployed with SHA-256 verification and a 12-file backup manifest after the user stopped only dashboard/observer. PM2 control from the agent returned EPERM. After the requested restart, the user confirmed the fan stopped buzzing; quantitative post-restart CPU/RSS remains unmeasured.
+- Known limits: first request warms caches; observations assume append-only writes (historical edits combined with inserts require cache reload); plotted point density changes while data/MaxDD remain intact. See docs/DASHBOARD_CPU_20261122.md and reports/dashboard_cpu_20261122/result.json.
+
 ## 2026-11-22 — Minute finalization and reusable three-mode parity CLI
 
 - Defer minute ingestion for 5000 ms after the close boundary, preserving decision state and risk policy. Add boundary and real-ingestion regressions and adapt the offline audit caller. This delay is not a candle-finality guarantee.

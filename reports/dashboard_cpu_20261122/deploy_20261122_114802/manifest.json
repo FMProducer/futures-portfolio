@@ -1,0 +1,62 @@
+[
+  {
+    "file": "dashboard/swarm_history.py",
+    "before": "54068e2772f618b4d70a742fd0da4cce2bfaed9e7b8e3a1539b158762e91570b",
+    "after": "b70674325daf2074191d24a3c25047042e181c3d080b47acf7693d1a2557028e"
+  },
+  {
+    "file": "dashboard/swarm_curve.py",
+    "before": "95b8abd9642567a8f62754c8b420eeb9547a89cee375791d4f1783e0b0135f6c",
+    "after": "d744e726e39d4a37b740e12bddcdb5c774aa5cda2533c129aaea4fa2ca6ce74d"
+  },
+  {
+    "file": "dashboard/data_collector.py",
+    "before": "0512ee82874016b77a46c6507e8a8a94031ae9d640ed3c39422b5ec9269e72bf",
+    "after": "9b4fe3d0dc17f225cb571d2caeefb78c20fc79532616472ea06593f27e6aab2f"
+  },
+  {
+    "file": "dashboard/log_reader.py",
+    "before": null,
+    "after": "672b53c7d54572ac2693b002a1bb87f451d570ef36b32be9638e9480d960c69e"
+  },
+  {
+    "file": "dashboard/static/app.js",
+    "before": "d21def4c934ae83ab75ecee9b5a5beca93088d4f7e3f4e7b150157709b1ac322",
+    "after": "f29b753a37c7dfa7608b9e5e866d4565e94ad3193b68203257d5ab0369f7927e"
+  },
+  {
+    "file": "dashboard/static/ticker.js",
+    "before": "03fe42b6239a936b4089481d3fd01254929efe9f922a725fb37d7302c7eb4b43",
+    "after": "047974655c01bc7b4adde553109aaeadb24b47b8b8f01434438ee92e4f00c812"
+  },
+  {
+    "file": "dashboard/static/logs.js",
+    "before": "fc79e3ca6c3c2d843683aeb889b6eae9d2885f9a4580b175e5040951fcab9be5",
+    "after": "411ba57db034313177fbb383858a1bd3a5c5bf71eb9b6bdbddb393ff8a469c4a"
+  },
+  {
+    "file": "tests/test_dashboard_performance.py",
+    "before": null,
+    "after": "3678d093c502173061db3ee7e80e1dddfbbc40f7b530863faaf89c71f19fda0f"
+  },
+  {
+    "file": "tests/dashboard_polling.cjs",
+    "before": null,
+    "after": "dae93968f6337baa17470ba454cf4785ba9e32a57298f40e68c0bf887ec38a4f"
+  },
+  {
+    "file": "dashboard/dashboard.py",
+    "before": "61c7c12b93a0193326eb7a52a7e3ad6a88554872ec292a40a2a3b3df1d09cb91",
+    "after": "5e15e5659139d2eeee8307f296933bb3527ace189253f3a3e08bb79f9fff8d0a"
+  },
+  {
+    "file": "tests/test_dashboard_gap.py",
+    "before": "e787a76f0d195558982ff22c175d38d49b6bb868344effaefbcdb1c46a2d1813",
+    "after": "118bd6ba157ba322ee625096884a9b1fb5020590eec3ad5a691dcae451fbad65"
+  },
+  {
+    "file": "tests/test_runtime_surface_gap.py",
+    "before": "f469135b8600a0b94d69e5a39cf7cd4978d25e95835596474b7154b3d019714a",
+    "after": "3554e81d76c24e70a0633793b9b891b139bf75bbc1feebf95ecad1e4af03b609"
+  }
+]

@@ -172,5 +172,22 @@ def test_server_error_handlers(dashboard, monkeypatch):
     assert api.status_code == 500
     assert api.get_json()['error'] == 'Internal error'
     # /health is the one unguarded page route: its 500 renders the template branch.
+    monkeypatch.setattr('data_collector._find_state_files',
+                        lambda mode: (_ for _ in ()).throw(RuntimeError('boom')))
     page = client.get('/health')
     assert page.status_code == 500
+
+
+@pytest.mark.parametrize('stale,expected', [(0, 200), (1, 200), (2, 503)])
+def test_health_skips_history_and_preserves_stale_threshold(dashboard, monkeypatch, stale, expected):
+    monkeypatch.setattr(dashboard, 'read_pm2_status', lambda: [
+        {'name': 'supervisor-service', 'pm2_env': {'status': 'online'}}])
+    monkeypatch.setattr('data_collector.get_system_overview',
+                        lambda: (_ for _ in ()).throw(AssertionError('Health must not build charts')))
+    monkeypatch.setattr('data_collector._find_state_files', lambda mode: ['A', 'B'])
+    monkeypatch.setattr('data_collector._get_ticker_summary',
+                        lambda ticker, mode: {'heartbeat_ok': ['A', 'B'].index(ticker) >= stale})
+    response = dashboard.create_app().test_client().get('/health')
+    assert response.status_code == expected
+    assert response.get_json()['real_bots'] == 2
+    assert response.get_json()['stale_bots'] == stale

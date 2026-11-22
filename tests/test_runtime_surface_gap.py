@@ -80,7 +80,7 @@ def test_login_grants_a_session_and_renders_pages(client, dashboard, monkeypatch
 
 
 def test_health_reports_degraded_without_a_supervisor(client, dashboard, monkeypatch):
-    monkeypatch.setattr('data_collector.get_system_overview', lambda: {'real_bots': []})
+    monkeypatch.setattr('data_collector._find_state_files', lambda mode: [])
     monkeypatch.setattr(dashboard.subprocess, 'run',
                         lambda *args, **kwargs: type('R', (), {'returncode': 1, 'stdout': ''})())
     response = client.get('/health')
@@ -90,7 +90,7 @@ def test_health_reports_degraded_without_a_supervisor(client, dashboard, monkeyp
 
 def test_health_reports_ok_with_an_online_supervisor(client, dashboard, monkeypatch):
     payload = json.dumps([{'name': 'supervisor-service', 'pm2_env': {'status': 'online'}}])
-    monkeypatch.setattr('data_collector.get_system_overview', lambda: {'real_bots': []})
+    monkeypatch.setattr('data_collector._find_state_files', lambda mode: [])
     monkeypatch.setattr(dashboard.subprocess, 'run',
                         lambda *args, **kwargs: type('R', (), {'returncode': 0, 'stdout': payload})())
     response = client.get('/health')

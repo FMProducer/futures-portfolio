@@ -1,20 +1,18 @@
+let detailsLoading = false;
 /**
  * Ticker detail page JS
  */
 
 let refreshTimer = null;
-let logTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadTickerDetails();
-    loadLogs();
     refreshTimer = setInterval(loadTickerDetails, REFRESH_SEC * 1000);
-    logTimer = setInterval(loadLogs, REFRESH_SEC * 1000);
 });
 
 async function apiGet(url) {
     try {
-        const resp = await fetch(url);
+        const resp = await fetch(url, {signal: AbortSignal.timeout(15000)});
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         return await resp.json();
     } catch (e) {
@@ -41,15 +39,22 @@ async function apiPost(url, data) {
 }
 
 async function loadTickerDetails() {
-    const data = await apiGet(`/api/ticker/${MODE}/${TICKER}`);
-    if (!data || data.error) {
-        document.getElementById('ticker-stats').innerHTML =
-            `<div class="alert alert-danger">${data?.error || 'Ошибка загрузки'}</div>`;
-        return;
-    }
+    if (document.hidden || detailsLoading) return;
+    detailsLoading = true;
+    try {
+        const data = await apiGet(`/api/ticker/${MODE}/${TICKER}`);
+        if (!data || data.error) {
+            document.getElementById('ticker-stats').innerHTML =
+                `<div class="alert alert-danger">${data?.error || 'Ошибка загрузки'}</div>`;
+            return;
+        }
 
-    updateStats(data);
-    updatePositions(data.shadow);
+        updateStats(data);
+        updatePositions(data.shadow);
+        showLogs(data.log_tail);
+    } finally {
+        detailsLoading = false;
+    }
 }
 
 function updateStats(data) {
@@ -117,19 +122,12 @@ function updatePositions(shadow) {
     `;
 }
 
-async function loadLogs() {
-    const data = await apiGet(`/api/logs/${MODE}/${TICKER}?lines=150`);
+function showLogs(lines) {
     const el = document.getElementById('log-content');
     if (!el) return;
-
-    if (!data || data.error) {
-        el.textContent = 'Ошибка загрузки логов: ' + (data?.error || 'Unknown');
-        return;
-    }
-
-    el.textContent = data.lines?.join('\n') || 'Лог пуст';
-
-    // Auto-scroll to bottom
+    const text = lines?.join('\n') || 'Log is empty';
+    if (el.textContent === text) return;
+    el.textContent = text;
     const viewer = document.getElementById('log-viewer');
     if (viewer) viewer.scrollTop = viewer.scrollHeight;
 }
@@ -176,3 +174,7 @@ function toggleNav() {
 function fmt(v) {
     return Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { loadTickerDetails(); }
+});
