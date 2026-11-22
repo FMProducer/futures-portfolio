@@ -4,6 +4,16 @@ import math
 import logging
 from decimal import Decimal, InvalidOperation
 
+# A just-closed 1m kline is often still settling a few seconds after its close
+# boundary (last-second trade settlement), so a decision made on a pre-final close
+# can diverge from the later finalized series. strategy_minutes defers the
+# latest-closed bar for this fixed margin after its close boundary (no fetch, no
+# state/wallet mutation, no gap/reconcile) and retries it after the margin. This is
+# an engineering delay informed by the observed close-mismatch rate (<2s 53%, 2-5s
+# 22%, >=5s 0.28%); it is NOT a finality guarantee (a >=5s residual remains).
+# Fixed constant by design: not user config, not a risk/strategy parameter.
+MINUTE_FINALIZE_MARGIN_MS = 5000
+
 
 def filter_actions(actions, prices, config, portfolio, memory, initial_build=False, flat=False):
     i = len(prices) - 1
@@ -114,6 +124,16 @@ def reconcile_paper_gap(ticker, state, wallet):
 
 
 async def strategy_minutes(connector, ticker, state, config, portfolio, now_ms, wallet=None, paper_mode=True):
+    # Ingestion-finalization guard: the just-closed bar (open boundary-60000, closed at
+    # `boundary`) is often still settling for a few seconds after `boundary`. Defer the
+    # decision for it during the first MINUTE_FINALIZE_MARGIN_MS: before any kline fetch
+    # and before any state/wallet/cursor/trailing change; return [] (the caller sleeps
+    # and re-polls within the same minute), not raise/gap/reconcile. The same bar is
+    # then retried after the margin (an engineering delay, not a finality guarantee).
+    # Prior state is untouched and no retroactive fills are created.
+    boundary = int(now_ms) // 60000 * 60000
+    if int(now_ms) - boundary < MINUTE_FINALIZE_MARGIN_MS:
+        return []
     safety, addition = portfolio.get('safety_guards', {}), portfolio.get('trend_add_block') or {}
     trend = config.get('trend_guard', {})
     lookback = max(int(safety.get('trend_lookback_bars', 30)), int(addition.get('window_bars', 120)),
