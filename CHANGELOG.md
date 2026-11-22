@@ -1,5 +1,43 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-22 — PAPER incident, minute ingestion fix and full BTW parity
+
+### Scope and incident findings
+
+- Implementation and verification checkout: `C:/Users/svsma/orca/workspaces/futures_portfolio/futures_portfolio`, branch `FMProducer/futures_portfolio`, HEAD `bcb1229f89a0513520166bbe84b9cbfc28f7b411` plus recorded working changes. Runtime checkout `C:/Python/Prosperous_Bot/futures_portfolio` is at `56ce20085c585f2a1690023f91b08a1a4b7dde8b`; its existing modified config is preserved. Recording this entry does not deploy the workspace changes.
+- Annual backtest profitability supplied by the user was kept separate from current PAPER PnL. Initial all-negative open positions did not establish strategy degradation or an accounting defect. At the independently observed recovery snapshot 2026-11-21 19:25:27 UTC, initial capital 8000, swarm equity 8322.024, Net +322.024 USDT (+4.0253%), closed Net +451.952 and open PnL -129.928. BTW closed both positions with wallet 1011.791562; CYBER replaced BTW. Recovery occurred before deployment of this fix and cannot be attributed to it.
+- Controlled BTW replay: rounding alone did not explain the approximately 73.44 USDT discrepancy. Replacing only two finalized historical closes with observed PAPER closes reduced the discrepancy to about 0.40 USDT. Heartbeat alignment did not establish a one-minute shift. Observed discrepancies were more frequent close to the minute boundary; a five-second delay reduces exposure but does not guarantee exchange candle finality. Detailed intermediate and rejected hypotheses remain in `reports/paper_degradation_20261121/logic/FINDINGS.md`.
+
+### Workspace correction and verification
+
+- `core/backtest_rules.py`: defer strategy-minute ingestion during the first 5000 ms after each minute boundary, before candle fetching and decision-state mutation. Retry the same minute later; preserve gap handling and existing risk/FUSE/strategy policy. `scripts/audit_paper_gap.py` retries the delayed empty result rather than indexing an empty bar list. New boundary/state-mutation tests cover the real ingestion path.
+- The final full default-testpaths suite BEFORE the subsequent virtual-clock harness changes passed: 2190 tests and 26 subtests, zero failures/errors/skips, 74 warnings, exit 0; 15357/17060 statements = 90.0175849941%, explicit coverage threshold 90. Three candidate source hashes matched before/after. This is evidence for that frozen integrated workspace, not a full-suite certification of later harness edits. Artifacts: `reports/paper_degradation_20261121/final_verification/`.
+- Test/harness repairs included deterministic synthetic clocks, correct initial-state fixtures and coverage attribution for dynamically loaded modules with fake `__file__` paths. No coverage threshold reduction or production risk tuning was used.
+
+### Full-history BACKTEST / PAPER / SIMULATED REAL
+
+- Input: `C:/Python/Prosperous_Bot/futures_portfolio/data/BTWUSDT_year.feather`, SHA-256 `E3582168191C4AC812BFBBC9DBCAF351AA85B1C9EFBC40B0BD18E1EE2EA5BD2E`. All 242886 continuous one-minute rows, 2026-06-04 14:15 through 2026-11-20 06:20 UTC; no duplicate timestamps or nulls reported in the rechecked manifest.
+- Identical incident config SHA-256 `1B8C6170B5350E5D82DB8970179FA6F19E603E62CAB80ED8258896033B2F3798`: initial bot capital 1000 USDT, separate reserve 5000, funding disabled. Not a claim about the subsequently changed runtime config.
+- Existing replay harnesses gained an opt-in virtual polling clock: premature +1000 ms and valid +6000 ms polls, production margin 5000 ms enabled. Premature polls assert no decision-state/wallet mutation. All modes cover 228678 processed bars and 14208 matching cooldown/restart skips, zero terminal skips and no coverage-class divergence. PAPER and simulated REAL each record 228678 premature and valid polls. Native-persistence prefix: 180 bars PASS; the full run uses isolated I/O/in-memory adapters, not full native disk persistence.
+- The first full run matched BACKTEST/PAPER but simulated REAL diverged at bar 31. Cause: the offline adapter stamped the synthetic order book at the boundary; a +6000 ms poll exceeded the five-second FUSE book-age limit. Correct only the offline adapter to stamp at virtual fetch time. Preserve that failed run in `first_run_stale_book/`. Corrected 5000-bar smoke passed; 21 focused tests passed. Production FUSE and policy unchanged.
+
+| Mode | Net USDT | Return | Ending bot TPV | Fees USDT | Cycles | Fills | Stops | Funding |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| BACKTEST | +5757.085948 | +575.708595% | 6757.085948 | 597.487391 | 626 | 827 | 111 | 0 |
+| PAPER | +5757.085948 | +575.708595% | 6757.085948 | 597.487391 | 626 | 827 | 111 | 0 |
+| SIMULATED REAL | +5757.085948 | +575.708595% | 6757.085948 | 597.487391 | 626 | 827 | 111 | 0 |
+
+- Financial parity PASS at the pre-existing 1e-8 USDT tolerance: maximum complete-curve errors PAPER 9.094947017729282e-12, REAL 9.549694368615746e-12. Fees are already included in Net. Ending quantities match: LONG 11119.904, SHORT 19375.046. Bot MaxDD 219.001758%, minimum bot TPV -3074.228887; account MaxDD including separate reserve 74.605263%. Bot TPV is not total account balance.
+- **Overall verification FAIL**, not waived: simulated REAL reconstructed minimum CASH -3.05835966667e-13 USDT at bar 234909, 2026-11-14 17:24 UTC. PAPER minimum CASH 0; minimum VIRTUAL 0 in both.
+- Agent's initial assertion that this was exclusively a harness float artifact was rejected. Its positive recomputation mixed float-rounded shadow balance with Decimal entries. With adapter Decimal wallet minus reserve and Decimal entries, but still float-derived virtual debt, the result is -5.8043820097362170173e-12. `shadow_balance = float(wallet - reserve)` adds 5.87758650730e-12 at that bar. No exact Decimal virtual-debt source exists in the captured artifacts: **actual free CASH and the definitive cause remain UNVERIFIED**. Positive total wallet alone does not prove positive free CASH. The diagnostic report explicitly withdraws the earlier unsupported conclusion; no clamp, tolerance change or production edit was applied.
+- Command: `python scripts/run_parity_case.py reports/btw_full_parity_20261122`. Detached full-run process exit code **unknown** because it was not captured; `status.json` records completed/FAIL. Do not report exit 0. Source manifests before/after the run match. No annual rerun was performed solely to recover an exit code.
+
+### Evidence and remaining work
+
+- Main artifacts in the implementation checkout: `reports/btw_full_parity_20261122/REPORT.md`, `DIAGNOSTICS.md`, `full_run.log`, `full_run.log.err`, per-mode JSON/curves/fills, `coverage_per_bar.csv`, comparison/status JSON, input/config/source manifests and the archived first run.
+- OpenCode executed and diagnosed the replay; coordinator reviewed logs, results and the adapter diff and independently recomputed the CASH counterexample. Latest diagnostic task/dispatch: `task_c1605d53892b` / `ctx_e35e41116179`, Run `run_35fa5219476a`. No independent Claude acceptance of this full replay is claimed.
+- Remaining: establish a consistent precision/provenance contract for all free-CASH components before claiming strict invariant PASS. No exchange finality, actual exchange execution, full-history native persistence or runtime acceptance was demonstrated. No deployment, restart, optimization, commit or push was performed for this verification. Historical 2190-test full-suite evidence predates the final harness changes; only the focused 21-test verification applies to those changes.
+
 ## 2026-11-21 — Close confirmed SQLite allocation and service connections
 
 - Close seven demonstrated connection-opening sites in `core/real_allocation.py` (claim, validate and both retire paths), `rebalance/paper.py` (database-type probe), `supervisor/supervisor_service.py` and `dashboard/swarm_curve.py`. Preserve transaction handling and the original PAPER keeper initialization/close lifecycle.
