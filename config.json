@@ -7,7 +7,10 @@
   "paper_mode": true,
   "max_orders_per_second": 10,
   "min_cycles_for_rank": 15,
-  "admission_window_hours": [48, 36],
+  "admission_window_hours": [
+    48,
+    36
+  ],
   "scanner_min_volume_usdt": 15000000,
   "real_use_cumulative_paper_cycles": true,
   "min_cycles_for_rotation": 8,
@@ -94,8 +97,8 @@
     "1000LUNCUSDT",
     "AKEUSDT",
     "BREVUSDT",
-    "BTWUSDT",
     "BULLAUSDT",
+    "CYBERUSDT",
     "HUMAUSDT",
     "IRYSUSDT",
     "PIPPINUSDT"
@@ -103,11 +106,5 @@
   "base_ticker": "1000LUNCUSDT",
   "probation_paper": {},
   "probation_real": {},
-  "paper_backtest_gate": true,
-  "admission_window_hours": [
-    48,
-    36
-  ],
-  "scanner_min_volume_usdt": 15000000,
-  "real_use_cumulative_paper_cycles": true
+  "paper_backtest_gate": true
 }

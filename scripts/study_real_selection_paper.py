@@ -78,6 +78,42 @@ def risk_samples(log, session):
         'last_sample_delay_seconds': end-values[-1][0] if values else None}
 
 
+
+def observed_replay(snapshot, rows):
+    events = []
+    for row in rows:
+        ticker, start, end = row['ticker'], row['started_at'], row['observed_until']
+        path = snapshot/'core/logs'/f'paper_{ticker}.log'
+        for line in path.read_text(encoding='utf-8', errors='replace').splitlines() if path.exists() else []:
+            heartbeat = re.search(r'Heartbeat: TPV=([\d.-]+)', line)
+            rebalance = re.search(r'Rebalance #(\d+) complete\. TPV: ([\d.-]+)', line)
+            if not heartbeat and not rebalance:
+                continue
+            try:
+                stamp = datetime.strptime(line[:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone(timedelta(hours=2))).timestamp()
+            except ValueError:
+                continue
+            if start <= stamp <= end:
+                equity = float(heartbeat[1]) if heartbeat else float(rebalance[2])
+                events.append((stamp, ticker, start, equity-row['capital'], int(rebalance[1]) if rebalance else None, row))
+        if row['closed']:
+            events.append((end, ticker, start, row['net'], row['cycles'], row))
+    observed, admissions, counts = {}, {'per_session':{}, 'cumulative':{}}, 0
+    for stamp, ticker, start, net, cycles, row in sorted(events, key=lambda e:e[0]):
+        key = ticker, start
+        prior = observed.get(key)
+        current = dict(row, net=net, cycles=max(cycles or 0, prior['cycles'] if prior else 0))
+        observed[key] = current
+        for mode in admissions:
+            metrics = qualification(list(observed.values()), mode == 'cumulative')
+            for candidate, metric in metrics.items():
+                if metric['eligible_upper_bound']:
+                    admissions[mode].setdefault(candidate, stamp)
+        counts += 1
+    return {'observations':counts, 'first_observed_eligibility':admissions,
+        'scope':'Recorded heartbeat/rebalance and confirmed return events; missing intervals and execution costs are not reconstructed.'}
+
+
 def study(snapshot):
     with sqlite3.connect((snapshot/'core/paper_budget.sqlite').resolve().as_uri()+'?mode=ro', uri=True) as db:
         events = db.execute('SELECT rowid,ts,ticker,kind,amount FROM events ORDER BY rowid').fetchall()
@@ -125,7 +161,7 @@ def study(snapshot):
         'closed_sessions':closed_count, 'closed_net':sum(r['net'] for r in rows if r['closed']),
         'open_reported_net':sum(r['net'] for r in rows if not r['closed']),
         'sessions':rows, 'per_session':latest, 'cumulative':ranked, 'closed_only_timeline':timeline,
-        'risk_sensitivity':sensitivity,
+        'risk_sensitivity':sensitivity, 'observed_replay':observed_replay(snapshot, rows),
         'limitations':['Open Net is state-marked, not executable BID/ASK after exit fees.',
             'Closed-only event timeline excludes then-open sessions; not a causal full swarm replay.',
             'Observed drawdown is sampled and cannot certify a risk limit.',

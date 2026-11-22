@@ -35,9 +35,9 @@ def top_symbols(exchange, tickers, previous=(), min_volume=0):
         if symbol in volumes:
             raise ValueError('Duplicate market ticker')
         volumes[symbol] = volume
-    ordered = sorted(volumes, key=lambda s: (-volumes[s], s))[:100]
-    if len(ordered) != 100:
-        raise ValueError('Fewer than 100 eligible liquid contracts')
+    ordered = sorted(volumes, key=lambda s: (-volumes[s], s))[:70]
+    if len(ordered) != 70:
+        raise ValueError('Fewer than 70 eligible liquid contracts')
     ordered += sorted(set(previous).intersection(volumes).difference(ordered), key=lambda s: (-volumes[s], s))
     return [{'symbol':s, 'quote_volume_24h':volumes[s]} for s in ordered]
 
