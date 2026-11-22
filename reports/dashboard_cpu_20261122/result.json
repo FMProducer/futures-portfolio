@@ -1,0 +1,283 @@
+{
+  "utc": "2026-11-22T11:44:02Z",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "sources": {
+    "dashboard/swarm_history.py": {
+      "candidate": "b70674325daf2074191d24a3c25047042e181c3d080b47acf7693d1a2557028e",
+      "baseline": "54068e2772f618b4d70a742fd0da4cce2bfaed9e7b8e3a1539b158762e91570b"
+    },
+    "dashboard/swarm_curve.py": {
+      "candidate": "d744e726e39d4a37b740e12bddcdb5c774aa5cda2533c129aaea4fa2ca6ce74d",
+      "baseline": "95b8abd9642567a8f62754c8b420eeb9547a89cee375791d4f1783e0b0135f6c"
+    },
+    "dashboard/data_collector.py": {
+      "candidate": "9b4fe3d0dc17f225cb571d2caeefb78c20fc79532616472ea06593f27e6aab2f",
+      "baseline": "0512ee82874016b77a46c6507e8a8a94031ae9d640ed3c39422b5ec9269e72bf"
+    },
+    "dashboard/log_reader.py": {
+      "candidate": "672b53c7d54572ac2693b002a1bb87f451d570ef36b32be9638e9480d960c69e"
+    },
+    "dashboard/static/app.js": {
+      "candidate": "f29b753a37c7dfa7608b9e5e866d4565e94ad3193b68203257d5ab0369f7927e",
+      "baseline": "d21def4c934ae83ab75ecee9b5a5beca93088d4f7e3f4e7b150157709b1ac322"
+    },
+    "dashboard/static/ticker.js": {
+      "candidate": "047974655c01bc7b4adde553109aaeadb24b47b8b8f01434438ee92e4f00c812",
+      "baseline": "03fe42b6239a936b4089481d3fd01254929efe9f922a725fb37d7302c7eb4b43"
+    },
+    "dashboard/static/logs.js": {
+      "candidate": "411ba57db034313177fbb383858a1bd3a5c5bf71eb9b6bdbddb393ff8a469c4a",
+      "baseline": "fc79e3ca6c3c2d843683aeb889b6eae9d2885f9a4580b175e5040951fcab9be5"
+    }
+  },
+  "benchmarks": {
+    "history_before": {
+      "cpu_s": [
+        0.828125,
+        0.78125,
+        0.78125,
+        1.0625
+      ],
+      "wall_s": [
+        0.8232148999813944,
+        0.7774118999950588,
+        0.7755156999919564,
+        1.082272700034082
+      ],
+      "warm_cpu_median_s": 0.78125,
+      "warm_wall_median_s": 0.7774118999950588
+    },
+    "history_after": {
+      "cpu_s": [
+        0.5625,
+        0.109375,
+        0.09375,
+        0.09375
+      ],
+      "wall_s": [
+        0.5618913999060169,
+        0.10448940005153418,
+        0.09565089992247522,
+        0.10213840007781982
+      ],
+      "warm_cpu_median_s": 0.09375,
+      "warm_wall_median_s": 0.10213840007781982
+    },
+    "curve_before": {
+      "cpu_s": [
+        1.328125,
+        1.25,
+        1.296875,
+        1.5625
+      ],
+      "wall_s": [
+        1.3580037999199703,
+        1.2798360000597313,
+        1.3021629999857396,
+        1.57411459996365
+      ],
+      "warm_cpu_median_s": 1.296875,
+      "warm_wall_median_s": 1.3021629999857396
+    },
+    "curve_after": {
+      "cpu_s": [
+        1.296875,
+        0.015625,
+        0.0,
+        0.015625
+      ],
+      "wall_s": [
+        1.3021198000060394,
+        0.0070983999175950885,
+        0.006147400010377169,
+        0.006091800052672625
+      ],
+      "warm_cpu_median_s": 0.015625,
+      "warm_wall_median_s": 0.006147400010377169
+    },
+    "tail_before": {
+      "cpu_s": [
+        0.0,
+        0.015625,
+        0.0,
+        0.0
+      ],
+      "wall_s": [
+        0.004742100019939244,
+        0.0037803000304847956,
+        0.0035029000137001276,
+        0.003748999908566475
+      ],
+      "warm_cpu_median_s": 0.0,
+      "warm_wall_median_s": 0.003748999908566475
+    },
+    "tail_after": {
+      "cpu_s": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "wall_s": [
+        0.0031202000100165606,
+        0.0003203999949619174,
+        0.00030179996974766254,
+        0.0003016999689862132
+      ],
+      "warm_cpu_median_s": 0.0,
+      "warm_wall_median_s": 0.00030179996974766254
+    }
+  },
+  "parity": {
+    "history": "PASS",
+    "curve": "PASS",
+    "tail": "PASS"
+  },
+  "curve_points": [
+    78094,
+    1510
+  ],
+  "input_hashes": {
+    "core\\paper_budget.sqlite": "cebe54c57d2c450ff99526408fdb7789d876707187712b5cb4b8e8bb8df69db6",
+    "core\\paper_shadow_1000LUNCUSDT.json": "8b45d23616f6bf0243303c52a7917f0c956626e298c27b1263ad3bb4b432e12e",
+    "core\\paper_shadow_AKEUSDT.json": "39f4ddccf172427091e4954dd0515b6b1c1a65996f06f56d92066f31ba291164",
+    "core\\paper_shadow_ARIAUSDT.json": "5f1e784e2379f02fac1f48fae3438c39a6dbe83a7e2566596451aaa2cf9c2443",
+    "core\\paper_shadow_BLESSUSDT.json": "631c4f9b46978a4267fd77437c584a75f6571ee38097d8b814fd04f193c5c46d",
+    "core\\paper_shadow_BREVUSDT.json": "2e5923bc9dcdafec8a2d962c84f0dd3b3fe838038ee34ebde3ba0984ac3e11cc",
+    "core\\paper_shadow_BTWUSDT.json": "2213270138c43fe9943ea2b1c2707281827819e2d64c36b4044b7c45ecb42f5f",
+    "core\\paper_shadow_BULLAUSDT.json": "15fc72aaee03af8a684a586057f41e7e90f66007aac914910f341825bcd8194e",
+    "core\\paper_shadow_CYBERUSDT.json": "b54865b59c4e0a46d079c901285e7c9dbbe6f0bd5723487606ec9cf0b0298e24",
+    "core\\paper_shadow_HUMAUSDT.json": "a62b2e18d3988b6c8f8099acbb2f1f1d79eb4a40b9dc76f18e347b67446f4221",
+    "core\\paper_shadow_IDOLUSDT.json": "beb528341ed06947becf922781b38a0bbc004eed9d799acd59d668cd1500b190",
+    "core\\paper_shadow_INITUSDT.json": "ae9d305be533a4d684e23108783e67bba800ec2465adc805e3d60f6fe5b9ed90",
+    "core\\paper_shadow_IRYSUSDT.json": "f61fe0fa6166f2bc29b2505704f610a3cad3feefd6968afd39a139318e145232",
+    "core\\paper_shadow_JCTUSDT.json": "9fac82c676f54bc5c0e03de3a1c23af5ebeda62985c1b80f5943c160011328f6",
+    "core\\paper_shadow_LITUSDT.json": "e6e9a95b889552e44228e8e4f9da41ea2232af5464b4842713489b0447703366",
+    "core\\paper_shadow_ONUSDT.json": "9a58483419344d6b66738ee6320b5570ae136632b1c33f54104ebf2d3e0e5540",
+    "core\\paper_shadow_PIPPINUSDT.json": "d2cb90bc50ed515192fc946c289d2941e9949caebf310d80758c3f7facab69a4",
+    "core\\paper_shadow_RAREUSDT.json": "05cf11e4b9a9f9b643ecfc33d5bee700effaf5bfae164e2e5c6dcbd1d48c2bfc",
+    "core\\paper_shadow_SOPHUSDT.json": "3844acdae94854f58692299b183bcb9d39479c9ebf5d72d919c6368247e7fae8",
+    "core\\paper_state_1000LUNCUSDT.json": "eca365ebab5730c44eff454844942214e481de1f56c9df015df3115330d596ff",
+    "core\\paper_state_AKEUSDT.json": "4dee9c94e3b361db3bb81283975c89ee114badb6946a1c5dc45379357642a07e",
+    "core\\paper_state_ARIAUSDT.json": "bce3ce0a0700c63e41ecfc27698eacc6c69f565ca27d4a14a40b875e5873f0b0",
+    "core\\paper_state_BLESSUSDT.json": "cf1b295d6053a0f31da12b4cda9a45a55c0c1f37d6ed96bbcf6938346c6a31f6",
+    "core\\paper_state_BREVUSDT.json": "77120486b4faf12bfd9d48bd61986ecc5baffaadd9ba8fb416c2d0075a61e132",
+    "core\\paper_state_BTWUSDT.json": "c6f7fdd490c8a459f0e7a6ae341774585ee87ee00ac8789e32f0e24010310e2a",
+    "core\\paper_state_BULLAUSDT.json": "b6aa45f96f997f5f01b18b19448796681233aeb755f316c82bfec8d59231000a",
+    "core\\paper_state_CYBERUSDT.json": "80beac07a79543d8ec9fc78b0fd93a8ca8174bf9c3a6f25bbbfc6e32798672e2",
+    "core\\paper_state_HUMAUSDT.json": "a57495de75f68caa1db48fff707bb4df544458456d78e9947f3d87bc957939ad",
+    "core\\paper_state_IDOLUSDT.json": "6e32e0fab74ca1e130d6f82b1e3627a21414d0dd3f5a04fe656b6d60c6edd68f",
+    "core\\paper_state_INITUSDT.json": "2ebee0aca706df8113b89578e1c0c5ba3846e79576037d94bcd8097753453fc1",
+    "core\\paper_state_IRYSUSDT.json": "e3af0a3a5a7c84e32ead0b53801209e0c6776f9f04a445a36cf5f580c2f4def9",
+    "core\\paper_state_JCTUSDT.json": "60532022d3c2e897597ee65334fb7698023995f2cf2942eb5a14ebb3948184c3",
+    "core\\paper_state_LITUSDT.json": "63e96d88999dc44e9cc452ef981e90e968ce98452830557014d2a934bc275517",
+    "core\\paper_state_ONUSDT.json": "f7bf2405a79e6e718f0f6a5c06956c2c28bdf0e8d4a224ebfad63b4b57139163",
+    "core\\paper_state_PIPPINUSDT.json": "88b0cd695e54ba82fcd0a101efcf8305ec84dd08c8dfd0bd37c0bc46bf360554",
+    "core\\paper_state_RAREUSDT.json": "ab0793f0e8e92433975c977bab87bd4c352e5fd8e3b9818eec3e812714e75d7c",
+    "core\\paper_state_SOPHUSDT.json": "76730f5b98d140e7f2e127701cc8e0605f83a1fda2170ada87a736f528c67a67",
+    "core\\logs\\paper_1000LUNCUSDT.log": "95c6671a941a622a2290fd63bbc60c88266735d45ef8147720177e9e278afa63",
+    "core\\logs\\paper_AKEUSDT.log": "527647fcf992f5762a61d3bae2e4f372533082b672176264905bda74d64809e5",
+    "core\\logs\\paper_ARIAUSDT.log": "f4b9d3c74465e6a70289564c0f14b6d7fcbf8561c1045b61f72e059f20960d13",
+    "core\\logs\\paper_BLESSUSDT.log": "d394a91ab97f92d4961b589e01d767cd67c2fd1c9bdd0e271d7ad3cb472b075b",
+    "core\\logs\\paper_BREVUSDT.log": "463bc4e588807d6dd96e2a1276e47692b5421b990ef27321ec3df6f237eb587e",
+    "core\\logs\\paper_BTWUSDT.log": "b359ffae68d631903bd1b0c5cc94d101dea9b92c9f7d2be21030c781cb929f25",
+    "core\\logs\\paper_BULLAUSDT.log": "933eaafe6ccbb767f0a30e43d5773360af03992f8477b8e9aa695a8b087a43b5",
+    "core\\logs\\paper_CYBERUSDT.log": "a83005306929f2937192f57786ac78ee783219de9012f62609b5f2367d0d0d4d",
+    "core\\logs\\paper_HUMAUSDT.log": "935e045444a9a1d34972a9955b165b0ca0c03f0bf0edc1d9c5538522070e6789",
+    "core\\logs\\paper_IDOLUSDT.log": "ea6dc13f4d58178b5a2fd3c1b36db52f6cea983f29a17eda12271d930ee8365d",
+    "core\\logs\\paper_INITUSDT.log": "05b3d09e0ef55946b982932a3af7f1380fac20735e787e876c9b5be2f31c9291",
+    "core\\logs\\paper_IRYSUSDT.log": "4184c25fbd729a84693f9b9334c1dc1f17eb9a3482175a1670c9ed66c229b988",
+    "core\\logs\\paper_JCTUSDT.log": "97776f6e7e29c3b8cfc53235a3888373664df3e031b3240cd1d105eeb6858c0e",
+    "core\\logs\\paper_LITUSDT.log": "444515dbb97b91f11ee0b7300471ef0d244e6dbb0ff4e661ad81fb4abb1b4f4d",
+    "core\\logs\\paper_ONUSDT.log": "fc9b1c395e5071e83aa2c3934572445fd91456dd7fae39e7fdcdc4711d1ed0cd",
+    "core\\logs\\paper_PIPPINUSDT.log": "25df0c104c74973e156ae6e55b3c89dcf7f88a7b5e85b9b4a54ca846c11d0f37",
+    "core\\logs\\paper_RAREUSDT.log": "1965b51319963c7e372f478b83083eb326fe9c53f77ae2af009cb1f9390a41be",
+    "core\\logs\\paper_SOPHUSDT.log": "8c3c2ad6c2f87b71c01a9de312a6fd17fd0319776cdc162ed4f14381b60edb70",
+    "history\\archive_AKEUSDT_1794809628_paper_shadow_AKEUSDT.json": "ab65fdfc748e69fc9e0005781f36c044719773c45d23276c28c8b111ee5e817e",
+    "history\\archive_AKEUSDT_1794809628_paper_state_AKEUSDT.json": "d938af48f838a81b86b20a43ac86e18a8047efbf3279ed3a32c33a5df704ed7e",
+    "history\\archive_AKEUSDT_1795202165_paper_shadow_AKEUSDT.json": "1578f7f50c6f5d30141030763884c9a9155c2493a4a81cacd2fddab1348e8a45",
+    "history\\archive_AKEUSDT_1795202165_paper_state_AKEUSDT.json": "7e921b9918d2294964f48ccc300aee6b88a34ae4251f70c243f9d5f35c6d27d0",
+    "history\\archive_AKEUSDT_1795269946_paper_shadow_AKEUSDT.json": "968c62d3000ca88b40e0b41daada6b17b764b2bb0d6f9c745520f08abde958c3",
+    "history\\archive_AKEUSDT_1795269946_paper_state_AKEUSDT.json": "5640ed76a229d3d2351f18bdb8eb00fe581022542c5317b89871bd5f6fef5f04",
+    "history\\archive_ARIAUSDT_1794860029_paper_shadow_ARIAUSDT.json": "95cc015726a8428adc518205974e9b9c3644f88c04c14f32014de7d181960b2f",
+    "history\\archive_ARIAUSDT_1794860029_paper_state_ARIAUSDT.json": "c0f4474be04fb27a96ba62b2827b50e31b7e3b965f76f98d6f24cc3f756097e0",
+    "history\\archive_ARIAUSDT_1794933862_paper_shadow_ARIAUSDT.json": "22dc7b6adf7c5bf9dc6498d8dd2a6213baeb802f1113de648aac9b9d4d6f6479",
+    "history\\archive_ARIAUSDT_1794933862_paper_state_ARIAUSDT.json": "f6a1e4fd608c350259eca094cb4594320e4efb9c09810936aa404888be368b4e",
+    "history\\archive_BULLAUSDT_1794823872_paper_shadow_BULLAUSDT.json": "2bbf565c23cc5e672446bb55430aaa888857291a252d481403be3e1b1ba17925",
+    "history\\archive_BULLAUSDT_1794823872_paper_state_BULLAUSDT.json": "c84a92a56db625243876bb28230d8feaf60352132648ab8c2f11c7709220352f",
+    "history\\archive_BULLAUSDT_1795023616_paper_shadow_BULLAUSDT.json": "bc7429360f4fa3a69e443763bd9b24c1567ba4d3af010701c8bc4aa89dc0573c",
+    "history\\archive_BULLAUSDT_1795023616_paper_state_BULLAUSDT.json": "a2e4c1a79185bbe2f8e25de9c5d986a49ab79c174006ec1c3b20da3cc3e42a1f",
+    "history\\archive_BULLAUSDT_1795070783_paper_shadow_BULLAUSDT.json": "4dfbde110523655159258640dd22dbffce305bead4e0a37f4e10e8064ffc7254",
+    "history\\archive_BULLAUSDT_1795070783_paper_state_BULLAUSDT.json": "dc18fb009f9d38736a0302b9ba8f0a61782a45be7aba50f9ed6c1a24891c9043",
+    "history\\archive_ETHUSDT_1792601562.json": "bb7901f07709e0fd7faf334a04f1bdba123f5cfd993689467a7b9a1dd8a9bb0f",
+    "history\\archive_ETHUSDT_1792602349.json": "1904d55fb377134eacf0809b4b0dc568ac364f623f892f85fc9ddd7d265fb54e",
+    "history\\archive_ETHUSDT_1792602602.json": "9c04e6b861d8a4ba9158a4bb4efdd7917e5d08e81e468153c964f4c1f869d510",
+    "history\\archive_ETHUSDT_1792602691.json": "09e96dd607efa0419aa16a67826fd8d1cf65bdcf80ee9524f4f65179e4774d86",
+    "history\\archive_ETHUSDT_1792602832.json": "40c3b09db57b92e51d1c50bf6e66c20cc3a2248c49b831f4924bb2e79031aae3",
+    "history\\archive_ETHUSDT_1792602976.json": "aa3713c96a6dd31b0b09b9423ad0fac00f5232fdc7f6f8628fa7c5daae940b10",
+    "history\\archive_ETHUSDT_1792603937.json": "c66726a27601ca0bc760465b98afcfb8788f21909dd6377b6bafc66a90480b1d",
+    "history\\archive_ETHUSDT_1792613466.json": "190b63e6ddfef38e14df6d3d743f443c3bc5954fa267f1730edba54cd63c778c",
+    "history\\archive_ETHUSDT_1792614342.json": "7824c7f4335f552ea666faac58dbc7fd1b511b28b0e65103346993f73c8b4810",
+    "history\\archive_ETHUSDT_1792614619.json": "3461e24cac0f69b2aa7ae649320cb39e4b927b9668bfd674ff2353ab6631b8bc",
+    "history\\archive_ETHUSDT_1792615249.json": "748269342e27c768114347dd6b14ba9b8cd790fcdee744a52ee4c40182c3a07d",
+    "history\\archive_ETHUSDT_1792616478.json": "847ade0aaaf926380523caa12579ddfed78f30762ea8c0a22c71297a8d534c83",
+    "history\\archive_ETHUSDT_1792617237.json": "d1d8746640877d2607b55e7c9a806af470599d47a6445c6c665393617901c827",
+    "history\\archive_ETHUSDT_1792617831.json": "dfd1691a5d445355b240fb82f60a4c20a138549f831f6f7f52c0b7ac4153871b",
+    "history\\archive_ETHUSDT_1792625562.json": "d6082ee25d628b21944554e1e5264f37fecc77fe9f6ecaf57ac1ac8db75c77fc",
+    "history\\archive_ETHUSDT_1792626319.json": "35867adac4ebfcea849bf8796681bc109b3cca30b4d4da16b1110426fa92fc8e",
+    "history\\archive_ETHUSDT_1792626400.json": "f0eba642703cdf7d5a8d96c0a2f6e2daa58986a6fc081864110499642b97ba11",
+    "history\\archive_ETHUSDT_1792627164.json": "4df1206d4bdb73cf59fdab913e2af37cf59c74581839f62e3a1600b36e64f43d",
+    "history\\archive_ETHUSDT_1792628319.json": "e3aaa8638365cecdbb405b91745ce5dd955647e71ae2aa0257b9e000abbcbac6",
+    "history\\archive_ETHUSDT_1792628740.json": "071e3a7823666cc16dffb7641d545f6a72db31f8b2b0e3f0158306ef9850bf84",
+    "history\\archive_ETHUSDT_1792629283.json": "64a6c6d5006b72452ca68339f4e413cf7293cbf5dedef8681e13c8e6949127e8",
+    "history\\archive_ETHUSDT_1792629739.json": "dc22b0735ed9d16551f95dc4593138aed7c103c9d18825bd34117f0a41f7e64c",
+    "history\\archive_ETHUSDT_1792629906.json": "005b3416c049f5b6a8d46e1cf8803f0fd6bdf68a7ef63eb316fba49e7b3eec32",
+    "history\\archive_ETHUSDT_1792630319.json": "d24a880ef0c185aff36d565c00d84927ffc26014ecb71d18c1536e6772311aee",
+    "history\\archive_ETHUSDT_1792630976.json": "64a380aaa44f3d4687ab22362aea7b99234ae0ebb5b34d957004c42dfa751bac",
+    "history\\archive_ETHUSDT_1792631962.json": "11fe82cf2ad205deb2b34641102a3d8786e28b3be654839879719597eaed31eb",
+    "history\\archive_ETHUSDT_1792632707.json": "7a33b82680ae4eb63c9f8f01fed5da69ea0ad46a226246627c767f0bb0343d49",
+    "history\\archive_ETHUSDT_1792633266.json": "886ed02ce9fbeeae63c3c327eeb10338dd8942b38ad10ad71e6b865a5829c81d",
+    "history\\archive_ETHUSDT_1792634812.json": "028be565d79ec12d77c1f83856c77167a04d21f6e988fa1c940686fee6b9c541",
+    "history\\archive_ETHUSDT_1792635541.json": "c3f331523974701025c323b992b852c8223aa2f917f7f5ed13e65a2e7464fbb5",
+    "history\\archive_ETHUSDT_1792636024.json": "e565a16577d63b908631f8ffd0260b1e81551846afbe31990008bb12383492c1",
+    "history\\archive_ETHUSDT_1792636585.json": "1a6c791a33a507c7ad1f0364aa55d1fbda9ba028262d7dfc3204f10874a0d339",
+    "history\\archive_ETHUSDT_1792752658.json": "99d8c63f5ac554efbc4e0562464e9094cc50b5c010595f4741405263405f7207",
+    "history\\archive_ETHUSDT_1792752756.json": "54e2dc937161890a3d27d68f41ec1034c3686c44c863bd4d29053ed71627568b",
+    "history\\archive_ETHUSDT_1792752885.json": "f2c4583bd1ca745fa4d369a008f5efd14a69c4eba3e91eb490f9fc8e944a4f8e",
+    "history\\archive_ETHUSDT_1792788326.json": "1441f7c5c320173b3a3d69f887a6f6b911550a8f7ae61e2df46a869f5b4335ce",
+    "history\\archive_ETHUSDT_1792789332.json": "2dd07c0c6a9080d75a8606709a1561eb5c7be604ecfe1034a282d6f6878f82b6",
+    "history\\archive_ETHUSDT_1792796344.json": "e36a2e95e05b962b21d30091f0b814c8e5e63142bcf8dfb462c08fb20417bbc6",
+    "history\\archive_ETHUSDT_1792797215.json": "98ad99ea42bfa60a6e79251c0268f1d014f34573c5169de5c45aa24afc4cce79",
+    "history\\archive_ETHUSDT_1792798092.json": "f67acce7f17e2f5be4316c96ab3fe02c94d4d0f2caf10d5fd3d358b32fc7ed5a",
+    "history\\archive_ETHUSDT_1792798471.json": "44ed336f5fc58436e91291079075711b5555027ec731a8917a70bdfc735a4f6c",
+    "history\\archive_HUMAUSDT_1795200562_paper_shadow_HUMAUSDT.json": "c6faee2e9eabe9c13cf5e10a1d06d8d8a074718ee628fce16f592577322e6e6b",
+    "history\\archive_HUMAUSDT_1795200562_paper_state_HUMAUSDT.json": "73c280aec170a1604c79cb833ec4d6a4a3dac439f18ea5cfb0edb5aaeee5e2e2",
+    "history\\archive_PIPPINUSDT_1795171994_paper_shadow_PIPPINUSDT.json": "3992407c5577e54e9257664df29f093b856656458da3d2355eac5133d8ddd732",
+    "history\\archive_PIPPINUSDT_1795171994_paper_state_PIPPINUSDT.json": "1e98ab57f2d8256f39f8acc19c105dfbf2c77b456c9817b630f034115f53b8de",
+    "history\\archive_SOPHUSDT_1794812178_paper_shadow_SOPHUSDT.json": "cd7c2bc4ae236bc124a0ccc49ce78915188f77d0c495c55c9a5785032c1a838b",
+    "history\\archive_SOPHUSDT_1794812178_paper_state_SOPHUSDT.json": "e302995b69a17807b1a66101ce282b03d91711b09c3c4c1e91ea35ffcc893e33",
+    "history\\archive_TUSDT_1792911793.json": "d48af6accd035db4a09512d3c13f7edb6c744517a4e995db238f1617dea9a979",
+    "history\\paper_close_AKEUSDT_1794785728.5034082.json": "24eb9ebbf2d73388100700bec4bbe0ae0a995b8e7ca666a3ca53b0dc9eed361b",
+    "history\\paper_close_AKEUSDT_1794809628.3460073.json": "8afcdaf3077025517e833ccf9a4a8d08838cc828cacb0537054759f6280f559d",
+    "history\\paper_close_AKEUSDT_1795202165.181995.json": "411d156a9696a4af3bcbda155bf1ec81f1e22560c8db6c0ba2e1dcfe39a80574",
+    "history\\paper_close_ARIAUSDT_1794809629.1358938.json": "39ac78869248b693924a046cec3c01cff3c96e89046865236c3554f59d589093",
+    "history\\paper_close_ARIAUSDT_1794860029.8101025.json": "d02a6e610c946efd322dfe065c675ba9691ad856524c4a065f298fab3a0fe850",
+    "history\\paper_close_ARIAUSDT_1794933862.1555264.json": "c0fb1fe56dd4e4f3b857954ffc33e675b05624c7b23f2023cbf104339868e331",
+    "history\\paper_close_BLESSUSDT_1795076343.5451918.json": "dda1ece4607bbb53b92dd04635f6ded3f31a624e96cd4a7895516a4983b662c9",
+    "history\\paper_close_BTWUSDT_1794945388.7500002.json": "39bacd2f21db1f98b3363a554a2104f65c45dbed479cd9e9a9e27f389a6a8345",
+    "history\\paper_close_BULLAUSDT_1794785726.4966419.json": "a4d8944ec0d5617fb75a4efdaa43237e5adeaf2ec431091a38a0a105173baa38",
+    "history\\paper_close_BULLAUSDT_1794823872.5173597.json": "86e38b0ca080302e9fb9296c2b50145de4c3711ace3832a98f457f21eb747ac7",
+    "history\\paper_close_BULLAUSDT_1795023616.420917.json": "eaeab54c5cf96fc55d64c18b031e61c9ff385e849b37b54bab9e4c48b861a332",
+    "history\\paper_close_HUMAUSDT_1794870717.697143.json": "ccb732098630a15424cea52e8a7c124b68f4197a9f2b59514e573b79586016f0",
+    "history\\paper_close_IDOLUSDT_1794785727.4996781.json": "90d15847b717df742404d2ad63056fe96134bf4cda7e27b0382a239bd2ba8f25",
+    "history\\paper_close_INITUSDT_1794785730.5487902.json": "f422cb65c39d4c9b643d5afb023e5339e0335b92341f291781a6c007d29be620",
+    "history\\paper_close_JCTUSDT_1794785729.5014477.json": "b6fcf35edbaaa70f1f4dc478e5d3040a3f8cfb27a34988de116d690ed0b191e7",
+    "history\\paper_close_LITUSDT_1794841379.5160735.json": "0f9b2d70e73d42f5c7492d79dfa154d9a1d2595d65825b13c45d6814b42c095f",
+    "history\\paper_close_ONUSDT_1794925134.889434.json": "3915593fcd6d862a827480e03ffa8337652a0ebeba7bfceced5c1523e38bc289",
+    "history\\paper_close_PIPPINUSDT_1795161960.1585472.json": "d0fa71d3be324680a4eb12503eccb5c7460d8c3331e97bb8f3304bd3f6c94436",
+    "history\\paper_close_RAREUSDT_1794889334.9539711.json": "a813d0546d927b6c3c2097d3824f44def75af4dfc03e3b2e629cc0a979cc1215",
+    "history\\paper_close_SOPHUSDT_1794785725.5663521.json": "134901c18bc38ccfe1ec5328989bd9e0d689c997078945b49375dd9f8c789bfb",
+    "history\\paper_close_SOPHUSDT_1794812178.0861351.json": "b84951eadbfe651f75c346476eb8df732f1b2b1af0796a5ff4a6e6ddf7370529",
+    "reports\\paper_swarm_continuous\\observations.sqlite": "39881b1315a31831bddc2c1ed87ce1acf3fddad532d66750dc09a08664e4e830"
+  }
+}

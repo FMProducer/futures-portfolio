@@ -5,6 +5,31 @@ import math
 import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+try:
+    from .log_reader import LOCK, appended_lines
+except ImportError:
+    from log_reader import LOCK, appended_lines
+
+
+def _log_samples(path):
+    with LOCK:
+        try:
+            state, reset, lines, pending = appended_lines(path)
+        except OSError:
+            return []
+        samples = state.setdefault("samples", [])
+        def parse(line):
+            match = re.search(r"(?:Heartbeat: TPV=|Rebalance #\d+ complete\. TPV: )([\d.-]+)", line)
+            if match:
+                try:
+                    stamp = datetime.fromisoformat(line[:19]).replace(
+                        tzinfo=timezone(timedelta(hours=2))).timestamp()
+                    return stamp, float(match[1])
+                except ValueError:
+                    pass
+        samples.extend(point for line in lines if (point := parse(line)) is not None)
+        partial = parse(pending.decode("utf-8", errors="replace")) if pending else None
+        return samples + ([partial] if partial is not None else [])
 
 
 def reconstruct(root, running_names=()):
@@ -111,24 +136,12 @@ def reconstruct(root, running_names=()):
     for ticker in {r["ticker"] for r in rows}:
         sessions = sorted((r for r in rows if r["ticker"] == ticker), key=lambda r: r["started_at"])
         log = root / "core/logs" / f"paper_{ticker}.log"
-        try:
-            lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
-        except OSError:
-            lines = []
         index = 0
-        for line in lines:
-            match = re.search(r"(?:Heartbeat: TPV=|Rebalance #\d+ complete\. TPV: )([\d.-]+)", line)
-            if not match or not sessions:
-                continue
-            try:
-                stamp = datetime.strptime(line[:19], "%Y-%m-%d %H:%M:%S").replace(
-                    tzinfo=timezone(timedelta(hours=2))).timestamp()
-            except ValueError:
-                continue
+        for stamp, value in _log_samples(log):
             while index + 1 < len(sessions) and stamp >= int(sessions[index + 1]["started_at"]):
                 index += 1
             if stamp >= int(sessions[index]["started_at"]):
-                sessions[index]["samples"].append((stamp, float(match[1])))
+                sessions[index]["samples"].append((stamp, value))
         for row in sessions:
             # This is a sampled drawdown lower bound, not a continuous account curve.
             peak, dd = row["initial"], 0.0

@@ -201,9 +201,9 @@ def create_app():
         supervisor_ok = sup is not None and sup.get("status") == "online"
 
         # Check real bots heartbeat (max 1 stale allowed)
-        from data_collector import get_system_overview
-        overview = get_system_overview()
-        stale_count = sum(1 for b in overview.get("real_bots", []) if not b.get("heartbeat_ok", True))
+        from data_collector import _find_state_files, _get_ticker_summary
+        real_bots = [_get_ticker_summary(ticker, "real") for ticker in _find_state_files("real")]
+        stale_count = sum(1 for b in real_bots if not b.get("heartbeat_ok", True))
         bots_ok = stale_count <= 1
 
         status = "ok" if (supervisor_ok and bots_ok) else "degraded"
@@ -214,7 +214,7 @@ def create_app():
             "timestamp": now.isoformat(),
             "supervisor": "online" if supervisor_ok else "offline",
             "stale_bots": stale_count,
-            "real_bots": len(overview.get("real_bots", [])),
+            "real_bots": len(real_bots),
         }), code
 
     # ─── API endpoints ─────────────────────────────────────────
