@@ -1,5 +1,14 @@
 CHANGELOG — Prosperous BOT Futures Portfolio
 
+## 2026-11-22 — Minute finalization and reusable three-mode parity CLI
+
+- Defer minute ingestion for 5000 ms after the close boundary, preserving decision state and risk policy. Add boundary and real-ingestion regressions and adapt the offline audit caller. This delay is not a candle-finality guarantee.
+- Add scripts/check_financial_parity.py: choose any local USDT ticker history and inclusive UTC interval with --data/--start/--end/--config; freeze inputs, use all selected rows (including histories longer than 365 days), run actual BACKTEST/PAPER/SIMULATED REAL sequentially and write a comparison table and exit verdict. Enable the real 5000 ms margin with premature/valid virtual polls. Never overwrite a prior result directory.
+- Keep financial parity separate from strict CASH/VIRTUAL checks: exit 0 all checks pass, exit 1 parity/execution failure, exit 2 financial parity with invariant failure. Funding policy is preserved; signed_actual requires local rate/mark observations. No live trading or download. See docs/FINANCIAL_PARITY.md.
+- Full BTW history: 242886 rows, identical policy and 1000 bot capital plus separate 5000 reserve; all modes Net +5757.085948 USDT, ending bot TPV 6757.085948, 626 cycles/827 fills/111 stops, curve errors below 1e-11. Financial PASS; overall FAIL due to unresolved precision/provenance of free CASH. Reject the unsupported purely-harness-artifact claim; full-run exit code was not captured. See docs/BTW_PARITY_20261122.md for complete incident, evidence and limitations.
+- Final focused verification: 46 tests passed (exit 0) with --ignore-safety for explicitly isolated offline tests after the PM2-status preflight returned EPERM. Actual BTW CLI smoke: 60 candles, 2026-06-04 14:15 through 15:14 UTC; three-mode and native-prefix PASS, Net -3.84538935 USDT, maximum equity difference 1.1368683772161603e-13, CLI exit 0. No full annual rerun for the new CLI.
+- The historical full suite passed 2190 tests plus 26 subtests at 90.02% before the later virtual-clock/CLI changes; it is not a full-suite certification of this final commit. Workspace changes are not deployed to runtime.
+
 ## 2026-11-21 — Close confirmed SQLite allocation and service connections
 
 - Close seven demonstrated connection-opening sites in `core/real_allocation.py` (claim, validate and both retire paths), `rebalance/paper.py` (database-type probe), `supervisor/supervisor_service.py` and `dashboard/swarm_curve.py`. Preserve transaction handling and the original PAPER keeper initialization/close lifecycle.

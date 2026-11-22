@@ -115,6 +115,8 @@ async def run_case(directory):
     if (directory/'status.json').exists():
         raise ValueError('Preserve the existing run; use a new case directory')
     info = json.loads((directory/'case.json').read_text())
+    virtual_clock = info.get('virtual_clock', False)
+    days = max(1, (info['bars'] + 1439) // 1440)
     config_path, data = directory/'config.json', Path(info['data_path'])
     config = json.loads(config_path.read_text())
     rows = json.loads(Path(info['rates_path']).read_text()) if info['rates_path'] else None
@@ -124,9 +126,9 @@ async def run_case(directory):
     try:
         if book:
             with backtest_funding_bridge(book):
-                b = await run_backtest(str(config_path),str(data.parent),ticker_override=info['ticker'],days=365,quiet=True)
+                b = await run_backtest(str(config_path),str(data.parent),ticker_override=info['ticker'],days=days,quiet=True)
         else:
-            b = await run_backtest(str(config_path),str(data.parent),ticker_override=info['ticker'],days=365,quiet=True)
+            b = await run_backtest(str(config_path),str(data.parent),ticker_override=info['ticker'],days=days,quiet=True)
         assert b is not None
         write(directory/'backtest.json',b)
         observations = book.observations if book else []
@@ -138,7 +140,7 @@ async def run_case(directory):
             write(directory/'backtest_control_events.json',events)
             write(directory/'backtest_control_config.json',dict(config,funding_scenario=str(directory/'backtest_control_events.json')))
             control = await run_backtest(str(directory/'backtest_control_config.json'),str(data.parent),
-                                          ticker_override=info['ticker'],days=365,quiet=True)
+                                          ticker_override=info['ticker'],days=days,quiet=True)
             assert control and control['equity_curve']==b['equity_curve'] and control['fills']==b['fills']
             write(directory/'backtest_control.json',dict(status='EXACT_MATCH',bars=len(control['equity_curve'])))
     except BaseException:
@@ -149,9 +151,9 @@ async def run_case(directory):
         print(f'{info["ticker"]} {info["mode"]}: {mode} starting',flush=True)
         try:
             if mode=='paper':
-                value = await paper_replay(config_path,data,info['bars'],memory_reserve_store=True,funding_rates=schedule())
+                value = await paper_replay(config_path,data,info['bars'],memory_reserve_store=True,funding_rates=schedule(),virtual_clock=virtual_clock)
             else:
-                value = await real_replay(config_path,data,info['bars'],archive_applied=True,memory_reserve_store=True,funding_rates=schedule())
+                value = await real_replay(config_path,data,info['bars'],archive_applied=True,memory_reserve_store=True,funding_rates=schedule(),virtual_clock=virtual_clock)
             save_result(directory,mode,value)
         except BaseException:
             write(directory/f'{mode}_error.json',dict(error=traceback.format_exc()))
@@ -165,10 +167,10 @@ async def run_case(directory):
         for mode in ('paper','real'):
             if mode=='paper':
                 value = await paper_replay(prefix/'config.json',prefix/data.name,prefix_count,
-                                          native_persistence=True,funding_rates=schedule())
+                                           native_persistence=True,funding_rates=schedule(),virtual_clock=virtual_clock)
             else:
                 value = await real_replay(prefix/'config.json',prefix/data.name,prefix_count,archive_applied=True,
-                                         native_persistence=True,funding_rates=schedule())
+                                          native_persistence=True,funding_rates=schedule(),virtual_clock=virtual_clock)
             reference_path = directory/f'{mode}_curve.json'
             if reference_path.exists():
                 assert max(abs(a-b) for a,b in zip(value['_curve'],json.loads(reference_path.read_text())[:prefix_count])) < 1e-8

@@ -32,8 +32,9 @@ class Exchange:
     api_key, testnet, client = 'offline-replay-no-exchange-credentials', False, True
 
     def __init__(self, ticker, prices, stamps, index, capital, reserve, targets, archive_applied=False,
-                 funding_model='legacy_constant', funding_rates=None):
+                 funding_model='legacy_constant', funding_rates=None, clock=None):
         self.ticker, self.prices, self.stamps, self.index = ticker, prices, stamps, index
+        self.clock = clock
         self.wallet = D(str(capital)) + D(str(reserve))
         self.targets = targets
         self.archive_applied = archive_applied
@@ -109,7 +110,7 @@ class Exchange:
     async def get_order_book(self, *args, **kwargs):
         return dict(bids=[[str(self.price()*D('.9995')), '1000000000000']],
                     asks=[[str(self.price()*D('1.0005')), '1000000000000']],
-                    _fetched_at=(int(self.stamps[self.index[0]])+60000)/1000)
+                    _fetched_at=self.clock() if self.clock else (int(self.stamps[self.index[0]])+60000)/1000)
 
     async def get_futures_klines(self, symbol, interval, limit):
         return [[int(self.stamps[j]), float(self.prices[j]), float(self.prices[j]), float(self.prices[j]),
@@ -150,7 +151,7 @@ class ReplayLogger(Quiet):
 
 
 async def replay(config_path, feather, count, archive_applied=False, memory_reserve_store=False, native_persistence=False,
-                 funding_rates=None):
+                 funding_rates=None, virtual_clock=False):
     if native_persistence and memory_reserve_store:
         raise ValueError('Native persistence cannot use a memory reserve store')
     config = json.loads(config_path.read_text())
@@ -167,7 +168,8 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
     portfolio = config['portfolios'][0]
     capital = portfolio['initial_capital']
     exchange = Exchange(ticker, prices, stamps, index, capital, portfolio['cash_reserve_usdt'],
-                        portfolio['targets'], archive_applied, config.get('funding_model'), funding_rates)
+                        portfolio['targets'], archive_applied, config.get('funding_model'), funding_rates,
+                        clock=lambda: current())
     totals = dict(cycles=0, stops=0)
     session_start = [0]
     runtime_logger = ReplayLogger()
@@ -175,10 +177,14 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
     docs, sessions, archived = {}, [], {}
     trace = []
     real_sleep = asyncio.sleep
+    poll_phase = [0]
+    poll_counts = dict(premature=0, valid=0)
+    skipped = [0]
+    clock_offsets = (1000, 6000) if virtual_clock else (0, 0)
     from core import storage
     native_boundary = funding.save_funding_boundary
 
-    def current(): return (int(stamps[min(index[0], count-1)])+60000)/1000
+    def current(): return (int(stamps[min(index[0], count-1)])+60000+clock_offsets[poll_phase[0]])/1000
 
     async def load(path, default=None):
         if native_persistence and str(path) in docs:
@@ -204,6 +210,20 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
 
     async def noop(*args, **kwargs): pass
 
+    if virtual_clock:
+        from core import backtest_rules
+        original_minutes = backtest_rules.strategy_minutes
+
+        async def strategy_minutes_checked(connector, ticker, state, config, portfolio, now_ms, wallet=None, paper_mode=True):
+            premature = int(now_ms) % 60000 < backtest_rules.MINUTE_FINALIZE_MARGIN_MS
+            before = (deepcopy(state), deepcopy(wallet)) if premature else None
+            result = await original_minutes(connector, ticker, state, config, portfolio, now_ms, wallet, paper_mode)
+            if premature:
+                if result or before != (state, wallet):
+                    raise ReplayFailure(f'Premature poll mutated decision state at bar {index[0]}')
+            poll_counts['premature' if premature else 'valid'] += 1
+            return result
+
     with (nullcontext(tempfile.mkdtemp(prefix='native-real-',dir=config_path.parent)) if native_persistence
           else tempfile.TemporaryDirectory(prefix='agt-real-replay-', ignore_cleanup_errors=True)) as temporary:
         root = Path(temporary)
@@ -225,6 +245,11 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
             if Path(sys._getframe(1).f_code.co_filename).resolve() == ROOT/'core/executor.py':
                 await real_sleep(0)
                 return
+            if virtual_clock and poll_phase[0] == 0:
+                poll_phase[0] = 1
+                await real_sleep(0)
+                return
+            if virtual_clock: poll_phase[0] = 0
             if docs[strategy].get('strategy_bar_ms') != int(stamps[index[0]]):
                 if seconds in (.3, .5, 1):
                     await real_sleep(0)
@@ -253,8 +278,10 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
         runtime_config_path=root/'config.json' if native_persistence else config_path
         with (nullcontext() if native_persistence else patch('core.funding.atomic_save_json', new=memory_atomic)), \
              isolated_reserve_store(config, memory_reserve_store, root if native_persistence else None) as settle, patch('core.funding_store.settle', new=settle), \
-             patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
-             patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), \
+               patch('core.main.time.time', new=current), patch('core.main.asyncio.sleep', new=advance), \
+               (nullcontext() if virtual_clock else patch('core.backtest_rules.MINUTE_FINALIZE_MARGIN_MS', 0)), \
+               (patch('core.backtest_rules.strategy_minutes', new=strategy_minutes_checked) if virtual_clock else nullcontext()), \
+               patch('core.main.TelegramNotifier', new=lambda *a, **kw: Notifier()), \
              patch('core.main.load_json', new=load), patch('core.main.save_json', new=save), \
              patch('core.main.safe_load_json_sync', new=storage.safe_load_json_sync if native_persistence else lambda *a, **kw: config), \
              patch('core.storage.update_json_sync', new=update_config), \
@@ -284,16 +311,26 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
                 assert all(q == 0 for q, _ in exchange.positions.values())
                 finish()
                 totals['stops'] += 1
+                if virtual_clock: poll_phase[0] = 0
                 start = index[0]
                 target = max(start+1, int(np.searchsorted(stamps, state['restart_not_before']*1000)))
+                skipped[0] += target-start-1
                 curve[start:min(target, count)] = state['last_tpv']
                 index[0] = target
                 if target >= count or wallet['balance'] < 5:
+                    skipped[0] += count-target
                     curve[start:] = state['last_tpv']
                     break
                 await namespace['reset_bot_state_files'](ticker, False, config, capital_override=wallet['balance'])
                 session_start[0] = index[0]
         assert np.all(np.isfinite(curve))
+        clock = None
+        if virtual_clock:
+            from core import backtest_rules
+            processed = count-skipped[0]
+            assert poll_counts['premature'] == poll_counts['valid'] == processed, dict(poll_counts, processed=processed)
+            clock = dict(margin_ms=backtest_rules.MINUTE_FINALIZE_MARGIN_MS, offsets_ms=list(clock_offsets),
+                         file_rows=count, processed_bars=processed, skipped_bars=skipped[0], **poll_counts)
         peak = np.maximum(np.maximum.accumulate(curve), capital)
         return dict(totals, ticker=ticker, mode='SIMULATED_REAL', bars=count, fills=len(exchange.fills),
             funding=float(-sum(D(row['income']) for row in exchange.income)),
@@ -313,13 +350,13 @@ async def replay(config_path, feather, count, archive_applied=False, memory_rese
             _funding=exchange.income, _funding_receipts=list(archived.values()), _trace=trace,
             final_state=docs[strategy], final_wallet=docs[wallet_path],
             exchange_account_wallet=str(exchange.wallet),
-            funding_rate_observations=funding_rates.observations if funding_rates else [])
+            funding_rate_observations=funding_rates.observations if funding_rates else [], _clock=clock)
 
 
 if __name__ == '__main__':
     result = asyncio.run(replay(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]), '--archive-applied' in sys.argv[5:], '--memory-reserve-store' in sys.argv[5:], '--native-persistence' in sys.argv[5:]))
     output = Path(sys.argv[4])
-    for key in ('_curve', '_fills', '_sessions', '_funding', '_funding_receipts', '_trace'):
+    for key in ('_curve', '_fills', '_sessions', '_funding', '_funding_receipts', '_trace', '_clock'):
         output.with_name(output.stem+key+'.json').write_text(json.dumps(result.pop(key)), encoding='utf-8')
     output.write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result))

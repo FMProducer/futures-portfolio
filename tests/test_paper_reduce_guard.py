@@ -243,6 +243,7 @@ async def test_real_executor_main_storage_reload_and_receipt_retry(tmp_path):
     with patch.object(main, "PortfolioExecutor", return_value=executor), \
          patch.object(main, "PortfolioCalculator", side_effect=calculator), \
          patch.object(main, "TelegramNotifier", return_value=notifier), \
+         patch.object(main.backtest_rules, "MINUTE_FINALIZE_MARGIN_MS", 0), \
          patch("asyncio.sleep", side_effect=EndCycle):
         with pytest.raises(EndCycle):
             await main.rebalance_loop(connector(), str(config_path), str(state_path), str(wallet_path),
