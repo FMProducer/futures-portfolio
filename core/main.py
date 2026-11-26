@@ -1650,10 +1650,10 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
 
                 h_msg = (
                     f"Heartbeat: TPV={tpv_active:.2f}{res_str} | PnL={total_pnl:+.2f} | {base_ticker}={price:.6g} | "
-                    f"L:{l_p:.1f}% [{get_dev(Decimal(str(l_p))/100, l_target):+.1f}%] {{{v_l:+.2f}$}} | "
-                    f"S:{s_p:.1f}% [{get_dev(Decimal(str(s_p))/100, s_target):+.1f}%] {{{v_s:+.2f}$}} | "
-                    f"V:{v_p:.1f}% [{get_dev(Decimal(str(v_p))/100, v_target):+.1f}%] {{{v_v:+.2f}$}} | "
-                    f"C:{c_p:.1f}% {{{v_c:.2f}$}} | Bar={strategy_bar_ms}"
+                    f"L:{l_p:.2f}% [{get_dev(Decimal(str(l_p))/100, l_target):+.1f}%] {{{v_l:+.2f}$}} | "
+                    f"S:{s_p:.2f}% [{get_dev(Decimal(str(s_p))/100, s_target):+.1f}%] {{{v_s:+.2f}$}} | "
+                    f"V:{v_p:.2f}% [{get_dev(Decimal(str(v_p))/100, v_target):+.1f}%] {{{v_v:+.2f}$}} | "
+                    f"C:{c_p:.2f}% {{{v_c:.2f}$}} | Bar={strategy_bar_ms}"
                 )
                 logger.info(h_msg)
 
@@ -1677,13 +1677,7 @@ async def rebalance_loop(connector: BinanceConnector, config_path: str, state_fi
                             )
 
                     delta_threshold = float(portfolio_cfg.get("delta_limit_threshold", 0.0) or 0.0)
-                    delta_bias = None
-                    if delta_threshold > 0:
-                        ql = float(abs(positions.get(f"{base_ticker}_LONG", 0.0)))
-                        qs = float(abs(positions.get(f"{base_ticker}_SHORT", 0.0)))
-                        max_q = max(ql, qs)
-                        if max_q > 0 and abs(ql - qs) / max_q > delta_threshold:
-                            delta_bias = "BASE_LONG" if ql > qs else "BASE_SHORT"
+                    delta_bias = calc.nav_bias_side(targets, delta_threshold)
                     preferred = ("BASE_" + state["rebalance_preferred_side"]) if state.get("rebalance_preferred_side") else None
                     fused_actions = select_tick_actions(fused_actions, initial_build, preferred, delta_bias_side=delta_bias)
                     if fused_actions:

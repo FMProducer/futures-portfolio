@@ -64,7 +64,7 @@ async def test_failed_reduction_creates_no_buying_budget(status):
 
 
 @pytest.mark.asyncio
-async def test_partial_reduction_credits_actual_released_margin_and_net_profit():
+async def test_partial_reduction_proceeds_are_usable_on_the_next_tick():
     executor = setup_executor(1300)
     original = executor._execute_single_action
     async def partial(a, *args):
@@ -76,11 +76,14 @@ async def test_partial_reduction_credits_actual_released_margin_and_net_profit()
         results = await executor.execute_actions([action('SHORT', 1000, True), action()],
             1300, True, CFG, {'ZECUSDT': .001},
             dict(PAPER, profit_budget={'balance': '0', 'receipts': {}, 'blocked': False}), cash_budget=D('0'))
-    actual_proceeds = D('3.988') - D('.052')
-    fill = results[1]
+    assert results[0]['status'] == 'SUCCESS' and results[1]['status'] == 'SKIPPED'
+    actual_proceeds = D('3.988') - D('.052') + D('.1') * D(str(PAPER['short_entry_price'])) / 7
+    next_state = dict(PAPER, balance=D('1000') + D('3.988') - D('.052'),
+                      positions=dict(PAPER['positions'], ZECUSDT_SHORT=.9))
+    fill, = await executor.execute_actions([action()], 1300, True, CFG, {'ZECUSDT': .001},
+                                             next_state, cash_budget=actual_proceeds)
     assert fill['status'] == 'SUCCESS'
     cost = D(str(fill['qty'])) * D(str(fill['price'])) / 7 + D(str(fill['commission']))
-    actual_proceeds += D('.1') * D(str(PAPER['short_entry_price'])) / 7
     assert cost <= actual_proceeds
 
 

@@ -113,7 +113,8 @@ class PortfolioCalculator:
 
         # [SSOT] TPV = Доступный баланс (кэш) + PnL фьючерсов + Рыночная стоимость виртуальной ноги
         # real_equity должен передаваться как "Чистый кэш" (Wallet Balance - virt_debt)
-        self.tpv = self.real_equity + mtm_pnl_l + mtm_pnl_s + self.virt_value
+        self.raw_tpv = self.real_equity + mtm_pnl_l + mtm_pnl_s + self.virt_value
+        self.tpv = self.raw_tpv
 
         if self.tpv == 0:
             self.tpv = Decimal('1e-9')
@@ -154,7 +155,19 @@ class PortfolioCalculator:
         total_pct = self.share_long_pct + self.share_short_pct + self.share_virt_pct + self.share_cash_pct
         if total_pct != Decimal('100.00'):
             diff = Decimal('100.00') - total_pct
-            self.share_cash_pct += diff # Adjust cash by the sub-penny difference
+            # Apply rounding to the largest weight; retain the existing zero-equity cash convention.
+            legs = ("share_long_pct", "share_short_pct", "share_virt_pct", "share_cash_pct")
+            largest = max(legs, key=lambda leg: abs(getattr(self, leg))) if self.raw_tpv else "share_cash_pct"
+            setattr(self, largest, getattr(self, largest) + diff)
+
+    def nav_bias_side(self, targets, threshold):
+        if threshold <= 0 or self.raw_tpv <= 0:
+            return None
+        long_gap = self.share_long_raw - Decimal(str(targets["BASE_LONG"]["share"]))
+        short_gap = self.share_short_raw - Decimal(str(targets["BASE_SHORT"]["share"]))
+        if abs(long_gap - short_gap) <= Decimal(str(threshold)):
+            return None
+        return "BASE_LONG" if long_gap > short_gap else "BASE_SHORT"
 
     def calculate_rebalance(self, targets: Dict[str, Dict], threshold_surplus: float, threshold_deficit: float, current_equity: Decimal, ignore_limits: bool = False, allow_surplus_sell: bool = True, force_block: bool = False, fuse_enabled: bool = True, share_trail: Dict = None, trail_distance: float = 0.0, share_basis_scale: float = 1.0) -> Dict:
         """
@@ -214,13 +227,14 @@ class PortfolioCalculator:
         share_surplus = Decimal(str(threshold_surplus)) * scale
         share_deficit = Decimal(str(threshold_deficit)) * scale
         share_distance = Decimal(str(trail_distance)) * scale
+        valid_share_basis = self.raw_tpv > 0 and current_equity > 0
 
         # Trailing observation persists during WAIT/blocks: step before any
         # early return, readiness flags are only used by the action loop.
         # A flat leg falls back to baseline thresholds (None flag): trailing
         # governs existing positions only and must never block the build.
         trail_flags: Optional[Dict[str, Optional[Tuple[bool, bool]]]] = None
-        if share_trail is not None and not ignore_limits and Decimal(str(trail_distance)) > 0:
+        if valid_share_basis and share_trail is not None and not ignore_limits and share_distance > 0:
             trail_flags = {}
             flat_long = abs(self.positions.get(f"{self.base_ticker}_LONG", Decimal('0'))) <= 0
             flat_short = abs(self.positions.get(f"{self.base_ticker}_SHORT", Decimal('0'))) <= 0
@@ -234,8 +248,8 @@ class PortfolioCalculator:
                 )
                 trail_flags[key] = None if flat else (red_ready, add_ready)
 
-        if force_block:
-            # Net Move Guard active — block ALL actions during fast price movement
+        if force_block or not valid_share_basis:
+            # Signed equity is valid for accounting, but cannot define allocation orders.
             return {
                 "actions": [],
                 "available_funds": float(max(Decimal('0'), self.val_cash)),
@@ -316,7 +330,7 @@ class PortfolioCalculator:
                 value = self.val_long if key == "BASE_LONG" else self.val_short
                 diff_usdt = (target_share * self.tpv - value) / unit_value * self.price
 
-            if abs(diff_usdt) < Decimal('1.0'): # Fundamental rounding filter
+            if abs(diff_usdt) < Decimal('1.0') or diff_share * diff_usdt >= 0:
                 continue
 
             action = {
@@ -330,7 +344,7 @@ class PortfolioCalculator:
                 "approved_usdt": float(abs(diff_usdt)),
                 "diff_equity": float(diff_equity),
                 "leverage": float(lev),
-                "is_reduction": diff_usdt < 0
+                "is_reduction": diff_share > 0
             }
 
             if action["is_reduction"]:

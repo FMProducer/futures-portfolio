@@ -1203,12 +1203,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 ]
 
             delta_threshold = float(portfolio_cfg.get("delta_limit_threshold", 0.0) or 0.0)
-            delta_bias = None
-            if delta_threshold > 0:
-                ql, qs = float(state.pos_long), float(state.pos_short)
-                max_q = max(ql, qs)
-                if max_q > 0 and abs(ql - qs) / max_q > delta_threshold:
-                    delta_bias = "BASE_LONG" if ql > qs else "BASE_SHORT"
+            delta_bias = calculator.nav_bias_side(eff_targets, delta_threshold)
             actions = select_tick_actions(actions, state.initial_build_active, state.rebalance_preferred_key, delta_bias_side=delta_bias)
 
             if actions:
@@ -1220,6 +1215,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                 was_initial_pending = bool(state.initial_build_pending)
                 fills_before = state.fill_count
                 tpv_before = state.get_tpv(mid_price)
+                remaining_funds = state.val_cash
                 reductions = [a for a in actions if a.get("is_reduction", False)]
                 expansions = [a for a in actions if not a.get("is_reduction", False)]
                 execution_records: List[Dict[str, Any]] = []
@@ -1290,6 +1286,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                                         requested_usdt=float(requested_usdt))
                         continue
 
+                    cash_before_reduction = state.val_cash
                     if key == "BASE_LONG":
                         exec_price, commission = sim.simulate_market_execution("SELL", qty, mid_price)
                         realized_pnl = qty * (exec_price - state.long_entry_price)
@@ -1312,6 +1309,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                         state.log_fill(i, "BUY", "BASE_SHORT", qty, exec_price, commission, realized_pnl,
                                        float(state.get_tpv_fast(float(mid_price))), mid_price=mid_price,
                                        leverage=lev, trigger="rebalance", cycle_id=state.cycles + 1)
+                    remaining_funds += min(Decimal('0'), state.val_cash - cash_before_reduction)
                     state.rebalance_preferred_key = "BASE_SHORT" if key == "BASE_LONG" else "BASE_LONG"
                     record(act, "partial" if capped_by else "filled", qty * exec_price, capped_by)
                     if state.share_trail is not None:
@@ -1325,7 +1323,7 @@ async def run_backtest(config_path: str, data_dir: str, live_mode: bool = False,
                     state.check_accounting(mid_price, i, f"reduce_{key}")
 
                 expansions.sort(key=lambda x: x["key"] == "VIRTUAL")
-                remaining_funds = max(Decimal('0'), state.val_cash)
+                remaining_funds = max(Decimal('0'), min(remaining_funds, state.val_cash))
                 building = is_initial_formation or was_initial_pending
                 if profit_budget.ledger(state.profit_book)["blocked"]:
                     remaining_funds = Decimal('0')
