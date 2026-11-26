@@ -42,8 +42,8 @@
       "name": "SyntheticMarketNeutral",
       "initial_capital": 1000.0,
       "paper_initial_capital": 1000.0,
-      "paper_account_free_margin": 5000.0,
-      "cash_reserve_usdt": 5000.0,
+      "paper_account_free_margin": 250000.0,
+      "cash_reserve_usdt": 250000.0,
       "paper_min_free_margin_pct": 15.0,
       "margin_ratio_warning": 3.0,
       "margin_ratio_critical": 1.5,
@@ -94,16 +94,16 @@
   "toxic_blacklist_paper": {},
   "toxic_blacklist_real": {},
   "tickers": [
-    "1000LUNCUSDT",
-    "AKEUSDT",
+    "ACEUSDT",
     "BREVUSDT",
-    "BULLAUSDT",
-    "CYBERUSDT",
+    "EVAAUSDT",
     "HUMAUSDT",
     "IRYSUSDT",
-    "PIPPINUSDT"
+    "PROMUSDT",
+    "SKYAIUSDT",
+    "SLXUSDT"
   ],
-  "base_ticker": "1000LUNCUSDT",
+  "base_ticker": "ACEUSDT",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
