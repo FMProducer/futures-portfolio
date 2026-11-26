@@ -6,6 +6,54 @@ import pytest
 
 from backtest.backtest_rebalance import run_backtest
 from core.calculator import PortfolioCalculator
+from core.share_trail import fresh_state
+
+
+@pytest.mark.parametrize("short_qty, real_equity, virtual", [(1465828.945, 17670.671882, 237.79), (0, -500, 500)])
+@pytest.mark.parametrize("ignore_limits", [False, True])
+def test_nonpositive_tpv_cannot_flip_allocation_orders(short_qty, real_equity, virtual, ignore_limits):
+    targets = {"BASE_LONG": {"share": .25, "leverage": 3},
+               "BASE_SHORT": {"share": .25, "leverage": 3}, "VIRTUAL": {"share": .50, "leverage": 1}}
+    calc = PortfolioCalculator({"AKEUSDT_SHORT": short_qty}, .045132, real_equity, 0,
+                               virt_debt=virtual, short_entry_price=.03024380927651258,
+                               base_ticker="AKEUSDT", targets=targets)
+    trail = fresh_state()
+    trail["BASE_SHORT"]["peak"] = "4"
+    result = calc.calculate_rebalance(targets, .04, .04, calc.tpv, ignore_limits=ignore_limits,
+                                      fuse_enabled=False, share_trail=trail, trail_distance=.058)
+    assert result["actions"] == []
+    assert trail["BASE_SHORT"]["peak"] == "4"
+    assert result["tpv"] == float(calc.tpv)
+
+
+@pytest.mark.asyncio
+async def test_backtest_virtual_release_does_not_fund_same_bar(tmp_path, monkeypatch):
+    prices = [100.0] * 30
+    pd.DataFrame({key: prices for key in ("open", "high", "low", "close", "volume")}).to_feather(
+        tmp_path / "BTCUSDT_live.feather")
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps({"funding_model": "disabled", "portfolios": [{
+        "initial_capital": 1000, "targets": {"BASE_LONG": {"share": .25, "leverage": 3},
+        "BASE_SHORT": {"share": .25, "leverage": 3}, "VIRTUAL": {"share": .50, "leverage": 1}},
+    }]}), encoding="utf-8")
+    original = PortfolioCalculator.calculate_rebalance
+    requests = [
+        {"key": "VIRTUAL", "diff_usdt": -100, "is_reduction": True, "leverage": 1},
+        {"key": "BASE_SHORT", "diff_usdt": 90, "is_reduction": False, "leverage": 3},
+    ]
+
+    def rebalance(calc, *args, **kwargs):
+        result = original(calc, *args, **kwargs)
+        if not calc.initial_build:
+            result["actions"] = [dict(action) for action in requests]
+        return result
+
+    monkeypatch.setattr(PortfolioCalculator, "calculate_rebalance", rebalance)
+    result = await run_backtest(str(config), str(tmp_path), days=1, quiet=True)
+    assert result is not None and result["accounting_ok"]
+    release = next(fill for fill in result["fills"] if fill["side"] == "RELEASE")
+    added = next(fill for fill in result["fills"] if fill["leg"] == "BASE_SHORT" and not fill["initial_build"])
+    assert added["bar"] == release["bar"] + 1
 
 
 @pytest.mark.asyncio

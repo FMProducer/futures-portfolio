@@ -40,6 +40,28 @@ def test_calculator_initialization(sample_params):
     # V = 2000 / 12000 = 16.67%
     assert float(calc.share_virt_pct) == pytest.approx(16.67, abs=0.1)
 
+def test_bias_uses_marked_nav_and_each_legs_target(sample_params, targets):
+    sample_params.update(positions={"BTCUSDT_LONG": 2, "BTCUSDT_SHORT": 1},
+                         spot_price=8, long_entry_price=10, short_entry_price=10,
+                         virt_debt=0, real_equity=12)
+    calc = PortfolioCalculator(**sample_params)
+    assert (calc.val_long, calc.val_short, calc.tpv) == (0, 4, 10)
+    assert calc.nav_bias_side(targets, .1) == "BASE_SHORT"
+    assert calc.nav_bias_side(targets, .4) is None
+    targets["BASE_SHORT"]["share"] = .9
+    targets["BASE_LONG"]["share"] = .1
+    assert calc.nav_bias_side(targets, .1) == "BASE_LONG"
+
+
+def test_rounding_preserves_zero_cash(sample_params):
+    sample_params.update(positions={"BTCUSDT_LONG": 1, "BTCUSDT_SHORT": 1},
+                         spot_price=5, long_entry_price=5, short_entry_price=5,
+                         real_equity=2, virt_debt=4)
+    calc = PortfolioCalculator(**sample_params)
+    assert calc.val_cash == calc.share_cash_pct == 0
+    assert calc.share_long_pct + calc.share_short_pct + calc.share_virt_pct == 100
+
+
 def test_calculate_deviations(sample_params, targets):
     calc = PortfolioCalculator(**sample_params, profit_budget=5000)
     threshold = 0.05
