@@ -103,7 +103,7 @@
     "SKYAIUSDT",
     "SLXUSDT"
   ],
-  "base_ticker": "ACEUSDT",
+  "base_ticker": "",
   "probation_paper": {},
   "probation_real": {},
   "paper_backtest_gate": true
