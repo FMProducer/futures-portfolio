@@ -86,16 +86,23 @@ async def test_two_reductions_share_remaining_quantity(leg, budget):
 
 
 @pytest.mark.asyncio
-async def test_expansion_receives_only_real_reduction_budget():
+async def test_expansion_waits_for_next_tick_after_capped_reduction():
     book = wallet()
-    fills = await PortfolioExecutor(connector()).execute_actions(
+    executor = PortfolioExecutor(connector())
+    closed, skipped = await executor.execute_actions(
         [action(), action("LONG", 2000000, False)], float(PRICE), True,
         deepcopy(CFG), {"JCTUSDT": 1}, book, cash_budget=D("0"))
-    closed, opened = fills
     assert closed["qty"] == 171096
+    assert skipped["status"] == "SKIPPED"
     proceeds = D(str(closed["qty"])) * D(str(book["short_entry_price"])) / 7
-    proceeds += D(str(closed["trade_pnl"])) - D(str(closed["commission"]))
-    expense = D(str(opened["qty"])) * PRICE / 7 + D(str(opened["commission"]))
+    net_pnl = D(str(closed["trade_pnl"])) - D(str(closed["commission"]))
+    proceeds += net_pnl
+    book["positions"]["JCTUSDT_SHORT"] = 0
+    book["balance"] += float(net_pnl)
+    opened, = await executor.execute_actions([action("LONG", 2000000, False)], float(PRICE), True,
+                                              deepcopy(CFG), {"JCTUSDT": 1}, book, cash_budget=proceeds)
+    assert opened["status"] == "SUCCESS"
+    expense = D(str(opened["qty"])) * D(str(opened["price"])) / 7 + D(str(opened["commission"]))
     assert expense <= proceeds
     assert opened["qty"] < 2000000
 

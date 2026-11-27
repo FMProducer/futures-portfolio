@@ -690,7 +690,7 @@ class PortfolioExecutor:
             if not profit_budget.record_fill(batch_state, result, lev, initial_build, require_confirmed=not paper_mode):
                 continue
             if virtual:
-                budget -= Decimal(str(result["diff_usdt"]))
+                budget -= max(Decimal('0'), Decimal(str(result["diff_usdt"])))
                 continue
             qty = Decimal(str(result.get("qty", 0)))
             if paper_state is not None and qty > 0:
@@ -705,13 +705,13 @@ class PortfolioExecutor:
             commission = Decimal(str(result.get("commission", 0)))
             pnl = Decimal(str(result.get("trade_pnl", 0)))
             next_wallet = wallet + pnl - commission
-            budget += next_wallet - wallet
+            cash_delta = next_wallet - wallet
             wallet = next_wallet
             if result.get("reduce_only"):
                 entry = Decimal(str((paper_state or {}).get(f"{leg.lower()}_entry_price", 0)))
-                budget += qty * entry / lev
+                budget += min(Decimal('0'), cash_delta + qty * entry / lev)
             else:
-                budget -= qty * fill_price / lev
+                budget += cash_delta - qty * fill_price / lev
             if budget < 0:
                 logger.error("Paper execution exhausted CASH; blocking remaining increases")
 

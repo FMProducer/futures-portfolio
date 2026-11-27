@@ -63,7 +63,8 @@ def test_internal_virtual_transfer_does_not_require_exchange_trade_financials():
 
 
 @pytest.mark.asyncio
-async def test_real_virtual_release_does_not_block_the_following_confirmed_order():
+@pytest.mark.parametrize('opening_cash', [0, 100])
+async def test_real_virtual_release_does_not_change_same_tick_buying_budget(opening_cash):
     connector = MagicMock()
     connector.get_order_book = AsyncMock(return_value={'bids': [['100', '1000']], 'asks': [['100', '1000']]})
     executor = PortfolioExecutor(connector)
@@ -73,8 +74,10 @@ async def test_real_virtual_release_does_not_block_the_following_confirmed_order
                fill('confirmed-buy', False, qty=1, fee=.04, financials_confirmed=True)]
     with patch.object(executor, '_execute_single_action', AsyncMock(side_effect=results)) as execute:
         actual = await executor.execute_actions([transfer, action('LONG', False, 100)], 100, False, cfg,
-            {'TESTUSDT': .001}, {'balance': 1000, 'positions': {}}, cash_budget=D(100))
-    assert execute.await_count == 2 and all(result['status'] == 'SUCCESS' for result in actual)
+            {'TESTUSDT': .001}, {'balance': 1000, 'positions': {}}, cash_budget=D(opening_cash))
+    assert actual[0]['status'] == 'SUCCESS'
+    assert actual[1]['status'] == ('SUCCESS' if opening_cash else 'SKIPPED')
+    assert execute.await_count == (2 if opening_cash else 1)
 
 
 def test_calculator_does_not_buy_deficit_from_large_collateral_reserve():
